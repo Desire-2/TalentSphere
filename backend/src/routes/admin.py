@@ -1,0 +1,1242 @@
+from flask import Blueprint, request, jsonify
+from datetime import datetime, timedelta
+from sqlalchemy import func, desc, asc, and_, or_
+from decimal import Decimal
+
+from src.models.user import db, User, JobSeekerProfile, EmployerProfile
+from src.models.company import Company
+from src.models.job import Job, JobCategory
+from src.models.application import Application
+from src.models.featured_ad import FeaturedAd, Payment
+from src.models.notification import Review
+from src.routes.auth import token_required, role_required
+
+admin_bp = Blueprint('admin', __name__)
+
+@admin_bp.route('/admin/dashboard', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_admin_dashboard(current_user):
+    """Get admin dashboard overview"""
+    try:
+        # Date range for analytics
+        days = request.args.get('days', 30, type=int)
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        # User statistics
+        total_users = User.query.count()
+        new_users = User.query.filter(User.created_at >= start_date).count()
+        active_users = User.query.filter(User.last_login >= start_date).count()
+        job_seekers = User.query.filter_by(role='job_seeker').count()
+        employers = User.query.filter_by(role='employer').count()
+        
+        # Job statistics
+        total_jobs = Job.query.count()
+        active_jobs = Job.query.filter_by(status='published', is_active=True).count()
+        new_jobs = Job.query.filter(Job.created_at >= start_date).count()
+        featured_jobs = Job.query.filter_by(is_featured=True, is_active=True).count()
+        
+        # Application statistics
+        total_applications = Application.query.count()
+        new_applications = Application.query.filter(Application.created_at >= start_date).count()
+        pending_applications = Application.query.filter_by(status='submitted').count()
+        
+        # Company statistics
+        total_companies = Company.query.count()
+        verified_companies = Company.query.filter_by(is_verified=True).count()
+        new_companies = Company.query.filter(Company.created_at >= start_date).count()
+        
+        # Revenue statistics
+        total_revenue = db.session.query(func.sum(Payment.amount)).filter(
+            Payment.status == 'completed'
+        ).scalar() or 0
+        
+        period_revenue = db.session.query(func.sum(Payment.amount)).filter(
+            and_(Payment.status == 'completed', Payment.created_at >= start_date)
+        ).scalar() or 0
+        
+        # Featured ads statistics
+        active_featured_ads = FeaturedAd.query.filter_by(status='active').count()
+        total_featured_ads = FeaturedAd.query.count()
+        
+        # Recent activity
+        recent_users = User.query.order_by(desc(User.created_at)).limit(5).all()
+        recent_jobs = Job.query.order_by(desc(Job.created_at)).limit(5).all()
+        recent_payments = Payment.query.filter_by(status='completed').order_by(
+            desc(Payment.created_at)
+        ).limit(5).all()
+        
+        dashboard_data = {
+            'overview': {
+                'total_users': total_users,
+                'new_users': new_users,
+                'active_users': active_users,
+                'total_jobs': total_jobs,
+                'active_jobs': active_jobs,
+                'total_applications': total_applications,
+                'total_companies': total_companies,
+                'total_revenue': float(total_revenue),
+                'period_revenue': float(period_revenue)
+            },
+            'user_breakdown': {
+                'job_seekers': job_seekers,
+                'employers': employers,
+                'admins': total_users - job_seekers - employers
+            },
+            'job_metrics': {
+                'total_jobs': total_jobs,
+                'active_jobs': active_jobs,
+                'new_jobs': new_jobs,
+                'featured_jobs': featured_jobs,
+                'draft_jobs': Job.query.filter_by(status='draft').count(),
+                'closed_jobs': Job.query.filter_by(status='closed').count()
+            },
+            'application_metrics': {
+                'total_applications': total_applications,
+                'new_applications': new_applications,
+                'pending_applications': pending_applications,
+                'under_review': Application.query.filter_by(status='under_review').count(),
+                'hired': Application.query.filter_by(status='hired').count(),
+                'rejected': Application.query.filter_by(status='rejected').count()
+            },
+            'company_metrics': {
+                'total_companies': total_companies,
+                'verified_companies': verified_companies,
+                'new_companies': new_companies,
+                'featured_companies': Company.query.filter_by(is_featured=True).count()
+            },
+            'revenue_metrics': {
+                'total_revenue': float(total_revenue),
+                'period_revenue': float(period_revenue),
+                'active_featured_ads': active_featured_ads,
+                'total_featured_ads': total_featured_ads,
+                'pending_payments': Payment.query.filter_by(status='pending').count()
+            },
+            'recent_activity': {
+                'users': [user.to_dict() for user in recent_users],
+                'jobs': [job.to_dict() for job in recent_jobs],
+                'payments': [payment.to_dict() for payment in recent_payments]
+            }
+        }
+        
+        return jsonify(dashboard_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get dashboard data', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/users', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_users(current_user):
+    """Get users with filtering and pagination"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        # Filtering parameters
+        role = request.args.get('role')
+        is_active = request.args.get('is_active', type=bool)
+        is_verified = request.args.get('is_verified', type=bool)
+        search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = User.query
+        
+        if role:
+            query = query.filter_by(role=role)
+        if is_active is not None:
+            query = query.filter_by(is_active=is_active)
+        if is_verified is not None:
+            query = query.filter_by(is_verified=is_verified)
+        if search:
+            search_filter = or_(
+                User.first_name.ilike(f'%{search}%'),
+                User.last_name.ilike(f'%{search}%'),
+                User.email.ilike(f'%{search}%')
+            )
+            query = query.filter(search_filter)
+        
+        # Apply sorting
+        if sort_by == 'name':
+            order_col = User.first_name
+        elif sort_by == 'email':
+            order_col = User.email
+        elif sort_by == 'last_login':
+            order_col = User.last_login
+        else:
+            order_col = User.created_at
+        
+        if sort_order == 'desc':
+            query = query.order_by(desc(order_col))
+        else:
+            query = query.order_by(asc(order_col))
+        
+        # Paginate
+        users = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        user_list = []
+        for user in users.items:
+            user_data = user.to_dict(include_sensitive=True)
+            
+            # Add role-specific data
+            if user.role == 'job_seeker' and user.job_seeker_profile:
+                user_data['profile'] = user.job_seeker_profile.to_dict()
+            elif user.role == 'employer' and user.employer_profile:
+                user_data['profile'] = user.employer_profile.to_dict()
+            
+            # Add statistics
+            if user.role == 'job_seeker':
+                applications_count = 0
+                bookmarks_count = 0
+                try:
+                    if hasattr(user, 'applications'):
+                        applications_count = len(user.applications) if user.applications else 0
+                    if hasattr(user, 'job_bookmarks'):
+                        bookmarks_count = len(user.job_bookmarks) if user.job_bookmarks else 0
+                except:
+                    pass  # Use default values if there are issues
+                
+                user_data['stats'] = {
+                    'applications_count': applications_count,
+                    'bookmarks_count': bookmarks_count
+                }
+            elif user.role == 'employer':
+                jobs_posted = 0
+                applications_received = 0
+                try:
+                    if hasattr(user, 'posted_jobs'):
+                        jobs_posted = len(user.posted_jobs) if user.posted_jobs else 0
+                        applications_received = sum(getattr(job, 'application_count', 0) for job in user.posted_jobs)
+                except:
+                    pass  # Use default values if there are issues
+                
+                user_data['stats'] = {
+                    'jobs_posted': jobs_posted,
+                    'applications_received': applications_received
+                }
+            
+            user_list.append(user_data)
+        
+        return jsonify({
+            'users': user_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': users.total,
+                'pages': users.pages,
+                'has_next': users.has_next,
+                'has_prev': users.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get users', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/users/<int:user_id>/toggle-status', methods=['POST'])
+@token_required
+@role_required('admin')
+def toggle_user_status(current_user, user_id):
+    """Toggle user active status"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        if user.role == 'admin':
+            return jsonify({'error': 'Cannot modify admin users'}), 403
+        
+        user.is_active = not user.is_active
+        user.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'User {"activated" if user.is_active else "deactivated"} successfully',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to toggle user status', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/jobs', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_jobs_admin(current_user):
+    """Get jobs for admin management"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        # Filtering parameters
+        status = request.args.get('status')
+        is_featured = request.args.get('is_featured', type=bool)
+        category_id = request.args.get('category_id', type=int)
+        search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = Job.query
+        
+        if status:
+            query = query.filter_by(status=status)
+        if is_featured is not None:
+            query = query.filter_by(is_featured=is_featured)
+        if category_id:
+            query = query.filter_by(category_id=category_id)
+        if search:
+            search_filter = or_(
+                Job.title.ilike(f'%{search}%'),
+                Job.description.ilike(f'%{search}%')
+            )
+            query = query.filter(search_filter)
+        
+        # Apply sorting
+        if sort_by == 'title':
+            order_col = Job.title
+        elif sort_by == 'company':
+            query = query.join(Company)
+            order_col = Company.name
+        elif sort_by == 'applications':
+            order_col = Job.application_count
+        elif sort_by == 'views':
+            order_col = Job.view_count
+        else:
+            order_col = Job.created_at
+        
+        if sort_order == 'desc':
+            query = query.order_by(desc(order_col))
+        else:
+            query = query.order_by(asc(order_col))
+        
+        # Paginate
+        jobs = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        job_list = []
+        for job in jobs.items:
+            job_data = job.to_dict(include_details=True, include_stats=True)
+            job_data['company'] = job.company.to_dict() if job.company else None
+            job_data['category'] = job.category.to_dict() if job.category else None
+            job_data['poster'] = job.poster.to_dict() if job.poster else None
+            job_list.append(job_data)
+        
+        return jsonify({
+            'jobs': job_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': jobs.total,
+                'pages': jobs.pages,
+                'has_next': jobs.has_next,
+                'has_prev': jobs.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get jobs', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/jobs/<int:job_id>/moderate', methods=['POST'])
+@token_required
+@role_required('admin')
+def moderate_job(current_user, job_id):
+    """Moderate a job posting"""
+    try:
+        job = Job.query.get(job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        data = request.get_json()
+        action = data.get('action')  # approve, reject, feature, unfeature, suspend, reactivate
+        reason = data.get('reason', '')
+        notes = data.get('notes', '')
+        
+        old_status = job.status
+        old_featured = job.is_featured
+        old_active = job.is_active
+        
+        if action == 'approve':
+            job.status = 'published'
+            job.published_at = datetime.utcnow()
+            job.is_active = True
+        elif action == 'reject':
+            job.status = 'closed'
+            job.is_active = False
+        elif action == 'feature':
+            job.is_featured = True
+        elif action == 'unfeature':
+            job.is_featured = False
+        elif action == 'suspend':
+            job.is_active = False
+            job.status = 'suspended'
+        elif action == 'reactivate':
+            job.is_active = True
+            job.status = 'published' if job.status == 'suspended' else job.status
+        elif action == 'urgent':
+            job.is_urgent = True
+        elif action == 'remove_urgent':
+            job.is_urgent = False
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        job.updated_at = datetime.utcnow()
+        
+        # Log the moderation action (in a real app, you'd store this in a moderation_log table)
+        moderation_log = {
+            'admin_id': current_user.id,
+            'admin_email': current_user.email,
+            'job_id': job_id,
+            'action': action,
+            'reason': reason,
+            'notes': notes,
+            'old_status': old_status,
+            'new_status': job.status,
+            'old_featured': old_featured,
+            'new_featured': job.is_featured,
+            'old_active': old_active,
+            'new_active': job.is_active,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        print(f"📋 MODERATION LOG: {moderation_log}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Job {action}d successfully',
+            'job': job.to_dict(include_details=True, include_stats=True),
+            'moderation_log': moderation_log
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to moderate job', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/jobs/bulk-action', methods=['POST'])
+@token_required
+@role_required('admin')
+def bulk_job_action(current_user):
+    """Perform bulk actions on jobs"""
+    try:
+        job_ids = request.json.get('job_ids', [])
+        action = request.json.get('action', '')
+        reason = request.json.get('reason', '')
+        
+        if not job_ids or not action:
+            return jsonify({'error': 'Job IDs and action are required'}), 400
+        
+        jobs = Job.query.filter(Job.id.in_(job_ids)).all()
+        if len(jobs) != len(job_ids):
+            return jsonify({'error': 'Some jobs not found'}), 404
+        
+        updated_jobs = []
+        
+        for job in jobs:
+            old_status = job.status
+            
+            if action == 'approve':
+                if job.status == 'pending':
+                    job.status = 'published'
+                    job.published_at = datetime.utcnow()
+                    job.is_active = True
+                    updated_jobs.append(job)
+            
+            elif action == 'reject':
+                if job.status in ['pending', 'published']:
+                    job.status = 'closed'
+                    job.is_active = False
+                    updated_jobs.append(job)
+            
+            elif action == 'feature':
+                job.is_featured = True
+                updated_jobs.append(job)
+            
+            elif action == 'unfeature':
+                job.is_featured = False
+                updated_jobs.append(job)
+            
+            elif action == 'suspend':
+                job.is_active = False
+                job.status = 'suspended'
+                updated_jobs.append(job)
+            
+            elif action == 'reactivate':
+                job.is_active = True
+                job.status = 'published' if job.status == 'suspended' else job.status
+                updated_jobs.append(job)
+            
+            elif action == 'urgent':
+                job.is_urgent = True
+                updated_jobs.append(job)
+            
+            elif action == 'remove_urgent':
+                job.is_urgent = False
+                updated_jobs.append(job)
+            
+            elif action == 'delete':
+                # Soft delete (set inactive and closed)
+                job.is_active = False
+                job.status = 'deleted'
+                updated_jobs.append(job)
+            
+            if job in updated_jobs:
+                job.updated_at = datetime.utcnow()
+        
+        if not updated_jobs:
+            return jsonify({'error': f'No jobs were updated with action: {action}'}), 400
+        
+        # Log bulk action
+        bulk_log = {
+            'admin_id': current_user.id,
+            'admin_email': current_user.email,
+            'action': action,
+            'reason': reason,
+            'job_ids': job_ids,
+            'affected_count': len(updated_jobs),
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        print(f"📋 BULK ACTION LOG: {bulk_log}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Bulk {action} completed successfully',
+            'affected_jobs': len(updated_jobs),
+            'jobs': [job.to_dict(include_details=True) for job in updated_jobs],
+            'bulk_log': bulk_log
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to perform bulk action', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/jobs/<int:job_id>/analytics', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_job_analytics(current_user, job_id):
+    """Get detailed analytics for a specific job"""
+    try:
+        job = Job.query.get(job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        # Get application analytics
+        applications = Application.query.filter_by(job_id=job_id).all()
+        
+        # Application status breakdown
+        status_breakdown = {}
+        for app in applications:
+            status = app.status
+            status_breakdown[status] = status_breakdown.get(status, 0) + 1
+        
+        # Applications over time (last 30 days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        daily_applications = db.session.query(
+            func.date(Application.created_at).label('date'),
+            func.count(Application.id).label('count')
+        ).filter(
+            and_(
+                Application.job_id == job_id,
+                Application.created_at >= thirty_days_ago
+            )
+        ).group_by(func.date(Application.created_at)).all()
+        
+        # Calculate conversion rates
+        total_applications = len(applications)
+        total_views = job.view_count or 0
+        conversion_rate = (total_applications / total_views * 100) if total_views > 0 else 0
+        
+        # Top applicant sources (if you track referral sources)
+        # This would need additional tracking in your application model
+        
+        analytics = {
+            'job': job.to_dict(include_details=True, include_stats=True),
+            'application_analytics': {
+                'total_applications': total_applications,
+                'status_breakdown': status_breakdown,
+                'daily_applications': [
+                    {'date': str(date), 'count': count}
+                    for date, count in daily_applications
+                ],
+                'conversion_rate': round(conversion_rate, 2)
+            },
+            'performance_metrics': {
+                'views': total_views,
+                'applications': total_applications,
+                'conversion_rate': round(conversion_rate, 2),
+                'days_since_posted': (datetime.utcnow() - job.created_at).days,
+                'is_trending': conversion_rate > 5.0,  # Example threshold
+                'bookmark_rate': (job.bookmark_count / total_views * 100) if total_views > 0 else 0
+            }
+        }
+        
+        return jsonify(analytics), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get job analytics', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/jobs/stats', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_jobs_stats(current_user):
+    """Get comprehensive job statistics"""
+    try:
+        # Get time range
+        days = request.args.get('days', 30, type=int)
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        # Job status distribution
+        status_distribution = db.session.query(
+            Job.status,
+            func.count(Job.id).label('count')
+        ).group_by(Job.status).all()
+        
+        # Jobs by category
+        jobs_by_category = db.session.query(
+            JobCategory.name,
+            func.count(Job.id).label('count')
+        ).join(Job).group_by(JobCategory.id, JobCategory.name).all()
+        
+        # Jobs over time
+        daily_job_posts = db.session.query(
+            func.date(Job.created_at).label('date'),
+            func.count(Job.id).label('count')
+        ).filter(
+            Job.created_at >= start_date
+        ).group_by(func.date(Job.created_at)).all()
+        
+        # Top performing jobs (by applications)
+        top_jobs = db.session.query(
+            Job.id,
+            Job.title,
+            Company.name.label('company_name'),
+            func.count(Application.id).label('application_count')
+        ).join(Company).outerjoin(Application).group_by(
+            Job.id, Job.title, Company.name
+        ).order_by(desc(func.count(Application.id))).limit(10).all()
+        
+        # Employment type distribution
+        employment_type_dist = db.session.query(
+            Job.employment_type,
+            func.count(Job.id).label('count')
+        ).group_by(Job.employment_type).all()
+        
+        # Experience level distribution
+        experience_level_dist = db.session.query(
+            Job.experience_level,
+            func.count(Job.id).label('count')
+        ).group_by(Job.experience_level).all()
+        
+        # Featured vs regular jobs performance
+        featured_stats = db.session.query(
+            Job.is_featured,
+            func.count(Job.id).label('job_count'),
+            func.avg(Job.view_count).label('avg_views'),
+            func.avg(Job.application_count).label('avg_applications')
+        ).group_by(Job.is_featured).all()
+        
+        stats = {
+            'overview': {
+                'total_jobs': Job.query.count(),
+                'active_jobs': Job.query.filter_by(is_active=True).count(),
+                'featured_jobs': Job.query.filter_by(is_featured=True).count(),
+                'pending_jobs': Job.query.filter_by(status='pending').count(),
+                'new_jobs_period': Job.query.filter(Job.created_at >= start_date).count()
+            },
+            'distributions': {
+                'status': [{'status': status, 'count': count} for status, count in status_distribution],
+                'category': [{'category': name, 'count': count} for name, count in jobs_by_category],
+                'employment_type': [{'type': emp_type or 'Not specified', 'count': count} for emp_type, count in employment_type_dist],
+                'experience_level': [{'level': level or 'Not specified', 'count': count} for level, count in experience_level_dist]
+            },
+            'trends': {
+                'daily_posts': [{'date': str(date), 'count': count} for date, count in daily_job_posts]
+            },
+            'performance': {
+                'top_jobs': [
+                    {
+                        'id': job_id,
+                        'title': title,
+                        'company': company_name,
+                        'applications': application_count
+                    }
+                    for job_id, title, company_name, application_count in top_jobs
+                ],
+                'featured_vs_regular': [
+                    {
+                        'is_featured': is_featured,
+                        'job_count': job_count,
+                        'avg_views': float(avg_views or 0),
+                        'avg_applications': float(avg_applications or 0)
+                    }
+                    for is_featured, job_count, avg_views, avg_applications in featured_stats
+                ]
+            }
+        }
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get job statistics', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_companies_admin(current_user):
+    """Get companies for admin management"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)
+        
+        # Filtering parameters
+        is_verified = request.args.get('is_verified')
+        is_featured = request.args.get('is_featured')
+        is_active = request.args.get('is_active')
+        industry = request.args.get('industry')
+        company_size = request.args.get('company_size')
+        search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # Build query
+        query = Company.query
+        
+        # Apply filters (convert string 'true'/'false' to boolean)
+        if is_verified and is_verified != 'all':
+            query = query.filter_by(is_verified=(is_verified.lower() == 'true'))
+        if is_featured and is_featured != 'all':
+            query = query.filter_by(is_featured=(is_featured.lower() == 'true'))
+        if is_active and is_active != 'all':
+            query = query.filter_by(is_active=(is_active.lower() == 'true'))
+        if industry and industry != 'all':
+            query = query.filter_by(industry=industry)
+        if company_size and company_size != 'all':
+            query = query.filter_by(company_size=company_size)
+        if search:
+            search_filter = or_(
+                Company.name.ilike(f'%{search}%'),
+                Company.description.ilike(f'%{search}%'),
+                Company.industry.ilike(f'%{search}%'),
+                Company.city.ilike(f'%{search}%'),
+                Company.country.ilike(f'%{search}%')
+            )
+            query = query.filter(search_filter)
+        
+        # Apply sorting
+        if sort_by == 'name':
+            order_col = Company.name
+        elif sort_by == 'industry':
+            order_col = Company.industry
+        elif sort_by == 'company_size':
+            order_col = Company.company_size
+        elif sort_by == 'created_at':
+            order_col = Company.created_at
+        else:
+            order_col = Company.created_at
+        
+        if sort_order == 'desc':
+            query = query.order_by(desc(order_col))
+        else:
+            query = query.order_by(asc(order_col))
+        
+        # Paginate
+        companies = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        company_list = []
+        for company in companies.items:
+            company_data = company.to_dict(include_stats=True)
+            company_list.append(company_data)
+        
+        return jsonify({
+            'companies': company_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': companies.total,
+                'pages': companies.pages,
+                'has_next': companies.has_next,
+                'has_prev': companies.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get companies', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>/verify', methods=['POST'])
+@token_required
+@role_required('admin')
+def verify_company(current_user, company_id):
+    """Verify a company"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        company.is_verified = True
+        company.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Company verified successfully',
+            'company': company.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to verify company', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>/reject', methods=['POST'])
+@token_required
+@role_required('admin')
+def reject_company_verification(current_user, company_id):
+    """Reject company verification"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        notes = request.json.get('notes', '')
+        
+        company.is_verified = False
+        company.updated_at = datetime.utcnow()
+        
+        # In a real app, you might store rejection reasons/notes
+        # For now, we'll just update the verification status
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Company verification rejected',
+            'company': company.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to reject company verification', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>/toggle-featured', methods=['POST'])
+@token_required
+@role_required('admin')
+def toggle_company_featured(current_user, company_id):
+    """Toggle company featured status"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        company.is_featured = not company.is_featured
+        company.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Company {"featured" if company.is_featured else "unfeatured"} successfully',
+            'company': company.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to toggle featured status', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>/toggle-status', methods=['POST'])
+@token_required
+@role_required('admin')
+def toggle_company_status(current_user, company_id):
+    """Toggle company active status (suspend/activate)"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        reason = request.json.get('reason', '')
+        
+        company.is_active = not company.is_active
+        company.updated_at = datetime.utcnow()
+        
+        # In a real app, you might store suspension reasons
+        # For now, we'll just update the active status
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Company {"activated" if company.is_active else "suspended"} successfully',
+            'company': company.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to toggle company status', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>/send-email', methods=['POST'])
+@token_required
+@role_required('admin')
+def send_company_email(current_user, company_id):
+    """Send email to company"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        if not company.email:
+            return jsonify({'error': 'Company has no email address'}), 400
+        
+        subject = request.json.get('subject', '')
+        body = request.json.get('body', '')
+        
+        if not subject or not body:
+            return jsonify({'error': 'Subject and body are required'}), 400
+        
+        # In a real app, you would integrate with an email service like SendGrid, AWS SES, etc.
+        # For now, we'll just log the email details
+        print(f"📧 ADMIN EMAIL TO COMPANY:")
+        print(f"   To: {company.email}")
+        print(f"   Subject: {subject}")
+        print(f"   Body: {body}")
+        print(f"   From Admin: {current_user.email}")
+        
+        return jsonify({
+            'message': 'Email sent successfully to company',
+            'recipient': company.email
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to send email', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/bulk-action', methods=['POST'])
+@token_required
+@role_required('admin')
+def bulk_company_action(current_user):
+    """Perform bulk actions on companies"""
+    try:
+        company_ids = request.json.get('company_ids', [])
+        action = request.json.get('action', '')
+        
+        if not company_ids or not action:
+            return jsonify({'error': 'Company IDs and action are required'}), 400
+        
+        companies = Company.query.filter(Company.id.in_(company_ids)).all()
+        if len(companies) != len(company_ids):
+            return jsonify({'error': 'Some companies not found'}), 404
+        
+        updated_companies = []
+        
+        if action == 'verify':
+            for company in companies:
+                if not company.is_verified:
+                    company.is_verified = True
+                    company.updated_at = datetime.utcnow()
+                    updated_companies.append(company)
+        
+        elif action == 'unverify':
+            for company in companies:
+                if company.is_verified:
+                    company.is_verified = False
+                    company.updated_at = datetime.utcnow()
+                    updated_companies.append(company)
+        
+        elif action == 'feature':
+            for company in companies:
+                company.is_featured = True
+                company.updated_at = datetime.utcnow()
+                updated_companies.append(company)
+        
+        elif action == 'unfeature':
+            for company in companies:
+                company.is_featured = False
+                company.updated_at = datetime.utcnow()
+                updated_companies.append(company)
+        
+        elif action == 'activate':
+            for company in companies:
+                company.is_active = True
+                company.updated_at = datetime.utcnow()
+                updated_companies.append(company)
+        
+        elif action == 'suspend':
+            for company in companies:
+                company.is_active = False
+                company.updated_at = datetime.utcnow()
+                updated_companies.append(company)
+        
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Bulk {action} completed successfully',
+            'affected_companies': len(updated_companies),
+            'companies': [company.to_dict() for company in updated_companies]
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to perform bulk action', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/companies/<int:company_id>', methods=['DELETE'])
+@token_required
+@role_required('admin')
+def delete_company(current_user, company_id):
+    """Delete a company (admin only)"""
+    try:
+        company = Company.query.get(company_id)
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+        
+        company_name = company.name
+        
+        # In a production app, you might want to:
+        # 1. Soft delete (set is_deleted=True) instead of hard delete
+        # 2. Archive related data
+        # 3. Send notifications to affected users
+        # 4. Log the deletion for audit purposes
+        
+        # For now, we'll perform a hard delete
+        # Note: This will cascade delete related records if set up properly
+        db.session.delete(company)
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Company "{company_name}" deleted successfully',
+            'deleted_company_id': company_id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete company', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/analytics/revenue', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_revenue_analytics(current_user):
+    """Get revenue analytics"""
+    try:
+        days = request.args.get('days', 30, type=int)
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        # Daily revenue for the period
+        daily_revenue = db.session.query(
+            func.date(Payment.created_at).label('date'),
+            func.sum(Payment.amount).label('revenue')
+        ).filter(
+            and_(
+                Payment.status == 'completed',
+                Payment.created_at >= start_date,
+                Payment.created_at <= end_date
+            )
+        ).group_by(func.date(Payment.created_at)).all()
+        
+        # Revenue by purpose
+        revenue_by_purpose = db.session.query(
+            Payment.purpose,
+            func.sum(Payment.amount).label('revenue'),
+            func.count(Payment.id).label('count')
+        ).filter(
+            and_(
+                Payment.status == 'completed',
+                Payment.created_at >= start_date
+            )
+        ).group_by(Payment.purpose).all()
+        
+        # Top paying companies
+        top_companies = db.session.query(
+            Company.name,
+            func.sum(Payment.amount).label('total_spent')
+        ).join(Payment, Company.id == Payment.company_id).filter(
+            and_(
+                Payment.status == 'completed',
+                Payment.created_at >= start_date
+            )
+        ).group_by(Company.id, Company.name).order_by(
+            desc(func.sum(Payment.amount))
+        ).limit(10).all()
+        
+        # Payment method breakdown
+        payment_methods = db.session.query(
+            Payment.payment_method,
+            func.count(Payment.id).label('count'),
+            func.sum(Payment.amount).label('revenue')
+        ).filter(
+            and_(
+                Payment.status == 'completed',
+                Payment.created_at >= start_date
+            )
+        ).group_by(Payment.payment_method).all()
+        
+        analytics = {
+            'daily_revenue': [
+                {'date': str(date), 'revenue': float(revenue)}
+                for date, revenue in daily_revenue
+            ],
+            'revenue_by_purpose': [
+                {'purpose': purpose, 'revenue': float(revenue), 'count': count}
+                for purpose, revenue, count in revenue_by_purpose
+            ],
+            'top_companies': [
+                {'company': name, 'total_spent': float(total)}
+                for name, total in top_companies
+            ],
+            'payment_methods': [
+                {'method': method, 'count': count, 'revenue': float(revenue)}
+                for method, count, revenue in payment_methods
+            ]
+        }
+        
+        return jsonify(analytics), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get revenue analytics', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/analytics/users', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_user_analytics(current_user):
+    """Get user analytics"""
+    try:
+        days = request.args.get('days', 30, type=int)
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        # Daily user registrations
+        daily_registrations = db.session.query(
+            func.date(User.created_at).label('date'),
+            func.count(User.id).label('registrations')
+        ).filter(
+            and_(
+                User.created_at >= start_date,
+                User.created_at <= end_date
+            )
+        ).group_by(func.date(User.created_at)).all()
+        
+        # User role distribution
+        role_distribution = db.session.query(
+            User.role,
+            func.count(User.id).label('count')
+        ).group_by(User.role).all()
+        
+        # Active users by day
+        daily_active_users = db.session.query(
+            func.date(User.last_login).label('date'),
+            func.count(User.id).label('active_users')
+        ).filter(
+            and_(
+                User.last_login >= start_date,
+                User.last_login <= end_date
+            )
+        ).group_by(func.date(User.last_login)).all()
+        
+        # User verification status
+        verification_stats = db.session.query(
+            User.is_verified,
+            func.count(User.id).label('count')
+        ).group_by(User.is_verified).all()
+        
+        analytics = {
+            'daily_registrations': [
+                {'date': str(date), 'registrations': registrations}
+                for date, registrations in daily_registrations
+            ],
+            'role_distribution': [
+                {'role': role, 'count': count}
+                for role, count in role_distribution
+            ],
+            'daily_active_users': [
+                {'date': str(date), 'active_users': active_users}
+                for date, active_users in daily_active_users
+            ],
+            'verification_stats': [
+                {'verified': verified, 'count': count}
+                for verified, count in verification_stats
+            ]
+        }
+        
+        return jsonify(analytics), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get user analytics', 'details': str(e)}), 500
+
+@admin_bp.route('/admin/system-health', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_system_health(current_user):
+    """Get system health metrics"""
+    try:
+        # Database statistics
+        db_stats = {
+            'total_records': {
+                'users': User.query.count(),
+                'companies': Company.query.count(),
+                'jobs': Job.query.count(),
+                'applications': Application.query.count(),
+                'payments': Payment.query.count(),
+                'featured_ads': FeaturedAd.query.count()
+            },
+            'active_records': {
+                'active_users': User.query.filter_by(is_active=True).count(),
+                'active_companies': Company.query.filter_by(is_active=True).count(),
+                'active_jobs': Job.query.filter_by(is_active=True).count(),
+                'pending_applications': Application.query.filter_by(status='submitted').count(),
+                'active_featured_ads': FeaturedAd.query.filter_by(status='active').count()
+            }
+        }
+        
+        # Recent activity (last 24 hours)
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        recent_activity = {
+            'new_users': User.query.filter(User.created_at >= yesterday).count(),
+            'new_jobs': Job.query.filter(Job.created_at >= yesterday).count(),
+            'new_applications': Application.query.filter(Application.created_at >= yesterday).count(),
+            'new_payments': Payment.query.filter(Payment.created_at >= yesterday).count()
+        }
+        
+        # Error indicators
+        error_indicators = {
+            'failed_payments': Payment.query.filter_by(status='failed').count(),
+            'expired_featured_ads': FeaturedAd.query.filter(
+                and_(FeaturedAd.end_date < datetime.utcnow(), FeaturedAd.status == 'active')
+            ).count(),
+            'inactive_users': User.query.filter_by(is_active=False).count()
+        }
+        
+        health_data = {
+            'database_stats': db_stats,
+            'recent_activity': recent_activity,
+            'error_indicators': error_indicators,
+            'system_status': 'healthy' if all(v < 100 for v in error_indicators.values()) else 'warning'
+        }
+        
+        return jsonify(health_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get system health', 'details': str(e)}), 500
+
+# Error handlers
+@admin_bp.errorhandler(400)
+def bad_request(error):
+    return jsonify({'error': 'Bad request'}), 400
+
+@admin_bp.errorhandler(401)
+def unauthorized(error):
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@admin_bp.errorhandler(403)
+def forbidden(error):
+    return jsonify({'error': 'Forbidden'}), 403
+
+@admin_bp.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Not found'}), 404
+
+@admin_bp.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
+

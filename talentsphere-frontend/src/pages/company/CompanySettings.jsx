@@ -164,11 +164,11 @@ const CompanySettings = () => {
         apiService.getCompanyBillingSettings()
       ]);
 
-      setAccountSettings(accountResponse.data);
-      setSecuritySettings(securityResponse.data);
-      setNotificationSettings(notificationResponse.data);
-      setPrivacySettings(privacyResponse.data);
-      setBillingSettings(billingResponse.data);
+      setAccountSettings(accountResponse || {});
+      setSecuritySettings(securityResponse || {});
+      setNotificationSettings(notificationResponse || {});
+      setPrivacySettings(privacyResponse || {});
+      setBillingSettings(billingResponse || {});
       
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -323,7 +323,7 @@ const CompanySettings = () => {
                   <Label htmlFor="company_name">Company Name</Label>
                   <Input
                     id="company_name"
-                    value={accountSettings.company_name}
+                    value={accountSettings?.company_name || ''}
                     onChange={(e) => setAccountSettings(prev => ({ ...prev, company_name: e.target.value }))}
                   />
                 </div>
@@ -333,7 +333,7 @@ const CompanySettings = () => {
                   <Input
                     id="contact_email"
                     type="email"
-                    value={accountSettings.contact_email}
+                    value={accountSettings?.contact_email || ''}
                     onChange={(e) => setAccountSettings(prev => ({ ...prev, contact_email: e.target.value }))}
                   />
                 </div>
@@ -342,7 +342,7 @@ const CompanySettings = () => {
                   <Label htmlFor="contact_phone">Contact Phone</Label>
                   <Input
                     id="contact_phone"
-                    value={accountSettings.contact_phone}
+                    value={accountSettings?.contact_phone || ''}
                     onChange={(e) => setAccountSettings(prev => ({ ...prev, contact_phone: e.target.value }))}
                   />
                 </div>
@@ -352,14 +352,14 @@ const CompanySettings = () => {
                   <Input
                     id="billing_email"
                     type="email"
-                    value={accountSettings.billing_email}
+                    value={accountSettings?.billing_email || ''}
                     onChange={(e) => setAccountSettings(prev => ({ ...prev, billing_email: e.target.value }))}
                   />
                 </div>
                 
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Select value={accountSettings.timezone} onValueChange={(value) => setAccountSettings(prev => ({ ...prev, timezone: value }))}>
+                  <Select value={accountSettings?.timezone || ''} onValueChange={(value) => setAccountSettings(prev => ({ ...prev, timezone: value }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
@@ -377,7 +377,7 @@ const CompanySettings = () => {
                 
                 <div>
                   <Label htmlFor="currency">Currency</Label>
-                  <Select value={accountSettings.currency} onValueChange={(value) => setAccountSettings(prev => ({ ...prev, currency: value }))}>
+                  <Select value={accountSettings?.currency || 'USD'} onValueChange={(value) => setAccountSettings(prev => ({ ...prev, currency: value }))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -471,7 +471,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
                 </div>
                 <Switch
-                  checked={securitySettings.two_factor_enabled}
+                  checked={securitySettings?.two_factor_enabled || false}
                   onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, two_factor_enabled: checked }))}
                 />
               </div>
@@ -482,7 +482,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Get notified when someone logs into your account</p>
                 </div>
                 <Switch
-                  checked={securitySettings.login_notifications}
+                  checked={securitySettings?.login_notifications || false}
                   onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, login_notifications: checked }))}
                 />
               </div>
@@ -493,7 +493,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Require password changes every 90 days</p>
                 </div>
                 <Switch
-                  checked={securitySettings.password_expiry}
+                  checked={securitySettings?.password_expiry || false}
                   onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, password_expiry: checked }))}
                 />
               </div>
@@ -505,7 +505,7 @@ const CompanySettings = () => {
                   type="number"
                   min="1"
                   max="168"
-                  value={securitySettings.session_timeout}
+                  value={securitySettings?.session_timeout || 24}
                   onChange={(e) => setSecuritySettings(prev => ({ ...prev, session_timeout: parseInt(e.target.value) }))}
                 />
               </div>
@@ -516,7 +516,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Restrict access to specific IP addresses</p>
                 </div>
                 <Switch
-                  checked={securitySettings.ip_whitelist_enabled}
+                  checked={securitySettings?.ip_whitelist_enabled || false}
                   onCheckedChange={(checked) => setSecuritySettings(prev => ({ ...prev, ip_whitelist_enabled: checked }))}
                 />
               </div>
@@ -540,7 +540,7 @@ const CompanySettings = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(notificationSettings.email_notifications).map(([key, value]) => (
+              {Object.entries(notificationSettings?.email_notifications || {}).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
@@ -567,7 +567,7 @@ const CompanySettings = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(notificationSettings.push_notifications).map(([key, value]) => (
+              {Object.entries(notificationSettings?.push_notifications || {}).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
@@ -594,7 +594,7 @@ const CompanySettings = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(notificationSettings.sms_notifications).map(([key, value]) => (
+              {Object.entries(notificationSettings?.sms_notifications || {}).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
@@ -636,7 +636,7 @@ const CompanySettings = () => {
               <div className="space-y-2">
                 <Label htmlFor="company_visibility">Company Visibility</Label>
                 <Select 
-                  value={privacySettings.company_visibility} 
+                  value={privacySettings?.company_visibility || 'public'} 
                   onValueChange={(value) => setPrivacySettings(prev => ({ ...prev, company_visibility: value }))}
                 >
                   <SelectTrigger>
@@ -656,7 +656,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Display company size information</p>
                 </div>
                 <Switch
-                  checked={privacySettings.show_employee_count}
+                  checked={privacySettings?.show_employee_count || false}
                   onCheckedChange={(checked) => setPrivacySettings(prev => ({ ...prev, show_employee_count: checked }))}
                 />
               </div>
@@ -667,7 +667,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Display salary information in job postings</p>
                 </div>
                 <Switch
-                  checked={privacySettings.show_salary_ranges}
+                  checked={privacySettings?.show_salary_ranges || false}
                   onCheckedChange={(checked) => setPrivacySettings(prev => ({ ...prev, show_salary_ranges: checked }))}
                 />
               </div>
@@ -678,7 +678,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Allow reviews to be visible on your profile</p>
                 </div>
                 <Switch
-                  checked={privacySettings.show_company_reviews}
+                  checked={privacySettings?.show_company_reviews || false}
                   onCheckedChange={(checked) => setPrivacySettings(prev => ({ ...prev, show_company_reviews: checked }))}
                 />
               </div>
@@ -690,7 +690,7 @@ const CompanySettings = () => {
                   type="number"
                   min="30"
                   max="2555"
-                  value={privacySettings.data_retention_days}
+                  value={privacySettings?.data_retention_days || 365}
                   onChange={(e) => setPrivacySettings(prev => ({ ...prev, data_retention_days: parseInt(e.target.value) }))}
                 />
               </div>
@@ -721,8 +721,8 @@ const CompanySettings = () => {
                 <div>
                   <Label>Current Plan</Label>
                   <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="font-medium capitalize">{billingSettings.subscription_plan}</div>
-                    <div className="text-sm text-gray-600">Billed {billingSettings.billing_cycle}</div>
+                    <div className="font-medium capitalize">{billingSettings?.subscription_plan || 'basic'}</div>
+                    <div className="text-sm text-gray-600">Billed {billingSettings?.billing_cycle || 'monthly'}</div>
                   </div>
                 </div>
                 
@@ -741,7 +741,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Automatically renew your subscription</p>
                 </div>
                 <Switch
-                  checked={billingSettings.auto_renewal}
+                  checked={billingSettings?.auto_renewal || false}
                   onCheckedChange={(checked) => setBillingSettings(prev => ({ ...prev, auto_renewal: checked }))}
                 />
               </div>
@@ -752,7 +752,7 @@ const CompanySettings = () => {
                   <p className="text-sm text-gray-600">Get notified when approaching plan limits</p>
                 </div>
                 <Switch
-                  checked={billingSettings.usage_alerts}
+                  checked={billingSettings?.usage_alerts || false}
                   onCheckedChange={(checked) => setBillingSettings(prev => ({ ...prev, usage_alerts: checked }))}
                 />
               </div>

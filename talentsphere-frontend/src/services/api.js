@@ -583,99 +583,99 @@ class ApiService {
 
   // Get company profile
   async getMyCompanyProfile() {
-    return this.get('/company/my-company');
+    return this.get('/my-company');
   }
 
   // Create company profile
   async createCompanyProfile(companyData) {
-    return this.post('/company/companies', companyData);
+    return this.post('/companies', companyData);
   }
 
   // Update company profile
   async updateCompanyProfile(companyId, companyData) {
-    return this.put(`/company/companies/${companyId}`, companyData);
+    return this.put(`/companies/${companyId}`, companyData);
   }
 
   // Add company benefit
   async addCompanyBenefit(companyId, benefitData) {
-    return this.post(`/company/companies/${companyId}/benefits`, benefitData);
+    return this.post(`/companies/${companyId}/benefits`, benefitData);
   }
 
   // Delete company benefit
   async deleteCompanyBenefit(benefitId) {
-    return this.delete(`/company/my-company/benefits/${benefitId}`);
+    return this.delete(`/my-company/benefits/${benefitId}`);
   }
 
   // Add company team member
   async addCompanyTeamMember(companyId, memberData) {
-    return this.post(`/company/companies/${companyId}/team`, memberData);
+    return this.post(`/companies/${companyId}/team`, memberData);
   }
 
   // Delete company team member
   async deleteCompanyTeamMember(memberId) {
-    return this.delete(`/company/my-company/team/${memberId}`);
+    return this.delete(`/my-company/team/${memberId}`);
   }
 
   // ===== COMPANY SETTINGS ENDPOINTS =====
 
   // Get company account settings
   async getCompanyAccountSettings() {
-    return this.get('/company/my-company/settings/account');
+    return this.get('/my-company/settings/account');
   }
 
   // Update company account settings
   async updateCompanyAccountSettings(settings) {
-    return this.put('/company/my-company/settings/account', settings);
+    return this.put('/my-company/settings/account', settings);
   }
 
   // Get company security settings
   async getCompanySecuritySettings() {
-    return this.get('/company/my-company/settings/security');
+    return this.get('/my-company/settings/security');
   }
 
   // Update company security settings
   async updateCompanySecuritySettings(settings) {
-    return this.put('/company/my-company/settings/security', settings);
+    return this.put('/my-company/settings/security', settings);
   }
 
   // Get company notification settings
   async getCompanyNotificationSettings() {
-    return this.get('/company/my-company/settings/notifications');
+    return this.get('/my-company/settings/notifications');
   }
 
   // Update company notification settings
   async updateCompanyNotificationSettings(settings) {
-    return this.put('/company/my-company/settings/notifications', settings);
+    return this.put('/my-company/settings/notifications', settings);
   }
 
   // Get company privacy settings
   async getCompanyPrivacySettings() {
-    return this.get('/company/my-company/settings/privacy');
+    return this.get('/my-company/settings/privacy');
   }
 
   // Update company privacy settings
   async updateCompanyPrivacySettings(settings) {
-    return this.put('/company/my-company/settings/privacy', settings);
+    return this.put('/my-company/settings/privacy', settings);
   }
 
   // Get company billing settings
   async getCompanyBillingSettings() {
-    return this.get('/company/my-company/settings/billing');
+    return this.get('/my-company/settings/billing');
   }
 
   // Update company billing settings
   async updateCompanyBillingSettings(settings) {
-    return this.put('/company/my-company/settings/billing', settings);
+    return this.put('/my-company/settings/billing', settings);
   }
 
   // Export company data
   async exportCompanyData(dataType) {
-    return this.get(`/company/my-company/export-data/${dataType}`);
+    return this.get(`/my-company/export-data/${dataType}`);
   }
 
   // Delete company account
   async deleteCompanyAccount() {
-    return this.delete('/company/my-company/delete');
+    return this.delete('/my-company/delete');
   }
 }
 

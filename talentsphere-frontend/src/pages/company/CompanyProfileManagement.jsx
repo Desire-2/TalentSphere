@@ -168,17 +168,17 @@ const CompanyProfileManagement = () => {
       setLoading(true);
       const response = await apiService.getMyCompanyProfile();
       
-      if (response.data) {
-        setCompany(response.data);
-        setCompanyData(response.data);
-        setBenefits(response.data.benefits || []);
-        setTeamMembers(response.data.team_members || []);
-        setGalleryImages(response.data.gallery_images || []);
-        calculateProfileCompletion(response.data);
+      if (response) {
+        setCompany(response);
+        setCompanyData(response);
+        setBenefits(response.benefits || []);
+        setTeamMembers(response.team_members || []);
+        setGalleryImages(response.gallery_images || []);
+        calculateProfileCompletion(response);
       }
     } catch (error) {
       console.error('Error loading company:', error);
-      if (error.response?.status === 404) {
+      if (error.message.includes('404') || error.message.includes('not found')) {
         // No company profile yet - show creation form
         setCompany(null);
       } else {
@@ -222,12 +222,12 @@ const CompanyProfileManagement = () => {
         response = await apiService.createCompanyProfile(companyData);
       }
       
-      setCompany(response.data);
-      calculateProfileCompletion(response.data);
+      setCompany(response);
+      calculateProfileCompletion(response);
       toast.success('Company profile saved successfully');
     } catch (error) {
       console.error('Error saving company:', error);
-      toast.error(error.response?.data?.error || 'Failed to save company profile');
+      toast.error(error.message || 'Failed to save company profile');
     } finally {
       setSaving(false);
     }
@@ -242,7 +242,7 @@ const CompanyProfileManagement = () => {
 
     try {
       const response = await apiService.addCompanyBenefit(company.id, newBenefit);
-      setBenefits(prev => [...prev, response.data.benefit]);
+      setBenefits(prev => [...prev, response.benefit]);
       setNewBenefit({ title: '', description: '', category: '', icon: '' });
       toast.success('Benefit added successfully');
     } catch (error) {
@@ -259,7 +259,7 @@ const CompanyProfileManagement = () => {
 
     try {
       const response = await apiService.addCompanyTeamMember(company.id, newTeamMember);
-      setTeamMembers(prev => [...prev, response.data.team_member]);
+      setTeamMembers(prev => [...prev, response.team_member]);
       setNewTeamMember({ 
         name: '', 
         position: '', 

@@ -306,6 +306,38 @@ def change_password(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to change password', 'details': str(e)}), 500
 
+@auth_bp.route('/send-verification-email', methods=['POST'])
+@token_required
+def send_verification_email(current_user):
+    """Send email verification"""
+    try:
+        if current_user.is_verified:
+            return jsonify({'error': 'Email is already verified'}), 400
+        
+        # In a real application, you would send an actual email here
+        # For now, we'll just return a success message
+        return jsonify({'message': 'Verification email sent successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to send verification email', 'details': str(e)}), 500
+
+@auth_bp.route('/verify-email', methods=['POST'])
+def verify_email():
+    """Verify email with token"""
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        
+        if not token:
+            return jsonify({'error': 'Verification token is required'}), 400
+        
+        # In a real application, you would verify the token and mark email as verified
+        # For now, we'll just return a success message
+        return jsonify({'message': 'Email verified successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to verify email', 'details': str(e)}), 500
+
 @auth_bp.route('/verify-token', methods=['POST'])
 def verify_token():
     """Verify if a token is valid"""

@@ -23,7 +23,9 @@ import {
   Zap,
   Star,
   Shield,
-  ChevronDown
+  ChevronDown,
+  Building2,
+  Plus
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getInitials } from '../../utils/helpers';
@@ -207,10 +209,51 @@ const Header = () => {
                         <span className="font-medium">Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
+                    
+                    {/* Job Seeker Menu Items */}
+                    {user?.role === 'job_seeker' && (
+                      <>
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 cursor-pointer">
+                          <Link to="/jobseeker/profile" className="flex items-center px-3 py-2">
+                            <User className="mr-3 h-4 w-4" />
+                            <span className="font-medium">My Profile</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 cursor-pointer">
+                          <Link to="/jobseeker/applications" className="flex items-center px-3 py-2">
+                            <Briefcase className="mr-3 h-4 w-4" />
+                            <span className="font-medium">My Applications</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    
+                    {/* Employer Menu Items */}
+                    {user?.role === 'employer' && (
+                      <>
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 cursor-pointer">
+                          <Link to="/company/profile" className="flex items-center px-3 py-2">
+                            <Building2 className="mr-3 h-4 w-4" />
+                            <span className="font-medium">Company Profile</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 cursor-pointer">
+                          <Link to="/jobs/post" className="flex items-center px-3 py-2">
+                            <Plus className="mr-3 h-4 w-4" />
+                            <span className="font-medium">Post Job</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    
                     <DropdownMenuItem asChild className="rounded-xl hover:bg-emerald-50 hover:text-emerald-600 transition-all duration-200 cursor-pointer">
-                      <Link to="/profile" className="flex items-center px-3 py-2">
+                      <Link to={
+                        user?.role === 'job_seeker' ? '/jobseeker/settings' : 
+                        user?.role === 'employer' ? '/company/settings' : 
+                        '/profile'
+                      } className="flex items-center px-3 py-2">
                         <Settings className="mr-3 h-4 w-4" />
-                        <span className="font-medium">Profile Settings</span>
+                        <span className="font-medium">Settings</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />

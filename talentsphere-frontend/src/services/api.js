@@ -511,6 +511,172 @@ class ApiService {
   async archiveJob(jobId) {
     return this.put(`/jobs/${jobId}`, { status: 'archived' });
   }
+
+  // ===== JOB SEEKER PROFILE ENDPOINTS =====
+
+  // Get job seeker profile
+  async getJobSeekerProfile() {
+    return this.get('/user/profile');
+  }
+
+  // Update job seeker profile
+  async updateJobSeekerProfile(profileData) {
+    return this.put('/user/profile', profileData);
+  }
+
+  // Change password
+  async changePassword(passwordData) {
+    return this.put('/user/change-password', passwordData);
+  }
+
+  // Get notification preferences
+  async getNotificationPreferences() {
+    return this.get('/user/notification-preferences');
+  }
+
+  // Update notification preferences
+  async updateNotificationPreferences(preferences) {
+    return this.put('/user/notification-preferences', preferences);
+  }
+
+  // Get privacy settings
+  async getPrivacySettings() {
+    return this.get('/user/privacy-settings');
+  }
+
+  // Update privacy settings
+  async updatePrivacySettings(settings) {
+    return this.put('/user/privacy-settings', settings);
+  }
+
+  // Export profile data
+  async exportProfileData() {
+    return this.get('/user/export-data');
+  }
+
+  // Delete account
+  async deleteAccount() {
+    return this.delete('/user/account');
+  }
+
+  // Get profile completion
+  async getProfileCompletion() {
+    return this.get('/user/profile-completion');
+  }
+
+  // Get activity summary
+  async getActivitySummary() {
+    return this.get('/user/activity-summary');
+  }
+
+  // Send verification email
+  async sendVerificationEmail() {
+    return this.post('/auth/send-verification');
+  }
+
+  // Verify email
+  async verifyEmail(token) {
+    return this.post('/auth/verify-email', { token });
+  }
+
+  // ===== COMPANY PROFILE ENDPOINTS =====
+
+  // Get company profile
+  async getMyCompanyProfile() {
+    return this.get('/company/my-company');
+  }
+
+  // Create company profile
+  async createCompanyProfile(companyData) {
+    return this.post('/company/companies', companyData);
+  }
+
+  // Update company profile
+  async updateCompanyProfile(companyId, companyData) {
+    return this.put(`/company/companies/${companyId}`, companyData);
+  }
+
+  // Add company benefit
+  async addCompanyBenefit(companyId, benefitData) {
+    return this.post(`/company/companies/${companyId}/benefits`, benefitData);
+  }
+
+  // Delete company benefit
+  async deleteCompanyBenefit(benefitId) {
+    return this.delete(`/company/my-company/benefits/${benefitId}`);
+  }
+
+  // Add company team member
+  async addCompanyTeamMember(companyId, memberData) {
+    return this.post(`/company/companies/${companyId}/team`, memberData);
+  }
+
+  // Delete company team member
+  async deleteCompanyTeamMember(memberId) {
+    return this.delete(`/company/my-company/team/${memberId}`);
+  }
+
+  // ===== COMPANY SETTINGS ENDPOINTS =====
+
+  // Get company account settings
+  async getCompanyAccountSettings() {
+    return this.get('/company/my-company/settings/account');
+  }
+
+  // Update company account settings
+  async updateCompanyAccountSettings(settings) {
+    return this.put('/company/my-company/settings/account', settings);
+  }
+
+  // Get company security settings
+  async getCompanySecuritySettings() {
+    return this.get('/company/my-company/settings/security');
+  }
+
+  // Update company security settings
+  async updateCompanySecuritySettings(settings) {
+    return this.put('/company/my-company/settings/security', settings);
+  }
+
+  // Get company notification settings
+  async getCompanyNotificationSettings() {
+    return this.get('/company/my-company/settings/notifications');
+  }
+
+  // Update company notification settings
+  async updateCompanyNotificationSettings(settings) {
+    return this.put('/company/my-company/settings/notifications', settings);
+  }
+
+  // Get company privacy settings
+  async getCompanyPrivacySettings() {
+    return this.get('/company/my-company/settings/privacy');
+  }
+
+  // Update company privacy settings
+  async updateCompanyPrivacySettings(settings) {
+    return this.put('/company/my-company/settings/privacy', settings);
+  }
+
+  // Get company billing settings
+  async getCompanyBillingSettings() {
+    return this.get('/company/my-company/settings/billing');
+  }
+
+  // Update company billing settings
+  async updateCompanyBillingSettings(settings) {
+    return this.put('/company/my-company/settings/billing', settings);
+  }
+
+  // Export company data
+  async exportCompanyData(dataType) {
+    return this.get(`/company/my-company/export-data/${dataType}`);
+  }
+
+  // Delete company account
+  async deleteCompanyAccount() {
+    return this.delete('/company/my-company/delete');
+  }
 }
 
 // Create and export a singleton instance

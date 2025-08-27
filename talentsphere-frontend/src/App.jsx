@@ -32,6 +32,15 @@ import TestApplyRoute from './pages/TestApplyRoute';
 // Application Pages
 import MyApplications from './pages/applications/MyApplications';
 
+// Job Seeker Pages
+import JobSeekerProfile from './pages/jobseeker/JobSeekerProfile';
+import ProfileSettings from './pages/jobseeker/ProfileSettings';
+import ApplicationsDashboard from './pages/jobseeker/ApplicationsDashboard';
+
+// Company Pages
+import CompanyProfileManagement from './pages/company/CompanyProfileManagement';
+import CompanySettings from './pages/company/CompanySettings';
+
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
@@ -76,6 +85,16 @@ function App() {
               <Route path="company-profile" element={<CompanyProfile />} />
               <Route path="applications" element={<MyApplications />} />
               <Route path="my-applications" element={<MyApplications />} />
+              
+              {/* Job Seeker Routes */}
+              <Route path="jobseeker/profile" element={<JobSeekerProfile />} />
+              <Route path="jobseeker/settings" element={<ProfileSettings />} />
+              <Route path="jobseeker/applications" element={<ApplicationsDashboard />} />
+              
+              {/* Company/Employer Routes */}
+              <Route path="company/profile" element={<CompanyProfileManagement />} />
+              <Route path="company/settings" element={<CompanySettings />} />
+              
               <Route path="jobs/post" element={<PostJob />} />
               <Route path="employer/jobs/create" element={<PostJob />} />
               <Route path="featured-ads" element={

@@ -15,7 +15,7 @@ def create_admin_user():
     """Create an admin user"""
     with app.app_context():
         # Check if admin already exists
-        admin_email = "admin@talentsphere.com"
+        admin_email = "bikorimanadesire@yahoo.com"
         existing_admin = User.query.filter_by(email=admin_email).first()
         
         if existing_admin:
@@ -27,8 +27,8 @@ def create_admin_user():
         # Create new admin user
         admin_user = User(
             email=admin_email,
-            first_name="Admin",
-            last_name="User",
+            first_name="Desire",
+            last_name="Bikorimana",
             role="admin",
             location="TalentSphere HQ",
             bio="System Administrator for TalentSphere platform"

@@ -1,5 +1,25 @@
 // API service for TalentSphere backend connection
-const API_BASE_URL = 'http://localhost:5001/api';
+import config from '../config/environment.js';
+
+// Environment-based configuration from centralized config
+const API_BASE_URL = config.API.BASE_URL;
+const APP_NAME = config.APP.NAME;
+const APP_VERSION = config.APP.VERSION;
+const APP_ENVIRONMENT = config.APP.ENVIRONMENT;
+const ENABLE_DEBUG_LOGS = config.FEATURES.ENABLE_DEBUG_LOGS;
+const ENABLE_API_LOGGING = config.FEATURES.ENABLE_API_LOGGING;
+
+// Log environment configuration (only in development)
+if (APP_ENVIRONMENT === 'development') {
+  console.log('🌐 API Configuration:', {
+    API_BASE_URL,
+    APP_NAME,
+    APP_VERSION,
+    APP_ENVIRONMENT,
+    ENABLE_DEBUG_LOGS,
+    ENABLE_API_LOGGING
+  });
+}
 
 class ApiService {
   constructor() {
@@ -42,23 +62,27 @@ class ApiService {
       ...options,
     };
 
-    console.log('🌐 API Request:', {
-      method: options.method || 'GET',
-      url: url,
-      headers: config.headers,
-      body: options.body || 'No body',
-      bodyParsed: options.body ? JSON.parse(options.body) : null
-    });
+    if (ENABLE_API_LOGGING) {
+      console.log('🌐 API Request:', {
+        method: options.method || 'GET',
+        url: url,
+        headers: config.headers,
+        body: options.body || 'No body',
+        bodyParsed: options.body ? JSON.parse(options.body) : null
+      });
+    }
 
     try {
       const response = await fetch(url, config);
       
-      console.log('🌐 Raw Response:', {
-        status: response.status,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-        url: url
-      });
+      if (ENABLE_API_LOGGING) {
+        console.log('🌐 Raw Response:', {
+          status: response.status,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries()),
+          url: url
+        });
+      }
 
       let data;
       try {
@@ -68,18 +92,22 @@ class ApiService {
         throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
       }
 
-      console.log('🌐 API Response:', {
-        status: response.status,
-        ok: response.ok,
-        url: url,
-        dataKeys: Object.keys(data),
-        dataPreview: data
-      });
+      if (ENABLE_API_LOGGING) {
+        console.log('🌐 API Response:', {
+          status: response.status,
+          ok: response.ok,
+          url: url,
+          dataKeys: Object.keys(data),
+          dataPreview: data
+        });
+      }
 
       if (!response.ok) {
         // Handle token expiration
         if (response.status === 401 && data.error?.includes('expired')) {
-          console.log('Token expired, clearing auth data...');
+          if (ENABLE_DEBUG_LOGS) {
+            console.log('Token expired, clearing auth data...');
+          }
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           // Redirect to login if this is an admin page
@@ -90,12 +118,14 @@ class ApiService {
         
         // Create detailed error message
         const errorMessage = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
-        console.error('❌ API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorMessage: errorMessage,
-          fullResponse: data
-        });
+        if (ENABLE_DEBUG_LOGS) {
+          console.error('❌ API Error Details:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorMessage: errorMessage,
+            fullResponse: data
+          });
+        }
         
         throw new Error(errorMessage);
       }
@@ -104,19 +134,25 @@ class ApiService {
     } catch (error) {
       // Check if it's a network error
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('❌ Network Error:', {
-          url: url,
-          message: 'Cannot connect to server. Is the backend running?',
-          originalError: error.message
-        });
-        throw new Error('Cannot connect to server. Please check if the backend is running.');
+        const networkError = 'Cannot connect to server. Please check if the backend is running.';
+        if (ENABLE_DEBUG_LOGS) {
+          console.error('❌ Network Error:', {
+            url: url,
+            message: networkError,
+            originalError: error.message,
+            apiBaseUrl: API_BASE_URL
+          });
+        }
+        throw new Error(networkError);
       }
       
-      console.error('❌ API request failed:', {
-        url: url,
-        error: error.message,
-        stack: error.stack
-      });
+      if (ENABLE_DEBUG_LOGS) {
+        console.error('❌ API request failed:', {
+          url: url,
+          error: error.message,
+          stack: error.stack
+        });
+      }
       throw error;
     }
   }

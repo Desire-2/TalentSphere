@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
+import config from './config/environment.js';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import Home from './pages/Home';
@@ -48,6 +49,18 @@ import AuthInitializer from './components/auth/AuthInitializer';
 import TestEmployerComponents from './pages/TestEmployerComponents';
 
 function App() {
+  // Validate environment configuration on app startup
+  useEffect(() => {
+    const isValidEnvironment = config.validateEnvironment();
+    if (!isValidEnvironment && config.isDevelopment) {
+      console.warn('⚠️ Some environment variables are missing. Check .env file.');
+    }
+    
+    if (config.FEATURES.ENABLE_DEBUG_LOGS) {
+      console.log(`🚀 ${config.APP.NAME} v${config.APP.VERSION} starting in ${config.APP.ENVIRONMENT} mode`);
+    }
+  }, []);
+
   return (
     <AuthInitializer>
       <Router>

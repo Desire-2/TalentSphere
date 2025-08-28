@@ -47,8 +47,6 @@ import AdminRoute from './components/auth/AdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import TestEmployerComponents from './pages/TestEmployerComponents';
 
-import './App.css';
-
 function App() {
   return (
     <AuthInitializer>

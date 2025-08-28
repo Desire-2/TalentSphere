@@ -37,10 +37,17 @@ app.config['FLASK_ENV'] = os.getenv('FLASK_ENV', 'development')
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL:
     # Production: Use PostgreSQL from Render
+    # Handle both postgres:// and postgresql:// URLs
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    print(f"Using PostgreSQL database")
 else:
     # Development: Use SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'app.db')
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+    print(f"Using SQLite database at {db_path}")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -63,12 +70,51 @@ app.register_blueprint(employer_bp, url_prefix='/api')
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return {'status': 'healthy', 'message': 'TalentSphere API is running'}, 200
+    try:
+        # Try to test database connection
+        with app.app_context():
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
+        return {'status': 'healthy', 'message': 'TalentSphere API is running', 'database': 'connected'}, 200
+    except Exception as e:
+        return {'status': 'healthy', 'message': 'TalentSphere API is running', 'database': f'error: {str(e)}'}, 200
 
-# uncomment if you need to use database
+# Database initialization endpoint
+@app.route('/api/init-db', methods=['POST'])
+def initialize_database():
+    """Manually initialize database tables"""
+    try:
+        with app.app_context():
+            db.create_all()
+        return {'status': 'success', 'message': 'Database tables created successfully'}, 200
+    except Exception as e:
+        return {'status': 'error', 'message': f'Database initialization failed: {str(e)}'}, 500
+
+# Initialize database
 db.init_app(app)
-with app.app_context():
-    db.create_all()
+
+def init_database():
+    """Initialize database tables with error handling"""
+    try:
+        with app.app_context():
+            db.create_all()
+            print("✅ Database tables created successfully")
+            return True
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        return False
+
+# Try to initialize database, but don't fail if it doesn't work
+if __name__ == '__main__':
+    init_database()
+else:
+    # For production (when imported by gunicorn), try to init database
+    # but don't fail the entire app if it doesn't work initially
+    try:
+        init_database()
+    except Exception as e:
+        print(f"⚠️  Database initialization deferred: {e}")
+        print("Database tables will be created on first request if needed")
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

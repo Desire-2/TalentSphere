@@ -1,5 +1,10 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -23,10 +28,25 @@ from src.routes.recommendations import recommendations_bp
 from src.routes.employer import employer_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+app.config['FLASK_ENV'] = os.getenv('FLASK_ENV', 'development')
+
+# Database configuration
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    # Production: Use PostgreSQL from Render
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Development: Use SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Enable CORS for all routes
-CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"])
+CORS(app, origins=["http://localhost:5173", "http://localhost:5174", "https://your-frontend-domain.vercel.app"], 
+     allow_headers=["Content-Type", "Authorization"])
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -46,8 +66,6 @@ def health_check():
     return {'status': 'healthy', 'message': 'TalentSphere API is running'}, 200
 
 # uncomment if you need to use database
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 with app.app_context():
     db.create_all()
@@ -75,4 +93,6 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=5001, help='Port to run the server on')
     args = parser.parse_args()
     
-    app.run(host='0.0.0.0', port=args.port, debug=True)
+    # Use debug mode only in development
+    debug_mode = os.getenv('FLASK_ENV', 'development') == 'development'
+    app.run(host='0.0.0.0', port=args.port, debug=debug_mode)

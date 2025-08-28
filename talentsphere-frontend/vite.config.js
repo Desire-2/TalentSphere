@@ -14,11 +14,7 @@ export default defineConfig({
       {
         find: '@',
         replacement: path.resolve(__dirname, './src'),
-      },
-      {
-        find: '@/lib/utils',
-        replacement: path.resolve(__dirname, './src/lib/utils.js'),
-      },
+      }
     ],
   },
   server: {

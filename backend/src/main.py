@@ -52,8 +52,10 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Enable CORS for all routes
-CORS(app, origins=["http://localhost:5173", "http://localhost:5174", "https://your-frontend-domain.vercel.app"], 
-     allow_headers=["Content-Type", "Authorization"])
+# Get allowed origins from environment variable (comma-separated)
+cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost:5174")
+CORS(app, origins=[origin.strip() for origin in cors_origins.split(',')], 
+    allow_headers=["Content-Type", "Authorization"])
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')

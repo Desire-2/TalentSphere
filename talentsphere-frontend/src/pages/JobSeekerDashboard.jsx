@@ -709,7 +709,7 @@ const JobSeekerDashboard = () => {
           </Button>
           <Button 
             variant="outline" 
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/jobseeker/profile')}
             className="border-purple-200 hover:bg-purple-50"
           >
             Complete Profile ({dashboardData.profile.profile_completion}%)
@@ -740,7 +740,7 @@ const JobSeekerDashboard = () => {
             </div>
             <Button 
               variant="outline" 
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate('/jobseeker/profile')}
               className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -1026,7 +1026,7 @@ const JobSeekerDashboard = () => {
                     Complete your profile to get personalized job recommendations
                   </p>
                   <Button 
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate('/jobseeker/profile')}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
                     <Target className="w-4 h-4 mr-2" />

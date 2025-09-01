@@ -8,6 +8,8 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Profile from './pages/Profile';
 import CompanyProfile from './pages/CompanyProfile';
 import CompanyDetail from './pages/CompanyDetail';
@@ -83,6 +85,8 @@ function App() {
             {/* Auth routes (no layout) */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/test-employer" element={<TestEmployerComponents />} />
 
             {/* Protected user routes with layout */}

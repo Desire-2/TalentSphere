@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
@@ -48,7 +49,10 @@ const JobSeekerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, setMessage] = useState({ type: '', text: '', show: true });
+  const [showRemoveSkillDialog, setShowRemoveSkillDialog] = useState(false);
+  const [skillToRemove, setSkillToRemove] = useState(null);
+  const fileInputRef = useRef();
   const [activeTab, setActiveTab] = useState('personal');
   
   // Form states
@@ -182,7 +186,19 @@ const JobSeekerProfile = () => {
   };
 
   const handlePersonalDataChange = (field, value) => {
+    // Validation for bio length
+    if (field === 'bio' && value.length > 500) return;
     setPersonalData(prev => ({ ...prev, [field]: value }));
+  };
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPersonalData(prev => ({ ...prev, profile_picture: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleProfessionalDataChange = (field, value) => {
@@ -200,8 +216,15 @@ const JobSeekerProfile = () => {
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
+  const handleRemoveSkill = (skill) => {
+    setSkillToRemove(skill);
+    setShowRemoveSkillDialog(true);
+  };
+
+  const confirmRemoveSkill = () => {
     setSkillsList(prev => prev.filter(skill => skill !== skillToRemove));
+    setShowRemoveSkillDialog(false);
+    setSkillToRemove(null);
   };
 
   const handleSave = async () => {
@@ -238,10 +261,20 @@ const JobSeekerProfile = () => {
   };
 
   if (loading) {
+    // Skeleton loader for profile
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="container mx-auto py-8 px-4 max-w-6xl">
+        <div className="animate-pulse">
+          <div className="h-8 w-1/3 bg-gray-200 rounded mb-6" />
+          <div className="flex gap-6 mb-8">
+            <div className="w-16 h-16 bg-gray-200 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-1/2 bg-gray-200 rounded" />
+              <div className="h-3 w-1/3 bg-gray-200 rounded" />
+            </div>
+          </div>
+          <div className="h-4 w-full bg-gray-200 rounded mb-2" />
+          <div className="h-3 w-1/2 bg-gray-200 rounded" />
         </div>
       </div>
     );
@@ -250,30 +283,66 @@ const JobSeekerProfile = () => {
   const profileCompletion = calculateProfileCompletion();
 
   return (
+    <TooltipProvider>
     <div className="container mx-auto py-8 px-4 max-w-6xl">
-      {/* Header */}
-      <div className="mb-8">
+      {/* Navigation */}
+      <div className="mb-4 flex items-center gap-2">
+        <Button variant="ghost" onClick={() => navigate('/dashboard')} aria-label="Back to Dashboard">
+          ← Back to Dashboard
+        </Button>
+      </div>
+  {/* Header */}
+  <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold">Job Seeker Profile</h1>
             <p className="text-muted-foreground">Manage your professional profile and preferences</p>
           </div>
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={handleSave} disabled={saving} size="lg" aria-label="Save Changes">
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Save all changes to your profile</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Profile Completion */}
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex items-center space-x-4">
-              <Avatar className="w-16 h-16">
-                <AvatarImage src={personalData.profile_picture} alt="Profile" />
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-lg">
-                  {getInitials(personalData.first_name, personalData.last_name)}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={personalData.profile_picture} alt="Profile" />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 text-lg">
+                    {getInitials(personalData.first_name, personalData.last_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute bottom-0 right-0 rounded-full bg-white shadow"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Change profile picture"
+                    >
+                      <Upload className="w-4 h-4 text-blue-600" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Upload new profile picture</TooltipContent>
+                </Tooltip>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleProfilePictureChange}
+                  aria-label="Profile picture upload"
+                />
+              </div>
               <div>
                 <h3 className="text-xl font-semibold">
                   {personalData.first_name} {personalData.last_name}
@@ -298,7 +367,7 @@ const JobSeekerProfile = () => {
               <div className="mb-2">
                 <span className="text-sm font-medium">Profile Completion</span>
               </div>
-              <Progress value={profileCompletion} className="w-48 h-3" />
+              <Progress value={profileCompletion} className="w-48 h-3 transition-all duration-500" />
               <p className="text-xs text-gray-500 mt-1">
                 {profileCompletion < 80 ? 'Complete your profile to get more opportunities' : 'Great! Your profile is well-optimized'}
               </p>
@@ -308,16 +377,19 @@ const JobSeekerProfile = () => {
       </div>
 
       {/* Alert Messages */}
-      {message.text && (
-        <Alert className={`mb-6 ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+      {message.text && message.show && (
+        <Alert className={`mb-6 flex items-center justify-between ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'} animate-fade-in`} role="alert">
           <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
             {message.text}
           </AlertDescription>
+          <Button variant="ghost" size="icon" aria-label="Dismiss message" onClick={() => setMessage(prev => ({ ...prev, show: false }))}>
+            ×
+          </Button>
         </Alert>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+  <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 transition-all duration-300">
+  <TabsList className="grid w-full grid-cols-4 mb-2">
           <TabsTrigger value="personal">Personal Info</TabsTrigger>
           <TabsTrigger value="professional">Professional</TabsTrigger>
           <TabsTrigger value="preferences">Job Preferences</TabsTrigger>
@@ -325,7 +397,7 @@ const JobSeekerProfile = () => {
         </TabsList>
 
         {/* Personal Information Tab */}
-        <TabsContent value="personal" className="space-y-6">
+  <TabsContent value="personal" className="space-y-6 animate-fade-in">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -339,17 +411,20 @@ const JobSeekerProfile = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name *</Label>
+                  <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="first_name"
                     value={personalData.first_name}
                     onChange={(e) => handlePersonalDataChange('first_name', e.target.value)}
                     placeholder="Enter your first name"
+                    aria-required="true"
+                    aria-label="First Name"
                   />
+                  {!personalData.first_name && <span className="text-xs text-red-500">Required</span>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name *</Label>
+                  <Label htmlFor="last_name">Last Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="last_name"
                     value={personalData.last_name}
@@ -387,8 +462,9 @@ const JobSeekerProfile = () => {
                   onChange={(e) => handlePersonalDataChange('bio', e.target.value)}
                   placeholder="Write a brief professional summary about yourself..."
                   rows={4}
+                  aria-label="Professional Bio"
                 />
-                <p className="text-xs text-gray-500">
+                <p className={`text-xs ${personalData.bio.length > 480 ? 'text-red-500' : 'text-gray-500'}`}> 
                   {personalData.bio.length}/500 characters
                 </p>
               </div>
@@ -397,7 +473,7 @@ const JobSeekerProfile = () => {
         </TabsContent>
 
         {/* Professional Information Tab */}
-        <TabsContent value="professional" className="space-y-6">
+  <TabsContent value="professional" className="space-y-6 animate-fade-in">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -411,7 +487,7 @@ const JobSeekerProfile = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="desired_position">Desired Position *</Label>
+                  <Label htmlFor="desired_position">Desired Position <span className="text-red-500">*</span></Label>
                   <Input
                     id="desired_position"
                     value={professionalData.desired_position}
@@ -465,33 +541,58 @@ const JobSeekerProfile = () => {
 
               {/* Skills Section */}
               <div className="space-y-4">
-                <Label>Skills *</Label>
+                <Label>Skills <span className="text-red-500">*</span></Label>
                 <div className="flex gap-2">
                   <Input
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     placeholder="Add a skill"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
+                    aria-label="Add skill"
                   />
-                  <Button type="button" onClick={handleAddSkill}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button type="button" onClick={handleAddSkill} aria-label="Add skill">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add skill to your profile</TooltipContent>
+                  </Tooltip>
                 </div>
-                
+                {!skillsList.length && <span className="text-xs text-red-500">At least one skill required</span>}
                 {skillsList.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-4">
                     {skillsList.map((skill, index) => (
                       <Badge key={index} variant="secondary" className="px-3 py-1">
                         {skill}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSkill(skill)}
-                          className="ml-2 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSkill(skill)}
+                              className="ml-2 text-red-500 hover:text-red-700 focus:outline-none"
+                              aria-label={`Remove skill ${skill}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Remove skill</TooltipContent>
+                        </Tooltip>
                       </Badge>
                     ))}
+                  </div>
+                )}
+                {/* Remove skill confirmation dialog */}
+                {showRemoveSkillDialog && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                    <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+                      <h3 className="text-lg font-semibold mb-2">Remove Skill</h3>
+                      <p className="mb-4">Are you sure you want to remove <span className="font-bold">{skillToRemove}</span> from your skills?</p>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowRemoveSkillDialog(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmRemoveSkill}>Remove</Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -561,7 +662,7 @@ const JobSeekerProfile = () => {
         </TabsContent>
 
         {/* Job Preferences Tab */}
-        <TabsContent value="preferences" className="space-y-6">
+  <TabsContent value="preferences" className="space-y-6 animate-fade-in">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -669,7 +770,7 @@ const JobSeekerProfile = () => {
         </TabsContent>
 
         {/* Privacy & Settings Tab */}
-        <TabsContent value="privacy" className="space-y-6">
+  <TabsContent value="privacy" className="space-y-6 animate-fade-in">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -734,10 +835,15 @@ const JobSeekerProfile = () => {
                         Get a copy of all your profile information
                       </p>
                     </div>
-                    <Button variant="outline">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" aria-label="Download profile data">
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download your profile data as a file</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -747,10 +853,15 @@ const JobSeekerProfile = () => {
                         Share your professional profile with others
                       </p>
                     </div>
-                    <Button variant="outline">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View Public Profile
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" aria-label="View public profile">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View Public Profile
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Open your public profile in a new tab</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -759,6 +870,7 @@ const JobSeekerProfile = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </TooltipProvider>
   );
 };
 

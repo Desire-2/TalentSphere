@@ -28,6 +28,10 @@ class User(db.Model):
     email_verified_at = db.Column(db.DateTime)
     last_login = db.Column(db.DateTime)
     
+    # Password Reset
+    reset_token = db.Column(db.String(255))
+    reset_token_expires_at = db.Column(db.DateTime)
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -84,6 +88,25 @@ class User(db.Model):
     def get_full_name(self):
         """Get user's full name"""
         return f"{self.first_name} {self.last_name}"
+    
+    def generate_reset_token(self):
+        """Generate a password reset token"""
+        import uuid
+        self.reset_token = str(uuid.uuid4())
+        self.reset_token_expires_at = datetime.utcnow() + timedelta(hours=1)
+        return self.reset_token
+    
+    def verify_reset_token(self, token):
+        """Verify if the reset token is valid and not expired"""
+        if not self.reset_token or not self.reset_token_expires_at:
+            return False
+        return (self.reset_token == token and 
+                datetime.utcnow() < self.reset_token_expires_at)
+    
+    def clear_reset_token(self):
+        """Clear the reset token after use"""
+        self.reset_token = None
+        self.reset_token_expires_at = None
     
     def to_dict(self, include_sensitive=False):
         """Convert user to dictionary"""

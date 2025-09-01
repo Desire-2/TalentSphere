@@ -92,6 +92,27 @@ export const authService = {
   hasRole: (role) => {
     const user = authService.getCurrentUser();
     return user && user.role === role;
+  },
+
+  // Forgot password - send reset email
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response;
+  },
+
+  // Verify reset token
+  verifyResetToken: async (token) => {
+    const response = await api.post('/auth/verify-reset-token', { token });
+    return response;
+  },
+
+  // Reset password with token
+  resetPassword: async (token, newPassword) => {
+    const response = await api.post('/auth/reset-password', { 
+      token, 
+      new_password: newPassword 
+    });
+    return response;
   }
 };
 

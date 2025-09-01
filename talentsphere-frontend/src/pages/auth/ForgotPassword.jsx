@@ -273,6 +273,18 @@ const ForgotPassword = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
               </Link>
+
+              {/* Contact Support */}
+              <div className="text-center pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 mb-2">Need help?</p>
+                <a 
+                  href="mailto:afritechbridge@yahoo.com"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <Mail className="w-3 h-3" />
+                  Contact Support
+                </a>
+              </div>
             </CardFooter>
           </form>
         </Card>

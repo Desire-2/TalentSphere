@@ -10,6 +10,13 @@ export const API_CONFIG = {
   TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000'),
 };
 
+// Email Configuration
+export const EMAIL_CONFIG = {
+  SUPPORT: import.meta.env.VITE_SUPPORT_EMAIL || 'afritechbridge@yahoo.com',
+  CONTACT: import.meta.env.VITE_CONTACT_EMAIL || 'afritechbridge@yahoo.com',
+  NOREPLY: import.meta.env.VITE_NOREPLY_EMAIL || 'afritechbridge@yahoo.com',
+};
+
 // App Configuration
 export const APP_CONFIG = {
   NAME: import.meta.env.VITE_APP_NAME || 'TalentSphere',
@@ -40,6 +47,7 @@ export const isProduction = APP_CONFIG.ENVIRONMENT === 'production';
 if (isDevelopment && FEATURE_FLAGS.ENABLE_DEBUG_LOGS) {
   console.group('🔧 Environment Configuration');
   console.log('API Config:', API_CONFIG);
+  console.log('Email Config:', EMAIL_CONFIG);
   console.log('App Config:', APP_CONFIG);
   console.log('Feature Flags:', FEATURE_FLAGS);
   console.log('External Services:', EXTERNAL_SERVICES);
@@ -67,6 +75,7 @@ export const validateEnvironment = () => {
 // Export all configs as default
 export default {
   API: API_CONFIG,
+  EMAIL: EMAIL_CONFIG,
   APP: APP_CONFIG,
   FEATURES: FEATURE_FLAGS,
   EXTERNAL: EXTERNAL_SERVICES,

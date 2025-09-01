@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { API_CONFIG } from '../../config/environment';
 import { 
   Card, 
   CardHeader, 
@@ -100,7 +101,7 @@ const ResetPassword = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:5001/api/auth/verify-reset-token', {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/verify-reset-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ const ResetPassword = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/reset-password', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

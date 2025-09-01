@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { API_CONFIG } from '../../config/environment';
 import { 
   Card, 
   CardHeader, 
@@ -53,7 +54,7 @@ const ForgotPassword = () => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:5001/api/auth/forgot-password', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

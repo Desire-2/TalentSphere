@@ -200,7 +200,7 @@ const AdminLayout = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/profile">Profile Settings</Link>
+                    <Link to="/admin/profile">Admin Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/admin/settings">Admin Settings</Link>

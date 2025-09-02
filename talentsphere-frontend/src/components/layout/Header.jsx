@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getInitials } from '../../utils/helpers';
+import NotificationDropdownEnhanced from '../notifications/NotificationDropdownEnhanced';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -146,16 +147,7 @@ const Header = () => {
                 </Button>
 
                 {/* Enhanced Notifications */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="relative h-9 w-9 rounded-xl hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 hover:scale-105"
-                >
-                  <Bell className="w-4 h-4" />
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-r from-orange-400 to-red-400 text-white text-xs flex items-center justify-center animate-pulse border-2 border-white">
-                    3
-                  </Badge>
-                </Button>
+                <NotificationDropdownEnhanced />
 
                 {/* Enhanced Messages */}
                 <Button 

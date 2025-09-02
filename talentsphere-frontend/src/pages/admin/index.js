@@ -4,3 +4,5 @@ export { default as JobManagement } from './JobManagement';
 export { default as CompanyManagement } from './CompanyManagement';
 export { default as RevenueAnalytics } from './RevenueAnalytics';
 export { default as SystemHealth } from './SystemHealth';
+export { default as AdminProfile } from './AdminProfile';
+export { default as AdminSettings } from './AdminSettings';

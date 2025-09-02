@@ -88,6 +88,18 @@ export const authService = {
     return user && user.role === 'admin';
   },
 
+  // Check if user is external admin
+  isExternalAdmin: () => {
+    const user = authService.getCurrentUser();
+    return user && user.role === 'external_admin';
+  },
+
+  // Check if user is any type of admin (admin or external_admin)
+  isAnyAdmin: () => {
+    const user = authService.getCurrentUser();
+    return user && (user.role === 'admin' || user.role === 'external_admin');
+  },
+
   // Check if user has specific role
   hasRole: (role) => {
     const user = authService.getCurrentUser();

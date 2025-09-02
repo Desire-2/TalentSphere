@@ -4,6 +4,7 @@ import { Toaster } from './components/ui/sonner';
 import config from './config/environment.js';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
+import ExternalAdminLayout from './components/layout/ExternalAdminLayout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
@@ -26,6 +27,14 @@ import UserAnalytics from './pages/admin/UserAnalytics';
 import SystemHealth from './pages/admin/SystemHealth';
 import AdminProfile from './pages/admin/AdminProfile';
 import AdminSettings from './pages/admin/AdminSettings';
+
+// External Admin Pages
+import ExternalAdminDashboard from './pages/external-admin/ExternalAdminDashboard';
+import ExternalJobsManagement from './pages/external-admin/ExternalJobsManagement';
+import CreateExternalJob from './pages/external-admin/CreateExternalJob';
+import ExternalJobAnalytics from './pages/external-admin/ExternalJobAnalytics';
+import ExternalJobTemplates from './pages/external-admin/ExternalJobTemplates';
+import ExternalAdminProfile from './pages/external-admin/ExternalAdminProfile';
 
 // Job Pages
 import JobList from './pages/jobs/JobList';
@@ -54,6 +63,8 @@ import NotificationTestPage from './pages/NotificationTestPage';
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
+import ExternalAdminRoute from './components/auth/ExternalAdminRoute';
+import AnyAdminRoute from './components/auth/AnyAdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import TestEmployerComponents from './pages/TestEmployerComponents';
 
@@ -158,6 +169,50 @@ function App() {
             <Route path="system-health" element={<SystemHealth />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="settings" element={<AdminSettings />} />
+          </Route>
+
+          {/* External Admin routes with external admin layout */}
+          <Route path="/external-admin" element={
+            <ExternalAdminRoute>
+              <ExternalAdminLayout />
+            </ExternalAdminRoute>
+          }>
+            <Route index element={<ExternalAdminDashboard />} />
+            <Route path="jobs" element={<ExternalJobsManagement />} />
+            <Route path="jobs/create" element={<CreateExternalJob />} />
+            <Route path="analytics" element={<ExternalJobAnalytics />} />
+            <Route path="templates" element={<ExternalJobTemplates />} />
+            <Route path="profile" element={<ExternalAdminProfile />} />
+            <Route path="jobs/:id/edit" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">Edit External Job</h1>
+                <p className="text-muted-foreground">Coming soon in the next phase!</p>
+              </div>
+            } />
+            <Route path="jobs/import" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">Import Jobs</h1>
+                <p className="text-muted-foreground">Bulk import feature coming soon!</p>
+              </div>
+            } />
+            <Route path="applications" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">Applications</h1>
+                <p className="text-muted-foreground">Application management coming soon!</p>
+              </div>
+            } />
+            <Route path="sources" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">External Sources</h1>
+                <p className="text-muted-foreground">Source management coming soon!</p>
+              </div>
+            } />
+            <Route path="settings" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">Settings</h1>
+                <p className="text-muted-foreground">Settings page coming soon!</p>
+              </div>
+            } />
           </Route>
 
           {/* 404 Page */}

@@ -50,9 +50,16 @@ class Job(db.Model):
     __tablename__ = 'jobs'
     
     id = db.Column(db.Integer, primary_key=True)
-    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)  # Made nullable for external jobs
     category_id = db.Column(db.Integer, db.ForeignKey('job_categories.id'), nullable=False)
     posted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # External job source information
+    external_company_name = db.Column(db.String(200))  # For external jobs without company profile
+    external_company_website = db.Column(db.String(255))  # External company website
+    external_company_logo = db.Column(db.String(255))  # External company logo URL
+    job_source = db.Column(db.String(50), default='internal')  # internal, external, scraped
+    source_url = db.Column(db.String(500))  # Original job posting URL for external jobs
     
     # Basic Information
     title = db.Column(db.String(200), nullable=False, index=True)
@@ -172,6 +179,29 @@ class Job(db.Model):
     
     def to_dict(self, include_details=False, include_stats=False):
         """Convert job to dictionary"""
+        
+        # Get company information (either from company relationship or external data)
+        company_info = None
+        if self.company_id and self.company:
+            company_info = {
+                'id': self.company.id,
+                'name': self.company.name,
+                'slug': self.company.slug,
+                'logo_url': self.company.logo_url,
+                'website': self.company.website,
+                'is_verified': self.company.is_verified
+            }
+        elif self.job_source == 'external' and self.external_company_name:
+            company_info = {
+                'id': None,
+                'name': self.external_company_name,
+                'slug': None,
+                'logo_url': self.external_company_logo,
+                'website': self.external_company_website,
+                'is_verified': False,
+                'is_external': True
+            }
+        
         data = {
             'id': self.id,
             'company_id': self.company_id,
@@ -181,6 +211,10 @@ class Job(db.Model):
             'summary': self.summary,
             'employment_type': self.employment_type,
             'experience_level': self.experience_level,
+            'job_source': self.job_source,
+            'source_url': self.source_url,
+            'external_company_name': self.external_company_name,
+            'company': company_info,
             'location': {
                 'type': self.location_type,
                 'city': self.city,
@@ -228,7 +262,9 @@ class Job(db.Model):
                     'portfolio': self.requires_portfolio
                 },
                 'remote_policy': self.remote_policy,
-                'expires_at': self.expires_at.isoformat() if self.expires_at else None
+                'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+                'external_company_website': self.external_company_website,
+                'external_company_logo': self.external_company_logo
             })
         
         if include_stats:

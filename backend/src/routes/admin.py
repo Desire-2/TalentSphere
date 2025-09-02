@@ -67,6 +67,10 @@ def get_admin_dashboard(current_user):
             desc(Payment.created_at)
         ).limit(5).all()
         
+        admins = total_users - job_seekers - employers
+        external_admins = User.query.filter_by(role='external_admin').count()
+        regular_admins = User.query.filter_by(role='admin').count()
+        
         dashboard_data = {
             'overview': {
                 'total_users': total_users,
@@ -82,7 +86,9 @@ def get_admin_dashboard(current_user):
             'user_breakdown': {
                 'job_seekers': job_seekers,
                 'employers': employers,
-                'admins': total_users - job_seekers - employers
+                'admins': regular_admins,
+                'external_admins': external_admins,
+                'total_admin_users': regular_admins + external_admins
             },
             'job_metrics': {
                 'total_jobs': total_jobs,
@@ -90,7 +96,9 @@ def get_admin_dashboard(current_user):
                 'new_jobs': new_jobs,
                 'featured_jobs': featured_jobs,
                 'draft_jobs': Job.query.filter_by(status='draft').count(),
-                'closed_jobs': Job.query.filter_by(status='closed').count()
+                'closed_jobs': Job.query.filter_by(status='closed').count(),
+                'external_jobs': Job.query.filter_by(job_source='external').count(),
+                'internal_jobs': Job.query.filter_by(job_source='internal').count()
             },
             'application_metrics': {
                 'total_applications': total_applications,
@@ -245,7 +253,7 @@ def toggle_user_status(current_user, user_id):
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        if user.role == 'admin':
+        if user.role in ['admin', 'external_admin']:
             return jsonify({'error': 'Cannot modify admin users'}), 403
         
         user.is_active = not user.is_active

@@ -44,8 +44,10 @@ const Login = () => {
       
       if (user.role === 'admin') {
         redirectPath = '/admin';
-      } else if (from === '/admin' || from.startsWith('/admin/')) {
-        // If they tried to access admin but aren't admin, redirect to dashboard
+      } else if (user.role === 'external_admin') {
+        redirectPath = '/external-admin';
+      } else if (from === '/admin' || from.startsWith('/admin/') || from === '/external-admin' || from.startsWith('/external-admin/')) {
+        // If they tried to access admin areas but aren't admin, redirect to dashboard
         redirectPath = '/dashboard';
       }
       

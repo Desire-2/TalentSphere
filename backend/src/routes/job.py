@@ -243,7 +243,7 @@ def get_job(job_id):
 
 @job_bp.route('/jobs', methods=['POST'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def create_job(current_user):
     """Create a new job posting with comprehensive validation"""
     try:
@@ -281,79 +281,112 @@ def create_job(current_user):
         if application_type == 'email' and not data.get('application_email'):
             return jsonify({'error': 'Application email is required for email applications'}), 400
         
-        # Get or create company ID
-        company_id = data.get('company_id')
-        if not company_id and current_user.employer_profile:
-            company_id = current_user.employer_profile.company_id
-        
-        # Auto-create basic company profile if employer doesn't have one
-        if not company_id and current_user.role == 'employer':
-            # Create a basic company profile for the employer
-            basic_company_name = f"{current_user.first_name} {current_user.last_name}'s Company"
+        # Handle external admin job creation (jobs from external sources)
+        if current_user.role == 'external_admin':
+            # For external admin, create external job without company
+            job_source = 'external'
+            company_id = None
             
-            # Generate unique company name if needed
-            counter = 1
-            original_name = basic_company_name
-            while Company.query.filter_by(name=basic_company_name).first():
-                basic_company_name = f"{original_name} {counter}"
-                counter += 1
+            # External company info is required for external jobs
+            if not data.get('external_company_name'):
+                return jsonify({'error': 'External company name is required for external jobs'}), 400
             
-            # Generate slug for company
-            company_slug = generate_slug(basic_company_name)
-            counter = 1
-            original_slug = company_slug
-            while Company.query.filter_by(slug=company_slug).first():
-                company_slug = f"{original_slug}-{counter}"
-                counter += 1
+            external_company_name = data['external_company_name'].strip()
+            external_company_website = data.get('external_company_website', '').strip() if data.get('external_company_website') else None
+            external_company_logo = data.get('external_company_logo', '').strip() if data.get('external_company_logo') else None
+            source_url = data.get('source_url', '').strip() if data.get('source_url') else None
             
-            # Create basic company
-            basic_company = Company(
-                name=basic_company_name,
-                slug=company_slug,
-                description=f"Company profile for {current_user.first_name} {current_user.last_name}",
-                email=current_user.email,
-                industry="Other"  # Default industry
-            )
+            # Generate slug using external company name
+            slug = generate_job_slug(data['title'], external_company_name)
             
-            db.session.add(basic_company)
-            db.session.flush()  # Get company ID
+        else:
+            # Handle regular employer/admin job creation
+            job_source = 'internal'
+            external_company_name = None
+            external_company_website = None
+            external_company_logo = None
+            source_url = None
             
-            # Link company to employer profile
-            if not current_user.employer_profile:
-                # Create employer profile if it doesn't exist
-                employer_profile = EmployerProfile(
-                    user_id=current_user.id,
-                    company_id=basic_company.id
+            # Get or create company ID
+            company_id = data.get('company_id')
+            if not company_id and current_user.employer_profile:
+                company_id = current_user.employer_profile.company_id
+            
+            # Auto-create basic company profile if employer doesn't have one
+            if not company_id and current_user.role == 'employer':
+                # Create a basic company profile for the employer
+                basic_company_name = f"{current_user.first_name} {current_user.last_name}'s Company"
+                
+                # Generate unique company name if needed
+                counter = 1
+                original_name = basic_company_name
+                while Company.query.filter_by(name=basic_company_name).first():
+                    basic_company_name = f"{original_name} {counter}"
+                    counter += 1
+                
+                # Generate slug for company
+                company_slug = generate_slug(basic_company_name)
+                counter = 1
+                original_slug = company_slug
+                while Company.query.filter_by(slug=company_slug).first():
+                    company_slug = f"{original_slug}-{counter}"
+                    counter += 1
+                
+                # Create basic company
+                basic_company = Company(
+                    name=basic_company_name,
+                    slug=company_slug,
+                    description=f"Company profile for {current_user.first_name} {current_user.last_name}",
+                    email=current_user.email,
+                    industry="Other"  # Default industry
                 )
-                db.session.add(employer_profile)
+                
+                db.session.add(basic_company)
+                db.session.flush()  # Get company ID
+                
+                # Link company to employer profile
+                if not current_user.employer_profile:
+                    # Create employer profile if it doesn't exist
+                    employer_profile = EmployerProfile(
+                        user_id=current_user.id,
+                        company_id=basic_company.id
+                    )
+                    db.session.add(employer_profile)
+                else:
+                    # Update existing employer profile
+                    current_user.employer_profile.company_id = basic_company.id
+                
+                company_id = basic_company.id
+                
+                print(f"✅ Auto-created basic company profile: {basic_company_name} (ID: {company_id})")
+            
+            # For regular jobs, company_id is required unless it's an admin creating external job
+            if not company_id and current_user.role != 'admin':
+                return jsonify({'error': 'Company ID is required'}), 400
+            
+            # Verify company exists and user has permission
+            if company_id:
+                company = Company.query.get(company_id)
+                if not company:
+                    return jsonify({'error': 'Company not found'}), 404
+                
+                if (current_user.role == 'employer' and 
+                    current_user.employer_profile and 
+                    current_user.employer_profile.company_id != company_id):
+                    return jsonify({'error': 'You can only post jobs for your own company'}), 403
+                
+                # Generate slug using company name
+                slug = generate_job_slug(data['title'], company.name)
             else:
-                # Update existing employer profile
-                current_user.employer_profile.company_id = basic_company.id
-            
-            company_id = basic_company.id
-            
-            print(f"✅ Auto-created basic company profile: {basic_company_name} (ID: {company_id})")
-        
-        if not company_id:
-            return jsonify({'error': 'Company ID is required'}), 400
-        
-        # Verify company exists and user has permission
-        company = Company.query.get(company_id)
-        if not company:
-            return jsonify({'error': 'Company not found'}), 404
-        
-        if (current_user.role == 'employer' and 
-            current_user.employer_profile and 
-            current_user.employer_profile.company_id != company_id):
-            return jsonify({'error': 'You can only post jobs for your own company'}), 403
+                # For admin creating external job without company
+                slug = generate_job_slug(data['title'], data.get('external_company_name', 'External'))
         
         # Verify category exists
         category = JobCategory.query.get(data['category_id'])
         if not category:
             return jsonify({'error': 'Invalid category'}), 400
         
-        # Generate slug
-        slug = generate_job_slug(data['title'], company.name)
+        # Generate unique slug
         counter = 1
         original_slug = slug
         while Job.query.filter_by(slug=slug).first():
@@ -423,27 +456,41 @@ def create_job(current_user):
             requires_cover_letter=data.get('requires_cover_letter', False),
             requires_portfolio=data.get('requires_portfolio', False),
             status=data.get('status', 'draft'),
-            expires_at=expires_at
+            expires_at=expires_at,
+            # External job fields
+            job_source=job_source,
+            external_company_name=external_company_name,
+            external_company_website=external_company_website,
+            external_company_logo=external_company_logo,
+            source_url=source_url
         )
         
         # Set published_at if status is published
         if job.status == 'published':
             job.published_at = datetime.utcnow()
             # Auto-generate meta fields for SEO
-            job.meta_title = f"{job.title} - {company.name}"
+            if job.company:
+                job.meta_title = f"{job.title} - {job.company.name}"
+            elif job.external_company_name:
+                job.meta_title = f"{job.title} - {job.external_company_name}"
+            else:
+                job.meta_title = job.title
             job.meta_description = (job.summary or job.description)[:160] + "..." if len(job.summary or job.description) > 160 else (job.summary or job.description)
         
         db.session.add(job)
         db.session.flush()  # Get job ID
         
-        # Update company job count
-        if hasattr(company, 'total_jobs_posted'):
-            company.total_jobs_posted += 1
+        # Update company job count only if it's an internal job
+        if company_id:
+            company = Company.query.get(company_id)
+            if company and hasattr(company, 'total_jobs_posted'):
+                company.total_jobs_posted += 1
         
         db.session.commit()
         
+        job_type = "external" if current_user.role == 'external_admin' else "internal"
         return jsonify({
-            'message': 'Job created successfully',
+            'message': f'{job_type.capitalize()} job created successfully',
             'job': job.to_dict(include_details=True)
         }), 201
         
@@ -453,7 +500,7 @@ def create_job(current_user):
 
 @job_bp.route('/jobs/<int:job_id>', methods=['PUT'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def update_job(current_user, job_id):
     """Update job posting with comprehensive validation"""
     try:
@@ -463,6 +510,10 @@ def update_job(current_user, job_id):
         
         # Check permission
         if (current_user.role == 'employer' and 
+            job.posted_by != current_user.id):
+            return jsonify({'error': 'You can only update your own job postings'}), 403
+        
+        if (current_user.role == 'external_admin' and 
             job.posted_by != current_user.id):
             return jsonify({'error': 'You can only update your own job postings'}), 403
         
@@ -478,6 +529,13 @@ def update_job(current_user, job_id):
             'application_type', 'application_email', 'application_url', 'application_instructions',
             'requires_resume', 'requires_cover_letter', 'requires_portfolio'
         ]
+        
+        # Add external job fields for external admin
+        if current_user.role in ['admin', 'external_admin']:
+            updatable_fields.extend([
+                'external_company_name', 'external_company_website', 
+                'external_company_logo', 'source_url'
+            ])
         
         for field in updatable_fields:
             if field in data:
@@ -505,6 +563,10 @@ def update_job(current_user, job_id):
                 # Auto-generate meta fields for SEO
                 if job.company:
                     job.meta_title = f"{job.title} - {job.company.name}"
+                elif job.external_company_name:
+                    job.meta_title = f"{job.title} - {job.external_company_name}"
+                else:
+                    job.meta_title = job.title
                 job.meta_description = (job.summary or job.description)[:160] + "..." if len(job.summary or job.description) > 160 else (job.summary or job.description)
         
         # Validate application type if provided
@@ -542,7 +604,7 @@ def update_job(current_user, job_id):
 
 @job_bp.route('/jobs/<int:job_id>', methods=['DELETE'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def delete_job(current_user, job_id):
     """Delete job posting"""
     try:
@@ -552,6 +614,10 @@ def delete_job(current_user, job_id):
         
         # Check permission
         if (current_user.role == 'employer' and 
+            job.posted_by != current_user.id):
+            return jsonify({'error': 'You can only delete your own job postings'}), 403
+        
+        if (current_user.role == 'external_admin' and 
             job.posted_by != current_user.id):
             return jsonify({'error': 'You can only delete your own job postings'}), 403
         
@@ -570,7 +636,7 @@ def delete_job(current_user, job_id):
 
 @job_bp.route('/jobs/bulk-action', methods=['POST'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def bulk_job_action(current_user):
     """Perform bulk actions on jobs"""
     try:
@@ -593,7 +659,7 @@ def bulk_job_action(current_user):
         
         # Check permissions for each job
         for job in jobs:
-            if (current_user.role == 'employer' and 
+            if (current_user.role in ['employer', 'external_admin'] and 
                 job.posted_by != current_user.id):
                 return jsonify({'error': f'You can only modify your own job postings (Job ID: {job.id})'}), 403
         
@@ -639,9 +705,9 @@ def bulk_job_action(current_user):
 
 @job_bp.route('/employer/applications', methods=['GET'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def get_employer_applications(current_user):
-    """Get all applications for jobs posted by the current employer"""
+    """Get all applications for jobs posted by the current employer/external admin"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 20, type=int), 100)
@@ -711,7 +777,7 @@ def get_employer_applications(current_user):
 
 @job_bp.route('/my-jobs', methods=['GET'])
 @token_required
-@role_required('employer', 'admin')
+@role_required('employer', 'admin', 'external_admin')
 def get_my_jobs(current_user):
     """Get jobs posted by current user with enhanced filtering"""
     try:
@@ -719,16 +785,20 @@ def get_my_jobs(current_user):
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         status = request.args.get('status')
         company_id = request.args.get('company_id', type=int)
+        job_source = request.args.get('job_source')  # internal, external
         
         query = Job.query
         
-        if current_user.role == 'employer':
+        if current_user.role in ['employer', 'external_admin']:
             query = query.filter_by(posted_by=current_user.id)
         elif company_id:
             query = query.filter_by(company_id=company_id)
         
         if status:
             query = query.filter_by(status=status)
+        
+        if job_source:
+            query = query.filter_by(job_source=job_source)
         
         jobs = query.order_by(Job.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
@@ -737,14 +807,31 @@ def get_my_jobs(current_user):
         job_list = []
         for job in jobs.items:
             job_data = job.to_dict(include_details=True, include_stats=True)
-            job_data['company'] = job.company.to_dict() if job.company else None
+            if job.company:
+                job_data['company'] = job.company.to_dict()
             job_data['category'] = job.category.to_dict() if job.category else None
             job_list.append(job_data)
         
         # Get summary statistics
-        total_jobs = Job.query.filter_by(posted_by=current_user.id).count() if current_user.role == 'employer' else Job.query.count()
-        published_jobs = Job.query.filter_by(posted_by=current_user.id, status='published').count() if current_user.role == 'employer' else Job.query.filter_by(status='published').count()
-        draft_jobs = Job.query.filter_by(posted_by=current_user.id, status='draft').count() if current_user.role == 'employer' else Job.query.filter_by(status='draft').count()
+        if current_user.role in ['employer', 'external_admin']:
+            total_jobs = Job.query.filter_by(posted_by=current_user.id).count()
+            published_jobs = Job.query.filter_by(posted_by=current_user.id, status='published').count()
+            draft_jobs = Job.query.filter_by(posted_by=current_user.id, status='draft').count()
+            external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count() if current_user.role == 'external_admin' else 0
+        else:
+            total_jobs = Job.query.count()
+            published_jobs = Job.query.filter_by(status='published').count()
+            draft_jobs = Job.query.filter_by(status='draft').count()
+            external_jobs = Job.query.filter_by(job_source='external').count()
+        
+        summary = {
+            'total_jobs': total_jobs,
+            'published_jobs': published_jobs,
+            'draft_jobs': draft_jobs
+        }
+        
+        if current_user.role in ['admin', 'external_admin']:
+            summary['external_jobs'] = external_jobs
         
         return jsonify({
             'jobs': job_list,
@@ -756,15 +843,290 @@ def get_my_jobs(current_user):
                 'has_next': jobs.has_next,
                 'has_prev': jobs.has_prev
             },
-            'summary': {
-                'total_jobs': total_jobs,
-                'published_jobs': published_jobs,
-                'draft_jobs': draft_jobs
-            }
+            'summary': summary
         }), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get jobs', 'details': str(e)}), 500
+
+# External Admin specific routes
+@job_bp.route('/external-jobs', methods=['GET'])
+@token_required
+@role_required('external_admin', 'admin')
+def get_external_jobs(current_user):
+    """Get external jobs for external admin management"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        status = request.args.get('status')
+        search = request.args.get('search')
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        query = Job.query.filter_by(job_source='external')
+        
+        if current_user.role == 'external_admin':
+            query = query.filter_by(posted_by=current_user.id)
+        
+        if status:
+            query = query.filter_by(status=status)
+        
+        if search:
+            search_filter = or_(
+                Job.title.ilike(f'%{search}%'),
+                Job.external_company_name.ilike(f'%{search}%'),
+                Job.description.ilike(f'%{search}%')
+            )
+            query = query.filter(search_filter)
+        
+        # Apply sorting
+        if sort_by == 'title':
+            order_col = Job.title
+        elif sort_by == 'company':
+            order_col = Job.external_company_name
+        elif sort_by == 'created_at':
+            order_col = Job.created_at
+        else:
+            order_col = Job.created_at
+        
+        if sort_order == 'desc':
+            query = query.order_by(desc(order_col))
+        else:
+            query = query.order_by(asc(order_col))
+        
+        jobs = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        job_list = []
+        for job in jobs.items:
+            job_data = job.to_dict(include_details=True, include_stats=True)
+            job_data['category'] = job.category.to_dict() if job.category else None
+            job_data['poster'] = job.poster.to_dict() if job.poster else None
+            job_list.append(job_data)
+        
+        # Get summary statistics for external jobs
+        if current_user.role == 'external_admin':
+            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count()
+            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published').count()
+            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft').count()
+        else:
+            total_external_jobs = Job.query.filter_by(job_source='external').count()
+            published_external_jobs = Job.query.filter_by(job_source='external', status='published').count()
+            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft').count()
+        
+        return jsonify({
+            'external_jobs': job_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': jobs.total,
+                'pages': jobs.pages,
+                'has_next': jobs.has_next,
+                'has_prev': jobs.has_prev
+            },
+            'summary': {
+                'total_external_jobs': total_external_jobs,
+                'published_external_jobs': published_external_jobs,
+                'draft_external_jobs': draft_external_jobs
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get external jobs', 'details': str(e)}), 500
+
+@job_bp.route('/external-jobs/stats', methods=['GET'])
+@token_required
+@role_required('external_admin', 'admin')
+def get_external_job_stats(current_user):
+    """Get statistics for external jobs"""
+    try:
+        # Get summary statistics for external jobs
+        if current_user.role == 'external_admin':
+            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count()
+            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published').count()
+            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft').count()
+            
+            # Get recent activity (jobs posted in last 30 days)
+            from datetime import datetime, timedelta
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            recent_jobs = Job.query.filter(
+                Job.posted_by == current_user.id,
+                Job.job_source == 'external',
+                Job.created_at >= thirty_days_ago
+            ).count()
+            
+        else:
+            total_external_jobs = Job.query.filter_by(job_source='external').count()
+            published_external_jobs = Job.query.filter_by(job_source='external', status='published').count()
+            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft').count()
+            
+            # Get recent activity (jobs posted in last 30 days)
+            from datetime import datetime, timedelta
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            recent_jobs = Job.query.filter(
+                Job.job_source == 'external',
+                Job.created_at >= thirty_days_ago
+            ).count()
+        
+        # Get category breakdown for external jobs
+        from sqlalchemy import func
+        from ..models.job import JobCategory
+        
+        if current_user.role == 'external_admin':
+            category_stats = db.session.query(
+                JobCategory.name,
+                func.count(Job.id).label('count')
+            ).join(Job).filter(
+                Job.posted_by == current_user.id,
+                Job.job_source == 'external'
+            ).group_by(JobCategory.id).all()
+        else:
+            category_stats = db.session.query(
+                JobCategory.name,
+                func.count(Job.id).label('count')
+            ).join(Job).filter(
+                Job.job_source == 'external'
+            ).group_by(JobCategory.id).all()
+        
+        categories = [{'name': cat[0], 'count': cat[1]} for cat in category_stats]
+        
+        return jsonify({
+            'total_jobs': total_external_jobs,
+            'published_jobs': published_external_jobs,
+            'draft_jobs': draft_external_jobs,
+            'recent_jobs': recent_jobs,
+            'categories': categories,
+            'success_rate': round((published_external_jobs / total_external_jobs * 100) if total_external_jobs > 0 else 0, 1)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get external job statistics', 'details': str(e)}), 500
+
+@job_bp.route('/external-jobs/bulk-import', methods=['POST'])
+@token_required
+@role_required('external_admin', 'admin')
+def bulk_import_external_jobs(current_user):
+    """Bulk import external jobs from various sources"""
+    try:
+        data = request.get_json()
+        jobs_data = data.get('jobs', [])
+        
+        if not jobs_data:
+            return jsonify({'error': 'No jobs data provided'}), 400
+        
+        imported_jobs = []
+        failed_imports = []
+        
+        for job_info in jobs_data:
+            try:
+                # Validate required fields
+                required_fields = ['title', 'description', 'external_company_name', 'employment_type', 'category_id']
+                missing_fields = [field for field in required_fields if not job_info.get(field)]
+                
+                if missing_fields:
+                    failed_imports.append({
+                        'job_title': job_info.get('title', 'Unknown'),
+                        'error': f'Missing required fields: {", ".join(missing_fields)}'
+                    })
+                    continue
+                
+                # Verify category exists
+                category = JobCategory.query.get(job_info['category_id'])
+                if not category:
+                    failed_imports.append({
+                        'job_title': job_info['title'],
+                        'error': 'Invalid category ID'
+                    })
+                    continue
+                
+                # Generate unique slug
+                external_company_name = job_info['external_company_name'].strip()
+                slug = generate_job_slug(job_info['title'], external_company_name)
+                counter = 1
+                original_slug = slug
+                while Job.query.filter_by(slug=slug).first():
+                    slug = f"{original_slug}-{counter}"
+                    counter += 1
+                
+                # Set default expiry
+                expires_at = datetime.utcnow() + timedelta(days=30)
+                if job_info.get('expires_at'):
+                    try:
+                        expires_str = job_info['expires_at']
+                        if 'T' in expires_str:
+                            expires_at = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
+                        else:
+                            expires_at = datetime.fromisoformat(expires_str + 'T23:59:59')
+                    except ValueError:
+                        pass  # Use default expiry
+                
+                # Create external job
+                job = Job(
+                    company_id=None,  # External jobs don't have company profiles
+                    category_id=job_info['category_id'],
+                    posted_by=current_user.id,
+                    title=job_info['title'].strip(),
+                    slug=slug,
+                    description=job_info['description'].strip(),
+                    summary=job_info.get('summary', '').strip() if job_info.get('summary') else None,
+                    employment_type=job_info['employment_type'],
+                    experience_level=job_info.get('experience_level', 'mid'),
+                    education_requirement=job_info.get('education_requirement', '').strip() if job_info.get('education_requirement') else None,
+                    location_type=job_info.get('location_type', 'on-site'),
+                    city=job_info.get('city', '').strip() if job_info.get('city') else None,
+                    state=job_info.get('state', '').strip() if job_info.get('state') else None,
+                    country=job_info.get('country', '').strip() if job_info.get('country') else None,
+                    is_remote=job_info.get('location_type') == 'remote',
+                    salary_min=job_info.get('salary_min'),
+                    salary_max=job_info.get('salary_max'),
+                    salary_currency=job_info.get('salary_currency', 'USD'),
+                    salary_period=job_info.get('salary_period', 'yearly'),
+                    salary_negotiable=job_info.get('salary_negotiable', False),
+                    show_salary=job_info.get('show_salary', True),
+                    required_skills=job_info.get('required_skills', '').strip() if job_info.get('required_skills') else None,
+                    years_experience_min=job_info.get('years_experience_min', 0),
+                    years_experience_max=job_info.get('years_experience_max'),
+                    application_type=job_info.get('application_type', 'external'),
+                    application_url=job_info.get('application_url'),
+                    application_email=job_info.get('application_email'),
+                    application_instructions=job_info.get('application_instructions', '').strip() if job_info.get('application_instructions') else None,
+                    status=job_info.get('status', 'published'),
+                    expires_at=expires_at,
+                    # External job specific fields
+                    job_source='external',
+                    external_company_name=external_company_name,
+                    external_company_website=job_info.get('external_company_website', '').strip() if job_info.get('external_company_website') else None,
+                    external_company_logo=job_info.get('external_company_logo', '').strip() if job_info.get('external_company_logo') else None,
+                    source_url=job_info.get('source_url', '').strip() if job_info.get('source_url') else None
+                )
+                
+                # Set published_at if status is published
+                if job.status == 'published':
+                    job.published_at = datetime.utcnow()
+                    job.meta_title = f"{job.title} - {job.external_company_name}"
+                    job.meta_description = (job.summary or job.description)[:160] + "..." if len(job.summary or job.description) > 160 else (job.summary or job.description)
+                
+                db.session.add(job)
+                imported_jobs.append(job.title)
+                
+            except Exception as e:
+                failed_imports.append({
+                    'job_title': job_info.get('title', 'Unknown'),
+                    'error': str(e)
+                })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Bulk import completed: {len(imported_jobs)} jobs imported, {len(failed_imports)} failed',
+            'imported_jobs': imported_jobs,
+            'failed_imports': failed_imports,
+            'total_imported': len(imported_jobs),
+            'total_failed': len(failed_imports)
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to bulk import jobs', 'details': str(e)}), 500
 
 # Error handlers
 @job_bp.errorhandler(400)

@@ -11,6 +11,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import SEOHelmet from '../../components/seo/SEOHelmet';
+import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
+import { SquareAd, ResponsiveAd, JobSponsoredAd } from '../../components/ads/AdComponents';
+import { useAdTracking } from '../../utils/adTracking';
 import { 
   Search, 
   MapPin, 
@@ -73,6 +77,9 @@ const JobList = () => {
   const [categories, setCategories] = useState([]);
   const [bookmarkedJobs, setBookmarkedJobs] = useState(new Set());
   const { user, isAuthenticated } = useAuthStore();
+
+  // Initialize ad tracking
+  const adTracking = useAdTracking();
 
   // Helper functions for job data handling
   const getCompanyName = (job) => {
@@ -263,9 +270,39 @@ const JobList = () => {
     setSearchParams({});
   };
 
+  // SEO data
+  const jobKeywords = generateKeywords(
+    ['job search', 'career opportunities', 'employment', 'job listings'],
+    filters.search ? [filters.search] : []
+  );
+  
+  const seoTitle = filters.search 
+    ? `${filters.search} Jobs - Find Career Opportunities | TalentSphere`
+    : 'Job Search - Find Your Next Career Opportunity | TalentSphere';
+    
+  const seoDescription = filters.search
+    ? `Find ${filters.search} jobs on TalentSphere. Browse ${pagination.total || 'thousands of'} job opportunities from top companies. Apply now and advance your career.`
+    : `Discover your next career opportunity. Browse thousands of job openings from leading companies worldwide. Find your perfect job on TalentSphere.`;
+
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Jobs', url: '/jobs' }
+  ];
+  const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
+        {/* SEO Meta Tags */}
+        <SEOHelmet
+          title={seoTitle}
+          description={seoDescription}
+          keywords={jobKeywords}
+          type="website"
+          image="/jobs-og-image.jpg"
+          canonical={`${window.location.origin}/jobs`}
+          structuredData={breadcrumbStructuredData}
+        />
         {/* Background Decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl animate-float" />
@@ -507,8 +544,16 @@ const JobList = () => {
             </form>
           </motion.div>
 
+          {/* Google Ads - Responsive */}
+          <div className="mb-8">
+            <ResponsiveAd className="rounded-lg shadow-sm" />
+          </div>
+
           {/* Job Results */}
-          <AnimatePresence mode="wait">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              <AnimatePresence mode="wait">
             {loading ? (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -588,8 +633,8 @@ const JobList = () => {
                     getSalaryDisplay={getSalaryDisplay}
                   />
                 ))}
-              </motion.div>
-            )}
+            </motion.div>
+          )}
           </AnimatePresence>
 
           {/* Enhanced Load More Section */}
@@ -632,6 +677,22 @@ const JobList = () => {
               </div>
             </motion.div>
           )}
+            </div>            {/* Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Square Ad */}
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <SquareAd />
+              </div>
+
+              {/* Job Sponsored Ad */}
+              <JobSponsoredAd />
+
+              {/* Another Square Ad */}
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <SquareAd />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>

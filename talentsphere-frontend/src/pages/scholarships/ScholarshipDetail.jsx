@@ -26,6 +26,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
+import SEOHelmet from '../../components/seo/SEOHelmet';
+import { 
+  generateScholarshipStructuredData, 
+  generateBreadcrumbStructuredData,
+  generateScholarshipSEOTitle,
+  generateScholarshipSEODescription,
+  generateKeywords
+} from '../../utils/seoUtils';
 
 const ScholarshipDetail = () => {
   const { id } = useParams();
@@ -252,8 +260,40 @@ const ScholarshipDetail = () => {
 
   const deadlinePassed = isDeadlinePassed(scholarship.application_deadline);
 
+  // SEO data generation
+  const seoTitle = generateScholarshipSEOTitle(scholarship);
+  const seoDescription = generateScholarshipSEODescription(scholarship);
+  const scholarshipKeywords = generateKeywords(
+    [scholarship.title, scholarship.category?.name, 'scholarship', 'financial aid', 'education funding'],
+    scholarship.study_level ? [scholarship.study_level] : []
+  );
+  
+  const structuredData = generateScholarshipStructuredData(scholarship);
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Scholarships', url: '/scholarships' },
+    { name: scholarship.title, url: `/scholarships/${scholarship.id}` }
+  ];
+  const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* SEO Meta Tags */}
+      <SEOHelmet
+        title={seoTitle}
+        description={seoDescription}
+        keywords={scholarshipKeywords}
+        type="article"
+        image="/scholarship-og-image.jpg"
+        canonical={`${window.location.origin}/scholarships/${scholarship.id}`}
+        structuredData={[structuredData, breadcrumbStructuredData]}
+        articleData={{
+          title: scholarship.title,
+          description: seoDescription,
+          datePublished: scholarship.created_at,
+          dateModified: scholarship.updated_at
+        }}
+      />
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

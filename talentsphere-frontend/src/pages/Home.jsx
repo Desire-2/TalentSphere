@@ -35,6 +35,10 @@ import { formatCurrency, formatRelativeTime } from '../utils/helpers';
 import FeaturedAdsCarousel from '../components/FeaturedAdsCarousel';
 import apiService from '../services/api';
 import { scholarshipService } from '../services/scholarship';
+import SEOHelmet from '../components/seo/SEOHelmet';
+import { generateWebsiteStructuredData, generateKeywords } from '../utils/seoUtils';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
+import { useAdTracking } from '../utils/adTracking';
 
 // Helper function to convert snake_case to Title Case
 const snakeToTitle = (str) => {
@@ -54,6 +58,10 @@ const Home = () => {
     featuredJobs: true,
     scholarships: true
   });
+  const [error, setError] = useState(null);
+  
+  // Initialize ad tracking
+  const adTracking = useAdTracking();
 
   // API states for stats
   const [stats, setStats] = useState({
@@ -197,8 +205,25 @@ const Home = () => {
     return defaultValue;
   };
 
+  // SEO data
+  const homeKeywords = generateKeywords(
+    ['job search', 'career opportunities', 'recruitment platform', 'talent acquisition'],
+    ['hiring', 'employment', 'career development', 'professional growth', 'scholarships', 'education funding']
+  );
+  const websiteStructuredData = generateWebsiteStructuredData();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+      {/* SEO Meta Tags */}
+      <SEOHelmet
+        title="TalentSphere - Connect Talent with Opportunities"
+        description="Discover your next career opportunity or find the perfect candidate. TalentSphere connects talented professionals with leading companies worldwide. Find jobs, scholarships, and career resources."
+        keywords={homeKeywords}
+        type="website"
+        image="/home-og-image.jpg"
+        canonical={window.location.origin}
+        structuredData={websiteStructuredData}
+      />
       {/* Floating Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-float"></div>
@@ -315,6 +340,13 @@ const Home = () => {
               <span className="text-sm font-medium">{stats.successRate} Success Rate</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Google Ads - Leaderboard */}
+      <section className="max-w-7xl mx-auto px-4 mb-8">
+        <div className="flex justify-center">
+          <LeaderboardAd className="rounded-lg shadow-sm" />
         </div>
       </section>
 
@@ -529,6 +561,13 @@ const Home = () => {
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
             </Button>
           </Link>
+        </div>
+      </section>
+
+      {/* Google Ads - Responsive between sections */}
+      <section className="max-w-7xl mx-auto px-4 mb-12">
+        <div className="flex justify-center">
+          <ResponsiveAd className="rounded-lg shadow-sm" />
         </div>
       </section>
 

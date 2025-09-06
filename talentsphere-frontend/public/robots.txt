@@ -1,0 +1,43 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /external-admin/
+
+# Disallow auth pages from indexing
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Disallow user-specific pages
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /applications
+Disallow: /my-applications
+Disallow: /notifications
+
+# Disallow private API endpoints
+Disallow: /api/
+
+# Allow public content
+Allow: /jobs
+Allow: /scholarships
+Allow: /companies
+
+# Sitemap location
+Sitemap: /sitemap.xml
+
+# Crawl delay (optional - helps prevent overloading server)
+Crawl-delay: 1

@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
+import SEOHelmet from '../../components/seo/SEOHelmet';
+import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
 
 // Sample data for demonstration when API is not available
 const getSampleCategories = () => [
@@ -151,12 +153,32 @@ const ScholarshipList = () => {
   const [scholarships, setScholarships] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalScholarships, setTotalScholarships] = useState(0);
+  const [filters, setFilters] = useState({
+    type: '',
+    studyLevel: '',
+    fundingType: '',
+    location: ''
+  });
   const { isAuthenticated, user } = useAuthStore();
+
+  // Constants
+  const itemsPerPage = 12;
+
+  // Helper function to get location display text
+  const getLocationDisplay = (location) => {
+    if (!location) return '';
+    if (typeof location === 'string') return location;
+    if (typeof location === 'object') {
+      return location.display || location.city || location.country || 'Not specified';
+    }
+    return 'Not specified';
+  };
 
   useEffect(() => {
     fetchScholarships();
@@ -166,6 +188,8 @@ const ScholarshipList = () => {
     const fetchScholarships = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear any previous errors
+      setScholarships([]); // Clear existing data to prevent mixed rendering
       const params = {
         page: currentPage,
         per_page: itemsPerPage,
@@ -213,11 +237,15 @@ const ScholarshipList = () => {
       setTotalScholarships(totalCount);
     } catch (error) {
       console.error('Error fetching scholarships:', error);
-      // Provide sample data on error for demonstration
-      const sampleData = getSampleScholarships();
-      setScholarships(sampleData);
-      setTotalPages(Math.ceil(sampleData.length / itemsPerPage));
-      setTotalScholarships(sampleData.length);
+      setError('Failed to load scholarships. Please try again later.');
+      
+      // Only provide sample data if we don't have any data at all
+      if (scholarships.length === 0) {
+        const sampleData = getSampleScholarships();
+        setScholarships(sampleData);
+        setTotalPages(Math.ceil(sampleData.length / itemsPerPage));
+        setTotalScholarships(sampleData.length);
+      }
     } finally {
       setLoading(false);
     }
@@ -303,8 +331,38 @@ const ScholarshipList = () => {
     );
   }
 
+  // SEO data
+  const scholarshipKeywords = generateKeywords(
+    ['scholarships', 'financial aid', 'education funding', 'student grants'],
+    searchTerm ? [searchTerm] : []
+  );
+  
+  const seoTitle = searchTerm 
+    ? `${searchTerm} Scholarships - Find Financial Aid | TalentSphere`
+    : 'Scholarships - Find Educational Funding Opportunities | TalentSphere';
+    
+  const seoDescription = searchTerm
+    ? `Find ${searchTerm} scholarships on TalentSphere. Browse financial aid opportunities and educational grants. Apply for scholarships to fund your education.`
+    : `Discover scholarship opportunities to fund your education. Browse hundreds of scholarships, grants, and financial aid programs from leading institutions worldwide.`;
+
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Scholarships', url: '/scholarships' }
+  ];
+  const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* SEO Meta Tags */}
+      <SEOHelmet
+        title={seoTitle}
+        description={seoDescription}
+        keywords={scholarshipKeywords}
+        type="website"
+        image="/scholarships-og-image.jpg"
+        canonical={`${window.location.origin}/scholarships`}
+        structuredData={breadcrumbStructuredData}
+      />
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -471,7 +529,7 @@ const ScholarshipList = () => {
                         {scholarship.location && (
                           <div className="flex items-center text-sm text-gray-600">
                             <MapPin className="w-4 h-4 mr-2" />
-                            {scholarship.location}
+                            {getLocationDisplay(scholarship.location)}
                           </div>
                         )}
                         {scholarship.eligible_programs && (

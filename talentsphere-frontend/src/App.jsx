@@ -75,6 +75,10 @@ import AnyAdminRoute from './components/auth/AnyAdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import TestEmployerComponents from './pages/TestEmployerComponents';
 
+// Analytics
+import GoogleAnalytics from './components/analytics/GoogleAnalytics';
+import { useAdTracking } from './utils/adTracking';
+
 function App() {
   // Validate environment configuration on app startup
   useEffect(() => {
@@ -91,6 +95,7 @@ function App() {
   return (
     <AuthInitializer>
       <Router>
+        <GoogleAnalytics />
         <Routes>
             {/* Public routes with layout */}
             <Route path="/" element={<Layout />}>

@@ -9,7 +9,9 @@ import {
   ExternalLink,
   Building2,
   Calendar,
-  BarChart3
+  BarChart3,
+  GraduationCap,
+  Award
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -17,6 +19,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { externalAdminService } from '../../services/externalAdmin';
+import { scholarshipService } from '../../services/scholarship';
 import { toast } from 'sonner';
 
 const ExternalAdminDashboard = () => {
@@ -28,7 +31,15 @@ const ExternalAdminDashboard = () => {
     views_count: 0,
     recent_applications: []
   });
+  const [scholarshipStats, setScholarshipStats] = useState({
+    total_external_scholarships: 0,
+    published_external_scholarships: 0,
+    draft_external_scholarships: 0,
+    applications_count: 0,
+    views_count: 0
+  });
   const [recentJobs, setRecentJobs] = useState([]);
+  const [recentScholarships, setRecentScholarships] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,14 +50,18 @@ const ExternalAdminDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch external jobs stats
-      const [jobsResponse, statsResponse] = await Promise.all([
+      // Fetch external jobs stats and scholarships stats
+      const [jobsResponse, statsResponse, scholarshipStatsResponse, scholarshipsResponse] = await Promise.all([
         externalAdminService.getExternalJobs({ page: 1, per_page: 5 }),
-        externalAdminService.getExternalJobStats()
+        externalAdminService.getExternalJobStats(),
+        scholarshipService.getExternalScholarshipStats().catch(() => ({ total_external_scholarships: 0, published_external_scholarships: 0, draft_external_scholarships: 0, applications_count: 0, views_count: 0 })),
+        scholarshipService.getExternalScholarships({ page: 1, per_page: 5 }).catch(() => ({ external_scholarships: [] }))
       ]);
 
       setRecentJobs(jobsResponse.external_jobs || []);
       setStats(statsResponse || stats);
+      setScholarshipStats(scholarshipStatsResponse || scholarshipStats);
+      setRecentScholarships(scholarshipsResponse.external_scholarships || []);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -74,16 +89,16 @@ const ExternalAdminDashboard = () => {
       bgColor: 'bg-green-100'
     },
     {
-      title: 'Total Applications',
-      value: stats.applications_count,
-      change: '+8% from last week',
-      icon: Users,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      title: 'Total Scholarships',
+      value: scholarshipStats.total_external_scholarships,
+      change: 'Available opportunities',
+      icon: GraduationCap,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100'
     },
     {
       title: 'Total Views',
-      value: stats.views_count,
+      value: stats.views_count + (scholarshipStats.views_count || 0),
       change: '+15% engagement',
       icon: Eye,
       color: 'text-orange-600',
@@ -98,6 +113,13 @@ const ExternalAdminDashboard = () => {
       icon: Plus,
       href: '/external-admin/jobs/create',
       color: 'bg-blue-600 hover:bg-blue-700'
+    },
+    {
+      title: 'Create Scholarship',
+      description: 'Post a new scholarship opportunity',
+      icon: GraduationCap,
+      href: '/external-admin/scholarships/create',
+      color: 'bg-indigo-600 hover:bg-indigo-700'
     },
     {
       title: 'Import Jobs',
@@ -281,75 +303,81 @@ const ExternalAdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Performance Overview */}
+        {/* Recent Scholarships */}
         <Card>
-          <CardHeader>
-            <CardTitle>Performance Overview</CardTitle>
-            <CardDescription>
-              Job posting metrics and engagement
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Scholarships</CardTitle>
+              <CardDescription>
+                Latest scholarship opportunities posted
+              </CardDescription>
+            </div>
+            <Link to="/external-admin/scholarships">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Published Jobs</span>
-                  <span className="text-sm text-gray-500">
-                    {stats.published_external_jobs}/{stats.total_external_jobs}
-                  </span>
-                </div>
-                <Progress 
-                  value={stats.total_external_jobs > 0 ? (stats.published_external_jobs / stats.total_external_jobs) * 100 : 0} 
-                  className="h-2" 
-                />
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Application Rate</span>
-                  <span className="text-sm text-gray-500">
-                    {stats.applications_count} applications
-                  </span>
-                </div>
-                <Progress 
-                  value={stats.views_count > 0 ? (stats.applications_count / stats.views_count) * 100 : 0} 
-                  className="h-2" 
-                />
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{stats.applications_count}</div>
-                    <div className="text-xs text-gray-500">Total Applications</div>
+            <div className="space-y-4">
+              {recentScholarships.length > 0 ? (
+                recentScholarships.map((scholarship) => (
+                  <div key={scholarship.id} className="flex items-center space-x-4 p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0">
+                      {scholarship.external_organization_logo ? (
+                        <img 
+                          src={scholarship.external_organization_logo} 
+                          alt={scholarship.external_organization_name}
+                          className="h-10 w-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                          <GraduationCap className="h-6 w-6 text-indigo-600" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">
+                        {scholarship.title}
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        {scholarship.external_organization_name} • {scholarship.study_level || 'Any Level'}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {scholarship.scholarship_type}
+                        </Badge>
+                        <Badge variant={scholarship.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+                          {scholarship.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-gray-500">
+                        {new Date(scholarship.created_at).toLocaleDateString()}
+                      </p>
+                      <div className="flex items-center space-x-1 mt-1">
+                        <Eye className="h-3 w-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">{scholarship.statistics?.view_count || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{stats.views_count}</div>
-                    <div className="text-xs text-gray-500">Total Views</div>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <GraduationCap className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">No scholarships yet</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Get started by creating your first scholarship opportunity.
+                  </p>
+                  <Link to="/external-admin/scholarships/create">
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Scholarship
+                    </Button>
+                  </Link>
                 </div>
-              </div>
-
-              <Link to="/external-admin/analytics">
-                <Button variant="outline" className="w-full mb-2">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Detailed Analytics
-                </Button>
-              </Link>
-
-              <Link to="/external-admin/templates">
-                <Button variant="outline" className="w-full mb-2">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Manage Templates
-                </Button>
-              </Link>
-
-              <Link to="/external-admin/profile">
-                <Button variant="outline" className="w-full">
-                  <Users className="h-4 w-4 mr-2" />
-                  Profile & Settings
-                </Button>
-              </Link>
+              )}
             </div>
           </CardContent>
         </Card>

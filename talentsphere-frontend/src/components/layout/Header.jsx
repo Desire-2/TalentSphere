@@ -25,7 +25,8 @@ import {
   Shield,
   ChevronDown,
   Building2,
-  Plus
+  Plus,
+  GraduationCap
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getInitials } from '../../utils/helpers';
@@ -107,6 +108,16 @@ const Header = () => {
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
             </Link>
+            <Link 
+              to="/scholarships" 
+              className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
+            >
+              <span className="relative z-10 flex items-center space-x-1">
+                <GraduationCap className="w-4 h-4" />
+                <span>Scholarships</span>
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-indigo-500/0 group-hover:from-purple-500/10 group-hover:to-indigo-500/10 rounded-xl transition-all duration-300"></div>
+            </Link>
             {isAuthenticated && user?.role === 'employer' && (
               <Link 
                 to="/post-job" 
@@ -129,6 +140,18 @@ const Header = () => {
                   <span>Admin</span>
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-pink-500/0 group-hover:from-purple-500/10 group-hover:to-pink-500/10 rounded-xl transition-all duration-300"></div>
+              </Link>
+            )}
+            {isAuthenticated && user?.role === 'external_admin' && (
+              <Link 
+                to="/external-admin" 
+                className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/50"
+              >
+                <span className="relative z-10 flex items-center space-x-1">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Manage Scholarships</span>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-purple-500/0 group-hover:from-indigo-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
               </Link>
             )}
           </nav>
@@ -318,6 +341,14 @@ const Header = () => {
                   <Briefcase className="w-4 h-4" />
                   <span>Companies</span>
                 </Link>
+                <Link 
+                  to="/scholarships" 
+                  className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Scholarships</span>
+                </Link>
                 {isAuthenticated && user?.role === 'employer' && (
                   <Link 
                     to="/post-job" 
@@ -336,6 +367,16 @@ const Header = () => {
                   >
                     <Shield className="w-4 h-4" />
                     <span>Admin</span>
+                  </Link>
+                )}
+                {isAuthenticated && user?.role === 'external_admin' && (
+                  <Link 
+                    to="/external-admin" 
+                    className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/70"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Manage Scholarships</span>
                   </Link>
                 )}
                 {!isAuthenticated && (

@@ -32,9 +32,16 @@ import AdminSettings from './pages/admin/AdminSettings';
 import ExternalAdminDashboard from './pages/external-admin/ExternalAdminDashboard';
 import ExternalJobsManagement from './pages/external-admin/ExternalJobsManagement';
 import CreateExternalJob from './pages/external-admin/CreateExternalJob';
+import EditExternalJob from './pages/external-admin/EditExternalJob';
 import ExternalJobAnalytics from './pages/external-admin/ExternalJobAnalytics';
 import ExternalJobTemplates from './pages/external-admin/ExternalJobTemplates';
 import ExternalAdminProfile from './pages/external-admin/ExternalAdminProfile';
+import ScholarshipsManagement from './pages/external-admin/ScholarshipsManagement';
+import CreateScholarship from './pages/external-admin/CreateScholarship';
+
+// Public Scholarship Pages
+import ScholarshipList from './pages/scholarships/ScholarshipList';
+import ScholarshipDetail from './pages/scholarships/ScholarshipDetail';
 
 // Job Pages
 import JobList from './pages/jobs/JobList';
@@ -90,6 +97,8 @@ function App() {
               <Route index element={<Home />} />
               <Route path="jobs" element={<JobList />} />
               <Route path="jobs/:id" element={<JobDetails />} />
+              <Route path="scholarships" element={<ScholarshipList />} />
+              <Route path="scholarships/:id" element={<ScholarshipDetail />} />
               <Route path="test-notification" element={<NotificationTestPage />} />
               {/* Job application route - protected and nested properly */}
               <Route path="jobs/:id/apply" element={
@@ -180,15 +189,12 @@ function App() {
             <Route index element={<ExternalAdminDashboard />} />
             <Route path="jobs" element={<ExternalJobsManagement />} />
             <Route path="jobs/create" element={<CreateExternalJob />} />
+            <Route path="scholarships" element={<ScholarshipsManagement />} />
+            <Route path="scholarships/create" element={<CreateScholarship />} />
             <Route path="analytics" element={<ExternalJobAnalytics />} />
             <Route path="templates" element={<ExternalJobTemplates />} />
             <Route path="profile" element={<ExternalAdminProfile />} />
-            <Route path="jobs/:id/edit" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Edit External Job</h1>
-                <p className="text-muted-foreground">Coming soon in the next phase!</p>
-              </div>
-            } />
+            <Route path="jobs/:id/edit" element={<EditExternalJob />} />
             <Route path="jobs/import" element={
               <div className="container mx-auto px-4 py-20 text-center">
                 <h1 className="text-4xl font-bold mb-4">Import Jobs</h1>

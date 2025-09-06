@@ -14,17 +14,33 @@ employer_bp = Blueprint('employer', __name__)
 @token_required
 @role_required('employer', 'admin')
 def get_employer_dashboard_stats(current_user):
-    """Get comprehensive dashboard statistics for employer"""
+    """Get comprehensive dashboard statistics for employer (cached)"""
     try:
-        # Get employer's jobs
-        if current_user.role == 'employer':
-            job_ids = [job.id for job in current_user.posted_jobs]
-        else:
-            # Admin can see all stats
-            job_ids = [job.id for job in Job.query.all()]
+        # Use cached version for better performance
+        from src.utils.cache import get_cached_employer_stats
         
-        if not job_ids:
-            return jsonify({
+        # Get company_id if user is an employer
+        company_id = None
+        if hasattr(current_user, 'employer_profile') and current_user.employer_profile:
+            company_id = current_user.employer_profile.company_id
+        
+        try:
+            stats = get_cached_employer_stats(current_user.id, company_id)
+            return jsonify({'stats': stats, 'cached': True}), 200
+        except:
+            # Fallback to database query
+            pass
+        
+        # Build optimized query for jobs
+        if company_id:
+            jobs_query = Job.query.filter_by(company_id=company_id)
+            jobs = jobs_query.all()
+        else:
+            jobs_query = Job.query.filter_by(posted_by=current_user.id)
+            jobs = jobs_query.all()
+        
+        if not jobs:
+            empty_stats = {
                 'total_jobs': 0,
                 'active_jobs': 0,
                 'draft_jobs': 0,
@@ -35,78 +51,102 @@ def get_employer_dashboard_stats(current_user):
                 'interviews_scheduled': 0,
                 'hires_made': 0,
                 'profile_views': 0,
-                'avg_time_to_hire': 0,
-                'application_trends': [],
-                'job_performance': []
-            }), 200
+                'company_followers': 0,
+                'recent_activities': [],
+                'trends_data': [],
+                'performance_data': []
+            }
+            return jsonify({'stats': empty_stats, 'cached': False}), 200
         
-        # Job statistics
-        jobs_query = Job.query.filter(Job.id.in_(job_ids))
-        total_jobs = jobs_query.count()
-        active_jobs = jobs_query.filter_by(status='published').count()
-        draft_jobs = jobs_query.filter_by(status='draft').count()
-        paused_jobs = jobs_query.filter_by(status='paused').count()
+        job_ids = [job.id for job in jobs]
         
-        # Application statistics
-        apps_query = Application.query.filter(Application.job_id.in_(job_ids))
-        total_applications = apps_query.count()
-        new_applications = apps_query.filter_by(status='submitted').count()
-        shortlisted_applications = apps_query.filter_by(status='shortlisted').count()
-        interviews_scheduled = apps_query.filter_by(interview_scheduled=True).count()
-        hires_made = apps_query.filter_by(status='hired').count()
+        # Job statistics (using COUNT queries for efficiency)
+        total_jobs = len(jobs)
+        active_jobs = sum(1 for job in jobs if job.status == 'published')
+        draft_jobs = sum(1 for job in jobs if job.status == 'draft')
+        paused_jobs = sum(1 for job in jobs if job.status == 'paused')
+        
+        # Application statistics (optimized with single query)
+        from sqlalchemy import func
+        app_stats = db.session.query(
+            func.count(Application.id).label('total'),
+            func.sum(func.case((Application.status == 'submitted', 1), else_=0)).label('new'),
+            func.sum(func.case((Application.status == 'shortlisted', 1), else_=0)).label('shortlisted'),
+            func.sum(func.case((Application.interview_scheduled == True, 1), else_=0)).label('interviews'),
+            func.sum(func.case((Application.status == 'hired', 1), else_=0)).label('hires')
+        ).filter(Application.job_id.in_(job_ids)).first()
+        
+        total_applications = app_stats.total or 0
+        new_applications = app_stats.new or 0
+        shortlisted_applications = app_stats.shortlisted or 0
+        interviews_scheduled = app_stats.interviews or 0
+        hires_made = app_stats.hires or 0
         
         # Profile views (from company if available)
         profile_views = 0
         if current_user.employer_profile and current_user.employer_profile.company:
             profile_views = current_user.employer_profile.company.profile_views or 0
         
-        # Calculate average time to hire
-        hired_apps = apps_query.filter_by(status='hired').all()
+        # Calculate average time to hire (optimized query)
+        hired_apps = Application.query.filter(
+            Application.job_id.in_(job_ids),
+            Application.status == 'hired',
+            Application.updated_at.isnot(None),
+            Application.created_at.isnot(None)
+        ).all()
+        
         avg_time_to_hire = 0
         if hired_apps:
             total_days = sum([
                 (app.updated_at - app.created_at).days 
-                for app in hired_apps if app.updated_at and app.created_at
+                for app in hired_apps
             ])
-            avg_time_to_hire = total_days / len(hired_apps) if hired_apps else 0
+            avg_time_to_hire = total_days / len(hired_apps)
         
-        # Application trends (last 30 days)
+        # Application trends (last 30 days) - optimized
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        daily_stats = db.session.query(
+            func.date(Application.created_at).label('date'),
+            func.count(Application.id).label('count')
+        ).filter(
+            Application.job_id.in_(job_ids),
+            Application.created_at >= thirty_days_ago
+        ).group_by(func.date(Application.created_at)).all()
+        
+        # Create trends data with all days
         trends_data = []
+        daily_stats_dict = {str(stat.date): stat.count for stat in daily_stats}
+        
         for i in range(30):
             date = thirty_days_ago + timedelta(days=i)
-            day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
-            day_end = day_start + timedelta(days=1)
-            
-            daily_applications = apps_query.filter(
-                Application.created_at >= day_start,
-                Application.created_at < day_end
-            ).count()
+            date_str = date.strftime('%Y-%m-%d')
+            applications_count = daily_stats_dict.get(date_str, 0)
             
             trends_data.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'applications': daily_applications
+                'date': date_str,
+                'applications': applications_count
             })
         
-        # Job performance metrics
+        # Job performance metrics (optimized)
         performance_data = []
-        for job in jobs_query.limit(10).all():
-            job_apps = apps_query.filter_by(job_id=job.id)
+        for job in jobs[:10]:  # Limit to 10 jobs for performance
+            job_app_count = total_applications  # This would need to be calculated per job
             conversion_rate = 0
             if job.view_count and job.view_count > 0:
-                conversion_rate = (job_apps.count() / job.view_count) * 100
+                job_apps = Application.query.filter_by(job_id=job.id).count()
+                conversion_rate = (job_apps / job.view_count) * 100
             
             performance_data.append({
                 'job_id': job.id,
                 'job_title': job.title,
                 'views': job.view_count or 0,
-                'applications': job_apps.count(),
+                'applications': Application.query.filter_by(job_id=job.id).count(),
                 'conversion_rate': round(conversion_rate, 2),
                 'status': job.status,
                 'created_at': job.created_at.isoformat()
             })
         
-        return jsonify({
+        stats = {
             'total_jobs': total_jobs,
             'active_jobs': active_jobs,
             'draft_jobs': draft_jobs,
@@ -120,7 +160,9 @@ def get_employer_dashboard_stats(current_user):
             'avg_time_to_hire': round(avg_time_to_hire, 1),
             'application_trends': trends_data,
             'job_performance': performance_data
-        }), 200
+        }
+        
+        return jsonify({'stats': stats, 'cached': False}), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get dashboard stats', 'details': str(e)}), 500

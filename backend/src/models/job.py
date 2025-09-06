@@ -352,3 +352,35 @@ class JobAlert(db.Model):
             'last_sent': self.last_sent.isoformat() if self.last_sent else None
         }
 
+
+class JobShare(db.Model):
+    __tablename__ = 'job_shares'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    platform = db.Column(db.String(50), nullable=False)  # linkedin, twitter, email, etc.
+    custom_message = db.Column(db.Text)
+    recipient_count = db.Column(db.Integer, default=1)
+    share_url = db.Column(db.String(500))
+    user_agent = db.Column(db.String(500))
+    extra_data = db.Column(db.Text)  # JSON string for additional data (renamed from metadata)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    job = db.relationship('Job', backref=db.backref('shares', lazy='dynamic', cascade='all, delete-orphan'))
+    user = db.relationship('User', backref=db.backref('job_shares', lazy='dynamic'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'job_id': self.job_id,
+            'user_id': self.user_id,
+            'platform': self.platform,
+            'custom_message': self.custom_message,
+            'recipient_count': self.recipient_count,
+            'share_url': self.share_url,
+            'timestamp': self.timestamp.isoformat(),
+            'extra_data': self.extra_data
+        }
+

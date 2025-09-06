@@ -31,6 +31,7 @@ import {
 import { formatCurrency, formatRelativeTime, snakeToTitle } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
+import ShareJob from '../../components/jobs/ShareJob';
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -57,6 +58,52 @@ const JobDetails = () => {
       default:
         return 'Apply Now';
     }
+  };
+
+  // Helper functions for ShareJob component
+  const getCompanyName = (job) => {
+    return job.company?.name || job.external_company_name || 'Company Name';
+  };
+
+  const getCompanyLogo = (job) => {
+    return job.company?.logo_url || null;
+  };
+
+  const getJobDescription = (job) => {
+    if (job.summary) {
+      return job.summary;
+    }
+    if (job.description) {
+      // Return first paragraph or first 200 characters
+      const firstParagraph = job.description.split('\n\n')[0];
+      return firstParagraph.length > 200 
+        ? firstParagraph.substring(0, 200) + '...'
+        : firstParagraph;
+    }
+    return 'No description available';
+  };
+
+  const getJobLocation = (job) => {
+    if (job.location?.is_remote) {
+      return 'Remote';
+    }
+    if (typeof job.location?.display === 'string') {
+      return job.location.display;
+    }
+    if (job.location?.city && job.location?.state) {
+      return `${job.location.city}, ${job.location.state}`;
+    }
+    return 'Location not specified';
+  };
+
+  const getSalaryDisplay = (job) => {
+    if (job.salary?.show_salary && job.salary?.min && job.salary?.max) {
+      return `${formatCurrency(job.salary.min)} - ${formatCurrency(job.salary.max)}`;
+    }
+    if (typeof job.salary?.display === 'string') {
+      return job.salary.display;
+    }
+    return 'Salary not disclosed';
   };
 
   useEffect(() => {
@@ -219,19 +266,6 @@ ${user.name || user.email}`);
     }
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: job.title,
-        text: `Check out this job at ${job.company?.name || 'this company'}`,
-        url: window.location.href
-      });
-    } else {
-      // Fallback to copying URL
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
-
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -390,7 +424,9 @@ ${user.name || user.email}`);
                     </Badge>
                   )}
                 </div>
-                <CardDescription className="text-lg">{job.company?.name || 'Unknown Company'}</CardDescription>
+                <CardDescription className="text-lg font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+                  {getCompanyName(job)}
+                </CardDescription>
                 <p className="text-sm text-gray-600 mt-1">{job.company?.description || ''}</p>
                 {job.published_at && (
                   <p className="text-xs text-gray-500 mt-2">
@@ -407,9 +443,19 @@ ${user.name || user.email}`);
                   <Bookmark className="w-4 h-4" />
                 )}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="w-4 h-4" />
-              </Button>
+              <ShareJob 
+                job={job}
+                getCompanyName={getCompanyName}
+                getCompanyLogo={getCompanyLogo}
+                getJobDescription={getJobDescription}
+                getJobLocation={getJobLocation}
+                getSalaryDisplay={getSalaryDisplay}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                }
+              />
             </div>
           </div>
         </CardHeader>
@@ -803,7 +849,20 @@ ${user.name || user.email}`);
           {/* Company Info */}
           <Card>
             <CardHeader>
-              <CardTitle>About {job.company?.name || 'This Company'}</CardTitle>
+              <CardTitle className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  {job.company?.logo_url ? (
+                    <img 
+                      src={job.company.logo_url} 
+                      alt={`${getCompanyName(job)} logo`} 
+                      className="w-8 h-8 object-contain rounded"
+                    />
+                  ) : (
+                    <Building className="w-5 h-5 text-blue-600" />
+                  )}
+                </div>
+                About {getCompanyName(job)}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {job.company?.description && (
@@ -936,16 +995,7 @@ ${user.name || user.email}`);
                         </Link>
                       </h4>
                       <p className="text-xs text-gray-600 mt-1">
-                        {similarJob.company?.name || 'Unknown Company'} • {
-                          similarJob.location?.is_remote 
-                            ? 'Remote' 
-                            : (typeof similarJob.location?.display === 'string' 
-                                ? similarJob.location.display 
-                                : similarJob.location?.city && similarJob.location?.state 
-                                  ? `${similarJob.location.city}, ${similarJob.location.state}`
-                                  : 'Location not specified'
-                              )
-                        }
+                        {getCompanyName(similarJob)} • {getJobLocation(similarJob)}
                       </p>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center space-x-2">
@@ -958,9 +1008,9 @@ ${user.name || user.email}`);
                             {snakeToTitle(similarJob.employment_type)}
                           </Badge>
                         </div>
-                        {similarJob.salary?.show_salary && similarJob.salary?.min && similarJob.salary?.max && (
+                        {getSalaryDisplay(similarJob) !== 'Salary not disclosed' && (
                           <p className="text-xs text-gray-500">
-                            {formatCurrency(similarJob.salary.min)} - {formatCurrency(similarJob.salary.max)}
+                            {getSalaryDisplay(similarJob)}
                           </p>
                         )}
                       </div>

@@ -2,9 +2,10 @@
 import api from './api';
 import { create } from 'zustand';
 import React, { useCallback } from 'react';
+import config from '../config/environment';
 
-// Temporarily override API base URL for testing
-const API_BASE = 'http://localhost:5003/api';
+// Use the correct API base URL from environment configuration
+const API_BASE = config.API.BASE_URL;
 
 class NotificationService {
   static instance = null;

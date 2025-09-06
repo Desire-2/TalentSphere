@@ -1,0 +1,183 @@
+/* ExternalJobsManagement Enhanced Animations */
+
+/* Button hover animations */
+.action-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+}
+
+.action-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-button:active {
+  transform: scale(0.95);
+}
+
+/* Quick action button group animations */
+.quick-actions {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease-out;
+}
+
+.job-card:hover .quick-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Status badge animations */
+.status-badge {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.status-badge:hover::before {
+  left: 100%;
+}
+
+/* Loading animation for action buttons */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.loading-action {
+  animation: pulse-glow 1.5s infinite;
+}
+
+/* Job card hover effects */
+.job-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.job-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Statistics animation */
+.job-stats span {
+  transition: all 0.2s ease;
+}
+
+.job-stats span:hover {
+  color: rgb(59, 130, 246);
+  transform: scale(1.05);
+}
+
+/* Dropdown menu animations */
+.dropdown-item {
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  transform: translateX(4px);
+}
+
+/* Alert dialog animations */
+.alert-enter {
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tooltip animations */
+.tooltip {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Success/Error state animations */
+@keyframes successPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.success-state {
+  animation: successPulse 0.6s ease-out;
+}
+
+.error-state {
+  animation: errorShake 0.6s ease-out;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .job-card:hover {
+    border-color: rgba(96, 165, 250, 0.3);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+  
+  .action-button:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Mobile responsive animations */
+@media (max-width: 768px) {
+  .job-card:hover {
+    transform: none;
+  }
+  
+  .action-button:hover {
+    transform: scale(1.02);
+  }
+  
+  .quick-actions {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -8,11 +9,12 @@ load_dotenv()
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from src.models.user import db
+from src.utils.db_optimization import create_optimized_engine
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
-from src.models.job import Job, JobCategory, JobBookmark, JobAlert
+from src.models.job import Job, JobCategory, JobBookmark, JobAlert, JobShare
 from src.models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
 from src.models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
 from src.models.notification import Notification, NotificationTemplate, Review, ReviewVote, Message
@@ -26,6 +28,8 @@ from src.routes.admin import admin_bp
 from src.routes.notification import notification_bp
 from src.routes.recommendations import recommendations_bp
 from src.routes.employer import employer_bp
+from src.routes.share_routes import share_bp
+from src.routes.scholarship import scholarship_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -51,6 +55,13 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Performance optimizations
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 3600,
+    'echo': os.getenv('SQL_ECHO', 'false').lower() == 'true'
+}
+
 # Enable CORS for all routes
 # Get allowed origins from environment variable (comma-separated)
 cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost:5174")
@@ -68,18 +79,43 @@ app.register_blueprint(admin_bp, url_prefix='/api')
 app.register_blueprint(notification_bp, url_prefix='/api')
 app.register_blueprint(recommendations_bp, url_prefix='/api')
 app.register_blueprint(employer_bp, url_prefix='/api')
+app.register_blueprint(share_bp, url_prefix='/api')
+app.register_blueprint(scholarship_bp, url_prefix='/api')
 
 # Health check endpoint
-@app.route('/api/health', methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health_check():
+    """Health check endpoint with lazy database initialization"""
     try:
-        # Try to test database connection
+        # Try to initialize database if not already done
+        if not hasattr(health_check, '_db_initialized'):
+            try:
+                with app.app_context():
+                    db.create_all()
+                health_check._db_initialized = True
+                print("✅ Database tables created successfully (lazy initialization)")
+            except Exception as e:
+                print(f"⚠️  Database initialization failed during health check: {e}")
+        
+        # Test database connection
         with app.app_context():
-            from sqlalchemy import text
-            db.session.execute(text('SELECT 1'))
-        return {'status': 'healthy', 'message': 'TalentSphere API is running', 'database': 'connected'}, 200
+            db.session.execute(db.text('SELECT 1'))
+            db.session.commit()
+        
+        return jsonify({
+            'status': 'healthy',
+            'message': 'TalentSphere API is running',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'connected'
+        }), 200
+        
     except Exception as e:
-        return {'status': 'healthy', 'message': 'TalentSphere API is running', 'database': f'error: {str(e)}'}, 200
+        return jsonify({
+            'status': 'unhealthy',
+            'message': str(e),
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'disconnected'
+        }), 503
 
 # Database initialization endpoint
 @app.route('/api/init-db', methods=['POST'])
@@ -106,21 +142,38 @@ def init_database():
         print(f"❌ Database initialization failed: {e}")
         return False
 
-# Try to initialize database, but don't fail if it doesn't work
+# Initialize database only in specific cases
 if __name__ == '__main__':
-    init_database()
-else:
-    # For production (when imported by gunicorn), try to init database
-    # but don't fail the entire app if it doesn't work initially
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=5001, help='Port to run the server on')
+    parser.add_argument('--no-init-db', action='store_true', help='Skip database initialization')
+    args = parser.parse_args()
+    
+    # Only initialize database when running directly (development mode) unless skipped
+    if not args.no_init_db:
+        init_database()
+    
+    # Use debug mode only in development
+    debug_mode = os.getenv('FLASK_ENV', 'development') == 'development'
+    app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
+elif os.getenv('INIT_DB_ON_STARTUP', 'false').lower() == 'true':
+    # Only initialize database if explicitly requested
     try:
         init_database()
     except Exception as e:
-        print(f"⚠️  Database initialization deferred: {e}")
-        print("Database tables will be created on first request if needed")
+        print(f"⚠️  Database initialization skipped: {e}")
+        print("💡 Database will be initialized on first request")
+else:
+    print("💡 Database initialization deferred to first API request")
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    # Don't serve static files for API routes
+    if path.startswith('api/'):
+        return "API route not found", 404
+    
     static_folder_path = app.static_folder
     if static_folder_path is None:
             return "Static folder not configured", 404
@@ -133,14 +186,3 @@ def serve(path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
             return "index.html not found", 404
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=5001, help='Port to run the server on')
-    args = parser.parse_args()
-    
-    # Use debug mode only in development
-    debug_mode = os.getenv('FLASK_ENV', 'development') == 'development'
-    app.run(host='0.0.0.0', port=args.port, debug=debug_mode)

@@ -42,6 +42,7 @@ import { formatCurrency, formatRelativeTime, snakeToTitle } from '../../utils/he
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from '../../utils/constants';
 import apiService from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import ShareJob from '../../components/jobs/ShareJob';
 
 const JobList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,6 +73,59 @@ const JobList = () => {
   const [categories, setCategories] = useState([]);
   const [bookmarkedJobs, setBookmarkedJobs] = useState(new Set());
   const { user, isAuthenticated } = useAuthStore();
+
+  // Helper functions for job data handling
+  const getCompanyName = (job) => {
+    // Handle both internal jobs (with company object) and external jobs (with external_company_name)
+    return job.company?.name || job.external_company_name || 'Company Name';
+  };
+
+  const getCompanyLogo = (job) => {
+    // Handle both internal jobs (with company object) and external jobs (with external_company_logo)
+    return job.company?.logo || job.external_company_logo || null;
+  };
+
+  const getCompanyInitials = (companyName) => {
+    return companyName
+      ?.split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'CO';
+  };
+
+  const getJobDescription = (job) => {
+    // Use summary if available for a shorter description, fallback to full description
+    return job.summary || job.description || 'No description available';
+  };
+
+  const getJobLocation = (job) => {
+    if (job.location_type === 'remote' || job.is_remote) {
+      return 'Remote';
+    }
+    
+    if (job.location?.display) {
+      return job.location.display;
+    }
+    
+    // For external jobs, construct location from individual fields
+    const parts = [];
+    if (job.location_city || job.city) parts.push(job.location_city || job.city);
+    if (job.location_state || job.state) parts.push(job.location_state || job.state);
+    if (job.location_country || job.country) parts.push(job.location_country || job.country);
+    
+    return parts.length > 0 ? parts.join(', ') : 'Not specified';
+  };
+
+  const getSalaryDisplay = (job) => {
+    if (job.salary?.show_salary && job.salary?.min && job.salary?.max) {
+      return `${formatCurrency(job.salary.min)} - ${formatCurrency(job.salary.max)}`;
+    }
+    if (job.salary_min && job.salary_max && job.show_salary !== false) {
+      return `${formatCurrency(job.salary_min)} - ${formatCurrency(job.salary_max)}`;
+    }
+    return 'Not disclosed';
+  };
 
   // Load job categories on mount
   useEffect(() => {
@@ -237,12 +291,20 @@ const JobList = () => {
               </div>
               <div className="flex items-center gap-4 mt-4 lg:mt-0">
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
-                  <Users className="w-4 h-4 text-blue-500" />
+                  <Briefcase className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-medium">{pagination.total || 0} Jobs</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
                   <Building className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium">{categories.length} Companies</span>
+                  <span className="text-sm font-medium">
+                    {new Set(jobs.map(job => getCompanyName(job))).size} Companies
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
+                  <ExternalLink className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm font-medium">
+                    {jobs.filter(job => job.job_source === 'external').length} External Jobs
+                  </span>
                 </div>
               </div>
             </div>
@@ -262,7 +324,7 @@ const JobList = () => {
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
                   <Input
                     type="text"
-                    placeholder="Job title, keywords, or company name..."
+                    placeholder="Job title, keywords, company name, or skills..."
                     value={filters.search}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
                     className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-blue-300 rounded-xl bg-white/50 backdrop-blur-sm transition-all"
@@ -518,6 +580,12 @@ const JobList = () => {
                     isBookmarked={bookmarkedJobs.has(job.id)}
                     onToggleBookmark={toggleBookmark}
                     isAuthenticated={isAuthenticated}
+                    getCompanyName={getCompanyName}
+                    getCompanyLogo={getCompanyLogo}
+                    getCompanyInitials={getCompanyInitials}
+                    getJobDescription={getJobDescription}
+                    getJobLocation={getJobLocation}
+                    getSalaryDisplay={getSalaryDisplay}
                   />
                 ))}
               </motion.div>
@@ -571,7 +639,20 @@ const JobList = () => {
 };
 
 // Enhanced Job Card Component
-const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthenticated }) => {
+const JobCard = ({ 
+  job, 
+  index, 
+  viewMode, 
+  isBookmarked, 
+  onToggleBookmark, 
+  isAuthenticated,
+  getCompanyName,
+  getCompanyLogo,
+  getCompanyInitials,
+  getJobDescription,
+  getJobLocation,
+  getSalaryDisplay
+}) => {
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
@@ -591,15 +672,6 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
     return 'bg-green-50 text-green-700 border-green-200';
   };
 
-  const getCompanyInitials = (companyName) => {
-    return companyName
-      ?.split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'CO';
-  };
-
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -614,9 +686,9 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
               {/* Company Avatar */}
               <div className="flex-shrink-0">
                 <Avatar className="w-16 h-16 border-2 border-white shadow-md">
-                  <AvatarImage src={job.company?.logo} alt={job.company?.name} />
+                  <AvatarImage src={getCompanyLogo(job)} alt={getCompanyName(job)} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
-                    {getCompanyInitials(job.company?.name)}
+                    {getCompanyInitials(getCompanyName(job))}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -629,6 +701,12 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                       <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                         {job.title}
                       </h3>
+                      {job.job_source === 'external' && (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          External
+                        </Badge>
+                      )}
                       {job.is_featured && (
                         <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white animate-glow">
                           <Star className="w-3 h-3 mr-1" />
@@ -642,8 +720,25 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                         </Badge>
                       )}
                     </div>
-                    <p className="text-lg text-gray-600 font-medium mb-2">{job.company?.name}</p>
-                    <p className="text-gray-700 line-clamp-2 mb-4">{job.description}</p>
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-lg text-gray-800 font-semibold">{getCompanyName(job)}</p>
+                      {job.external_company_website && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                          asChild
+                        >
+                          <a href={job.external_company_website} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Visit
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                    <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                      <p className="text-gray-700 leading-relaxed line-clamp-3">{getJobDescription(job)}</p>
+                    </div>
                   </div>
                   
                   {/* Action Buttons */}
@@ -668,25 +763,36 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                       </TooltipContent>
                     </Tooltip>
                     
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-10 w-10 p-0 hover:bg-gray-50 transition-colors"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Share job</TooltipContent>
-                    </Tooltip>
+                    <ShareJob
+                      job={job}
+                      getCompanyName={getCompanyName}
+                      getCompanyLogo={getCompanyLogo}
+                      getJobDescription={getJobDescription}
+                      getJobLocation={getJobLocation}
+                      getSalaryDisplay={getSalaryDisplay}
+                      trigger={
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-10 w-10 p-0 hover:bg-gray-50 transition-colors"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Share job</TooltipContent>
+                        </Tooltip>
+                      }
+                    />
                   </div>
                 </div>
 
                 {/* Skills */}
                 {job.required_skills && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {job.required_skills.split(',').slice(0, 4).map((skill, skillIndex) => (
+                    <span className="text-sm font-medium text-gray-600 mr-2 self-center">Required Skills:</span>
+                    {job.required_skills.split(',').slice(0, 5).map((skill, skillIndex) => (
                       <Badge 
                         key={skillIndex} 
                         variant="outline" 
@@ -695,9 +801,9 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                         {skill.trim()}
                       </Badge>
                     ))}
-                    {job.required_skills.split(',').length > 4 && (
+                    {job.required_skills.split(',').length > 5 && (
                       <Badge variant="outline" className="bg-gray-50 text-gray-600">
-                        +{job.required_skills.split(',').length - 4} more
+                        +{job.required_skills.split(',').length - 5} more skills
                       </Badge>
                     )}
                   </div>
@@ -709,16 +815,13 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                     <div className="flex items-center text-gray-600">
                       <MapPin className="w-4 h-4 mr-2 text-blue-500" />
                       <span className="font-medium">
-                        {job.location?.is_remote ? 'Remote' : job.location?.display || 'Not specified'}
+                        {getJobLocation(job)}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-600">
                       <DollarSign className="w-4 h-4 mr-2 text-green-500" />
                       <span className="font-medium">
-                        {job.salary?.show_salary && job.salary?.min && job.salary?.max 
-                          ? `${formatCurrency(job.salary.min)} - ${formatCurrency(job.salary.max)}`
-                          : 'Not disclosed'
-                        }
+                        {getSalaryDisplay(job)}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-600">
@@ -772,10 +875,10 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
           <div className="flex items-start justify-between mb-4">
             {/* Company Avatar and Basic Info */}
             <div className="flex items-start gap-4 flex-1">
-              <Avatar className="w-14 h-14 border-2 border-white shadow-md">
-                <AvatarImage src={job.company?.logo} alt={job.company?.name} />
+              <Avatar className="w-14 h-14 border-2 border-white shadow-md ring-2 ring-blue-100">
+                <AvatarImage src={getCompanyLogo(job)} alt={getCompanyName(job)} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
-                  {getCompanyInitials(job.company?.name)}
+                  {getCompanyInitials(getCompanyName(job))}
                 </AvatarFallback>
               </Avatar>
               
@@ -785,10 +888,30 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                     {job.title}
                   </h3>
                 </div>
-                <p className="text-gray-600 font-medium mb-1">{job.company?.name}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <MapPin className="w-3 h-3" />
-                  <span>{job.location?.is_remote ? 'Remote' : job.location?.display || 'Not specified'}</span>
+                
+                {/* Enhanced Company Info */}
+                <div className="mb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building className="w-4 h-4 text-gray-400" />
+                    <p className="text-gray-800 font-semibold">{getCompanyName(job)}</p>
+                    {job.external_company_website && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-5 px-2 text-xs text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                        asChild
+                      >
+                        <a href={job.external_company_website} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="w-2 h-2 mr-1" />
+                          Visit
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <MapPin className="w-3 h-3" />
+                    <span>{getJobLocation(job)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -812,6 +935,12 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
 
           {/* Badges */}
           <div className="flex flex-wrap gap-2 mb-3">
+            {job.job_source === 'external' && (
+              <Badge className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
+                <ExternalLink className="w-3 h-3 mr-1" />
+                External
+              </Badge>
+            )}
             {job.is_featured && (
               <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white animate-glow text-xs">
                 <Star className="w-3 h-3 mr-1" />
@@ -832,24 +961,29 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
 
         <CardContent className="pt-0">
           <div className="space-y-4">
-            {/* Job Description */}
-            <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">{job.description}</p>
+            {/* Enhanced Job Description */}
+            <div className="bg-gray-50/50 rounded-lg p-3 border border-gray-100">
+              <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
+                {getJobDescription(job)}
+              </p>
+            </div>
             
             {/* Skills */}
             {job.required_skills && (
-              <div className="flex flex-wrap gap-1">
-                {job.required_skills.split(',').slice(0, 3).map((skill, skillIndex) => (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="text-xs font-medium text-gray-600 mr-2 self-center">Skills:</span>
+                {job.required_skills.split(',').slice(0, 4).map((skill, skillIndex) => (
                   <Badge 
                     key={skillIndex} 
                     variant="outline" 
-                    className="bg-blue-50/50 text-blue-700 border-blue-200 text-xs hover:bg-blue-100 transition-colors"
+                    className="bg-blue-50/50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors text-xs"
                   >
                     {skill.trim()}
                   </Badge>
                 ))}
-                {job.required_skills.split(',').length > 3 && (
+                {job.required_skills.split(',').length > 4 && (
                   <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
-                    +{job.required_skills.split(',').length - 3}
+                    +{job.required_skills.split(',').length - 4} more
                   </Badge>
                 )}
               </div>
@@ -861,10 +995,7 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                 <div className="flex items-center text-gray-600">
                   <DollarSign className="w-3 h-3 mr-1 text-green-500" />
                   <span className="font-medium">
-                    {job.salary?.show_salary && job.salary?.min && job.salary?.max 
-                      ? `${formatCurrency(job.salary.min, true)} - ${formatCurrency(job.salary.max, true)}`
-                      : 'Not disclosed'
-                    }
+                    {getSalaryDisplay(job)}
                   </span>
                 </div>
                 <div className="flex items-center text-gray-600">
@@ -887,13 +1018,23 @@ const JobCard = ({ job, index, viewMode, isBookmarked, onToggleBookmark, isAuthe
                   >
                     <Eye className="w-3 h-3 text-gray-400" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-gray-50 transition-colors"
-                  >
-                    <Share2 className="w-3 h-3 text-gray-400" />
-                  </Button>
+                  <ShareJob
+                    job={job}
+                    getCompanyName={getCompanyName}
+                    getCompanyLogo={getCompanyLogo}
+                    getJobDescription={getJobDescription}
+                    getJobLocation={getJobLocation}
+                    getSalaryDisplay={getSalaryDisplay}
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 hover:bg-gray-50 transition-colors"
+                      >
+                        <Share2 className="w-3 h-3 text-gray-400" />
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             </div>

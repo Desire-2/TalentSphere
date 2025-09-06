@@ -35,7 +35,7 @@ const ExternalAdminLayout = () => {
     }
   };
 
-  const navigation = [
+    const navigation = [
     {
       name: 'Dashboard',
       href: '/external-admin',
@@ -45,37 +45,32 @@ const ExternalAdminLayout = () => {
     {
       name: 'External Jobs',
       href: '/external-admin/jobs',
-      icon: Briefcase,
-      badge: 'Manage'
+      icon: Briefcase
     },
     {
       name: 'Create Job',
       href: '/external-admin/jobs/create',
-      icon: Plus,
-      badge: 'New'
+      icon: Plus
+    },
+    {
+      name: 'Scholarships',
+      href: '/external-admin/scholarships',
+      icon: Users
+    },
+    {
+      name: 'Create Scholarship',
+      href: '/external-admin/scholarships/create',
+      icon: Plus
     },
     {
       name: 'Analytics',
       href: '/external-admin/analytics',
-      icon: BarChart3,
-      badge: 'Insights'
+      icon: BarChart3
     },
     {
-      name: 'Templates',
+      name: 'Job Templates',
       href: '/external-admin/templates',
-      icon: FileText,
-      badge: 'Templates'
-    },
-    {
-      name: 'Import Jobs',
-      href: '/external-admin/jobs/import',
-      icon: Upload,
-      badge: 'Bulk'
-    },
-    {
-      name: 'Applications',
-      href: '/external-admin/applications',
-      icon: Users
+      icon: FileText
     },
     {
       name: 'External Sources',

@@ -22,15 +22,18 @@ try:
         app.config['DEBUG'] = False
         logger.info("Production mode enabled")
     
-    # Try to initialize database on startup
-    try:
-        with app.app_context():
-            from src.models.user import db
-            db.create_all()
-            logger.info("Database tables initialized successfully")
-    except Exception as db_error:
-        logger.warning(f"Database initialization failed: {db_error}")
-        logger.info("Database will be initialized on first request")
+    # Try to initialize database on startup only if explicitly requested
+    if os.getenv('INIT_DB_ON_STARTUP', 'false').lower() == 'true':
+        try:
+            with app.app_context():
+                from src.models.user import db
+                db.create_all()
+                logger.info("Database tables initialized successfully")
+        except Exception as db_error:
+            logger.warning(f"Database initialization failed: {db_error}")
+            logger.info("Database will be initialized on first request")
+    else:
+        logger.info("Database initialization deferred to first API request")
         
 except Exception as e:
     logger.error(f"Failed to import Flask application: {e}")

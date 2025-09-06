@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# start.sh - Startup script with environment validation
+# start.sh - Optimized Startup script with performance enhancements
 
 set -o errexit  # exit on error
 
-echo "🚀 Starting TalentSphere Backend..."
-echo "=" * 50
+echo "🚀 Starting TalentSphere Backend (Optimized)..."
+echo "=================================================="
 
 # Activate virtual environment if not already active
 if [[ "$VIRTUAL_ENV" == "" ]]; then
@@ -48,6 +48,10 @@ OPTIONAL_VARS=(
     "JWT_SECRET_KEY"
     "PORT"
     "CORS_ORIGINS"
+    "REDIS_URL"
+    "SLOW_QUERY_THRESHOLD"
+    "DB_POOL_SIZE"
+    "DB_MAX_OVERFLOW"
 )
 
 # Check required variables
@@ -99,6 +103,18 @@ for var in "${OPTIONAL_VARS[@]}"; do
                 # Don't set default here, we'll handle it later
                 echo "  ⚪ $var: Not set (will auto-detect)"
                 ;;
+            "SLOW_QUERY_THRESHOLD")
+                export SLOW_QUERY_THRESHOLD="1.0"
+                echo "  🔧 $var: 1.0 (default)"
+                ;;
+            "DB_POOL_SIZE")
+                export DB_POOL_SIZE="10"
+                echo "  🔧 $var: 10 (default)"
+                ;;
+            "DB_MAX_OVERFLOW")
+                export DB_MAX_OVERFLOW="20"
+                echo "  🔧 $var: 20 (default)"
+                ;;
             *)
                 echo "  ⚪ $var: Not set (optional)"
                 ;;
@@ -141,6 +157,31 @@ else
     echo "✅ gunicorn is available"
 fi
 
+# Run database optimization if not already done
+echo ""
+echo "⚡ Running performance optimizations..."
+if [ -f "optimize_database.py" ]; then
+    echo "🗄️  Optimizing database..."
+    python optimize_database.py || echo "⚠️  Database optimization failed - continuing with startup"
+else
+    echo "⚠️  Database optimization script not found"
+fi
+
+# Check Redis connection (optional)
+if [[ -n "$REDIS_URL" ]]; then
+    echo "🔴 Testing Redis connection..."
+    python -c "
+try:
+    import redis
+    r = redis.from_url('${REDIS_URL}')
+    r.ping()
+    print('  ✅ Redis connection successful')
+except Exception as e:
+    print(f'  ⚠️  Redis connection failed: {e}')
+    print('  💡 Caching will be disabled')
+" || echo "  ⚠️  Redis test failed - caching disabled"
+fi
+
 # Test database connection (optional)
 if [[ "${FLASK_ENV}" != "production" ]]; then
     echo ""
@@ -162,26 +203,43 @@ fi
 
 # Start the server
 echo ""
-echo "🚀 Starting server with gunicorn..."
+echo "🚀 Starting optimized server with gunicorn..."
 echo "🌐 Server will be available at: http://0.0.0.0:${PORT:-5000}"
+echo "📊 Performance monitoring available with: python monitor_performance.py"
 echo ""
 
-# Use different configurations for development vs production
-if [[ "${FLASK_ENV}" == "production" ]]; then
-    exec gunicorn --bind 0.0.0.0:${PORT:-5000} \
-        --workers 2 \
-        --timeout 120 \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level info \
-        wsgi:app
+# Set performance environment variables
+export PYTHONUNBUFFERED=1
+export PYTHONOPTIMIZE=1
+
+# Use optimized Gunicorn configuration if available
+if [ -f "gunicorn.conf.py" ]; then
+    echo "📈 Using optimized Gunicorn configuration"
+    exec gunicorn -c gunicorn.conf.py wsgi:app
 else
-    exec gunicorn --bind 0.0.0.0:${PORT:-5000} \
-        --workers 1 \
-        --timeout 60 \
-        --reload \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level debug \
-        wsgi:app
+    echo "⚠️  Optimized Gunicorn config not found, using performance settings"
+    # Use different configurations for development vs production
+    if [[ "${FLASK_ENV}" == "production" ]]; then
+        exec gunicorn --bind 0.0.0.0:${PORT:-5000} \
+            --workers $(python -c "import multiprocessing; print(multiprocessing.cpu_count() * 2 + 1)") \
+            --worker-class sync \
+            --timeout 30 \
+            --keepalive 2 \
+            --max-requests 1000 \
+            --max-requests-jitter 100 \
+            --preload \
+            --access-logfile - \
+            --error-logfile - \
+            --log-level info \
+            wsgi:app
+    else
+        exec gunicorn --bind 0.0.0.0:${PORT:-5000} \
+            --workers 2 \
+            --timeout 60 \
+            --reload \
+            --access-logfile - \
+            --error-logfile - \
+            --log-level debug \
+            wsgi:app
+    fi
 fi

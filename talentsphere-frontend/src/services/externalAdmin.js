@@ -59,6 +59,46 @@ export const externalAdminService = {
     return response;
   },
 
+  // Copy job link to clipboard
+  copyJobLink: async (jobId) => {
+    const baseUrl = window.location.origin;
+    const jobUrl = `${baseUrl}/jobs/${jobId}`;
+    
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(jobUrl);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = jobUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      return { success: true, url: jobUrl };
+    } catch (error) {
+      console.error('Failed to copy job link:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Duplicate external job
+  duplicateExternalJob: async (id) => {
+    try {
+      const response = await api.post(`/jobs/${id}/duplicate`);
+      
+      // Return the job data from the response
+      return response.job || response;
+    } catch (error) {
+      console.error('Failed to duplicate job:', error);
+      throw error;
+    }
+  },
+
   // Get applications for external job
   getJobApplications: async (jobId, params = {}) => {
     const queryParams = new URLSearchParams();

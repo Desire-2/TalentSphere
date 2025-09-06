@@ -316,3 +316,72 @@ input, textarea, select {
     transform: scale(1) translateY(0);
   }
 }
+
+/* Edit Job Form Styles */
+.edit-job-form .enhanced-card {
+  transition: all 0.2s ease;
+}
+
+.edit-job-form .enhanced-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.edit-job-form .form-field input,
+.edit-job-form .form-field textarea,
+.edit-job-form .form-field select {
+  transition: all 0.2s ease;
+}
+
+.edit-job-form .form-field input:focus,
+.edit-job-form .form-field textarea:focus {
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
+  border-color: rgb(59 130 246);
+}
+
+.edit-job-form .gradient-button {
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.edit-job-form .editor-selector {
+  backdrop-filter: blur(10px);
+  background-color: rgba(249, 250, 251, 0.8);
+}
+
+.edit-job-form .editor-toggle-btn {
+  backdrop-filter: blur(5px);
+}
+
+.edit-job-form .action-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-job-form .action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.edit-job-form .action-button:hover::before {
+  left: 100%;
+}
+
+.edit-job-form .loading-action {
+  animation: pulse 1.5s ease-in-out infinite;
+}

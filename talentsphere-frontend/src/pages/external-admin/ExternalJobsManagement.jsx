@@ -13,7 +13,17 @@ import {
   MapPin,
   Calendar,
   DollarSign,
-  Users
+  Users,
+  Archive,
+  ArchiveRestore,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Download,
+  Share2,
+  Star,
+  TrendingUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -21,14 +31,23 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../../components/ui/dropdown-menu';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../../components/ui/pagination';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import { externalAdminService } from '../../services/externalAdmin';
 import { toast } from 'sonner';
+import './ExternalJobsManagement.css';
+// Import the new components
+import { JobStatusBadge, JobTypeBadge, ExperienceLevelBadge } from '../../components/external-admin/JobBadges';
+import { JobActionsDropdown, QuickJobActions } from '../../components/external-admin/JobActions';
 
 const ExternalJobsManagement = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({});
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     pages: 1,
@@ -91,54 +110,102 @@ const ExternalJobsManagement = () => {
 
   const handleStatusUpdate = async (jobId, newStatus) => {
     try {
+      setActionLoading(prev => ({ ...prev, [jobId]: 'status' }));
+      
       await externalAdminService.updateJobStatus(jobId, newStatus);
-      toast.success(`Job ${newStatus} successfully`);
-      fetchJobs();
+      
+      // Update job status in state
+      setJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.id === jobId ? { ...job, status: newStatus } : job
+        )
+      );
+
+      const statusMessages = {
+        'published': 'Job published successfully',
+        'archived': 'Job archived successfully',
+        'draft': 'Job saved as draft'
+      };
+
+      toast.success(statusMessages[newStatus] || 'Job status updated');
+      console.log('✅ Job status updated:', { jobId, newStatus });
+      
     } catch (error) {
-      console.error('Error updating job status:', error);
+      console.error('❌ Error updating job status:', error);
       toast.error('Failed to update job status');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [jobId]: null }));
+    }
+  };  const handleDeleteJob = async (jobId) => {
+    if (!jobId) return;
+    
+    try {
+      setActionLoading(prev => ({ ...prev, [jobId]: 'delete' }));
+      
+      await externalAdminService.deleteExternalJob(jobId);
+
+      // Remove job from state
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
+      
+      // Close dialog and reset state
+      setShowDeleteDialog(false);
+      setSelectedJob(null);
+      
+      // Show success message
+      toast.success('Job deleted successfully');
+      console.log('✅ Job deleted successfully');
+      
+    } catch (error) {
+      console.error('❌ Error deleting job:', error);
+      toast.error('Failed to delete job');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [jobId]: null }));
     }
   };
 
-  const handleDeleteJob = async (jobId) => {
-    if (window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
-      try {
-        await externalAdminService.deleteExternalJob(jobId);
-        toast.success('Job deleted successfully');
-        fetchJobs();
-      } catch (error) {
-        console.error('Error deleting job:', error);
-        toast.error('Failed to delete job');
+    // Enhanced handler functions  
+  const handleCopyJobLink = async (jobId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [jobId]: 'copy' }));
+      
+      const result = await externalAdminService.copyJobLink(jobId);
+      
+      if (result.success) {
+        toast.success('Job link copied to clipboard!');
+        console.log('✅ Job link copied:', result.url);
+      } else {
+        throw new Error(result.error);
       }
+      
+    } catch (error) {
+      console.error('❌ Error copying job link:', error);
+      toast.error('Failed to copy job link');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [jobId]: null }));
     }
   };
 
-  const getStatusBadgeVariant = (status) => {
-    switch (status) {
-      case 'published':
-        return 'default';
-      case 'draft':
-        return 'secondary';
-      case 'archived':
-        return 'outline';
-      default:
-        return 'secondary';
+  const handleDuplicateJob = async (jobId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [jobId]: 'duplicate' }));
+      
+      const duplicatedJob = await externalAdminService.duplicateExternalJob(jobId);
+      
+      // Add the duplicated job to the state
+      setJobs(prevJobs => [duplicatedJob, ...prevJobs]);
+      
+      toast.success('Job duplicated successfully!');
+      console.log('✅ Job duplicated successfully:', duplicatedJob.title);
+      
+    } catch (error) {
+      console.error('❌ Error duplicating job:', error);
+      toast.error('Failed to duplicate job');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [jobId]: null }));
     }
   };
 
-  const getExperienceLevelBadgeColor = (level) => {
-    switch (level) {
-      case 'entry':
-        return 'bg-green-100 text-green-800';
-      case 'mid':
-        return 'bg-blue-100 text-blue-800';
-      case 'senior':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
+  // Loading state for component
   if (loading) {
     return (
       <div className="space-y-6">
@@ -160,22 +227,23 @@ const ExternalJobsManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">External Jobs</h1>
-          <p className="text-gray-600 mt-2">
-            Manage external job postings and their performance
-          </p>
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">External Jobs</h1>
+            <p className="text-gray-600 mt-2">
+              Manage external job postings and their performance
+            </p>
+          </div>
+          <Link to="/external-admin/jobs/create">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Job
+            </Button>
+          </Link>
         </div>
-        <Link to="/external-admin/jobs/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Job
-          </Button>
-        </Link>
-      </div>
 
       {/* Filters */}
       <Card>
@@ -243,7 +311,7 @@ const ExternalJobsManagement = () => {
           {jobs.length > 0 ? (
             <div className="space-y-4">
               {jobs.map((job) => (
-                <div key={job.id} className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
+                <div key={job.id} className="job-card border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       {/* Job Header */}
@@ -285,25 +353,19 @@ const ExternalJobsManagement = () => {
                         <div>
                           <span className="text-xs text-gray-500 uppercase tracking-wide">Status</span>
                           <div className="mt-1">
-                            <Badge variant={getStatusBadgeVariant(job.status)}>
-                              {job.status}
-                            </Badge>
+                            <JobStatusBadge status={job.status} />
                           </div>
                         </div>
                         <div>
                           <span className="text-xs text-gray-500 uppercase tracking-wide">Employment Type</span>
                           <div className="mt-1">
-                            <Badge variant="outline" className="capitalize">
-                              {job.employment_type}
-                            </Badge>
+                            <JobTypeBadge type={job.employment_type} />
                           </div>
                         </div>
                         <div>
                           <span className="text-xs text-gray-500 uppercase tracking-wide">Experience</span>
                           <div className="mt-1">
-                            <Badge className={`capitalize ${getExperienceLevelBadgeColor(job.experience_level)}`}>
-                              {job.experience_level}
-                            </Badge>
+                            <ExperienceLevelBadge level={job.experience_level} />
                           </div>
                         </div>
                         <div>
@@ -316,7 +378,7 @@ const ExternalJobsManagement = () => {
                       </div>
 
                       {/* Job Stats */}
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <div className="job-stats flex items-center space-x-6 text-sm text-gray-600">
                         <span className="flex items-center">
                           <Eye className="h-4 w-4 mr-1" />
                           {job.statistics?.view_count || 0} views
@@ -345,44 +407,37 @@ const ExternalJobsManagement = () => {
                       </div>
                     </div>
 
-                    {/* Actions Menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                    {/* Enhanced Action Buttons */}
+                    <div className="flex items-center space-x-2">
+                      {/* Quick Action Buttons */}
+                      <QuickJobActions 
+                        job={job}
+                        actionLoading={actionLoading}
+                        onStatusUpdate={handleStatusUpdate}
+                        onCopyLink={handleCopyJobLink}
+                      />
+
+                      {/* More Actions Dropdown */}
+                      <JobActionsDropdown 
+                        job={job}
+                        actionLoading={actionLoading}
+                        onStatusUpdate={handleStatusUpdate}
+                        onCopyLink={handleCopyJobLink}
+                        onDuplicate={handleDuplicateJob}
+                        onDelete={(selectedJob) => {
+                          setSelectedJob(selectedJob);
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-gray-100 transition-all duration-200"
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={`/jobs/${job.id}`} className="flex items-center">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Job
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={`/external-admin/jobs/${job.id}/edit`} className="flex items-center">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Job
-                          </Link>
-                        </DropdownMenuItem>
-                        {job.status === 'published' ? (
-                          <DropdownMenuItem onClick={() => handleStatusUpdate(job.id, 'archived')}>
-                            Archive Job
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => handleStatusUpdate(job.id, 'published')}>
-                            Publish Job
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteJob(job.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Job
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </JobActionsDropdown>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -453,7 +508,63 @@ const ExternalJobsManagement = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              Confirm Job Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete the job "{selectedJob?.title}"? 
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
+                <p className="text-red-800 text-sm font-medium">
+                  ⚠️ This action cannot be undone
+                </p>
+                <ul className="text-red-700 text-sm mt-2 space-y-1">
+                  <li>• The job listing will be permanently removed</li>
+                  <li>• All applications will be deleted</li>
+                  <li>• Analytics data will be lost</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setSelectedJob(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDeleteJob(selectedJob?.id)}
+              disabled={actionLoading[selectedJob?.id] === 'delete'}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {actionLoading[selectedJob?.id] === 'delete' ? (
+                <>
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Job
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 };
 

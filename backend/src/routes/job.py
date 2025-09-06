@@ -1,23 +1,40 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import re
-from sqlalchemy import or_, and_, desc, asc
+import os
+from sqlalchemy import or_, and_, desc, asc, func
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.user import db, EmployerProfile
 from src.models.job import Job, JobCategory, JobBookmark, JobAlert
 from src.models.company import Company
 from src.routes.auth import token_required, role_required
+from src.utils.cache import cached, get_cached_featured_jobs, get_cached_job_categories, invalidate_job_caches
 
 job_bp = Blueprint('job', __name__)
 
 @job_bp.route('/public/featured-jobs', methods=['GET'])
 def get_public_featured_jobs():
-    """Get featured jobs for public display"""
+    """Get featured jobs for public display (cached)"""
     try:
         limit = min(request.args.get('limit', 10, type=int), 50)
         
-        # Get featured jobs with company details
-        featured_jobs = Job.query.join(Company).filter(
+        # Use cached version for better performance
+        try:
+            jobs_list = get_cached_featured_jobs(limit)
+            return jsonify({
+                'featured_jobs': jobs_list,
+                'total': len(jobs_list),
+                'cached': True
+            }), 200
+        except:
+            # Fallback to database query if cache fails
+            pass
+        
+        # Optimized query with proper joins
+        featured_jobs = Job.query.options(
+            joinedload(Job.company)
+        ).filter(
             Job.status == 'published',
             Job.is_active == True,
             Job.is_featured == True,
@@ -27,15 +44,17 @@ def get_public_featured_jobs():
         ).limit(limit).all()
         
         jobs_list = []
+        view_count_updates = []
+        
         for job in featured_jobs:
-            # Increment view count
-            job.view_count = (job.view_count or 0) + 1
+            # Batch view count updates instead of individual updates
+            view_count_updates.append((job.id, 1))
             
             job_data = {
                 'id': job.id,
                 'title': job.title,
-                'company': job.company.name,
-                'company_logo': job.company.logo_url,
+                'company': job.company.name if job.company else job.external_company_name,
+                'company_logo': job.company.logo_url if job.company else job.external_company_logo,
                 'location': f"{job.city}, {job.state}" if job.city and job.state else 'Remote',
                 'salary_min': job.salary_min,
                 'salary_max': job.salary_max,
@@ -50,11 +69,15 @@ def get_public_featured_jobs():
             }
             jobs_list.append(job_data)
         
-        db.session.commit()
+        # Bulk update view counts
+        if view_count_updates:
+            from src.utils.db_optimization import BulkOperations
+            BulkOperations.bulk_update_view_counts(view_count_updates)
         
         return jsonify({
             'featured_jobs': jobs_list,
-            'total': len(jobs_list)
+            'total': len(jobs_list),
+            'cached': False
         }), 200
         
     except Exception as e:
@@ -75,10 +98,23 @@ def generate_job_slug(title, company_name):
 
 @job_bp.route('/job-categories', methods=['GET'])
 def get_job_categories():
-    """Get all job categories"""
+    """Get all job categories (cached)"""
     try:
         include_children = request.args.get('include_children', type=bool, default=False)
         parent_only = request.args.get('parent_only', type=bool, default=False)
+        
+        # Use cached version for better performance
+        try:
+            categories = get_cached_job_categories(include_children)
+            if parent_only:
+                categories = [cat for cat in categories if not cat.get('parent_id')]
+            return jsonify({
+                'categories': categories,
+                'cached': True
+            }), 200
+        except:
+            # Fallback to database query
+            pass
         
         query = JobCategory.query.filter_by(is_active=True)
         
@@ -88,7 +124,8 @@ def get_job_categories():
         categories = query.order_by(JobCategory.display_order, JobCategory.name).all()
         
         return jsonify({
-            'categories': [cat.to_dict(include_children=include_children) for cat in categories]
+            'categories': [cat.to_dict(include_children=include_children) for cat in categories],
+            'cached': False
         }), 200
         
     except Exception as e:
@@ -118,17 +155,33 @@ def get_jobs():
         sort_by = request.args.get('sort_by', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
         
-        # Build query
-        query = Job.query.filter_by(status='published', is_active=True)
+        # Build optimized query with proper joins
+        query = Job.query.options(
+            joinedload(Job.company),
+            joinedload(Job.category)
+        ).filter_by(status='published', is_active=True)
         
-        # Apply filters
+        # Apply filters with optimized conditions
         if search:
-            search_filter = or_(
-                Job.title.ilike(f'%{search}%'),
-                Job.description.ilike(f'%{search}%'),
-                Job.summary.ilike(f'%{search}%'),
-                Job.required_skills.ilike(f'%{search}%')
-            )
+            # Use full-text search for PostgreSQL, simple LIKE for SQLite
+            database_url = os.getenv('DATABASE_URL', '')
+            if database_url.startswith(('postgresql://', 'postgres://')):
+                # PostgreSQL full-text search
+                search_vector = func.to_tsvector('english', 
+                    func.coalesce(Job.title, '') + ' ' + 
+                    func.coalesce(Job.description, '') + ' ' + 
+                    func.coalesce(Job.required_skills, '')
+                )
+                search_query = func.plainto_tsquery('english', search)
+                search_filter = search_vector.match(search_query)
+            else:
+                # SQLite LIKE search
+                search_filter = or_(
+                    Job.title.ilike(f'%{search}%'),
+                    Job.description.ilike(f'%{search}%'),
+                    Job.summary.ilike(f'%{search}%'),
+                    Job.required_skills.ilike(f'%{search}%')
+                )
             query = query.filter(search_filter)
         
         if category_id:
@@ -513,9 +566,12 @@ def update_job(current_user, job_id):
             job.posted_by != current_user.id):
             return jsonify({'error': 'You can only update your own job postings'}), 403
         
+        # External admins can update external jobs (jobs where job_source='external') 
+        # and their own jobs, but not internal company jobs posted by employers
         if (current_user.role == 'external_admin' and 
-            job.posted_by != current_user.id):
-            return jsonify({'error': 'You can only update your own job postings'}), 403
+            job.posted_by != current_user.id and 
+            job.job_source != 'external'):
+            return jsonify({'error': 'You can only update external jobs or your own job postings'}), 403
         
         data = request.get_json()
         
@@ -617,9 +673,12 @@ def delete_job(current_user, job_id):
             job.posted_by != current_user.id):
             return jsonify({'error': 'You can only delete your own job postings'}), 403
         
+        # External admins can delete external jobs (jobs where job_source='external') 
+        # and their own jobs, but not internal company jobs posted by employers
         if (current_user.role == 'external_admin' and 
-            job.posted_by != current_user.id):
-            return jsonify({'error': 'You can only delete your own job postings'}), 403
+            job.posted_by != current_user.id and 
+            job.job_source != 'external'):
+            return jsonify({'error': 'You can only delete external jobs or your own job postings'}), 403
         
         # Soft delete by setting is_active to False
         job.is_active = False
@@ -702,6 +761,92 @@ def bulk_job_action(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to perform bulk action', 'details': str(e)}), 500
+
+@job_bp.route('/jobs/<int:job_id>/duplicate', methods=['POST'])
+@token_required
+@role_required('employer', 'admin', 'external_admin')
+def duplicate_job(current_user, job_id):
+    """Duplicate an existing job"""
+    try:
+        # Get the original job
+        job = Job.query.get(job_id)
+        
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        # Check permissions
+        if (current_user.role in ['employer', 'external_admin'] and 
+            job.posted_by != current_user.id):
+            return jsonify({'error': 'You can only duplicate your own job postings'}), 403
+        
+        # Generate unique slug for the duplicate
+        original_title = job.title + " (Copy)"
+        company_name = job.company.name if job.company else job.external_company_name
+        slug = generate_job_slug(original_title, company_name or "")
+        counter = 1
+        original_slug = slug
+        while Job.query.filter_by(slug=slug).first():
+            slug = f"{original_slug}-{counter}"
+            counter += 1
+        
+        # Create duplicate job with modified fields
+        duplicate_job = Job(
+            company_id=job.company_id,
+            category_id=job.category_id,
+            posted_by=current_user.id,
+            title=original_title,
+            slug=slug,
+            description=job.description,
+            summary=job.summary,
+            employment_type=job.employment_type,
+            experience_level=job.experience_level,
+            education_requirement=job.education_requirement,
+            location_type=job.location_type,
+            city=job.city,
+            state=job.state,
+            country=job.country,
+            is_remote=job.is_remote,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
+            salary_currency=job.salary_currency,
+            salary_period=job.salary_period,
+            salary_negotiable=job.salary_negotiable,
+            show_salary=job.show_salary,
+            benefits=job.benefits,
+            required_skills=job.required_skills,
+            years_experience_min=job.years_experience_min,
+            years_experience_max=job.years_experience_max,
+            application_type=job.application_type,
+            application_url=job.application_url,
+            application_email=job.application_email,
+            application_instructions=job.application_instructions,
+            status='draft',  # Set as draft for review
+            expires_at=datetime.utcnow() + timedelta(days=30),  # Set new expiry
+            # External job specific fields
+            job_source=job.job_source,
+            external_company_name=job.external_company_name,
+            external_company_website=job.external_company_website,
+            external_company_logo=job.external_company_logo,
+            source_url=job.source_url
+        )
+        
+        db.session.add(duplicate_job)
+        db.session.commit()
+        
+        # Return the duplicated job with full details
+        job_data = duplicate_job.to_dict(include_details=True, include_stats=True)
+        job_data['category'] = duplicate_job.category.to_dict() if duplicate_job.category else None
+        job_data['company'] = duplicate_job.company.to_dict() if duplicate_job.company else None
+        job_data['poster'] = duplicate_job.poster.to_dict() if duplicate_job.poster else None
+        
+        return jsonify({
+            'message': 'Job duplicated successfully',
+            'job': job_data
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to duplicate job', 'details': str(e)}), 500
 
 @job_bp.route('/employer/applications', methods=['GET'])
 @token_required

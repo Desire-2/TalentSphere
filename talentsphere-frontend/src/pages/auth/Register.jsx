@@ -65,48 +65,53 @@ const baseSchema = z.object({
   role: z.enum(['job_seeker', 'employer'], {
     required_error: 'Please select your role'
   }),
-  phone: z.string().optional(),
+  phone: z.string().optional().or(z.literal('')),
   terms_accepted: z.boolean().refine(val => val === true, {
     message: 'You must accept the terms and conditions'
   })
 });
 
 const jobSeekerSchema = baseSchema.extend({
-  desired_position: z.string().optional(),
-  years_of_experience: z.number().min(0).optional(),
-  education_level: z.string().optional(),
-  skills: z.string().optional()
+  desired_position: z.string().optional().or(z.literal('')),
+  years_of_experience: z.number().min(0).optional().or(z.literal('')),
+  education_level: z.string().optional().or(z.literal('')),
+  skills: z.string().optional().or(z.literal(''))
 });
 
 const employerSchema = baseSchema.extend({
   // Personal/Professional Info
-  job_title: z.string().min(2, 'Job title is required'),
-  department: z.string().optional(),
-  work_phone: z.string().optional(),
-  work_email: z.string().email('Please enter a valid work email').optional().or(z.literal('')),
-  hiring_authority: z.boolean().default(false),
+  job_title: z.string().min(1, 'Job title is required'),
+  department: z.string().optional().or(z.literal('')),
+  work_phone: z.string().optional().or(z.literal('')),
+  work_email: z.string().optional().or(z.literal('')),
+  hiring_authority: z.boolean().optional().default(false),
   
   // Company Info
-  company_name: z.string().min(2, 'Company name is required'),
-  company_website: z.string().url('Please enter a valid website URL').optional().or(z.literal('')),
-  company_email: z.string().email('Please enter a valid company email').optional().or(z.literal('')),
-  company_phone: z.string().optional(),
-  company_description: z.string().min(10, 'Please provide a brief company description').optional().or(z.literal('')),
+  company_name: z.string().min(1, 'Company name is required'),
+  company_website: z.string().optional().or(z.literal('')),
+  company_email: z.string().optional().or(z.literal('')),
+  company_phone: z.string().optional().or(z.literal('')),
+  company_description: z.string().optional().or(z.literal('')),
   industry: z.string().min(1, 'Please select an industry'),
   company_size: z.string().min(1, 'Please select company size'),
   company_type: z.string().min(1, 'Please select company type'),
-  founded_year: z.number().min(1800).max(new Date().getFullYear()).optional(),
+  founded_year: z.number().optional().or(z.literal('')),
   
   // Address
-  address_line1: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  postal_code: z.string().optional()
+  address_line1: z.string().optional().or(z.literal('')),
+  city: z.string().optional().or(z.literal('')),
+  state: z.string().optional().or(z.literal('')),
+  country: z.string().optional().or(z.literal('')),
+  postal_code: z.string().optional().or(z.literal(''))
 });
 
 const getSchema = (role) => {
-  return role === 'employer' ? employerSchema : jobSeekerSchema;
+  if (role === 'employer') {
+    return employerSchema;
+  } else if (role === 'job_seeker') {
+    return jobSeekerSchema;
+  }
+  return baseSchema;
 };
 
 const Register = () => {
@@ -141,7 +146,8 @@ const Register = () => {
       hiring_authority: false,
       years_of_experience: 0,
       founded_year: new Date().getFullYear()
-    }
+    },
+    mode: 'onChange'
   });
 
   const selectedRole = watch('role');
@@ -153,11 +159,17 @@ const Register = () => {
   // Update resolver when role changes
   useEffect(() => {
     if (selectedRole) {
-      // Update the form with the new schema
+      // Get current form data
+      const currentData = watch();
+      // Update the form with the new schema but preserve current data
       const newSchema = getSchema(selectedRole);
-      reset(watch(), { resolver: zodResolver(newSchema) });
+      reset(currentData, { 
+        resolver: zodResolver(newSchema),
+        keepValues: true,
+        keepErrors: false
+      });
     }
-  }, [selectedRole, reset]);
+  }, [selectedRole, reset, watch]);
 
   const industries = [
     'Technology', 'Healthcare', 'Finance', 'Education', 'Retail',
@@ -287,6 +299,23 @@ const Register = () => {
     }
   };
 
+  const canSubmitForm = () => {
+    if (selectedRole === 'employer') {
+      const employerFields = ['role', 'first_name', 'last_name', 'email', 'password', 'job_title', 'company_name', 'industry', 'company_size', 'company_type'];
+      return employerFields.every(field => {
+        const value = watch(field);
+        return value !== undefined && value !== '' && value !== null;
+      }) && watch('terms_accepted');
+    } else if (selectedRole === 'job_seeker') {
+      const jobSeekerFields = ['role', 'first_name', 'last_name', 'email', 'password'];
+      return jobSeekerFields.every(field => {
+        const value = watch(field);
+        return value !== undefined && value !== '' && value !== null;
+      }) && watch('terms_accepted');
+    }
+    return false;
+  };
+
   const prevStep = () => {
     setCurrentStep(1);
   };
@@ -295,19 +324,78 @@ const Register = () => {
     try {
       clearError();
       
+      console.log('🔍 Form submission debug:');
+      console.log('Selected role:', selectedRole);
+      console.log('All form data:', data);
+      console.log('Watch values check:', {
+        role: watch('role'),
+        job_title: watch('job_title'),
+        company_name: watch('company_name'),
+        industry: watch('industry'),
+        company_size: watch('company_size'),
+        company_type: watch('company_type')
+      });
+      
       // Add profile picture if uploaded
       if (profilePicture) {
-        // In a real app, you'd upload to cloud storage first
         data.profile_picture = profilePictureUrl;
       }
       
       // Add marketing consent
       data.marketing_consent = agreedToMarketing;
       
-      await registerUser(data);
+      // Basic validation for required fields
+      if (data.role === 'employer') {
+        console.log('🏢 Validating employer data...');
+        
+        // Get the latest values directly from the form
+        const formValues = {
+          job_title: watch('job_title'),
+          company_name: watch('company_name'),
+          industry: watch('industry'),
+          company_size: watch('company_size'),
+          company_type: watch('company_type')
+        };
+        
+        console.log('Form values from watch:', formValues);
+        
+        // Update data with latest form values
+        Object.assign(data, formValues);
+        
+        console.log('Updated data with form values:', {
+          job_title: data.job_title,
+          company_name: data.company_name,
+          industry: data.industry,
+          company_size: data.company_size,
+          company_type: data.company_type
+        });
+        
+        // Check if any required fields are missing
+        const requiredFields = ['job_title', 'company_name', 'industry', 'company_size', 'company_type'];
+        const missingFields = requiredFields.filter(field => !data[field] || data[field] === '');
+        
+        if (missingFields.length > 0) {
+          console.error('❌ Missing required employer fields:', missingFields);
+          // Don't return, let's try to continue and see what the backend says
+        } else {
+          console.log('✅ All required employer fields are present');
+        }
+      }
+      
+      // Clean up the data - remove empty strings and convert them to null
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key, 
+          value === '' ? null : value
+        ])
+      );
+      
+      console.log('🧹 Cleaned data for submission:', cleanedData);
+      
+      await registerUser(cleanedData);
       navigate('/dashboard');
     } catch (error) {
-      // Error is handled by the store
+      console.error('💥 Registration error:', error);
     }
   };
 
@@ -1142,7 +1230,11 @@ const Register = () => {
                             <Label htmlFor="industry" className="flex items-center gap-2">
                               Industry <span className="text-red-500">*</span>
                             </Label>
-                            <Select onValueChange={(value) => setValue('industry', value)}>
+                            <Select onValueChange={(value) => {
+                              console.log('🏭 Industry selected:', value);
+                              setValue('industry', value);
+                              trigger('industry');
+                            }}>
                               <SelectTrigger className={errors.industry ? 'border-red-500' : 'border-gray-300'}>
                                 <SelectValue placeholder="Select industry" />
                               </SelectTrigger>
@@ -1154,6 +1246,8 @@ const Register = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {/* Hidden input for form registration */}
+                            <input type="hidden" {...register('industry')} />
                             {errors.industry && (
                               <p className="text-sm text-red-600 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4" />
@@ -1166,7 +1260,11 @@ const Register = () => {
                             <Label htmlFor="company_size" className="flex items-center gap-2">
                               Company Size <span className="text-red-500">*</span>
                             </Label>
-                            <Select onValueChange={(value) => setValue('company_size', value)}>
+                            <Select onValueChange={(value) => {
+                              console.log('📏 Company size selected:', value);
+                              setValue('company_size', value);
+                              trigger('company_size');
+                            }}>
                               <SelectTrigger className={errors.company_size ? 'border-red-500' : 'border-gray-300'}>
                                 <SelectValue placeholder="Select company size" />
                               </SelectTrigger>
@@ -1178,6 +1276,8 @@ const Register = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {/* Hidden input for form registration */}
+                            <input type="hidden" {...register('company_size')} />
                             {errors.company_size && (
                               <p className="text-sm text-red-600 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4" />
@@ -1190,7 +1290,11 @@ const Register = () => {
                             <Label htmlFor="company_type" className="flex items-center gap-2">
                               Company Type <span className="text-red-500">*</span>
                             </Label>
-                            <Select onValueChange={(value) => setValue('company_type', value)}>
+                            <Select onValueChange={(value) => {
+                              console.log('🏢 Company type selected:', value);
+                              setValue('company_type', value);
+                              trigger('company_type');
+                            }}>
                               <SelectTrigger className={errors.company_type ? 'border-red-500' : 'border-gray-300'}>
                                 <SelectValue placeholder="Select company type" />
                               </SelectTrigger>
@@ -1202,6 +1306,8 @@ const Register = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {/* Hidden input for form registration */}
+                            <input type="hidden" {...register('company_type')} />
                             {errors.company_type && (
                               <p className="text-sm text-red-600 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4" />
@@ -1358,7 +1464,10 @@ const Register = () => {
 
                           <div className="space-y-2 sm:col-span-2">
                             <Label htmlFor="education_level">Education Level</Label>
-                            <Select onValueChange={(value) => setValue('education_level', value)}>
+                            <Select onValueChange={(value) => {
+                              setValue('education_level', value);
+                              trigger('education_level');
+                            }}>
                               <SelectTrigger className="border-gray-300">
                                 <SelectValue placeholder="Select education level" />
                               </SelectTrigger>
@@ -1370,6 +1479,8 @@ const Register = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {/* Hidden input for form registration */}
+                            <input type="hidden" {...register('education_level')} />
                           </div>
 
                           <div className="space-y-2 sm:col-span-2">
@@ -1404,9 +1515,9 @@ const Register = () => {
 
                     <Button
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isLoading || !canSubmitForm()}
                       className={`relative overflow-hidden group transition-all duration-500 transform ${
-                        isLoading 
+                        isLoading || !canSubmitForm()
                           ? 'bg-gray-400 cursor-not-allowed' 
                           : 'bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-2xl hover:shadow-green-500/30 hover:scale-105'
                       } text-white px-10 py-4 rounded-xl font-bold flex items-center gap-3 min-w-[200px] justify-center`}

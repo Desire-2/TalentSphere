@@ -87,7 +87,7 @@ def register():
         if data['role'] == 'employer':
             employer_required = ['job_title', 'company_name', 'industry', 'company_size', 'company_type']
             for field in employer_required:
-                if not data.get(field):
+                if not data.get(field) or (isinstance(data.get(field), str) and not data.get(field).strip()):
                     return jsonify({'error': f'{field} is required for employers'}), 400
         
         # Validate email format
@@ -214,11 +214,15 @@ def register():
         # Generate token
         token = user.generate_token()
         
+        # Send welcome email
+        welcome_email_sent = send_welcome_email(user)
+        
         # Prepare response data
         response_data = {
             'message': 'User registered successfully',
             'user': user.to_dict(),
-            'token': token
+            'token': token,
+            'welcome_email_sent': welcome_email_sent
         }
         
         # Add profile data
@@ -757,6 +761,175 @@ def deactivate_account(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to deactivate account', 'details': str(e)}), 500
+
+def send_welcome_email(user):
+    """Send welcome email to new users"""
+    try:
+        # Get email configuration from environment variables
+        smtp_server = os.getenv('SMTP_SERVER', 'smtp.mail.yahoo.com')
+        smtp_port = int(os.getenv('SMTP_PORT', '587'))
+        sender_email = os.getenv('SENDER_EMAIL', 'afritechbridge@yahoo.com')
+        sender_password = os.getenv('SENDER_PASSWORD')
+        sender_name = os.getenv('SENDER_NAME', 'TalentSphere Team')
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        
+        # Check if email configuration is complete
+        if not sender_password:
+            print("⚠️  EMAIL CONFIG MISSING: SENDER_PASSWORD not set in environment variables")
+            print(f"📧 Would send welcome email to: {user.email}")
+            return False  # Return False if email can't be sent
+        
+        # Create message
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Welcome to TalentSphere, {user.first_name}!"
+        message["From"] = f"{sender_name} <{sender_email}>"
+        message["To"] = user.email
+        
+        # Determine welcome message based on user role
+        if user.role == 'employer':
+            role_specific_content = """
+            <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1e40af; margin-top: 0;">🏢 Employer Features</h3>
+                <ul style="color: #374151; line-height: 1.6;">
+                    <li>Post unlimited job listings</li>
+                    <li>Access to our talent pool of qualified candidates</li>
+                    <li>Advanced applicant tracking system</li>
+                    <li>Company profile and branding tools</li>
+                    <li>Analytics and reporting dashboard</li>
+                </ul>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{}/dashboard" 
+                   style="background-color: #16a34a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                    Post Your First Job
+                </a>
+            </div>
+            """.format(frontend_url)
+        else:
+            role_specific_content = """
+            <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #15803d; margin-top: 0;">🎯 Job Seeker Features</h3>
+                <ul style="color: #374151; line-height: 1.6;">
+                    <li>Browse thousands of job opportunities</li>
+                    <li>Create a professional profile</li>
+                    <li>Get matched with relevant positions</li>
+                    <li>Track your applications</li>
+                    <li>Receive job alerts and notifications</li>
+                </ul>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{}/jobs" 
+                   style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                    Explore Jobs
+                </a>
+            </div>
+            """.format(frontend_url)
+        
+        # HTML email template
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to TalentSphere</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+            <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #2563eb; margin: 0; font-size: 32px;">🚀 TalentSphere</h1>
+                    <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 18px;">Your Journey Starts Here!</p>
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <h2 style="color: #374151; margin-bottom: 20px;">Hello {user.first_name}! 👋</h2>
+                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
+                        Welcome to TalentSphere! We're thrilled to have you join our community of talented professionals and forward-thinking employers.
+                    </p>
+                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
+                        Your account has been successfully created as a <strong style="color: #2563eb;">{user.role.replace('_', ' ').title()}</strong>. 
+                        You're now ready to explore all the amazing features we have to offer!
+                    </p>
+                </div>
+                
+                {role_specific_content}
+                
+                <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 30px 0;">
+                    <h3 style="color: #374151; margin-top: 0;">🎁 What's Next?</h3>
+                    <div style="color: #6b7280; line-height: 1.6;">
+                        <p style="margin-bottom: 10px;">✅ Complete your profile to get better matches</p>
+                        <p style="margin-bottom: 10px;">✅ Upload a professional photo</p>
+                        <p style="margin-bottom: 10px;">✅ Set up your preferences and notifications</p>
+                        <p style="margin-bottom: 0;">✅ Start connecting with the right opportunities!</p>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{frontend_url}/dashboard" 
+                       style="background-color: #8b5cf6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px; margin-right: 10px;">
+                        Go to Dashboard
+                    </a>
+                    <a href="{frontend_url}/profile" 
+                       style="background-color: #64748b; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                        Complete Profile
+                    </a>
+                </div>
+                
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; font-size: 14px; margin-bottom: 10px;">
+                        Need help getting started? Check out our resources:
+                    </p>
+                    <div style="text-align: center;">
+                        <a href="{frontend_url}/help" style="color: #2563eb; text-decoration: none; margin: 0 10px; font-size: 14px;">Help Center</a>
+                        <a href="{frontend_url}/contact" style="color: #2563eb; text-decoration: none; margin: 0 10px; font-size: 14px;">Contact Support</a>
+                        <a href="{frontend_url}/about" style="color: #2563eb; text-decoration: none; margin: 0 10px; font-size: 14px;">About Us</a>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        © 2024 TalentSphere. All rights reserved. | Made with ❤️ for connecting talent with opportunity
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create HTML part
+        html_part = MIMEText(html, "html")
+        message.attach(html_part)
+        
+        # Send email using SMTP
+        print(f"📧 Sending welcome email to: {user.email}")
+        
+        try:
+            # Connect to SMTP server
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()  # Enable TLS encryption
+            server.login(sender_email, sender_password)
+            
+            # Send email
+            server.sendmail(sender_email, user.email, message.as_string())
+            server.quit()
+            
+            print(f"✅ Welcome email sent successfully to {user.email}")
+            return True
+            
+        except smtplib.SMTPAuthenticationError:
+            print(f"❌ SMTP Authentication failed. Check email credentials for {sender_email}")
+            print("💡 For Yahoo Mail, make sure to use an App Password, not your regular password")
+            return False
+        except smtplib.SMTPException as e:
+            print(f"❌ SMTP error: {str(e)}")
+            return False
+        except Exception as e:
+            print(f"❌ Error sending email: {str(e)}")
+            return False
+        
+    except Exception as e:
+        print(f"Error sending welcome email: {str(e)}")
+        return False
 
 def send_reset_email(user_email, reset_token, user_name):
     """Send password reset email using environment configuration"""

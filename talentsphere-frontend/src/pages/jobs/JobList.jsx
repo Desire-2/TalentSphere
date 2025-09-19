@@ -82,14 +82,22 @@ const JobList = () => {
   const adTracking = useAdTracking();
 
   // Helper functions for job data handling
-  const getCompanyName = (job) => {
-    // Handle both internal jobs (with company object) and external jobs (with external_company_name)
-    return job.company?.name || job.external_company_name || 'Company Name';
-  };
-
   const getCompanyLogo = (job) => {
     // Handle both internal jobs (with company object) and external jobs (with external_company_logo)
+    // Prioritize external company logo for external jobs
+    if (job.job_source === 'external' && job.external_company_logo) {
+      return job.external_company_logo;
+    }
+    // Fallback to company logo or external logo
     return job.company?.logo || job.external_company_logo || null;
+  };
+
+  const getCompanyName = (job) => {
+    // Handle both internal jobs (with company object) and external jobs (with external_company_name)
+    if (job.job_source === 'external' && job.external_company_name) {
+      return job.external_company_name;
+    }
+    return job.company?.name || job.external_company_name || 'Company Name';
   };
 
   const getCompanyInitials = (companyName) => {
@@ -746,12 +754,23 @@ const JobCard = ({
             <div className="flex items-start gap-6">
               {/* Company Avatar */}
               <div className="flex-shrink-0">
-                <Avatar className="w-16 h-16 border-2 border-white shadow-md">
-                  <AvatarImage src={getCompanyLogo(job)} alt={getCompanyName(job)} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
-                    {getCompanyInitials(getCompanyName(job))}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="w-16 h-16 border-2 border-white shadow-md">
+                    <AvatarImage 
+                      src={getCompanyLogo(job)} 
+                      alt={getCompanyName(job)} 
+                      className={job.job_source === 'external' ? 'ring-2 ring-purple-200' : ''}
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                      {getCompanyInitials(getCompanyName(job))}
+                    </AvatarFallback>
+                  </Avatar>
+                  {job.job_source === 'external' && (
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                      <ExternalLink className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Job Details */}
@@ -936,12 +955,23 @@ const JobCard = ({
           <div className="flex items-start justify-between mb-4">
             {/* Company Avatar and Basic Info */}
             <div className="flex items-start gap-4 flex-1">
-              <Avatar className="w-14 h-14 border-2 border-white shadow-md ring-2 ring-blue-100">
-                <AvatarImage src={getCompanyLogo(job)} alt={getCompanyName(job)} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
-                  {getCompanyInitials(getCompanyName(job))}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-14 h-14 border-2 border-white shadow-md ring-2 ring-blue-100">
+                  <AvatarImage 
+                    src={getCompanyLogo(job)} 
+                    alt={getCompanyName(job)} 
+                    className={job.job_source === 'external' ? 'ring-2 ring-purple-200' : ''}
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                    {getCompanyInitials(getCompanyName(job))}
+                  </AvatarFallback>
+                </Avatar>
+                {job.job_source === 'external' && (
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                    <ExternalLink className="w-2 h-2 text-white" />
+                  </div>
+                )}
+              </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">

@@ -78,10 +78,79 @@ const ExternalJobTemplates = () => {
     fetchCategories();
   }, []);
 
+  // Refetch templates when search criteria change
+  useEffect(() => {
+    fetchTemplates();
+  }, [searchTerm, selectedCategory]);
+
+  // Create sample templates if none exist
+  const createSampleTemplates = async () => {
+    const sampleTemplates = [
+      {
+        name: 'Software Engineer Template',
+        description: 'Standard template for software engineering positions',
+        category_id: '1',
+        title: 'Senior Software Engineer',
+        summary: 'We are looking for an experienced software engineer to join our dynamic development team.',
+        job_description: 'As a Senior Software Engineer, you will be responsible for designing, developing, and maintaining high-quality software applications. You will work closely with cross-functional teams to deliver innovative solutions that meet our business objectives.',
+        requirements: '• Bachelor\'s degree in Computer Science or related field\n• 5+ years of experience in software development\n• Proficiency in modern programming languages\n• Experience with agile development methodologies',
+        preferred_skills: '• Experience with cloud platforms (AWS, Azure)\n• Knowledge of containerization (Docker, Kubernetes)\n• Familiarity with CI/CD pipelines',
+        employment_type: 'full-time',
+        experience_level: 'senior',
+        location_type: 'hybrid',
+        salary_min: '90000',
+        salary_max: '130000',
+        salary_currency: 'USD',
+        salary_period: 'yearly',
+        application_type: 'external',
+        application_url: 'https://company.com/careers/apply',
+        is_active: true,
+        tags: ['React', 'Node.js', 'JavaScript', 'MongoDB']
+      },
+      {
+        name: 'Marketing Manager Template',
+        description: 'Template for marketing management roles',
+        category_id: '2',
+        title: 'Digital Marketing Manager',
+        summary: 'Join our marketing team as a Digital Marketing Manager to lead our online marketing efforts.',
+        job_description: 'We are seeking a results-driven Digital Marketing Manager to develop and execute comprehensive digital marketing strategies. You will manage multiple channels and campaigns to drive brand awareness and customer acquisition.',
+        requirements: '• Bachelor\'s degree in Marketing, Business, or related field\n• 3+ years of digital marketing experience\n• Proficiency in marketing analytics tools\n• Strong project management skills',
+        preferred_skills: '• Experience with marketing automation platforms\n• Knowledge of SEO/SEM best practices\n• Familiarity with social media advertising',
+        employment_type: 'full-time',
+        experience_level: 'mid',
+        location_type: 'remote',
+        salary_min: '70000',
+        salary_max: '95000',
+        salary_currency: 'USD',
+        salary_period: 'yearly',
+        application_type: 'email',
+        application_email: 'jobs@company.com',
+        is_active: true,
+        tags: ['Digital Marketing', 'SEO', 'SEM', 'Analytics']
+      }
+    ];
+
+    try {
+      for (const template of sampleTemplates) {
+        await externalAdminService.createJobTemplate(template);
+      }
+      toast.success('Sample templates created successfully');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error creating sample templates:', error);
+    }
+  };
+
   const fetchTemplates = async (params = {}) => {
     try {
       setLoading(true);
-      const response = await externalAdminService.getJobTemplates(params);
+      // Add search and category filters to params
+      const searchParams = {
+        ...params,
+        search: searchTerm,
+        category_id: selectedCategory
+      };
+      const response = await externalAdminService.getJobTemplates(searchParams);
       setTemplates(response.templates || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -95,10 +164,47 @@ const ExternalJobTemplates = () => {
   const fetchCategories = async () => {
     try {
       const response = await externalAdminService.getJobCategories();
-      setCategories(response || []);
+      
+      // Default categories to use as fallback
+      const defaultCategories = [
+        { id: 1, name: 'Technology' },
+        { id: 2, name: 'Marketing' },
+        { id: 3, name: 'Sales' },
+        { id: 4, name: 'Customer Service' },
+        { id: 5, name: 'Finance' },
+        { id: 6, name: 'Human Resources' },
+        { id: 7, name: 'Operations' },
+        { id: 8, name: 'Design' }
+      ];
+      
+      // Use API response if available and non-empty, otherwise use defaults
+      let categories = defaultCategories;
+      if (response && Array.isArray(response) && response.length > 0) {
+        categories = response;
+      } else if (response && response.categories && Array.isArray(response.categories) && response.categories.length > 0) {
+        categories = response.categories;
+      }
+      
+      setCategories(categories);
+      
+      // Store categories in localStorage for template creation
+      localStorage.setItem('jobCategories', JSON.stringify(categories));
+      
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
+      // Fallback to default categories
+      const defaultCategories = [
+        { id: 1, name: 'Technology' },
+        { id: 2, name: 'Marketing' },
+        { id: 3, name: 'Sales' },
+        { id: 4, name: 'Customer Service' },
+        { id: 5, name: 'Finance' },
+        { id: 6, name: 'Human Resources' },
+        { id: 7, name: 'Operations' },
+        { id: 8, name: 'Design' }
+      ];
+      setCategories(defaultCategories);
+      localStorage.setItem('jobCategories', JSON.stringify(defaultCategories));
     }
   };
 
@@ -146,15 +252,7 @@ const ExternalJobTemplates = () => {
 
   const handleDuplicateTemplate = async (template) => {
     try {
-      const duplicatedTemplate = {
-        ...template,
-        name: `${template.name} (Copy)`,
-        id: undefined,
-        created_at: undefined,
-        updated_at: undefined
-      };
-      
-      await externalAdminService.createJobTemplate(duplicatedTemplate);
+      await externalAdminService.duplicateJobTemplate(template.id);
       toast.success('Template duplicated successfully');
       fetchTemplates();
     } catch (error) {
@@ -203,8 +301,15 @@ const ExternalJobTemplates = () => {
     try {
       const response = await externalAdminService.exportJobTemplates();
       
-      // Create and download file
-      const blob = new Blob([JSON.stringify(response.templates, null, 2)], {
+      // Create and download file with full export format
+      const exportData = {
+        templates: response.templates || [],
+        total_count: response.total_count || response.templates?.length || 0,
+        exported_at: response.exported_at || new Date().toISOString(),
+        exported_by: response.exported_by || { name: 'Current User' }
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
         type: 'application/json'
       });
       const url = window.URL.createObjectURL(blob);
@@ -216,7 +321,7 @@ const ExternalJobTemplates = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Templates exported successfully');
+      toast.success(`Successfully exported ${exportData.total_count} templates`);
     } catch (error) {
       console.error('Error exporting templates:', error);
       toast.error('Failed to export templates');
@@ -229,15 +334,43 @@ const ExternalJobTemplates = () => {
 
     try {
       const fileContent = await file.text();
-      const templatesData = JSON.parse(fileContent);
+      const parsedData = JSON.parse(fileContent);
       
-      await externalAdminService.importJobTemplates({ templates: templatesData });
-      toast.success('Templates imported successfully');
+      // Handle different export formats
+      let templatesArray;
+      if (Array.isArray(parsedData)) {
+        // Direct array of templates
+        templatesArray = parsedData;
+      } else if (parsedData.templates && Array.isArray(parsedData.templates)) {
+        // Object with templates property (our export format)
+        templatesArray = parsedData.templates;
+      } else {
+        throw new Error('Invalid file format. Expected array of templates or object with templates property.');
+      }
+      
+      // Send to backend
+      const response = await externalAdminService.importJobTemplates({ templates: templatesArray });
+      
+      if (response.total_imported > 0) {
+        toast.success(`Successfully imported ${response.total_imported} templates`);
+        if (response.total_failed > 0) {
+          toast.warning(`${response.total_failed} templates failed to import`);
+        }
+      } else {
+        toast.warning('No templates were imported');
+      }
+      
       fetchTemplates();
       setIsImportDialogOpen(false);
+      
+      // Reset file input
+      event.target.value = '';
+      
     } catch (error) {
       console.error('Error importing templates:', error);
-      toast.error('Failed to import templates');
+      toast.error(`Failed to import templates: ${error.message}`);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -270,12 +403,8 @@ const ExternalJobTemplates = () => {
     });
   };
 
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || template.category_id == selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Templates are already filtered in the service layer
+  const filteredTemplates = templates;
 
   if (loading) {
     return (
@@ -682,9 +811,9 @@ const ExternalJobTemplates = () => {
                   {template.title || 'No title set'}
                 </div>
                 
-                {template.category && (
+                {template.category_id && (
                   <Badge variant="secondary" className="text-xs">
-                    {template.category.name}
+                    {categories.find(cat => cat.id == template.category_id)?.name || 'Unknown Category'}
                   </Badge>
                 )}
                 
@@ -717,10 +846,16 @@ const ExternalJobTemplates = () => {
               }
             </p>
             {!searchTerm && selectedCategory === 'all' && (
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Template
-              </Button>
+              <div className="flex gap-3">
+                <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Template
+                </Button>
+                <Button variant="outline" onClick={createSampleTemplates}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Add Sample Templates
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -740,7 +875,7 @@ const ExternalJobTemplates = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Category:</span> {selectedTemplate.category?.name || 'N/A'}
+                  <span className="font-medium">Category:</span> {categories.find(cat => cat.id == selectedTemplate.category_id)?.name || 'N/A'}
                 </div>
                 <div>
                   <span className="font-medium">Status:</span> 

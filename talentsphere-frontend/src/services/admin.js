@@ -27,6 +27,11 @@ export const adminService = {
     return response;
   },
 
+  changeUserRole: async (userId, newRole) => {
+    const response = await api.post(`/admin/users/${userId}/change-role`, { new_role: newRole });
+    return response;
+  },
+
   // Job Management
   getJobsAdmin: async (params = {}) => {
     console.log('🔧 AdminService getJobsAdmin called with params:', params);

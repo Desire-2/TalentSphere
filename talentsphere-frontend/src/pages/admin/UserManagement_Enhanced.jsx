@@ -91,7 +91,8 @@ const UserManagement = () => {
     isLoading, 
     error, 
     fetchUsers, 
-    toggleUserStatus 
+    toggleUserStatus,
+    changeUserRole 
   } = useAdminStore();
 
   const [filters, setFilters] = useState({
@@ -120,6 +121,12 @@ const UserManagement = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const [compactView, setCompactView] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Role change state
+  const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
+  const [selectedUserForRoleChange, setSelectedUserForRoleChange] = useState(null);
+  const [newRole, setNewRole] = useState('');
+  const [roleChangeReason, setRoleChangeReason] = useState('');
 
   useEffect(() => {
     fetchUsers(filters);
@@ -260,9 +267,39 @@ const UserManagement = () => {
     }
   };
 
+  const handleRoleChangeClick = (user) => {
+    setSelectedUserForRoleChange(user);
+    setNewRole(user.role);
+    setRoleChangeReason('');
+    setShowRoleChangeDialog(true);
+  };
+
+  const handleRoleChangeConfirm = async () => {
+    if (!selectedUserForRoleChange || !newRole || newRole === selectedUserForRoleChange.role) {
+      return;
+    }
+    
+    setActionLoading(prev => ({ ...prev, roleChange: true }));
+    try {
+      await changeUserRole(selectedUserForRoleChange.id, newRole);
+      console.log(`✅ User role changed from ${selectedUserForRoleChange.role} to ${newRole}`);
+      await fetchUsers(filters);
+      setShowRoleChangeDialog(false);
+      setSelectedUserForRoleChange(null);
+      setNewRole('');
+      setRoleChangeReason('');
+    } catch (error) {
+      console.error('❌ Failed to change user role:', error);
+      alert('Failed to change user role. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, roleChange: false }));
+    }
+  };
+
   const getRoleBadge = (role) => {
     const variants = {
       admin: 'destructive',
+      external_admin: 'destructive',
       employer: 'default',
       job_seeker: 'secondary'
     };
@@ -813,6 +850,13 @@ const UserManagement = () => {
                                   
                                   <DropdownMenuSeparator />
                                   
+                                  {user.role !== 'admin' && user.email !== 'bikorimanadesire@yahoo.com' && (
+                                    <DropdownMenuItem onClick={() => handleRoleChangeClick(user)}>
+                                      <Settings className="h-4 w-4 mr-2" />
+                                      Change Role
+                                    </DropdownMenuItem>
+                                  )}
+                                  
                                   {user.role !== 'admin' && (
                                     <DropdownMenuItem
                                       onClick={() => handleToggleUserStatus(user.id)}
@@ -1088,6 +1132,105 @@ const UserManagement = () => {
               <Button onClick={handleSendBulkEmail}>
                 <Send className="h-4 w-4 mr-2" />
                 Send Email
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Role Change Dialog */}
+        <Dialog open={showRoleChangeDialog} onOpenChange={setShowRoleChangeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change User Role</DialogTitle>
+              <DialogDescription>
+                Change the role for {selectedUserForRoleChange?.full_name}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="flex">
+                  <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Warning</p>
+                    <p className="text-sm text-yellow-700">
+                      Changing a user's role will affect their permissions and access to features. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Current Role</Label>
+                <div className="mt-1">
+                  <Badge variant={getRoleBadge(selectedUserForRoleChange?.role)}>
+                    {selectedUserForRoleChange?.role?.replace('_', ' ')}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="new-role">New Role</Label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="job_seeker">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4" />
+                        <span>Job Seeker</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="employer">
+                      <div className="flex items-center space-x-2">
+                        <Building className="h-4 w-4" />
+                        <span>Employer</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="admin">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4" />
+                        <span>Admin</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="external_admin">
+                      <div className="flex items-center space-x-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>External Admin</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="role-change-reason">Reason for Change (Optional)</Label>
+                <Textarea
+                  id="role-change-reason"
+                  value={roleChangeReason}
+                  onChange={(e) => setRoleChangeReason(e.target.value)}
+                  placeholder="Enter reason for role change..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRoleChangeDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleRoleChangeConfirm}
+                disabled={!newRole || newRole === selectedUserForRoleChange?.role || actionLoading.roleChange}
+                variant="destructive"
+              >
+                {actionLoading.roleChange ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                ) : (
+                  <Settings className="h-4 w-4 mr-2" />
+                )}
+                Change Role
               </Button>
             </DialogFooter>
           </DialogContent>

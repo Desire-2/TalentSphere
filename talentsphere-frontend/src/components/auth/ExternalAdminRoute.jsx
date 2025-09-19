@@ -1,11 +1,11 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { authService } from '../../services/auth';
 
 const ExternalAdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
 
-  if (!isAuthenticated || !authService.isExternalAdmin()) {
+  // Check authentication and role using store state instead of localStorage
+  if (!isAuthenticated || !user || user.role !== 'external_admin') {
     return <Navigate to="/login" replace />;
   }
 

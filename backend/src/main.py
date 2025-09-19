@@ -15,6 +15,7 @@ from src.models.user import db
 from src.utils.db_optimization import create_optimized_engine
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
 from src.models.job import Job, JobCategory, JobBookmark, JobAlert, JobShare
+from src.models.job_template import JobTemplate
 from src.models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
 from src.models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
 from src.models.notification import Notification, NotificationTemplate, Review, ReviewVote, Message
@@ -22,6 +23,8 @@ from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.company import company_bp
 from src.routes.job import job_bp
+from src.routes.job_template import job_template_bp
+from src.routes.template import template_bp
 from src.routes.application import application_bp
 from src.routes.featured_ad import featured_ad_bp
 from src.routes.admin import admin_bp
@@ -73,6 +76,8 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(company_bp, url_prefix='/api')
 app.register_blueprint(job_bp, url_prefix='/api')
+app.register_blueprint(job_template_bp, url_prefix='/api')
+app.register_blueprint(template_bp, url_prefix='/api')
 app.register_blueprint(application_bp, url_prefix='/api')
 app.register_blueprint(featured_ad_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')

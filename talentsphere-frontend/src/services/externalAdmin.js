@@ -215,26 +215,83 @@ export const externalAdminService = {
     throw new Error('Account deletion not implemented yet');
   },
 
-  // Templates management - not implemented in backend yet
-  getJobTemplates: async () => {
-    // Return empty array for now since templates aren't implemented
-    return [];
+    // Templates management - implemented with new backend endpoints
+  getJobTemplates: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        if (Array.isArray(params[key])) {
+          params[key].forEach(value => queryParams.append(key, value));
+        } else {
+          queryParams.append(key, params[key]);
+        }
+      }
+    });
+    
+    const queryString = queryParams.toString();
+    const response = await api.get(`/job-templates${queryString ? `?${queryString}` : ''}`);
+    return response;
+  },
+
+  getJobTemplateById: async (id, incrementUsage = false) => {
+    const params = incrementUsage ? '?increment_usage=true' : '';
+    const response = await api.get(`/job-templates/${id}${params}`);
+    return response;
   },
 
   createJobTemplate: async (templateData) => {
-    throw new Error('Job templates not implemented yet');
+    const response = await api.post('/job-templates', templateData);
+    return response;
   },
 
   updateJobTemplate: async (id, templateData) => {
-    throw new Error('Job templates not implemented yet');
+    const response = await api.put(`/job-templates/${id}`, templateData);
+    return response;
   },
 
   deleteJobTemplate: async (id) => {
-    throw new Error('Job templates not implemented yet');
+    const response = await api.delete(`/job-templates/${id}`);
+    return response;
   },
 
-  duplicateJobTemplate: async (id) => {
-    throw new Error('Job templates not implemented yet');
+  duplicateJobTemplate: async (id, newData = {}) => {
+    const response = await api.post(`/job-templates/${id}/duplicate`, newData);
+    return response;
+  },
+
+  createTemplateFromJob: async (jobId, templateData) => {
+    const response = await api.post(`/job-templates/create-from-job/${jobId}`, templateData);
+    return response;
+  },
+
+  searchJobTemplates: async (searchParams = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    Object.keys(searchParams).forEach(key => {
+      if (searchParams[key] !== undefined && searchParams[key] !== null && searchParams[key] !== '') {
+        if (Array.isArray(searchParams[key])) {
+          searchParams[key].forEach(value => queryParams.append(key, value));
+        } else {
+          queryParams.append(key, searchParams[key]);
+        }
+      }
+    });
+    
+    const queryString = queryParams.toString();
+    const response = await api.get(`/job-templates/search${queryString ? `?${queryString}` : ''}`);
+    return response;
+  },
+
+  exportJobTemplates: async (includePublic = false) => {
+    const params = includePublic ? '?include_public=true' : '';
+    const response = await api.get(`/job-templates/export${params}`);
+    return response;
+  },
+
+  importJobTemplates: async (templatesData) => {
+    const response = await api.post('/job-templates/bulk-import', templatesData);
+    return response;
   },
 
   // Analytics data - use the external job stats endpoint
@@ -254,12 +311,15 @@ export const externalAdminService = {
     return stats;
   },
 
-  // Template management - additional methods (not implemented)
-  exportJobTemplates: async () => {
-    throw new Error('Job template export not implemented yet');
+  // Template management - additional methods (implemented)
+  exportJobTemplates: async (includePublic = false) => {
+    const params = includePublic ? '?include_public=true' : '';
+    const response = await api.get(`/job-templates/export${params}`);
+    return response;
   },
 
   importJobTemplates: async (templatesData) => {
-    throw new Error('Job template import not implemented yet');
+    const response = await api.post('/job-templates/bulk-import', templatesData);
+    return response;
   }
 };

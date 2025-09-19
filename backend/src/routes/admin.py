@@ -270,6 +270,72 @@ def toggle_user_status(current_user, user_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to toggle user status', 'details': str(e)}), 500
 
+@admin_bp.route('/admin/users/<int:user_id>/change-role', methods=['POST'])
+@token_required
+@role_required('admin')
+def change_user_role(current_user, user_id):
+    """Change user role"""
+    try:
+        data = request.get_json()
+        new_role = data.get('new_role')
+        
+        # Validate the new role
+        valid_roles = ['job_seeker', 'employer', 'admin', 'external_admin']
+        if new_role not in valid_roles:
+            return jsonify({'error': 'Invalid role specified'}), 400
+        
+        # Get the user to be modified
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Prevent changing your own role
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot change your own role'}), 403
+        
+        # Prevent modifying super admin (if there's a specific super admin)
+        if user.role == 'admin' and user.email == 'bikorimanadesire@yahoo.com':
+            return jsonify({'error': 'Cannot modify super admin role'}), 403
+        
+        # Store old role for logging
+        old_role = user.role
+        
+        # Update the user's role
+        user.role = new_role
+        user.updated_at = datetime.utcnow()
+        
+        # If changing to/from employer, handle employer profile
+        if new_role == 'employer' and old_role != 'employer':
+            # Create employer profile if it doesn't exist
+            if not user.employer_profile:
+                from src.models.user import EmployerProfile
+                employer_profile = EmployerProfile(user_id=user.id)
+                db.session.add(employer_profile)
+        
+        # If changing to/from job_seeker, handle job seeker profile
+        if new_role == 'job_seeker' and old_role != 'job_seeker':
+            # Create job seeker profile if it doesn't exist
+            if not user.job_seeker_profile:
+                from src.models.user import JobSeekerProfile
+                job_seeker_profile = JobSeekerProfile(user_id=user.id)
+                db.session.add(job_seeker_profile)
+        
+        db.session.commit()
+        
+        # Log the role change (you might want to create an audit log table)
+        print(f"Admin {current_user.email} changed user {user.email} role from {old_role} to {new_role}")
+        
+        return jsonify({
+            'message': f'User role changed from {old_role} to {new_role} successfully',
+            'user': user.to_dict(),
+            'old_role': old_role,
+            'new_role': new_role
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to change user role', 'details': str(e)}), 500
+
 @admin_bp.route('/admin/jobs', methods=['GET'])
 @token_required
 @role_required('admin')

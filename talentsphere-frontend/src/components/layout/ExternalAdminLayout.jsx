@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard,
@@ -13,7 +13,8 @@ import {
   Building2,
   ExternalLink,
   Users,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../ui/button';
@@ -22,16 +23,48 @@ import { cn } from '../../lib/utils';
 
 const ExternalAdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
+
+  // Safety check: redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login...');
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return; // Prevent multiple logout attempts
+    
     try {
+      setIsLoggingOut(true);
+      console.log('Initiating logout...');
+      
+      // Clear auth state and localStorage
       await logout();
-      navigate('/login');
+      
+      // Additional cleanup - ensure localStorage is cleared
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Force navigation with replace to prevent back button issues
+      navigate('/login', { replace: true });
+      
+      console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout failed:', error);
+      
+      // Even if logout fails on server, force local cleanup
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Force navigation to login
+      navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -191,9 +224,14 @@ const ExternalAdminLayout = () => {
               variant="ghost"
               className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
               onClick={handleLogout}
+              disabled={isLoggingOut}
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Sign out
+              {isLoggingOut ? (
+                <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+              ) : (
+                <LogOut className="mr-3 h-5 w-5" />
+              )}
+              {isLoggingOut ? 'Signing out...' : 'Sign out'}
             </Button>
           </div>
         </div>

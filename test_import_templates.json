@@ -1,0 +1,26 @@
+{
+  "templates": [
+    {
+      "name": "Test Frontend Developer Template",
+      "description": "A template for frontend developer positions",
+      "title": "Frontend Developer",
+      "summary": "We are seeking a skilled Frontend Developer to join our team.",
+      "job_description": "As a Frontend Developer, you will be responsible for creating user-friendly web interfaces using modern technologies like React, Vue.js, or Angular.",
+      "requirements": "• 2+ years of experience with JavaScript\n• Proficiency in React or Vue.js\n• Knowledge of HTML5, CSS3\n• Experience with responsive design",
+      "preferred_skills": "• Experience with TypeScript\n• Knowledge of testing frameworks\n• Familiarity with CI/CD pipelines",
+      "employment_type": "full-time",
+      "experience_level": "mid",
+      "location_type": "hybrid",
+      "salary_min": 60000,
+      "salary_max": 80000,
+      "salary_currency": "USD",
+      "salary_period": "yearly",
+      "application_type": "external",
+      "application_url": "https://example.com/apply",
+      "is_active": true,
+      "tags": ["React", "JavaScript", "CSS", "HTML"]
+    }
+  ],
+  "total_count": 1,
+  "exported_at": "2025-09-09T10:00:00Z"
+}

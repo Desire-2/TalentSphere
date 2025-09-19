@@ -1008,7 +1008,7 @@ def get_external_jobs(current_user):
         sort_by = request.args.get('sort_by', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
         
-        query = Job.query.filter_by(job_source='external')
+        query = Job.query.filter_by(job_source='external', is_active=True)
         
         if current_user.role == 'external_admin':
             query = query.filter_by(posted_by=current_user.id)
@@ -1050,13 +1050,13 @@ def get_external_jobs(current_user):
         
         # Get summary statistics for external jobs
         if current_user.role == 'external_admin':
-            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count()
-            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published').count()
-            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft').count()
+            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', is_active=True).count()
+            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published', is_active=True).count()
+            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft', is_active=True).count()
         else:
-            total_external_jobs = Job.query.filter_by(job_source='external').count()
-            published_external_jobs = Job.query.filter_by(job_source='external', status='published').count()
-            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft').count()
+            total_external_jobs = Job.query.filter_by(job_source='external', is_active=True).count()
+            published_external_jobs = Job.query.filter_by(job_source='external', status='published', is_active=True).count()
+            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft', is_active=True).count()
         
         return jsonify({
             'external_jobs': job_list,
@@ -1086,9 +1086,9 @@ def get_external_job_stats(current_user):
     try:
         # Get summary statistics for external jobs
         if current_user.role == 'external_admin':
-            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count()
-            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published').count()
-            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft').count()
+            total_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', is_active=True).count()
+            published_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='published', is_active=True).count()
+            draft_external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external', status='draft', is_active=True).count()
             
             # Get recent activity (jobs posted in last 30 days)
             from datetime import datetime, timedelta
@@ -1096,19 +1096,21 @@ def get_external_job_stats(current_user):
             recent_jobs = Job.query.filter(
                 Job.posted_by == current_user.id,
                 Job.job_source == 'external',
+                Job.is_active == True,
                 Job.created_at >= thirty_days_ago
             ).count()
             
         else:
-            total_external_jobs = Job.query.filter_by(job_source='external').count()
-            published_external_jobs = Job.query.filter_by(job_source='external', status='published').count()
-            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft').count()
+            total_external_jobs = Job.query.filter_by(job_source='external', is_active=True).count()
+            published_external_jobs = Job.query.filter_by(job_source='external', status='published', is_active=True).count()
+            draft_external_jobs = Job.query.filter_by(job_source='external', status='draft', is_active=True).count()
             
             # Get recent activity (jobs posted in last 30 days)
             from datetime import datetime, timedelta
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
             recent_jobs = Job.query.filter(
                 Job.job_source == 'external',
+                Job.is_active == True,
                 Job.created_at >= thirty_days_ago
             ).count()
         
@@ -1122,14 +1124,16 @@ def get_external_job_stats(current_user):
                 func.count(Job.id).label('count')
             ).join(Job).filter(
                 Job.posted_by == current_user.id,
-                Job.job_source == 'external'
+                Job.job_source == 'external',
+                Job.is_active == True
             ).group_by(JobCategory.id).all()
         else:
             category_stats = db.session.query(
                 JobCategory.name,
                 func.count(Job.id).label('count')
             ).join(Job).filter(
-                Job.job_source == 'external'
+                Job.job_source == 'external',
+                Job.is_active == True
             ).group_by(JobCategory.id).all()
         
         categories = [{'name': cat[0], 'count': cat[1]} for cat in category_stats]

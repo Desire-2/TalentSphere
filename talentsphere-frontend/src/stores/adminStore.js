@@ -78,6 +78,22 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  changeUserRole: async (userId, newRole) => {
+    try {
+      const data = await adminService.changeUserRole(userId, newRole);
+      // Update the user in the local state
+      const users = get().users;
+      const updatedUsers = users.map(user => 
+        user.id === userId ? { ...user, role: data.user.role } : user
+      );
+      set({ users: updatedUsers });
+      return data;
+    } catch (error) {
+      console.error('Change user role error:', error);
+      throw error;
+    }
+  },
+
   fetchJobs: async (params = {}) => {
     console.log('🏪 AdminStore fetchJobs called with params:', params);
     set({ isLoading: true, error: null });

@@ -131,13 +131,21 @@ Hello!
 **Job Description:**
 {job.description[:500]}{"..." if len(job.description) > 500 else ""}
 
-{f"**Personal Message:**\n{custom_message}\n" if custom_message else ""}
+{personal_message_section}
 
 **View Full Job Details:** {job_url}
 
 ---
 This job was shared through TalentSphere
 """
+
+        # Create personal message section separately to avoid f-string backslash issue
+        personal_message_section = f"**Personal Message:**\n{custom_message}\n" if custom_message else ""
+        
+        # Format the final message
+        message = message.format(
+            personal_message_section=personal_message_section
+        )
         
         # Send emails
         success_count = 0

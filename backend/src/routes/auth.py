@@ -767,7 +767,7 @@ def send_reset_email(user_email, reset_token, user_name):
         sender_email = os.getenv('SENDER_EMAIL', 'afritechbridge@yahoo.com')
         sender_password = os.getenv('SENDER_PASSWORD')
         sender_name = os.getenv('SENDER_NAME', 'AfriTech Bridge')
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5174')
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         
         # Check if email configuration is complete
         if not sender_password:

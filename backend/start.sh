@@ -6,18 +6,23 @@ set -o errexit  # exit on error
 echo "🚀 Starting TalentSphere Backend (Optimized)..."
 echo "=================================================="
 
-# Activate virtual environment if not already active
-if [[ "$VIRTUAL_ENV" == "" ]]; then
+# Activate virtual environment if not already active (skip on hosting platforms)
+if [[ "$VIRTUAL_ENV" == "" ]] && [[ -z "$RENDER" ]] && [[ -z "$PORT" ]] && [[ ! -f "/app/.heroku" ]]; then
     echo "📦 Activating virtual environment..."
     if [ -f "venv/bin/activate" ]; then
         source venv/bin/activate
         echo "✅ Virtual environment activated"
     else
         echo "❌ Virtual environment not found at venv/bin/activate"
+        echo "💡 Please run ./build.sh first to create the virtual environment"
         exit 1
     fi
 else
-    echo "✅ Virtual environment already active: $VIRTUAL_ENV"
+    if [[ -n "$RENDER" ]] || [[ -n "$PORT" ]]; then
+        echo "✅ Running on hosting platform - using system Python environment"
+    else
+        echo "✅ Virtual environment already active: $VIRTUAL_ENV"
+    fi
 fi
 
 # Load and validate environment variables from .env file

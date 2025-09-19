@@ -32,6 +32,8 @@ import { formatCurrency, formatRelativeTime, snakeToTitle } from '../../utils/he
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
 import ShareJob from '../../components/jobs/ShareJob';
+import MarkdownRenderer from '../../components/ui/MarkdownRenderer';
+import SmartTextRenderer from '../../components/ui/SmartTextRenderer';
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -66,7 +68,7 @@ const JobDetails = () => {
   };
 
   const getCompanyLogo = (job) => {
-    return job.company?.logo_url || null;
+    return job.company?.logo_url || job.external_company_logo || null;
   };
 
   const getJobDescription = (job) => {
@@ -398,10 +400,10 @@ ${user.name || user.email}`);
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                {job.company?.logo_url ? (
+                {(job.company?.logo_url || job.external_company_logo) ? (
                   <img 
-                    src={job.company.logo_url} 
-                    alt={`${job.company.name} logo`} 
+                    src={job.company?.logo_url || job.external_company_logo} 
+                    alt={`${getCompanyName(job)} logo`} 
                     className="w-12 h-12 object-contain rounded"
                   />
                 ) : (
@@ -666,16 +668,19 @@ ${user.name || user.email}`);
               {job.summary && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-                  <p className="text-gray-700 text-sm leading-relaxed">{job.summary}</p>
+                  <SmartTextRenderer 
+                    content={job.summary}
+                    className="text-sm"
+                  />
                 </div>
               )}
               <div className="prose prose-sm max-w-none">
-                {job.description && job.description.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-                {!job.description && (
+                {job.description ? (
+                  <SmartTextRenderer 
+                    content={job.description}
+                    className=""
+                  />
+                ) : (
                   <p className="text-gray-500 italic">No description available</p>
                 )}
               </div>
@@ -735,14 +740,10 @@ ${user.name || user.email}`);
               {job.required_skills && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Required Skills</h4>
-                  <ul className="space-y-2">
-                    {job.required_skills.split(',').map((skill, index) => (
-                      <li key={index} className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-700">{skill.trim()}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <SmartTextRenderer 
+                    content={job.required_skills}
+                    className=""
+                  />
                 </div>
               )}
 
@@ -789,14 +790,10 @@ ${user.name || user.email}`);
                 <CardTitle>Preferred Skills</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {job.preferred_skills.split(',').map((skill, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2 flex-shrink-0"></div>
-                      <span className="text-gray-700">{skill.trim()}</span>
-                    </li>
-                  ))}
-                </ul>
+                <SmartTextRenderer 
+                  content={job.preferred_skills}
+                  className=""
+                />
               </CardContent>
             </Card>
           )}
@@ -808,13 +805,10 @@ ${user.name || user.email}`);
                 <CardTitle>Application Instructions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  {job.application_instructions.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
+                <SmartTextRenderer 
+                  content={job.application_instructions}
+                  className=""
+                />
               </CardContent>
             </Card>
           )}
@@ -827,13 +821,10 @@ ${user.name || user.email}`);
               </CardHeader>
               <CardContent>
                 {job.remote_policy ? (
-                  <div className="prose prose-sm max-w-none">
-                    {job.remote_policy.split('\n\n').map((paragraph, index) => (
-                      <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
+                  <SmartTextRenderer 
+                    content={job.remote_policy}
+                    className=""
+                  />
                 ) : (
                   <p className="text-gray-700">
                     This position supports {job.location?.type === 'remote' ? 'fully remote' : 'hybrid'} work arrangements.
@@ -851,9 +842,9 @@ ${user.name || user.email}`);
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  {job.company?.logo_url ? (
+                  {(job.company?.logo_url || job.external_company_logo) ? (
                     <img 
-                      src={job.company.logo_url} 
+                      src={job.company?.logo_url || job.external_company_logo} 
                       alt={`${getCompanyName(job)} logo`} 
                       className="w-8 h-8 object-contain rounded"
                     />
@@ -865,8 +856,13 @@ ${user.name || user.email}`);
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {job.company?.description && (
-                <p className="text-sm text-gray-600">{job.company.description}</p>
+              {(job.company?.description || job.external_company_description) && (
+                <div className="text-sm">
+                  <SmartTextRenderer 
+                    content={job.company?.description || job.external_company_description}
+                    className=""
+                  />
+                </div>
               )}
               
               <div className="grid grid-cols-1 gap-4">
@@ -888,16 +884,16 @@ ${user.name || user.email}`);
                     <p className="text-sm text-gray-600">{job.company.founded_year}</p>
                   </div>
                 )}
-                {job.company?.website && (
+                {(job.company?.website || job.external_company_website) && (
                   <div>
                     <h4 className="font-medium text-gray-900 mb-1">Website</h4>
                     <a 
-                      href={job.company.website} 
+                      href={job.company?.website || job.external_company_website} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                     >
-                      {job.company.website}
+                      {job.company?.website || job.external_company_website}
                       <ExternalLink className="w-3 h-3 ml-1" />
                     </a>
                   </div>
@@ -911,9 +907,15 @@ ${user.name || user.email}`);
               </div>
               
               <Separator />
-              <Button variant="outline" className="w-full" asChild>
-                <Link to={`/companies/${job.company?.id || job.company_id}`}>View Company Profile</Link>
-              </Button>
+              {job.company?.id ? (
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to={`/companies/${job.company.id}`}>View Company Profile</Link>
+                </Button>
+              ) : (
+                <Button variant="outline" className="w-full" disabled>
+                  External Company
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -964,14 +966,10 @@ ${user.name || user.email}`);
                 <CardTitle>Benefits & Perks</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {job.benefits.split(',').map((benefit, index) => (
-                    <li key={index} className="flex items-start">
-                      <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-gray-700">{benefit.trim()}</span>
-                    </li>
-                  ))}
-                </ul>
+                <SmartTextRenderer 
+                  content={job.benefits}
+                  className=""
+                />
               </CardContent>
             </Card>
           )}

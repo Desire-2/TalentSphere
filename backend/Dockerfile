@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Make scripts executable
-RUN chmod +x build.sh start_optimized.sh optimize_backend.sh monitor_performance.py
+RUN chmod +x start_optimized.sh verify_deployment.sh
 
 # Create directory for database if using SQLite
 RUN mkdir -p src/database
@@ -40,7 +40,7 @@ EXPOSE 5001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5001/api/health || exit 1
+    CMD curl -f http://localhost:5001/health || exit 1
 
-# Run the optimized application
-CMD ["./start_optimized.sh"]
+# Run the application with Gunicorn
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "src.main:app"]

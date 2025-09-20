@@ -30,8 +30,8 @@ export PYTHONOPTIMIZE=1
 # Start with optimized Gunicorn configuration
 if [ -f "gunicorn.conf.py" ]; then
     echo "📈 Using optimized Gunicorn configuration"
-    gunicorn -c gunicorn.conf.py wsgi:app
+    gunicorn --config gunicorn.conf.py src.main:app
 else
     echo "⚠️  Gunicorn config not found, using default settings"
-    gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --timeout 30 --access-logfile - --error-logfile - wsgi:app
+    gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --timeout 30 --access-logfile - --error-logfile - src.main:app
 fi

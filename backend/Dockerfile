@@ -15,9 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application
 COPY . .
 
-# Make scripts executable
-RUN chmod +x start_optimized.sh verify_deployment.sh
-
 # Create directory for database if using SQLite
 RUN mkdir -p src/database
 

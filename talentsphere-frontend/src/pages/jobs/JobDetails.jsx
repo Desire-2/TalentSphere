@@ -68,7 +68,7 @@ const JobDetails = () => {
   };
 
   const getCompanyLogo = (job) => {
-    return job.company?.logo_url || job.external_company_logo || null;
+    return job.company?.logo_url || null;
   };
 
   const getJobDescription = (job) => {
@@ -400,9 +400,9 @@ ${user.name || user.email}`);
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                {(job.company?.logo_url || job.external_company_logo) ? (
+                {job.company?.logo_url ? (
                   <img 
-                    src={job.company?.logo_url || job.external_company_logo} 
+                    src={job.company.logo_url} 
                     alt={`${getCompanyName(job)} logo`} 
                     className="w-12 h-12 object-contain rounded"
                   />
@@ -842,9 +842,9 @@ ${user.name || user.email}`);
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  {(job.company?.logo_url || job.external_company_logo) ? (
+                  {job.company?.logo_url ? (
                     <img 
-                      src={job.company?.logo_url || job.external_company_logo} 
+                      src={job.company.logo_url} 
                       alt={`${getCompanyName(job)} logo`} 
                       className="w-8 h-8 object-contain rounded"
                     />

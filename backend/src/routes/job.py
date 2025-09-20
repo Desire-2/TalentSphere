@@ -253,7 +253,9 @@ def get_jobs():
         job_list = []
         for job in jobs.items:
             job_data = job.to_dict()
-            job_data['company'] = job.company.to_dict() if job.company else None
+            # Only override company data if it's None and there's a real company relationship
+            if job_data.get('company') is None and job.company:
+                job_data['company'] = job.company.to_dict()
             job_data['category'] = job.category.to_dict() if job.category else None
             job_list.append(job_data)
         

@@ -380,7 +380,21 @@ const Home = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredJobs.length > 0 ? featuredJobs.map((job, index) => (
+            {featuredJobs.length > 0 ? featuredJobs.map((job, index) => {
+              // Debug: Log external job data
+              if (job.is_external || job.job_source || job.external_company_name || job.external_company_logo) {
+                console.log('External job found:', {
+                  id: job.id,
+                  title: job.title,
+                  external_company_name: job.external_company_name,
+                  external_company_logo: job.external_company_logo,
+                  job_source: job.job_source,
+                  is_external: job.is_external,
+                  company: job.company
+                });
+              }
+              
+              return (
               <Card 
                 key={job.id} 
                 className="group bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-white/80 cursor-pointer animate-slide-up"
@@ -388,18 +402,40 @@ const Home = () => {
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      {job.company?.logo_url ? (
-                        <img 
-                          src={job.company.logo_url} 
-                          alt={`${job.company?.name || job.company_name} logo`} 
-                          className="w-12 h-12 object-contain rounded"
-                        />
-                      ) : (
-                        <Building className="w-8 h-8 text-white" />
-                      )}
+                    <div className="w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300 rounded-2xl overflow-hidden">
+                      <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center border-2 border-white shadow-md">
+                        {job.company?.logo_url ? (
+                          <img 
+                            src={job.company.logo_url} 
+                            alt={`${job.company?.name || job.external_company_name || 'Company'} logo`} 
+                            className="w-14 h-14 object-contain rounded-xl"
+                            onError={(e) => {
+                              console.log('Logo failed to load:', job.company.logo_url);
+                              e.target.style.display = 'none';
+                              e.target.parentNode.querySelector('.fallback-icon').style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`fallback-icon w-14 h-14 flex items-center justify-center ${job.company?.logo_url ? 'hidden' : 'flex'}`}>
+                          {(job.is_external || job.job_source || job.external_company_name) ? (
+                            <div className="flex flex-col items-center text-blue-600">
+                              <ExternalLink className="w-5 h-5 mb-1" />
+                              <Building className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <Building className="w-8 h-8 text-blue-600" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex flex-col items-end space-y-2">
+                      {/* External Job Badge */}
+                      {(job.is_external || job.job_source || job.external_company_name) && (
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          External
+                        </Badge>
+                      )}
                       {job.is_featured && (
                         <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
                           <Star className="w-3 h-3 mr-1" />
@@ -422,11 +458,25 @@ const Home = () => {
                     {safeRenderText(job.title)}
                   </CardTitle>
                   <CardDescription className="text-gray-600 font-medium mb-1">
-                    {safeRenderText(job.company?.name || job.company_name || job.external_company_name)}
+                    {/* Enhanced company name display for external jobs */}
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold">
+                        {safeRenderText(job.external_company_name || job.company?.name || job.company_name)}
+                      </span>
+                      {(job.is_external || job.job_source || job.external_company_name) && (
+                        <div className="flex items-center">
+                          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 px-2 py-0.5">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            External
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
                   </CardDescription>
-                  {job.company?.description && (
+                  {/* Enhanced description for external jobs */}
+                  {(job.company?.description || job.external_company_description) && (
                     <p className="text-xs text-gray-500 line-clamp-2 mt-1">
-                      {job.company.description}
+                      {job.external_company_description || job.company.description}
                     </p>
                   )}
                 </CardHeader>
@@ -465,6 +515,26 @@ const Home = () => {
                       <Users className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
                       <span className="text-sm">{job.statistics?.application_count || job.applications_count || 0} applicants</span>
                     </div>
+                    {/* Enhanced external job source display */}
+                    {(job.job_source || job.is_external || job.external_company_name) && (
+                      <div className="flex items-center text-gray-600">
+                        <ExternalLink className="w-4 h-4 mr-2 text-orange-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-orange-600">
+                          {job.job_source ? `Source: ${job.job_source}` : 'External Job'}
+                        </span>
+                        {job.source_url && (
+                          <a 
+                            href={job.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="ml-2 text-xs text-blue-500 hover:text-blue-700 underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View Original
+                          </a>
+                        )}
+                      </div>
+                    )}
                     {job.years_experience_min !== undefined && (
                       <div className="flex items-center text-gray-600">
                         <Award className="w-4 h-4 mr-2 text-orange-500 flex-shrink-0" />
@@ -482,6 +552,13 @@ const Home = () => {
 
                   {/* Job Type Badges */}
                   <div className="flex flex-wrap gap-2 mb-4">
+                    {/* External Job Priority Badge */}
+                    {(job.is_external || job.job_source || job.external_company_name) && (
+                      <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300 font-semibold">
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        {job.job_source || 'External Job'}
+                      </Badge>
+                    )}
                     {job.category?.name && (
                       <Badge variant="outline" className="text-xs">
                         {job.category.name}
@@ -534,16 +611,25 @@ const Home = () => {
                         </div>
                       )}
                     </div>
-                    {job.application_type && job.application_type !== 'internal' && (
-                      <div className="flex items-center">
-                        <ExternalLink className="w-4 h-4 text-orange-500" />
-                        <span className="text-xs text-orange-600 ml-1">External</span>
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-3">
+                      {/* External Job Indicator */}
+                      {(job.application_type && job.application_type !== 'internal') || (job.is_external || job.job_source || job.external_company_name) ? (
+                        <div className="flex items-center bg-orange-50 px-2 py-1 rounded-full border border-orange-200">
+                          <ExternalLink className="w-3 h-3 text-orange-600 mr-1" />
+                          <span className="text-xs text-orange-700 font-medium">External Apply</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center bg-blue-50 px-2 py-1 rounded-full border border-blue-200">
+                          <CheckCircle className="w-3 h-3 text-blue-600 mr-1" />
+                          <span className="text-xs text-blue-700 font-medium">Direct Apply</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            )) : (
+              );
+            }) : (
               <div className="col-span-full text-center py-12">
                 <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">No Jobs Available</h3>

@@ -1207,7 +1207,8 @@ Tools: Git, Jest, Cypress
         salary_max: draftData.salary_max ? parseInt(draftData.salary_max) : null,
         years_experience_min: draftData.years_experience_min ? parseInt(draftData.years_experience_min) : 0,
         years_experience_max: draftData.years_experience_max ? parseInt(draftData.years_experience_max) : null,
-        category_id: draftData.category_id ? parseInt(draftData.category_id) : null,
+        // Ensure category_id is properly set
+        category_id: draftData.category_id ? parseInt(draftData.category_id) : 1,
       };
 
       await externalAdminService.createExternalJob(jobData);
@@ -1278,6 +1279,8 @@ Tools: Git, Jest, Cypress
         salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
         years_experience_min: formData.years_experience_min ? parseInt(formData.years_experience_min) : 0,
         years_experience_max: formData.years_experience_max ? parseInt(formData.years_experience_max) : null,
+        // Ensure category_id is properly set (backend will use default if null/undefined)
+        category_id: formData.category_id ? parseInt(formData.category_id) : 1, // Default to "Other" category
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
       };
 

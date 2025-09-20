@@ -4,25 +4,55 @@ services:
     env: python
     repo: https://github.com/Desire-2/TalentSphere
     rootDir: backend
-    buildCommand: "./render_build.sh"
-    startCommand: "./render_start.sh"
-    plan: free
-    healthCheckPath: "/api/health"
+    buildCommand: "pip install -r requirements.txt && python optimize_database.py"
+    startCommand: "gunicorn --config gunicorn.conf.py src.main:app"
+    plan: starter
+    healthCheckPath: "/health"
+    autoDeploy: true
+    region: oregon
+    buildFilter:
+      paths:
+        - backend/**
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.12
       - key: SECRET_KEY
         generateValue: true
       - key: FLASK_ENV
         value: production
       - key: JWT_SECRET_KEY
         generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://talentsphere-frontend.onrender.com,https://localhost:3000"
+      - key: PORT
+        value: 10000
+      - key: SLOW_QUERY_THRESHOLD
+        value: "1.0"
+      - key: SLOW_REQUEST_THRESHOLD
+        value: "2.0"
+      - key: ENABLE_PERFORMANCE_MONITORING
+        value: "true"
+      - key: WARM_CACHE_ON_STARTUP
+        value: "false"
+      - key: INIT_DB_ON_STARTUP
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: talentsphere-db
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: talentsphere-redis
+          property: connectionString
+
+  - type: redis
+    name: talentsphere-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
 
 databases:
   - name: talentsphere-db
     databaseName: talentsphere
     plan: free
+    postgresMajorVersion: 15

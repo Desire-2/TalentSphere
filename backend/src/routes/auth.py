@@ -11,6 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
+from src.utils.db_utils import db_transaction, safe_db_operation
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -72,6 +73,7 @@ def role_required(*allowed_roles):
     return decorator
 
 @auth_bp.route('/register', methods=['POST'])
+@db_transaction
 def register():
     """Enhanced register endpoint with comprehensive employer support"""
     try:
@@ -514,29 +516,39 @@ def login():
         if not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password are required'}), 400
         
-        # Find user by email
-        user = User.query.filter_by(email=data['email']).first()
-        
-        if not user or not user.check_password(data['password']):
-            return jsonify({'error': 'Invalid email or password'}), 401
-        
-        if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
-        
-        # Update last login
-        user.last_login = datetime.utcnow()
-        db.session.commit()
-        
-        # Generate token
-        token = user.generate_token()
-        
-        return jsonify({
-            'message': 'Login successful',
-            'user': user.to_dict(),
-            'token': token
-        }), 200
+        # Find user by email with session management
+        try:
+            user = User.query.filter_by(email=data['email']).first()
+            
+            if not user or not user.check_password(data['password']):
+                return jsonify({'error': 'Invalid email or password'}), 401
+            
+            if not user.is_active:
+                return jsonify({'error': 'Account is deactivated'}), 401
+            
+            # Update last login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            # Generate token
+            token = user.generate_token()
+            
+            return jsonify({
+                'message': 'Login successful',
+                'user': user.to_dict(),
+                'token': token
+            }), 200
+            
+        except Exception as db_error:
+            db.session.rollback()
+            current_app.logger.error(f"Database error during login: {str(db_error)}")
+            raise db_error
+        finally:
+            # Ensure session is properly closed
+            db.session.close()
         
     except Exception as e:
+        current_app.logger.error(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed', 'details': str(e)}), 500
 
 @auth_bp.route('/logout', methods=['POST'])

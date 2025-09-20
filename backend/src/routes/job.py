@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
 import re
 import os
@@ -10,6 +10,7 @@ from src.models.job import Job, JobCategory, JobBookmark, JobAlert
 from src.models.company import Company
 from src.routes.auth import token_required, role_required
 from src.utils.cache import cached, get_cached_featured_jobs, get_cached_job_categories, invalidate_job_caches
+from src.utils.db_utils import db_transaction, safe_db_operation
 
 job_bp = Blueprint('job', __name__)
 
@@ -297,16 +298,26 @@ def get_job(job_id):
 @job_bp.route('/jobs', methods=['POST'])
 @token_required
 @role_required('employer', 'admin', 'external_admin')
+@db_transaction
 def create_job(current_user):
     """Create a new job posting with comprehensive validation"""
     try:
         data = request.get_json()
         
         # Validate required fields
-        required_fields = ['title', 'description', 'employment_type', 'experience_level', 'category_id', 'location_type']
+        required_fields = ['title', 'description', 'employment_type', 'experience_level', 'location_type']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'{field} is required'}), 400
+        
+        # Special handling for category_id - it's required but can be None for external jobs
+        if 'category_id' not in data or data['category_id'] is None:
+            # Set a default category for external jobs if none provided
+            if current_user.role == 'external_admin':
+                # Use default "Other" category (ID 1) if no category specified
+                data['category_id'] = 1
+            else:
+                return jsonify({'error': 'category_id is required'}), 400
         
         # Validate field values
         valid_employment_types = ['full-time', 'part-time', 'contract', 'freelance', 'internship']
@@ -333,6 +344,57 @@ def create_job(current_user):
         
         if application_type == 'email' and not data.get('application_email'):
             return jsonify({'error': 'Application email is required for email applications'}), 400
+        
+        # Validate field lengths to prevent database truncation errors
+        field_length_limits = {
+            'title': 200,
+            'slug': 200,
+            'external_company_name': 200,
+            'external_company_website': 255,
+            'external_company_logo': 255,
+            'source_url': 500,
+            'employment_type': 50,
+            'experience_level': 50,
+            'education_requirement': 100,
+            'location_type': 50,
+            'city': 100,
+            'state': 100,
+            'country': 100,
+            'salary_currency': 3,
+            'salary_period': 20,
+            'application_type': 50,
+            'application_email': 120,
+            'application_url': 255,
+            'status': 50,
+            'meta_title': 255
+        }
+        
+        for field, max_length in field_length_limits.items():
+            if field in data and data[field] and len(str(data[field])) > max_length:
+                # For critical fields, return error
+                if field in ['title', 'employment_type', 'experience_level', 'location_type']:
+                    return jsonify({
+                        'error': f'{field} exceeds maximum length of {max_length} characters',
+                        'current_length': len(str(data[field])),
+                        'max_length': max_length
+                    }), 400
+                else:
+                    # For non-critical fields, truncate with warning
+                    original_length = len(str(data[field]))
+                    data[field] = str(data[field])[:max_length]
+                    current_app.logger.warning(f"Truncated {field} from {original_length} to {max_length} characters")
+        
+        # Special handling for education_requirement - move to description if too long
+        if data.get('education_requirement') and len(str(data['education_requirement'])) > 100:
+            # Move long education requirement to description
+            education_text = data['education_requirement']
+            data['education_requirement'] = "See job description for education requirements"
+            
+            # Append to description
+            if data.get('description'):
+                data['description'] += f"\n\n<h3>Education Requirements:</h3><p>{education_text}</p>"
+            else:
+                data['description'] = f"<h3>Education Requirements:</h3><p>{education_text}</p>"
         
         # Handle external admin job creation (jobs from external sources)
         if current_user.role == 'external_admin':
@@ -539,8 +601,7 @@ def create_job(current_user):
             if company and hasattr(company, 'total_jobs_posted'):
                 company.total_jobs_posted += 1
         
-        db.session.commit()
-        
+        # Transaction will be committed by the decorator
         job_type = "external" if current_user.role == 'external_admin' else "internal"
         return jsonify({
             'message': f'{job_type.capitalize()} job created successfully',
@@ -548,8 +609,10 @@ def create_job(current_user):
         }), 201
         
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to create job', 'details': str(e)}), 500
+        # Transaction will be rolled back by the decorator
+        current_app.logger.error(f"Error creating job: {str(e)}")
+        error_details = str(e) if current_app.config.get('DEBUG') or current_app.config.get('FLASK_ENV') == 'development' else 'Internal server error'
+        return jsonify({'error': 'Failed to create job', 'details': error_details}), 500
 
 @job_bp.route('/jobs/<int:job_id>', methods=['PUT'])
 @token_required

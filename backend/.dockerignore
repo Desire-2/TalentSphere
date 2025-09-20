@@ -1,46 +1,49 @@
-# Git
+# Git and Version Control
 .git
 .gitignore
-README.md
 *.md
+README.md
+CHANGELOG.md
 
-# Python
-__pycache__
+# Python Cache and Virtual Environments
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env
-pip-log.txt
-pip-delete-this-directory.txt
-.tox
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
-
-# Virtual environments
 venv/
 env/
 ENV/
+.venv/
 env.bak/
 venv.bak/
+.mypy_cache/
+.pytest_cache/
+.coverage
+.tox/
+.cache/
 
-# IDE
+# Development Files
+.env
+.env.local
+.env.development
+.env.test
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# IDE and Editor Files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.sublime-*
 
-# OS
+# OS Generated Files
 .DS_Store
 .DS_Store?
 ._*
@@ -49,48 +52,44 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Local development
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Database files (keep structure, exclude data)
+# Database Files (Local Development)
+*.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
 
-# Logs
-logs/
-*.log
+# Build and Distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing and Documentation
+tests/
+test_*.py
+*_test.py
+docs/
+.pytest_cache/
+
+# Node.js (if applicable)
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.temp
-
-# Node modules (if any)
-node_modules/
-
-# Build artifacts
-build/
-dist/
-
-# Documentation
-docs/
-*.md
-!DOCKER_PERFORMANCE_README.md
-
-# Test files
-tests/
-test_*.py
-*_test.py
-
-# Backup files
+# Backup Files
 *.backup
 *.bak
 *.orig
+
+# Docker Files (Keep only main Dockerfile)
+docker-compose*.yml
+Dockerfile.*
+
+# Development Scripts
+start_*.sh
+optimize_*.sh
+*_optimized.*
+monitor_*.py

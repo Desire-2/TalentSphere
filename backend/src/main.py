@@ -34,6 +34,11 @@ from src.routes.employer import employer_bp
 from src.routes.share_routes import share_bp
 from src.routes.scholarship import scholarship_bp
 
+# Import optimized components
+from src.routes.optimized_api import optimized_api_bp
+from src.utils.performance import performance_metrics
+from src.utils.cache_middleware import ResponseCacheMiddleware, advanced_cache, CACHE_WARMING_FUNCTIONS
+
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
 # Configuration
@@ -58,11 +63,15 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Performance optimizations
+# Ultra-optimized performance settings
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
-    'pool_recycle': 3600,
-    'echo': os.getenv('SQL_ECHO', 'false').lower() == 'true'
+    'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '1800')),  # 30 minutes
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '15')),  # Increased pool size
+    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '25')),  # Increased overflow
+    'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '20')),  # Reduced timeout
+    'echo': os.getenv('SQL_ECHO', 'false').lower() == 'true',
+    'echo_pool': os.getenv('SQL_ECHO_POOL', 'false').lower() == 'true'
 }
 
 # Enable CORS for all routes
@@ -71,7 +80,13 @@ cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost
 CORS(app, origins=[origin.strip() for origin in cors_origins.split(',')], 
     allow_headers=["Content-Type", "Authorization"])
 
-# Register blueprints
+# Initialize performance monitoring
+performance_metrics(app)
+
+# Initialize cache middleware
+cache_middleware = ResponseCacheMiddleware(app, default_ttl=300)
+
+# Register blueprints (original)
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(company_bp, url_prefix='/api')
@@ -87,12 +102,15 @@ app.register_blueprint(employer_bp, url_prefix='/api')
 app.register_blueprint(share_bp, url_prefix='/api')
 app.register_blueprint(scholarship_bp, url_prefix='/api')
 
-# Health check endpoint
+# Register optimized API endpoints
+app.register_blueprint(optimized_api_bp, url_prefix='/api')
+
+# Health check endpoint (optimized)
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint with lazy database initialization"""
+    """Ultra-fast health check endpoint"""
     try:
-        # Try to initialize database if not already done
+        # Quick database ping (optimized)
         if not hasattr(health_check, '_db_initialized'):
             try:
                 with app.app_context():
@@ -102,16 +120,21 @@ def health_check():
             except Exception as e:
                 print(f"⚠️  Database initialization failed during health check: {e}")
         
-        # Test database connection
+        # Lightning-fast connection test
         with app.app_context():
             db.session.execute(db.text('SELECT 1'))
             db.session.commit()
         
+        # Cache status
+        cache_status = 'enabled' if advanced_cache.enabled else 'disabled'
+        
         return jsonify({
             'status': 'healthy',
-            'message': 'TalentSphere API is running',
+            'message': 'TalentSphere API is running (optimized)',
             'timestamp': datetime.utcnow().isoformat(),
-            'database': 'connected'
+            'database': 'connected',
+            'cache': cache_status,
+            'version': '2.0-optimized'
         }), 200
         
     except Exception as e:
@@ -119,7 +142,8 @@ def health_check():
             'status': 'unhealthy',
             'message': str(e),
             'timestamp': datetime.utcnow().isoformat(),
-            'database': 'disconnected'
+            'database': 'disconnected',
+            'cache': 'unknown'
         }), 503
 
 # Database initialization endpoint
@@ -132,6 +156,23 @@ def initialize_database():
         return {'status': 'success', 'message': 'Database tables created successfully'}, 200
     except Exception as e:
         return {'status': 'error', 'message': f'Database initialization failed: {str(e)}'}, 500
+
+# Cache warming endpoint
+@app.route('/api/warm-cache', methods=['POST'])
+def warm_cache():
+    """Warm cache with frequently accessed data"""
+    try:
+        advanced_cache.warm_cache(CACHE_WARMING_FUNCTIONS)
+        return jsonify({
+            'status': 'success',
+            'message': 'Cache warming completed',
+            'functions_executed': len(CACHE_WARMING_FUNCTIONS)
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Cache warming failed: {str(e)}'
+        }), 500
 
 # Initialize database
 db.init_app(app)
@@ -147,17 +188,32 @@ def init_database():
         print(f"❌ Database initialization failed: {e}")
         return False
 
+def warm_cache_on_startup():
+    """Warm cache during application startup"""
+    try:
+        with app.app_context():
+            print("🔥 Warming up cache...")
+            advanced_cache.warm_cache(CACHE_WARMING_FUNCTIONS)
+            print("✅ Cache warming completed")
+    except Exception as e:
+        print(f"⚠️  Cache warming failed: {e}")
+
 # Initialize database only in specific cases
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5001, help='Port to run the server on')
     parser.add_argument('--no-init-db', action='store_true', help='Skip database initialization')
+    parser.add_argument('--warm-cache', action='store_true', help='Warm cache on startup')
     args = parser.parse_args()
     
     # Only initialize database when running directly (development mode) unless skipped
     if not args.no_init_db:
         init_database()
+    
+    # Warm cache if requested
+    if args.warm_cache:
+        warm_cache_on_startup()
     
     # Use debug mode only in development
     debug_mode = os.getenv('FLASK_ENV', 'development') == 'development'
@@ -169,8 +225,16 @@ elif os.getenv('INIT_DB_ON_STARTUP', 'false').lower() == 'true':
     except Exception as e:
         print(f"⚠️  Database initialization skipped: {e}")
         print("💡 Database will be initialized on first request")
+        
+    # Warm cache in production
+    if os.getenv('WARM_CACHE_ON_STARTUP', 'true').lower() == 'true':
+        warm_cache_on_startup()
 else:
     print("💡 Database initialization deferred to first API request")
+    
+    # Still warm cache in production
+    if os.getenv('FLASK_ENV', 'development') == 'production':
+        warm_cache_on_startup()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

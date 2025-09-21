@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Message - TalentSphere</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8fafc;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            color: white;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        .tagline {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .content {
+            padding: 32px 24px;
+        }
+        
+        .message-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+        
+        .main-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+        
+        .sender-card {
+            background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+            border: 1px solid #f9a8d4;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            position: relative;
+        }
+        
+        .sender-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .sender-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin-right: 16px;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+        }
+        
+        .sender-details {
+            flex: 1;
+        }
+        
+        .sender-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #831843;
+            margin-bottom: 4px;
+        }
+        
+        .sender-title {
+            font-size: 14px;
+            color: #be185d;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .sender-company {
+            font-size: 14px;
+            color: #9f1239;
+            font-weight: 500;
+        }
+        
+        .message-timestamp {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: #9f1239;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            border: 1px solid #f9a8d4;
+        }
+        
+        .message-content {
+            background: white;
+            border: 1px solid #f3f4f6;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .message-subject {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .message-body {
+            color: #374151;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .message-attachments {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .attachment-item:last-child {
+            border-bottom: none;
+        }
+        
+        .attachment-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+        
+        .attachment-info {
+            flex: 1;
+        }
+        
+        .attachment-name {
+            font-weight: 500;
+            color: #1f2937;
+            font-size: 14px;
+        }
+        
+        .attachment-size {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        
+        .quick-actions {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .quick-actions h3 {
+            color: #0c4a6e;
+            font-size: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .action-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .action-button.primary {
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            color: white;
+            border: none;
+        }
+        
+        .action-button.secondary {
+            background: white;
+            color: #ec4899;
+            border: 2px solid #ec4899;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin: 16px 0;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+        }
+        
+        .footer {
+            background: #f7fafc;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        @media (max-width: 600px) {
+            .sender-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .sender-avatar {
+                margin-right: 0;
+                margin-bottom: 12px;
+            }
+            
+            .message-timestamp {
+                position: static;
+                display: block;
+                text-align: center;
+                margin-top: 12px;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">TalentSphere</div>
+            <div class="tagline">Your Career Journey Starts Here</div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="message-badge">💬 New Message</div>
+            
+            <h1 class="main-title">You Have a New Message!</h1>
+            
+            <p style="color: #4a5568; margin-bottom: 24px;">
+                A recruiter or employer has sent you a message. Here's what they had to say:
+            </p>
+            
+            <div class="sender-card">
+                <div class="message-timestamp">{{timestamp}}</div>
+                
+                <div class="sender-info">
+                    <div class="sender-avatar">{{sender_initials}}</div>
+                    <div class="sender-details">
+                        <div class="sender-name">{{sender_name}}</div>
+                        <div class="sender-title">{{sender_title}}</div>
+                        <div class="sender-company">{{company_name}}</div>
+                    </div>
+                </div>
+                
+                <div class="message-content">
+                    <div class="message-subject">{{subject}}</div>
+                    <div class="message-body">{{message_body}}</div>
+                </div>
+                
+                {{#attachments}}
+                <div class="message-attachments">
+                    <h4 style="color: #374151; font-size: 14px; margin-bottom: 12px;">📎 Attachments</h4>
+                    {{#files}}
+                    <div class="attachment-item">
+                        <div class="attachment-icon">📄</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">{{name}}</div>
+                            <div class="attachment-size">{{size}}</div>
+                        </div>
+                    </div>
+                    {{/files}}
+                </div>
+                {{/attachments}}
+            </div>
+            
+            <div class="quick-actions">
+                <h3>⚡ Quick Actions</h3>
+                <div class="action-buttons">
+                    <a href="{{reply_url}}" class="action-button primary">💬 Reply</a>
+                    <a href="{{profile_url}}" class="action-button secondary">👤 View Profile</a>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{{messages_url}}" class="cta-button">📧 View All Messages</a>
+            </div>
+            
+            <div style="background: #fffbeb; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <p style="color: #9a3412; margin: 0; font-size: 14px; text-align: center;">
+                    <strong>💡 Pro Tip:</strong> Respond promptly to show your interest and professionalism.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div style="font-size: 12px; color: #718096; margin-bottom: 16px;">
+                Stay connected with potential employers through TalentSphere messaging.
+            </div>
+            
+            <div style="font-size: 11px; color: #a0aec0;">
+                <a href="{{unsubscribe_url}}" style="color: #ec4899; text-decoration: none;">Unsubscribe</a> | 
+                <a href="{{preferences_url}}" style="color: #ec4899; text-decoration: none;">Manage Preferences</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

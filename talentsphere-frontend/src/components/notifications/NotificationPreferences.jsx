@@ -9,7 +9,10 @@ import {
   Building,
   Settings,
   Save,
-  RefreshCw
+  RefreshCw,
+  Clock,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,38 +20,127 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import api from '../../services/api';
 
 const NotificationPreferences = () => {
-  const [preferences, setPreferences] = useState({
-    email_notifications: {
-      application_status: true,
-      job_alerts: true,
-      messages: true,
-      promotions: false,
-      system: true,
-      company_updates: true
-    },
-    push_notifications: {
-      application_status: true,
-      job_alerts: true,
-      messages: true,
-      promotions: false,
-      system: false,
-      company_updates: false
-    },
-    sms_notifications: {
-      application_status: false,
-      job_alerts: false,
-      messages: false,
-      promotions: false,
-      system: false,
-      company_updates: false
-    }
-  });
+  const [preferences, setPreferences] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [globalSettings, setGlobalSettings] = useState({
+  // Load preferences from enhanced API
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      setLoading(true);
+      const data = await api.get('/enhanced-notifications/notification-preferences');
+      setPreferences(data);
+    } catch (error) {
+      console.error('Failed to load preferences:', error);
+      toast.error('Failed to load notification preferences');
+      // Set default preferences
+      setPreferences({
+        email_preferences: {
+          enabled: true,
+          job_alerts: true,
+          application_status: true,
+          messages: true,
+          interview_reminders: true,
+          deadline_reminders: true,
+          company_updates: false,
+          system_notifications: true,
+          promotions: false
+        },
+        push_preferences: {
+          enabled: true,
+          job_alerts: true,
+          application_status: true,
+          messages: true,
+          interview_reminders: true,
+          deadline_reminders: true,
+          company_updates: true,
+          system_notifications: true,
+          promotions: false
+        },
+        sms_preferences: {
+          enabled: false,
+          interview_reminders: false,
+          deadline_reminders: false
+        },
+        digest_preferences: {
+          weekly_digest_enabled: true,
+          weekly_digest_day: 'monday',
+          daily_digest_enabled: false,
+          daily_digest_time: '09:00'
+        },
+        quiet_hours: {
+          enabled: false,
+          start: '22:00',
+          end: '08:00',
+          timezone: 'UTC'
+        },
+        frequency_settings: {
+          max_emails_per_day: 10,
+          batch_notifications: true,
+          immediate_for_urgent: true
+        }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const savePreferences = async () => {
+    if (!preferences) return;
+    
+    try {
+      setSaving(true);
+      await api.put('/enhanced-notifications/notification-preferences', preferences);
+      toast.success('Notification preferences saved successfully');
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      toast.error('Failed to save notification preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updatePreference = (section, key, value) => {
+    setPreferences(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [key]: value
+      }
+    }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+        Loading preferences...
+      </div>
+    );
+  }
+
+  if (!preferences) {
+    return (
+      <div className="text-center p-8">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <p className="text-gray-600">Failed to load notification preferences</p>
+        <Button onClick={loadPreferences} className="mt-4">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
     do_not_disturb: false,
     digest_frequency: 'daily', // immediate, daily, weekly
     quiet_hours_enabled: false,

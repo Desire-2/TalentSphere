@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Update - TalentSphere</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8fafc;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        .tagline {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .content {
+            padding: 32px 24px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+        }
+        
+        .status-badge.under-review {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .status-badge.interview {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        
+        .status-badge.rejected {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .main-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+        
+        .application-card {
+            background: linear-gradient(135deg, #10b98110 0%, #05966910 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            position: relative;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #718096;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step-circle.completed {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .step-circle.current {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        
+        .step-label {
+            font-size: 11px;
+            text-align: center;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .step-line {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            right: -50%;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 1;
+        }
+        
+        .step-line.completed {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .job-info {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .job-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        
+        .company-name {
+            font-size: 16px;
+            color: #10b981;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+        
+        .application-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .detail-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        
+        .next-steps {
+            background: #f0f7ff;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .next-steps h3 {
+            color: #1e40af;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .next-steps ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .next-steps li {
+            color: #374151;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .next-steps li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin: 16px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .secondary-button {
+            display: inline-block;
+            background: transparent;
+            color: #10b981;
+            text-decoration: none;
+            padding: 14px 28px;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            margin-left: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .footer {
+            background: #f7fafc;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 16px;
+        }
+        
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 24px 16px;
+            }
+            
+            .application-details {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .progress-steps {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .step-line {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">TalentSphere</div>
+            <div class="tagline">Your Career Journey Starts Here</div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="status-badge {{status_class}}">🔄 Application Update</div>
+            
+            <h1 class="main-title">Your Application Status Has Been Updated!</h1>
+            
+            <div class="application-card">
+                <!-- Progress Bar -->
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{progress_percentage}}%;"></div>
+                </div>
+                
+                <!-- Progress Steps -->
+                <div class="progress-steps">
+                    <div class="step">
+                        <div class="step-circle completed">1</div>
+                        <div class="step-label">Applied</div>
+                        <div class="step-line completed"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle {{step2_class}}">2</div>
+                        <div class="step-label">Review</div>
+                        <div class="step-line {{step2_line_class}}"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle {{step3_class}}">3</div>
+                        <div class="step-label">Interview</div>
+                        <div class="step-line {{step3_line_class}}"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle {{step4_class}}">4</div>
+                        <div class="step-label">Decision</div>
+                    </div>
+                </div>
+                
+                <div class="job-info">
+                    <h2 class="job-title">{{job_title}}</h2>
+                    <div class="company-name">{{company_name}}</div>
+                    
+                    <div class="application-details">
+                        <div class="detail-item">
+                            <span class="detail-icon">📅</span>
+                            <span>Applied: {{application_date}}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🔄</span>
+                            <span>Status: {{current_status}}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">📍</span>
+                            <span>{{location}}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">💼</span>
+                            <span>{{employment_type}}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #2d3748; font-size: 16px; margin-bottom: 12px;">📋 Update Details</h3>
+                    <p style="color: #4a5568; margin: 0; font-size: 14px; line-height: 1.6;">
+                        {{update_message}}
+                    </p>
+                </div>
+                
+                {{#next_steps}}
+                <div class="next-steps">
+                    <h3>🎯 Next Steps</h3>
+                    <ul>
+                        {{#steps}}
+                        <li>{{.}}</li>
+                        {{/steps}}
+                    </ul>
+                </div>
+                {{/next_steps}}
+                
+                <a href="{{application_url}}" class="cta-button">View Application</a>
+                <a href="{{messages_url}}" class="secondary-button">Check Messages</a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                You're receiving this update for your application to {{company_name}}.
+            </div>
+            
+            <div style="font-size: 11px; color: #a0aec0;">
+                <a href="{{unsubscribe_url}}" style="color: #10b981; text-decoration: none;">Unsubscribe</a> | 
+                <a href="{{preferences_url}}" style="color: #10b981; text-decoration: none;">Manage Preferences</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

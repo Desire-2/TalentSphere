@@ -68,7 +68,7 @@ const JobDetails = () => {
   };
 
   const getCompanyLogo = (job) => {
-    return job.company?.logo_url || null;
+    return job.company?.logo_url || job.external_company_logo || null;
   };
 
   const getJobDescription = (job) => {
@@ -118,6 +118,18 @@ const JobDetails = () => {
       try {
         const jobData = await apiService.getJob(id);
         setJob(jobData);
+
+        // Debug: Log external job data
+        if (jobData.job_source === 'external' || jobData.external_company_name) {
+          console.log('External job data:', {
+            id: jobData.id,
+            title: jobData.title,
+            external_company_name: jobData.external_company_name,
+            external_company_logo: jobData.external_company_logo,
+            job_source: jobData.job_source,
+            company: jobData.company
+          });
+        }
 
         // Update page title if meta_title is available
         if (jobData.meta_title) {
@@ -400,15 +412,28 @@ ${user.name || user.email}`);
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                {job.company?.logo_url ? (
+                {(job.company?.logo_url || job.external_company_logo) ? (
                   <img 
-                    src={job.company.logo_url} 
+                    src={job.company?.logo_url || job.external_company_logo} 
                     alt={`${getCompanyName(job)} logo`} 
                     className="w-12 h-12 object-contain rounded"
+                    onError={(e) => {
+                      console.log('Logo failed to load:', job.company?.logo_url || job.external_company_logo);
+                      e.target.style.display = 'none';
+                      e.target.parentNode.querySelector('.fallback-icon').style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <Building className="w-8 h-8 text-blue-600" />
-                )}
+                ) : null}
+                <div className={`fallback-icon w-12 h-12 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
+                  {(job.job_source === 'external' || job.external_company_name) ? (
+                    <div className="flex flex-col items-center text-blue-600">
+                      <ExternalLink className="w-5 h-5 mb-1" />
+                      <Building className="w-4 h-4" />
+                    </div>
+                  ) : (
+                    <Building className="w-8 h-8 text-blue-600" />
+                  )}
+                </div>
               </div>
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
@@ -842,15 +867,28 @@ ${user.name || user.email}`);
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  {job.company?.logo_url ? (
+                  {(job.company?.logo_url || job.external_company_logo) ? (
                     <img 
-                      src={job.company.logo_url} 
+                      src={job.company?.logo_url || job.external_company_logo} 
                       alt={`${getCompanyName(job)} logo`} 
                       className="w-8 h-8 object-contain rounded"
+                      onError={(e) => {
+                        console.log('Sidebar logo failed to load:', job.company?.logo_url || job.external_company_logo);
+                        e.target.style.display = 'none';
+                        e.target.parentNode.querySelector('.sidebar-fallback-icon').style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <Building className="w-5 h-5 text-blue-600" />
-                  )}
+                  ) : null}
+                  <div className={`sidebar-fallback-icon w-8 h-8 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
+                    {(job.job_source === 'external' || job.external_company_name) ? (
+                      <div className="flex flex-col items-center text-blue-600">
+                        <ExternalLink className="w-3 h-3 mb-1" />
+                        <Building className="w-3 h-3" />
+                      </div>
+                    ) : (
+                      <Building className="w-5 h-5 text-blue-600" />
+                    )}
+                  </div>
                 </div>
                 About {getCompanyName(job)}
               </CardTitle>

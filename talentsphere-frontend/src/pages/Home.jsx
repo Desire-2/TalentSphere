@@ -103,7 +103,7 @@ const Home = () => {
       try {
         setLoading(prev => ({ ...prev, featuredJobs: true }));
         // Load all jobs instead of just featured ones
-        const response = await apiService.get('/jobs?limit=12'); // Get more jobs
+        const response = await apiService.get('/jobs?per_page=12'); // Get more jobs
         if (response.jobs) {
           setFeaturedJobs(response.jobs);
         }

@@ -95,22 +95,8 @@ class NotificationService {
     }
 
     try {
-      // Use direct fetch with new API base
-      const response = await fetch(`${API_BASE}/notifications?page=${page}&per_page=${per_page}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth header if available
-          ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
+      // Use enhanced notifications API endpoint with proper authentication
+      const data = await api.get(`/enhanced-notifications/notifications?page=${page}&per_page=${per_page}`);
       
       // Cache the successful response
       this.cache.set(cacheKey, {
@@ -169,21 +155,7 @@ class NotificationService {
 
   async markAsRead(notificationId) {
     try {
-      const response = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await api.post(`/enhanced-notifications/notifications/${notificationId}/read`);
       
       // Clear cache to force refresh
       this.clearCache('notifications');
@@ -200,21 +172,7 @@ class NotificationService {
 
   async markAllAsRead() {
     try {
-      const response = await fetch(`${API_BASE}/notifications/mark-all-read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await api.post(`/enhanced-notifications/notifications/mark-all-read`);
       
       // Clear cache to force refresh
       this.clearCache('notifications');
@@ -231,21 +189,7 @@ class NotificationService {
 
   async deleteNotification(notificationId) {
     try {
-      const response = await fetch(`${API_BASE}/notifications/${notificationId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await api.delete(`/enhanced-notifications/notifications/${notificationId}`);
       
       // Clear cache to force refresh
       this.clearCache('notifications');
@@ -262,22 +206,7 @@ class NotificationService {
 
   async createNotification(notificationData) {
     try {
-      const response = await fetch(`${API_BASE}/notifications`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
-        },
-        body: JSON.stringify(notificationData)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await api.post(`/enhanced-notifications/notifications`, notificationData);
       
       // Clear cache to force refresh
       this.clearCache('notifications');

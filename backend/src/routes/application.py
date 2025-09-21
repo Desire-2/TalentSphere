@@ -7,8 +7,13 @@ from src.models.job import Job
 from src.models.application import Application, ApplicationActivity
 from src.models.notification import Notification
 from src.routes.auth import token_required, role_required
+from src.services.notification_templates import EnhancedNotificationService
+from src.services.email_service import email_service
 
 application_bp = Blueprint('application', __name__)
+
+# Initialize enhanced notification service
+enhanced_notification_service = EnhancedNotificationService(email_service)
 
 def create_application_activity(application_id, user_id, activity_type, description, old_value=None, new_value=None):
     """Create an application activity record"""
@@ -96,7 +101,7 @@ def apply_for_job(current_user, job_id):
         # Update job application count
         job.application_count += 1
         
-        # Create notification for employer
+        # Create notification for employer with enhanced email template
         if job.poster:
             create_notification(
                 job.poster.id,
@@ -106,6 +111,20 @@ def apply_for_job(current_user, job_id):
                 related_application_id=application.id,
                 related_job_id=job_id
             )
+            
+            # Send enhanced email notification to employer
+            enhanced_notification_service.send_application_status_update(
+                application.id, 
+                'submitted',
+                frontend_url='https://talentsphere.com'
+            )
+        
+        # Send confirmation to applicant
+        enhanced_notification_service.send_application_status_update(
+            application.id,
+            'submitted',
+            frontend_url='https://talentsphere.com'
+        )
         
         db.session.commit()
         
@@ -226,6 +245,13 @@ def update_application_status(current_user, application_id):
                 'application_status',
                 related_application_id=application.id,
                 related_job_id=application.job_id
+            )
+            
+            # Send enhanced email notification with beautiful template
+            enhanced_notification_service.send_application_status_update(
+                application.id,
+                new_status,
+                frontend_url='https://talentsphere.com'
             )
         
         db.session.commit()

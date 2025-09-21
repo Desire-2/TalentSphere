@@ -19,6 +19,7 @@ from src.models.job_template import JobTemplate
 from src.models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
 from src.models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
 from src.models.notification import Notification, NotificationTemplate, Review, ReviewVote, Message
+from src.models.notification_preferences import NotificationPreference, NotificationDeliveryLog, NotificationQueue
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.company import company_bp
@@ -29,6 +30,8 @@ from src.routes.application import application_bp
 from src.routes.featured_ad import featured_ad_bp
 from src.routes.admin import admin_bp
 from src.routes.notification import notification_bp
+from src.routes.enhanced_notification import enhanced_notification_bp
+from src.routes.job_alerts import job_alerts_bp
 from src.routes.recommendations import recommendations_bp
 from src.routes.employer import employer_bp
 from src.routes.share_routes import share_bp
@@ -38,6 +41,7 @@ from src.routes.scholarship import scholarship_bp
 from src.routes.optimized_api import optimized_api_bp
 from src.utils.performance import performance_metrics
 from src.utils.cache_middleware import ResponseCacheMiddleware, advanced_cache, CACHE_WARMING_FUNCTIONS
+from src.services.notification_scheduler import notification_scheduler
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -97,6 +101,8 @@ app.register_blueprint(application_bp, url_prefix='/api')
 app.register_blueprint(featured_ad_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
 app.register_blueprint(notification_bp, url_prefix='/api')
+app.register_blueprint(enhanced_notification_bp, url_prefix='/api/enhanced-notifications')
+app.register_blueprint(job_alerts_bp, url_prefix='/api/job-alerts')
 app.register_blueprint(recommendations_bp, url_prefix='/api')
 app.register_blueprint(employer_bp, url_prefix='/api')
 app.register_blueprint(share_bp, url_prefix='/api')
@@ -210,6 +216,13 @@ if __name__ == '__main__':
     # Only initialize database when running directly (development mode) unless skipped
     if not args.no_init_db:
         init_database()
+    
+    # Start notification scheduler
+    try:
+        notification_scheduler.start()
+        print("✅ Notification scheduler started")
+    except Exception as e:
+        print(f"⚠️  Notification scheduler failed to start: {e}")
     
     # Warm cache if requested
     if args.warm_cache:

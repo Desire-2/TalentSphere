@@ -64,8 +64,12 @@ import CompanySettings from './pages/company/CompanySettings';
 
 // Notifications
 import NotificationsPage from './pages/NotificationsPage';
+import NotificationsPageEnhanced from './pages/NotificationsPageEnhanced';
 import NotificationDemo from './components/notifications/NotificationDemo';
 import NotificationTestPage from './pages/NotificationTestPage';
+import EnhancedNotificationList from './components/notifications/EnhancedNotificationList';
+import EnhancedNotificationPreferences from './components/notifications/EnhancedNotificationPreferences';
+import NotificationProviderReal from './components/notifications/NotificationProviderReal';
 
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -94,8 +98,9 @@ function App() {
 
   return (
     <AuthInitializer>
-      <Router>
-        <GoogleAnalytics />
+      <NotificationProviderReal>
+        <Router>
+          <GoogleAnalytics />
         <Routes>
             {/* Public routes with layout */}
             <Route path="/" element={<Layout />}>
@@ -157,7 +162,8 @@ function App() {
                   <p className="text-muted-foreground">Coming soon in the next phase!</p>
                 </div>
               } />
-              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="notifications" element={<NotificationsPageEnhanced />} />
+              <Route path="notifications/preferences" element={<EnhancedNotificationPreferences />} />
               <Route path="notifications/demo" element={<NotificationDemo />} />
               <Route path="recommendations" element={
                 <div className="container mx-auto px-4 py-20 text-center">
@@ -239,6 +245,7 @@ function App() {
         </Routes>
       </Router>
       <Toaster />
+      </NotificationProviderReal>
     </AuthInitializer>
   );
 }

@@ -239,7 +239,7 @@ const Companies = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
@@ -344,7 +344,7 @@ const Companies = () => {
 
         {/* Companies Grid/List */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-16 sm:py-20">
             <div className="text-center">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
               <p className="text-gray-600">Loading companies...</p>
@@ -353,7 +353,7 @@ const Companies = () => {
         ) : companies.length > 0 ? (
           <>
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
                 {companies.map((company) => (
                   <CompanyCard key={company.id} company={company} />
                 ))}
@@ -368,7 +368,7 @@ const Companies = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -376,7 +376,6 @@ const Companies = () => {
                 >
                   Previous
                 </Button>
-                
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     const page = Math.max(1, Math.min(currentPage - 2 + i, totalPages));
@@ -392,7 +391,6 @@ const Companies = () => {
                     );
                   })}
                 </div>
-
                 <Button
                   variant="outline"
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
@@ -404,7 +402,7 @@ const Companies = () => {
             )}
           </>
         ) : (
-          <div className="text-center py-20">
+          <div className="text-center py-16 sm:py-20">
             <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-6" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Companies Found</h3>
             <p className="text-gray-600 mb-6">

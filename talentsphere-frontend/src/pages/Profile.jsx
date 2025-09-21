@@ -129,7 +129,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="max-w-3xl mx-auto py-8 px-2 sm:px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -138,8 +138,8 @@ const Profile = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto py-8 px-2 sm:px-4 md:px-6 lg:px-8">
+      <>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -479,7 +479,7 @@ const Profile = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </>
     </div>
   );
 };

@@ -125,7 +125,7 @@ const ExternalAdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+  <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -238,7 +238,7 @@ const ExternalAdminLayout = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+  <div className="flex-1 flex flex-col overflow-hidden w-full lg:w-auto lg:ml-0">
         {/* Top bar */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -272,8 +272,8 @@ const ExternalAdminLayout = () => {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4 sm:py-6">
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
               <Outlet />
             </div>
           </div>

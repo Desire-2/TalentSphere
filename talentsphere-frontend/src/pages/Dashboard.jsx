@@ -29,7 +29,7 @@ const Dashboard = () => {
   // For admin and external_admin, show loading while redirecting
   if (user?.role === 'admin' || user?.role === 'external_admin') {
     return (
-      <div className="container mx-auto px-4 py-20 text-center">
+  <div className="max-w-3xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-16 sm:py-20 text-center">
         <h1 className="text-2xl font-semibold mb-4">Redirecting to your dashboard...</h1>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
       </div>
@@ -38,7 +38,7 @@ const Dashboard = () => {
 
   // Default fallback for other roles or loading state
   return (
-    <div className="container mx-auto px-4 py-20 text-center">
+  <div className="max-w-3xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-16 sm:py-20 text-center">
       <h1 className="text-4xl font-bold mb-4">Welcome to TalentSphere</h1>
       <p className="text-muted-foreground mb-8">
         Please complete your profile setup to access your personalized dashboard.

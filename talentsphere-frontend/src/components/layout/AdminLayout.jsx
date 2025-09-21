@@ -55,7 +55,7 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+  <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -139,7 +139,7 @@ const AdminLayout = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+  <div className="flex-1 flex flex-col min-w-0 w-full lg:w-auto">
         {/* Top bar */}
         <div className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
@@ -221,7 +221,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 p-6 overflow-auto">
+  <main className="flex-1 p-2 sm:p-4 md:p-6 overflow-auto w-full max-w-7xl mx-auto">
           <Outlet />
         </main>
       </div>

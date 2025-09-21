@@ -64,30 +64,30 @@ const Header = () => {
         : 'bg-white/80 backdrop-blur-sm border-b border-gray-100'
     }`}>
       {/* Background gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-transparent to-purple-50/50 opacity-60"></div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex justify-between items-center h-16">
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-transparent to-purple-50/50 opacity-60 pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 relative z-10">
+        <div className="flex flex-wrap justify-between items-center h-16 min-h-[56px] md:min-h-[64px]">
           {/* Enhanced Logo */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-3 group">
+          <div className="flex items-center min-w-[120px]">
+            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:shadow-xl">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:shadow-xl">
                   <Briefcase className="w-5 h-5 text-white" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-300"></div>
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 group-hover:from-blue-600 group-hover:to-purple-600 transition-colors duration-300">
+                <span className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 group-hover:from-blue-600 group-hover:to-purple-600 transition-colors duration-300">
                   TalentSphere
                 </span>
-                <span className="text-xs text-gray-500 font-medium -mt-1">Find Your Dream Job</span>
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium -mt-1">Find Your Dream Job</span>
               </div>
             </Link>
           </div>
 
           {/* Enhanced Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 xl:space-x-3">
             <Link 
               to="/jobs" 
               className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
@@ -157,7 +157,7 @@ const Header = () => {
           </nav>
 
           {/* Enhanced Right side */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {isAuthenticated ? (
               <>
                 {/* Enhanced Search */}
@@ -165,6 +165,7 @@ const Header = () => {
                   variant="ghost" 
                   size="sm" 
                   className="hidden md:flex h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:scale-105"
+                  aria-label="Search"
                 >
                   <Search className="w-4 h-4" />
                 </Button>
@@ -177,6 +178,7 @@ const Header = () => {
                   variant="ghost" 
                   size="sm" 
                   className="h-9 w-9 rounded-xl hover:bg-green-50 hover:text-green-600 transition-all duration-300 hover:scale-105"
+                  aria-label="Messages"
                 >
                   <MessageSquare className="w-4 h-4" />
                 </Button>
@@ -184,8 +186,8 @@ const Header = () => {
                 {/* Enhanced User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 px-3 rounded-xl hover:bg-purple-50 transition-all duration-300 hover:scale-105 group">
-                      <div className="flex items-center space-x-2">
+                    <Button variant="ghost" className="relative h-10 px-2 sm:px-3 rounded-xl hover:bg-purple-50 transition-all duration-300 hover:scale-105 group">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
                         <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
                           <AvatarImage src={user?.profile_picture} alt={user?.first_name} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
@@ -196,7 +198,7 @@ const Header = () => {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-64 bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl rounded-2xl p-2" align="end" forceMount>
+                  <DropdownMenuContent className="w-64 max-h-[70vh] overflow-y-auto bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl rounded-2xl p-2" align="end" forceMount>
                     {/* Enhanced User Info */}
                     <div className="flex items-center justify-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl mb-2">
                       <Avatar className="h-10 w-10 ring-2 ring-white shadow-lg">
@@ -323,11 +325,11 @@ const Header = () => {
         {/* Enhanced Mobile Navigation */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gradient-to-r from-transparent via-gray-200 to-transparent">
-            <div className="py-4 bg-gradient-to-br from-white/80 to-blue-50/50 backdrop-blur-sm rounded-b-2xl border border-white/20 shadow-xl">
+            <div className="py-4 px-1 bg-gradient-to-br from-white/80 to-blue-50/50 backdrop-blur-sm rounded-b-2xl border border-white/20 shadow-xl">
               <nav className="flex flex-col space-y-2">
                 <Link 
                   to="/jobs" 
-                  className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70"
+                  className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Search className="w-4 h-4" />
@@ -335,7 +337,7 @@ const Header = () => {
                 </Link>
                 <Link 
                   to="/companies" 
-                  className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70"
+                  className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Briefcase className="w-4 h-4" />
@@ -343,7 +345,7 @@ const Header = () => {
                 </Link>
                 <Link 
                   to="/scholarships" 
-                  className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70"
+                  className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <GraduationCap className="w-4 h-4" />
@@ -352,7 +354,7 @@ const Header = () => {
                 {isAuthenticated && user?.role === 'employer' && (
                   <Link 
                     to="/post-job" 
-                    className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/70"
+                    className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/70"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Star className="w-4 h-4" />
@@ -362,7 +364,7 @@ const Header = () => {
                 {isAuthenticated && user?.role === 'admin' && (
                   <Link 
                     to="/admin" 
-                    className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70"
+                    className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Shield className="w-4 h-4" />
@@ -372,7 +374,7 @@ const Header = () => {
                 {isAuthenticated && user?.role === 'external_admin' && (
                   <Link 
                     to="/external-admin" 
-                    className="group flex items-center space-x-3 px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/70"
+                    className="group flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-3 mx-1 sm:mx-2 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/70"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <GraduationCap className="w-4 h-4" />
@@ -380,14 +382,14 @@ const Header = () => {
                   </Link>
                 )}
                 {!isAuthenticated && (
-                  <div className="flex flex-col space-y-2 pt-4 mx-2 border-t border-gray-200/50">
+                  <div className="flex flex-col space-y-2 pt-4 mx-1 sm:mx-2 border-t border-gray-200/50">
                     <Button 
                       variant="ghost" 
                       asChild 
                       className="justify-start rounded-xl hover:bg-gray-50 transition-all duration-300"
                     >
                       <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                        <User className="w-4 h-4 mr-3" />
+                        <User className="w-4 h-4 mr-2 sm:mr-3" />
                         Sign In
                       </Link>
                     </Button>
@@ -396,7 +398,7 @@ const Header = () => {
                       className="justify-start bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg"
                     >
                       <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Zap className="w-4 h-4 mr-3" />
+                        <Zap className="w-4 h-4 mr-2 sm:mr-3" />
                         Get Started
                       </Link>
                     </Button>

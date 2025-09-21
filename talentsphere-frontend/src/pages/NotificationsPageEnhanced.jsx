@@ -78,10 +78,10 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-6xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/dashboard" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
@@ -102,12 +102,12 @@ const NotificationsPage = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Notifications List */}
-        <div className="lg:col-span-2 space-y-6">
+  <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Statistics Cards */}
           {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-blue-600">{stats.total_notifications}</div>
@@ -149,7 +149,7 @@ const NotificationsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-80 sm:h-96">
                 {loading ? (
                   <div className="flex items-center justify-center p-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -161,15 +161,15 @@ const NotificationsPage = () => {
                     <p>No notifications found</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-4">
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-4 rounded-lg border transition-colors ${
+                        className={`p-3 sm:p-4 rounded-lg border transition-colors ${
                           !notification.is_read ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-gray-200'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3">
                           <div className="flex-shrink-0 mt-1">
                             {getNotificationIcon(notification.notification_type)}
                           </div>
@@ -186,7 +186,7 @@ const NotificationsPage = () => {
                                   {notification.message}
                                 </p>
                                 
-                                <div className="flex items-center gap-2 mt-2">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 mt-2">
                                   <Badge 
                                     variant="outline" 
                                     className={`text-xs ${getPriorityColor(notification.priority)}`}
@@ -205,7 +205,7 @@ const NotificationsPage = () => {
                                 </div>
                               </div>
                               
-                              <div className="flex items-center gap-1 ml-2">
+                              <div className="flex items-center gap-1 ml-0 sm:ml-2 mt-2 sm:mt-0">
                                 {!notification.is_read && (
                                   <Button
                                     variant="ghost"
@@ -238,7 +238,7 @@ const NotificationsPage = () => {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+  <div className="space-y-4 sm:space-y-6">
           {/* Quick Stats */}
           {stats?.by_type && (
             <Card>
@@ -249,7 +249,7 @@ const NotificationsPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {stats.by_type.map((item) => (
                     <div key={item.type} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ const NotificationsPage = () => {
                 Quick Actions
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 sm:space-y-3">
               <Button variant="outline" className="w-full justify-start" asChild>
                 <Link to="#preferences">
                   <Bell className="h-4 w-4 mr-2" />
@@ -313,7 +313,7 @@ const NotificationsPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   {stats.email_delivery.map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <span className="text-sm capitalize">{item.status}</span>
@@ -330,8 +330,8 @@ const NotificationsPage = () => {
       </div>
 
       {/* Notification Preferences Section */}
-      <div className="mt-12">
-        <Separator className="mb-8" />
+      <div className="mt-8 sm:mt-12">
+        <Separator className="mb-6 sm:mb-8" />
         <div id="preferences">
           <NotificationPreferencesEnhanced />
         </div>

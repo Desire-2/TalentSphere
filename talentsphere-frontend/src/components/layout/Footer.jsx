@@ -4,8 +4,8 @@ import { Briefcase, Mail, Phone, MapPin } from 'lucide-react';
 const Footer = () => {
   return (
     <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -132,12 +132,12 @@ const Footer = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-gray-800 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-sm text-gray-300">
+        <div className="border-t border-gray-800 mt-8 sm:mt-12 pt-6 sm:pt-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-xs sm:text-sm text-gray-300 text-center sm:text-left">
               © 2024 TalentSphere. All rights reserved.
             </div>
-            <div className="flex space-x-6 text-sm text-gray-300">
+            <div className="flex flex-wrap justify-center sm:justify-end gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-300">
               <Link to="/privacy" className="hover:text-white transition-colors">
                 Privacy Policy
               </Link>

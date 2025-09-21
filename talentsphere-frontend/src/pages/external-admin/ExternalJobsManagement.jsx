@@ -309,13 +309,13 @@ const ExternalJobsManagement = () => {
   // Loading state for component
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 space-y-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
           <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
         </div>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-20 bg-gray-200 rounded animate-pulse"></div>
@@ -329,9 +329,9 @@ const ExternalJobsManagement = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">External Jobs</h1>
             <p className="text-gray-600 mt-2">
@@ -348,8 +348,8 @@ const ExternalJobsManagement = () => {
 
         {/* Filters */}
         <Card>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -400,12 +400,12 @@ const ExternalJobsManagement = () => {
         {/* Bulk Actions Toolbar */}
         {showBulkActions && (
           <Card className="border-blue-200 bg-blue-50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-2 sm:p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <CheckSquare className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">
+                    <span className="font-medium text-blue-900 text-sm sm:text-base">
                       {selectedJobs.size} job{selectedJobs.size > 1 ? 's' : ''} selected
                     </span>
                   </div>
@@ -419,7 +419,6 @@ const ExternalJobsManagement = () => {
                     Clear Selection
                   </Button>
                 </div>
-                
                 <div className="flex items-center space-x-2">
                   {/* Status Update Actions */}
                   <DropdownMenu>
@@ -448,7 +447,6 @@ const ExternalJobsManagement = () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
                   {/* Delete Action */}
                   <Button 
                     variant="destructive" 
@@ -468,10 +466,10 @@ const ExternalJobsManagement = () => {
         {/* Jobs List */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center">
                 <Briefcase className="h-5 w-5 mr-2" />
-                External Jobs ({pagination.total})
+                <span className="text-base sm:text-lg">External Jobs ({pagination.total})</span>
               </div>
               {jobs.length > 0 && (
                 <div className="flex items-center space-x-2">
@@ -499,10 +497,10 @@ const ExternalJobsManagement = () => {
             {jobs.length > 0 ? (
               <div className="space-y-4">
                 {jobs.map((job) => (
-                  <div key={job.id} className="job-card border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
-                    <div className="flex items-start justify-between">
+                  <div key={job.id} className="job-card border border-gray-200 rounded-lg p-4 sm:p-6 hover:border-gray-300 transition-colors">
+                    <div className="flex flex-col md:flex-row items-start justify-between gap-4">
                       {/* Checkbox Selection */}
-                      <div className="flex items-start space-x-4">
+                      <div className="flex flex-row items-start space-x-2 sm:space-x-4 w-full md:w-auto">
                         <div className="pt-1">
                           <Button
                             variant="ghost"
@@ -517,26 +515,25 @@ const ExternalJobsManagement = () => {
                             )}
                           </Button>
                         </div>
-                        
                         <div className="flex-1">
                           {/* Job Header */}
-                          <div className="flex items-center space-x-3 mb-3">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
                             {job.external_company_logo ? (
                               <img 
                                 src={job.external_company_logo} 
                                 alt={job.external_company_name}
-                                className="h-12 w-12 rounded-lg object-cover"
+                                className="h-12 w-12 rounded-lg object-cover mb-2 sm:mb-0"
                               />
                             ) : (
-                              <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center mb-2 sm:mb-0">
                                 <Building2 className="h-6 w-6 text-gray-400" />
                               </div>
                             )}
                             <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                                 {job.title}
                               </h3>
-                              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-gray-600">
                                 <span className="flex items-center">
                                   <Building2 className="h-4 w-4 mr-1" />
                                   {job.external_company_name}
@@ -552,9 +549,8 @@ const ExternalJobsManagement = () => {
                               </div>
                             </div>
                           </div>
-
                           {/* Job Details */}
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div>
                               <span className="text-xs text-gray-500 uppercase tracking-wide">Status</span>
                               <div className="mt-1">
@@ -577,13 +573,12 @@ const ExternalJobsManagement = () => {
                               <span className="text-xs text-gray-500 uppercase tracking-wide">Source</span>
                               <div className="mt-1 flex items-center">
                                 <ExternalLink className="h-3 w-3 mr-1" />
-                                <span className="text-sm text-gray-700">{job.job_source || 'External'}</span>
+                                <span className="text-xs sm:text-sm text-gray-700">{job.job_source || 'External'}</span>
                               </div>
                             </div>
                           </div>
-
                           {/* Job Stats */}
-                          <div className="job-stats flex items-center space-x-6 text-sm text-gray-600">
+                          <div className="job-stats flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-6 text-xs sm:text-sm text-gray-600">
                             <span className="flex items-center">
                               <Eye className="h-4 w-4 mr-1" />
                               {job.statistics?.view_count || 0} views
@@ -612,9 +607,8 @@ const ExternalJobsManagement = () => {
                           </div>
                         </div>
                       </div>
-
                       {/* Enhanced Action Buttons */}
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-row items-center space-x-2 mt-4 md:mt-0">
                         {/* Quick Action Buttons */}
                         <QuickJobActions 
                           job={job}
@@ -622,7 +616,6 @@ const ExternalJobsManagement = () => {
                           onStatusUpdate={handleStatusUpdate}
                           onCopyLink={handleCopyJobLink}
                         />
-
                         {/* More Actions Dropdown */}
                         <JobActionsDropdown 
                           job={job}
@@ -649,16 +642,16 @@ const ExternalJobsManagement = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-8 sm:py-12">
                 <Briefcase className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No external jobs found</h3>
-                <p className="text-gray-600 mb-6">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No external jobs found</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-6">
                   {Object.values(filters).some(v => v) 
                     ? "No jobs match your current filters. Try adjusting your search criteria."
                     : "Get started by creating your first external job posting or importing jobs from external sources."
                   }
                 </p>
-                <div className="flex justify-center space-x-4">
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
                   <Link to="/external-admin/jobs/create">
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
@@ -676,7 +669,7 @@ const ExternalJobsManagement = () => {
 
             {/* Pagination */}
             {pagination.pages > 1 && (
-              <div className="mt-6 flex justify-center">
+              <div className="mt-4 sm:mt-6 flex justify-center">
                 <Pagination>
                   <PaginationContent>
                     {pagination.page > 1 && (

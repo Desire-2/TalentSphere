@@ -155,7 +155,7 @@ const ExternalAdminDashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">External Admin Dashboard</h1>
@@ -165,7 +165,7 @@ const ExternalAdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -196,7 +196,7 @@ const ExternalAdminDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               return (
@@ -223,7 +223,7 @@ const ExternalAdminDashboard = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent Jobs */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

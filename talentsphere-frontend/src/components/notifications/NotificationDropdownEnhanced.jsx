@@ -171,7 +171,7 @@ const NotificationDropdownEnhanced = () => {
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
-      {/* Bell Button */}
+      {/* Enhanced Bell Button */}
       <button 
         type="button"
         onClick={(e) => {
@@ -182,20 +182,25 @@ const NotificationDropdownEnhanced = () => {
             fetchNotifications({ force: true });
           }
         }}
-        className="relative inline-flex items-center justify-center h-9 w-9 rounded-xl hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 hover:scale-105 border-0 bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50"
+        className="relative inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-white shadow-md hover:bg-orange-100 hover:text-orange-700 transition-all duration-300 hover:scale-105 border border-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50"
         aria-label={`Toggle notifications (${unreadCount} unread)`}
+        tabIndex={0}
       >
-        <Bell className="w-4 h-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-gradient-to-r from-orange-400 to-red-400 rounded-full border-2 border-white animate-pulse">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
+        <span className="relative flex items-center justify-center">
+          <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" aria-hidden="true" />
+          {/* Animated ring for attention */}
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-6 w-6 text-xs font-bold text-white bg-gradient-to-r from-orange-400 to-red-400 rounded-full border-2 border-white animate-pulse shadow-lg">
+              {unreadCount > 99 ? '99+' : unreadCount}
+              <span className="absolute inset-0 rounded-full border-2 border-orange-400 animate-ping" aria-hidden="true"></span>
+            </span>
+          )}
+        </span>
       </button>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
+        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-[600px] flex flex-col animate-fade-in">
           {/* Header */}
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between mb-3">

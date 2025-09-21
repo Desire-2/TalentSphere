@@ -3,34 +3,37 @@ import { Briefcase, Mail, Phone, MapPin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+    <footer className="bg-gradient-to-r from-blue-900 via-indigo-900 to-gray-900 text-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-10 sm:py-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
           {/* Company Info */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
+          <div className="space-y-5">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <Briefcase className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold">TalentSphere</span>
+              <span className="text-2xl font-extrabold tracking-wide">TalentSphere</span>
             </div>
-            <p className="text-gray-300 text-sm">
-              Connecting talent with opportunities through innovative technology. 
+            <p className="text-gray-200 text-base font-light">
+              Connecting talent with opportunities through innovative technology.<br />
               Find your dream job or discover exceptional candidates.
             </p>
-            <div className="flex space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
+            <div className="flex flex-col space-y-2 mt-2">
+              <div className="flex items-center space-x-2 text-sm text-gray-200">
                 <Mail className="w-4 h-4" />
                 <span>support@talentsphere.com</span>
               </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-200">
+                <Phone className="w-4 h-4" />
+                <span>+250780784924</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-200">
+                <MapPin className="w-4 h-4" />
+                <span>Kiagli</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <Phone className="w-4 h-4" />
-              <span>+1 (555) 123-4567</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <MapPin className="w-4 h-4" />
-              <span>San Francisco, CA</span>
+            <div className="mt-4">
+              <span className="inline-block bg-blue-700 text-white px-3 py-1 rounded-full text-xs font-semibold shadow">Powered by Afritech Bridge</span>
             </div>
           </div>
 
@@ -132,19 +135,19 @@ const Footer = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-gray-800 mt-8 sm:mt-12 pt-6 sm:pt-8">
+        <div className="border-t border-gray-800 mt-10 sm:mt-16 pt-6 sm:pt-10">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-xs sm:text-sm text-gray-300 text-center sm:text-left">
-              © 2024 TalentSphere. All rights reserved.
+              © 2025 TalentSphere. All rights reserved.
             </div>
             <div className="flex flex-wrap justify-center sm:justify-end gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-300">
-              <Link to="/privacy" className="hover:text-white transition-colors">
+              <Link to="/privacy" className="hover:text-blue-400 transition-colors underline underline-offset-2">
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="hover:text-white transition-colors">
+              <Link to="/terms" className="hover:text-blue-400 transition-colors underline underline-offset-2">
                 Terms of Service
               </Link>
-              <Link to="/cookies" className="hover:text-white transition-colors">
+              <Link to="/cookies" className="hover:text-blue-400 transition-colors underline underline-offset-2">
                 Cookie Policy
               </Link>
             </div>

@@ -53,7 +53,7 @@ const JobList = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [appliedFiltersCount, setAppliedFiltersCount] = useState(0);
@@ -85,11 +85,16 @@ const JobList = () => {
   const getCompanyLogo = (job) => {
     // Handle both internal jobs (with company object) and external jobs (with external_company_logo)
     // Prioritize external company logo for external jobs
-    if (job.job_source === 'external' && job.external_company_logo) {
-      return job.external_company_logo;
+    if (job.job_source === 'external') {
+      // For external jobs, prioritize external_company_logo
+      const logo = job.external_company_logo || job.company?.logo || job.company?.logo_url || null;
+      if (job.external_company_logo) {
+        console.log(`External job logo for ${job.external_company_name}:`, job.external_company_logo);
+      }
+      return logo;
     }
-    // Fallback to company logo or external logo
-    return job.company?.logo || job.external_company_logo || null;
+    // For internal jobs, use company logo
+    return job.company?.logo || job.company?.logo_url || null;
   };
 
   const getCompanyName = (job) => {
@@ -98,15 +103,6 @@ const JobList = () => {
       return job.external_company_name;
     }
     return job.company?.name || job.external_company_name || 'Company Name';
-  };
-
-  const getCompanyInitials = (companyName) => {
-    return companyName
-      ?.split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'CO';
   };
 
   const getJobDescription = (job) => {
@@ -635,7 +631,6 @@ const JobList = () => {
                     isAuthenticated={isAuthenticated}
                     getCompanyName={getCompanyName}
                     getCompanyLogo={getCompanyLogo}
-                    getCompanyInitials={getCompanyInitials}
                     getJobDescription={getJobDescription}
                     getJobLocation={getJobLocation}
                     getSalaryDisplay={getSalaryDisplay}
@@ -717,7 +712,6 @@ const JobCard = ({
   isAuthenticated,
   getCompanyName,
   getCompanyLogo,
-  getCompanyInitials,
   getJobDescription,
   getJobLocation,
   getSalaryDisplay
@@ -760,9 +754,20 @@ const JobCard = ({
                       src={getCompanyLogo(job)} 
                       alt={getCompanyName(job)} 
                       className={job.job_source === 'external' ? 'ring-2 ring-purple-200' : ''}
+                      onError={() => {
+                        if (job.job_source === 'external') {
+                          console.log(`External logo failed to load for ${getCompanyName(job)}:`, job.external_company_logo);
+                        }
+                      }}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
-                      {getCompanyInitials(getCompanyName(job))}
+                      {job.job_source === 'external' ? (
+                        <div className="flex items-center justify-center">
+                          <ExternalLink className="w-6 h-6" />
+                        </div>
+                      ) : (
+                        <Building className="w-8 h-8" />
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   {job.job_source === 'external' && (
@@ -961,9 +966,20 @@ const JobCard = ({
                     src={getCompanyLogo(job)} 
                     alt={getCompanyName(job)} 
                     className={job.job_source === 'external' ? 'ring-2 ring-purple-200' : ''}
+                    onError={() => {
+                      if (job.job_source === 'external') {
+                        console.log(`External logo failed to load for ${getCompanyName(job)}:`, job.external_company_logo);
+                      }
+                    }}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
-                    {getCompanyInitials(getCompanyName(job))}
+                    {job.job_source === 'external' ? (
+                      <div className="flex items-center justify-center">
+                        <ExternalLink className="w-4 h-4" />
+                      </div>
+                    ) : (
+                      <Building className="w-6 h-6" />
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 {job.job_source === 'external' && (

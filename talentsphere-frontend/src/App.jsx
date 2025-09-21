@@ -71,6 +71,9 @@ import EnhancedNotificationList from './components/notifications/EnhancedNotific
 import EnhancedNotificationPreferences from './components/notifications/EnhancedNotificationPreferences';
 import NotificationProviderReal from './components/notifications/NotificationProviderReal';
 
+// Test Pages
+import RedirectTestPage from './pages/test/RedirectTestPage';
+
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
@@ -110,6 +113,7 @@ function App() {
               <Route path="scholarships" element={<ScholarshipList />} />
               <Route path="scholarships/:id" element={<ScholarshipDetail />} />
               <Route path="test-notification" element={<NotificationTestPage />} />
+              <Route path="test-redirect" element={<RedirectTestPage />} />
               {/* Job application route - protected and nested properly */}
               <Route path="jobs/:id/apply" element={
                 <ProtectedRoute requiredRole="job_seeker">

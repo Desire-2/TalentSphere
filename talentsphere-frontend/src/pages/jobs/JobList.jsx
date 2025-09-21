@@ -46,6 +46,7 @@ import { formatCurrency, formatRelativeTime, snakeToTitle } from '../../utils/he
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from '../../utils/constants';
 import apiService from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import ShareJob from '../../components/jobs/ShareJob';
 
 const JobList = () => {
@@ -77,6 +78,7 @@ const JobList = () => {
   const [categories, setCategories] = useState([]);
   const [bookmarkedJobs, setBookmarkedJobs] = useState(new Set());
   const { user, isAuthenticated } = useAuthStore();
+  const { requireAuth } = useAuthNavigation();
 
   // Initialize ad tracking
   const adTracking = useAdTracking();
@@ -237,27 +239,23 @@ const JobList = () => {
     handleFilterChange('search', searchTerm);
   };
 
-  const toggleBookmark = async (jobId) => {
-    if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      window.location.href = '/login';
-      return;
-    }
-
-    try {
-      const newBookmarked = new Set(bookmarkedJobs);
-      if (newBookmarked.has(jobId)) {
-        await apiService.removeBookmark(jobId);
-        newBookmarked.delete(jobId);
-      } else {
-        await apiService.bookmarkJob(jobId);
-        newBookmarked.add(jobId);
+    const toggleBookmark = async (jobId) => {
+    requireAuth(async () => {
+      try {
+        const newBookmarked = new Set(bookmarkedJobs);
+        if (newBookmarked.has(jobId)) {
+          await apiService.removeBookmark(jobId);
+          newBookmarked.delete(jobId);
+          setBookmarkedJobs(newBookmarked);
+        } else {
+          await apiService.addBookmark(jobId);
+          newBookmarked.add(jobId);
+          setBookmarkedJobs(newBookmarked);
+        }
+      } catch (error) {
+        console.error('Error toggling bookmark:', error);
       }
-      setBookmarkedJobs(newBookmarked);
-    } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
-      // You might want to show a toast notification here
-    }
+    });
   };
 
   const clearFilters = () => {

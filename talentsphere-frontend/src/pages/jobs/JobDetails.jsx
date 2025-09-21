@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
+  const { requireAuth, navigateToProtectedRoute } = useAuthNavigation();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -175,58 +177,52 @@ const JobDetails = () => {
   const handleApply = async () => {
     console.log('🚀 Apply button clicked!', { id, user, isAuthenticated, job });
     
-    if (!isAuthenticated) {
-      // Redirect to login with return URL
-      console.log('❌ User not authenticated, redirecting to login');
-      navigate(`/login?returnTo=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
+    requireAuth(async () => {
+      if (user?.role !== 'job_seeker') {
+        // Show message that only job seekers can apply
+        console.log('❌ User is not a job seeker:', user?.role);
+        setError('Only job seekers can apply for jobs');
+        return;
+      }
 
-    if (user?.role !== 'job_seeker') {
-      // Show message that only job seekers can apply
-      console.log('❌ User is not a job seeker:', user?.role);
-      setError('Only job seekers can apply for jobs');
-      return;
-    }
+      // Check if user has already applied
+      if (hasApplied) {
+        console.log('❌ User has already applied');
+        setError('You have already applied to this job! Check your application status in "My Applications".');
+        return;
+      }
 
-    // Check if user has already applied
-    if (hasApplied) {
-      console.log('❌ User has already applied');
-      setError('You have already applied to this job! Check your application status in "My Applications".');
-      return;
-    }
+      // Check if job is expired
+      if (job.is_expired) {
+        console.log('❌ Job is expired');
+        setError('This job posting has expired');
+        return;
+      }
 
-    // Check if job is expired
-    if (job.is_expired) {
-      console.log('❌ Job is expired');
-      setError('This job posting has expired');
-      return;
-    }
+      // Check application method and redirect accordingly
+      const applicationType = job.application_type || 'internal';
+      console.log('🔍 Application type:', applicationType);
 
-    // Check application method and redirect accordingly
-    const applicationType = job.application_type || 'internal';
-    console.log('🔍 Application type:', applicationType);
+      try {
+        setApplying(true);
+        setError(null);
 
-    try {
-      setApplying(true);
-      setError(null);
-
-      if (applicationType === 'external' && job.application_url) {
-        // External application - open URL in new tab
-        console.log('🌐 Opening external URL:', job.application_url);
-        window.open(job.application_url, '_blank', 'noopener,noreferrer');
-        
-        // Optional: Track that user clicked external apply
-        try {
-          await apiService.post(`/jobs/${id}/track-external-click`);
-        } catch (trackError) {
-          console.warn('Could not track external application click:', trackError);
-        }
-      } else if (applicationType === 'email' && job.application_email) {
-        // Email application - open email client
-        console.log('📧 Opening email application:', job.application_email);
-        const subject = encodeURIComponent(`Application for ${job.title} at ${job.company?.name || 'Your Company'}`);
-        const body = encodeURIComponent(`Dear Hiring Manager,
+        if (applicationType === 'external' && job.application_url) {
+          // External application - open URL in new tab
+          console.log('🌐 Opening external URL:', job.application_url);
+          window.open(job.application_url, '_blank', 'noopener,noreferrer');
+          
+          // Optional: Track that user clicked external apply
+          try {
+            await apiService.post(`/jobs/${id}/track-external-click`);
+          } catch (trackError) {
+            console.warn('Could not track external application click:', trackError);
+          }
+        } else if (applicationType === 'email' && job.application_email) {
+          // Email application - open email client
+          console.log('📧 Opening email application:', job.application_email);
+          const subject = encodeURIComponent(`Application for ${job.title} at ${job.company?.name || 'Your Company'}`);
+          const body = encodeURIComponent(`Dear Hiring Manager,
 
 I am interested in applying for the ${job.title} position at ${job.company?.name || 'your company'}.
 
@@ -234,50 +230,48 @@ ${job.application_instructions || 'Please find my resume attached.'}
 
 Best regards,
 ${user.name || user.email}`);
-        
-        const mailtoUrl = `mailto:${job.application_email}?subject=${subject}&body=${body}`;
-        window.location.href = mailtoUrl;
-        
-        // Optional: Track that user clicked email apply
-        try {
-          await apiService.post(`/jobs/${id}/track-email-click`);
-        } catch (trackError) {
-          console.warn('Could not track email application click:', trackError);
+          
+          const mailtoUrl = `mailto:${job.application_email}?subject=${subject}&body=${body}`;
+          window.location.href = mailtoUrl;
+          
+          // Optional: Track that user clicked email apply
+          try {
+            await apiService.post(`/jobs/${id}/track-email-click`);
+          } catch (trackError) {
+            console.warn('Could not track email application click:', trackError);
+          }
+        } else {
+          // Internal application - redirect to application form
+          const applyUrl = `/jobs/${id}/apply`;
+          console.log('✅ Navigating to internal application form:', applyUrl);
+          console.log('Current location:', window.location.href);
+          console.log('Target URL will be:', `${window.location.origin}${applyUrl}`);
+          navigateToProtectedRoute(applyUrl);
         }
-      } else {
-        // Internal application - redirect to application form
-        const applyUrl = `/jobs/${id}/apply`;
-        console.log('✅ Navigating to internal application form:', applyUrl);
-        console.log('Current location:', window.location.href);
-        console.log('Target URL will be:', `${window.location.origin}${applyUrl}`);
-        navigate(applyUrl);
+      } catch (error) {
+        console.error('❌ Error handling application:', error);
+        setError(error.message || 'Failed to process application. Please try again.');
+      } finally {
+        setApplying(false);
       }
-    } catch (error) {
-      console.error('❌ Error handling application:', error);
-      setError(error.message || 'Failed to process application. Please try again.');
-    } finally {
-      setApplying(false);
-    }
+    });
   };
 
   const toggleBookmark = async () => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      if (isBookmarked) {
-        await apiService.removeBookmark(id);
-        setIsBookmarked(false);
-      } else {
-        await apiService.bookmarkJob(id);
-        setIsBookmarked(true);
+    requireAuth(async () => {
+      try {
+        if (isBookmarked) {
+          await apiService.removeBookmark(id);
+          setIsBookmarked(false);
+        } else {
+          await apiService.bookmarkJob(id);
+          setIsBookmarked(true);
+        }
+      } catch (error) {
+        console.error('Failed to toggle bookmark:', error);
+        // You might want to show a toast notification here
       }
-    } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
-      // You might want to show a toast notification here
-    }
+    });
   };
 
   if (loading) {

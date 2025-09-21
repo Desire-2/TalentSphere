@@ -10,6 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Briefcase, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { 
+  getAndClearIntendedDestination, 
+  getPostLoginRedirect, 
+  extractReturnUrl, 
+  buildFullPath 
+} from '../../utils/redirectUtils';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -22,7 +28,47 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  // Enhanced redirect logic that checks multiple sources for intended destination
+  const getRedirectDestination = (user) => {
+    // First, try to get stored intended destination
+    const storedDestination = getAndClearIntendedDestination();
+    
+    // Second, check location state for immediate redirect
+    const stateDestination = location.state?.from;
+    
+    // Third, check URL parameters
+    const urlReturnTo = extractReturnUrl(location);
+    
+    // Determine the intended destination
+    let intendedDestination = null;
+    
+    if (storedDestination) {
+      intendedDestination = storedDestination;
+    } else if (stateDestination) {
+      intendedDestination = {
+        pathname: stateDestination.pathname,
+        search: stateDestination.search || '',
+        state: stateDestination.state || null
+      };
+    } else if (urlReturnTo) {
+      // Parse the URL return path
+      const url = new URL(urlReturnTo, window.location.origin);
+      intendedDestination = {
+        pathname: url.pathname,
+        search: url.search,
+        state: null
+      };
+    }
+    
+    // Get the final redirect destination
+    const redirect = getPostLoginRedirect(user, intendedDestination, '/dashboard');
+    
+    return {
+      pathname: redirect.pathname,
+      search: redirect.search,
+      ...(redirect.state && { state: redirect.state })
+    };
+  };
 
   const {
     register,
@@ -32,27 +78,40 @@ const Login = () => {
     resolver: zodResolver(loginSchema)
   });
 
+  // Show redirect message if there's an intended destination
+  const getRedirectMessage = () => {
+    const urlReturnTo = extractReturnUrl(location);
+    const stateFrom = location.state?.from?.pathname;
+    
+    if (urlReturnTo && urlReturnTo !== '/dashboard') {
+      const url = new URL(urlReturnTo, window.location.origin);
+      return `You'll be redirected to ${url.pathname} after signing in.`;
+    } else if (stateFrom && stateFrom !== '/dashboard') {
+      return `You'll be redirected to ${stateFrom} after signing in.`;
+    }
+    
+    return null;
+  };
+
+  const redirectMessage = getRedirectMessage();
+
   const onSubmit = async (data) => {
     try {
       clearError();
       console.log('Attempting login with:', { email: data.email });
       const response = await login(data);
       
-      // Check user role and redirect accordingly
+      // Get the redirect destination using enhanced logic
       const user = response.user;
-      let redirectPath = from;
+      const redirectDestination = getRedirectDestination(user);
       
-      if (user.role === 'admin') {
-        redirectPath = '/admin';
-      } else if (user.role === 'external_admin') {
-        redirectPath = '/external-admin';
-      } else if (from === '/admin' || from.startsWith('/admin/') || from === '/external-admin' || from.startsWith('/external-admin/')) {
-        // If they tried to access admin areas but aren't admin, redirect to dashboard
-        redirectPath = '/dashboard';
-      }
+      console.log('Login successful, navigating to:', redirectDestination);
       
-      console.log('Login successful, navigating to:', redirectPath);
-      navigate(redirectPath, { replace: true });
+      // Navigate to the determined destination
+      navigate(redirectDestination.pathname + (redirectDestination.search || ''), {
+        replace: true,
+        ...(redirectDestination.state && { state: redirectDestination.state })
+      });
     } catch (error) {
       console.error('Login failed:', error);
       // Error is handled by the store
@@ -86,6 +145,14 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {redirectMessage && (
+              <Alert className="mb-4">
+                <AlertDescription className="text-blue-600">
+                  {redirectMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {error && (
                 <Alert variant="destructive">

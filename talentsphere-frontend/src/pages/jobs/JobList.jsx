@@ -54,7 +54,12 @@ const JobList = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return 'grid';
+    }
+    return 'list';
+  }); // 'grid' or 'list'
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [appliedFiltersCount, setAppliedFiltersCount] = useState(0);
@@ -311,14 +316,14 @@ const JobList = () => {
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div className="relative max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
           {/* Enhanced Header with Stats */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+            className="mb-6 sm:mb-8"
           >
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4 sm:mb-6">
               <div>
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">
                   Find Your Dream Job
@@ -328,7 +333,7 @@ const JobList = () => {
                   Discover {pagination.total || 0} exciting opportunities
                 </p>
               </div>
-              <div className="flex items-center gap-4 mt-4 lg:mt-0">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-4 lg:mt-0">
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
                   <Briefcase className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-medium">{pagination.total || 0} Jobs</span>
@@ -354,12 +359,12 @@ const JobList = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8 mb-8 hover-lift"
+            className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-4 sm:p-8 mb-6 sm:mb-8 hover-lift"
           >
             <form onSubmit={handleSearch} className="space-y-6">
               {/* Main Search Row */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-5 relative group">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2 sm:gap-4">
+                <div className="sm:col-span-2 md:col-span-5 relative group">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
                   <Input
                     type="text"
@@ -386,7 +391,7 @@ const JobList = () => {
                     </div>
                   )}
                 </div>
-                <div className="md:col-span-4 relative group">
+                <div className="sm:col-span-2 md:col-span-4 relative group">
                   <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
                   <Input
                     type="text"
@@ -396,7 +401,7 @@ const JobList = () => {
                     className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-blue-300 rounded-xl bg-white/50 backdrop-blur-sm transition-all"
                   />
                 </div>
-                <div className="md:col-span-3">
+                <div className="sm:col-span-2 md:col-span-3">
                   <Button type="submit" size="lg" className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all btn-primary-hover">
                     <Search className="w-5 h-5 mr-2" />
                     Search Jobs
@@ -405,7 +410,7 @@ const JobList = () => {
               </div>
 
               {/* Advanced Filters Toggle */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -422,7 +427,7 @@ const JobList = () => {
                   <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                 </Button>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Sort by:</span>
                     <Select value={sortBy} onValueChange={setSortBy}>
@@ -439,7 +444,7 @@ const JobList = () => {
                     </Select>
                   </div>
                   
-                  <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-white">
+                    <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-white mt-2 sm:mt-0">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
@@ -471,7 +476,7 @@ const JobList = () => {
                     className="overflow-hidden"
                   >
                     <Separator className="mb-6" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                       <Select value={filters.category_id || "all"} onValueChange={(value) => handleFilterChange('category_id', value === "all" ? "" : value)}>
                         <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg">
                           <SelectValue placeholder="Category" />
@@ -515,9 +520,9 @@ const JobList = () => {
                     </div>
 
                     {/* Salary Range */}
-                    <div className="mt-4">
+                    <div className="mt-2 sm:mt-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <Input
@@ -547,12 +552,12 @@ const JobList = () => {
           </motion.div>
 
           {/* Google Ads - Responsive */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <ResponsiveAd className="rounded-lg shadow-sm" />
           </div>
 
           {/* Job Results */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
             {/* Main Content */}
             <div className="lg:col-span-3">
               <AnimatePresence mode="wait">
@@ -614,8 +619,8 @@ const JobList = () => {
                 animate={{ opacity: 1 }}
                 transition={{ staggerChildren: 0.1 }}
                 className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
+                  ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" 
+                  : "space-y-2 sm:space-y-4"
                 }
               >
                 {jobs.map((job, index) => (
@@ -679,7 +684,7 @@ const JobList = () => {
             </motion.div>
           )}
             </div>            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 space-y-4 sm:space-y-6 mt-4 lg:mt-0">
               {/* Square Ad */}
               <div className="bg-white rounded-lg shadow-sm p-4">
                 <SquareAd />

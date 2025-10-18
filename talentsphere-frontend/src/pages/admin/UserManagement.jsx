@@ -95,6 +95,59 @@ const UserManagement = () => {
     changeUserRole 
   } = useAdminStore();
 
+  // Delete user API call
+  const deleteUser = async (userId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [userId]: true }));
+      await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      await fetchUsers(filters);
+      setSelectedUsers(prev => prev.filter(id => id !== userId));
+      console.log('✅ User deleted successfully');
+    } catch (error) {
+      console.error('❌ Failed to delete user:', error);
+      alert('Failed to delete user. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  // Bulk delete users
+  const bulkDeleteUsers = async () => {
+    setActionLoading(prev => ({ ...prev, bulk: true }));
+    try {
+      const response = await fetch('/api/users/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ user_ids: selectedUsers })
+      });
+      const result = await response.json();
+      if (response.ok) {
+        await fetchUsers(filters);
+        setSelectedUsers([]);
+        setBulkAction('');
+        alert(`Bulk delete completed. Deleted: ${result.deleted.length}, Errors: ${result.errors.length}`);
+        console.log('✅ Bulk delete completed successfully', result);
+      } else {
+        console.error('❌ Bulk delete failed:', result);
+        alert('Bulk delete failed: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Bulk delete failed:', error);
+      alert('Bulk delete failed. Please try again.');
+    } finally {
+      setActionLoading(prev => ({ ...prev, bulk: false }));
+    }
+  };
+
   const [filters, setFilters] = useState({
     search: '',
     role: '',
@@ -173,9 +226,11 @@ const UserManagement = () => {
 
   const handleBulkAction = async () => {
     if (!bulkAction || selectedUsers.length === 0) return;
-    
+    if (bulkAction === 'delete') {
+      await bulkDeleteUsers();
+      return;
+    }
     setActionLoading(prev => ({ ...prev, bulk: true }));
-    
     try {
       if (bulkAction === 'activate') {
         for (const userId of selectedUsers) {
@@ -195,7 +250,6 @@ const UserManagement = () => {
         setShowEmailDialog(true);
         return;
       }
-      
       await fetchUsers(filters);
       setSelectedUsers([]);
       setBulkAction('');
@@ -634,6 +688,7 @@ const UserManagement = () => {
                       <SelectItem value="activate">Activate Users</SelectItem>
                       <SelectItem value="deactivate">Deactivate Users</SelectItem>
                       <SelectItem value="email">Send Email</SelectItem>
+                      <SelectItem value="delete">Delete Users</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -903,8 +958,20 @@ const UserManagement = () => {
                                   
                                   <DropdownMenuSeparator />
                                   
-                                  <DropdownMenuItem className="text-red-600">
-                                    <Trash2 className="h-4 w-4 mr-2" />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    disabled={actionLoading[user.id]}
+                                    onClick={() => {
+                                      if (window.confirm(`Are you sure you want to delete ${user.full_name}? This action cannot be undone.`)) {
+                                        deleteUser(user.id);
+                                      }
+                                    }}
+                                  >
+                                    {actionLoading[user.id] ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                                    ) : (
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                    )}
                                     Delete User
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>

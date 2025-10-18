@@ -3,6 +3,7 @@ from src.models.user import User, JobSeekerProfile, db
 from src.routes.auth import token_required, role_required
 from datetime import datetime
 import json
+import logging
 
 user_bp = Blueprint('user', __name__)
 
@@ -56,6 +57,112 @@ def get_user(current_user, user_id):
         
     except Exception as e:
         return jsonify({'error': 'Failed to get user', 'details': str(e)}), 500
+
+@user_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+@role_required('admin')
+def delete_user(current_user, user_id):
+    """Hard delete user and all related data (admin only)"""
+    logger = logging.getLogger('talentsphere.user.delete')
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Don't allow deleting the currently logged-in admin
+        if user_id == current_user.id:
+            return jsonify({'error': 'Cannot delete your own admin account'}), 400
+        
+        # Log the deletion attempt
+        logger.info(f'Admin {current_user.id} ({current_user.email}) is deleting user {user_id} ({user.email})')
+        
+        # Import all models that might have foreign key constraints
+        from src.models.application import Application, ApplicationActivity
+        from src.models.notification import Review, ReviewVote, Message
+        
+        # Clean up or cascade related data
+        with db.session.no_autoflush:
+            # Set referrer_id to NULL where this user is referenced (nullable foreign key)
+            Application.query.filter_by(referrer_id=user_id).update({'referrer_id': None}, synchronize_session=False)
+            
+            # Handle reviews moderated by this user (nullable foreign key)
+            Review.query.filter_by(moderated_by=user_id).update({'moderated_by': None}, synchronize_session=False)
+            
+            # Handle messages where this user is sender or recipient
+            # We can't set sender_id or recipient_id to NULL (since they're non-nullable)
+            # so we need to delete these records
+            Message.query.filter((Message.sender_id == user_id) | (Message.recipient_id == user_id)).delete(synchronize_session=False)
+            
+            # We'll let the cascading delete handle other direct relationships like:
+            # - JobSeekerProfile (cascade='all, delete-orphan')
+            # - EmployerProfile (cascade='all, delete-orphan')
+            # - Applications as applicant (cascade='all, delete-orphan')
+            # - Notifications (cascade='all, delete-orphan')
+            # - Reviews given/received (through cascade)
+            # - ReviewVotes (through cascade)
+        
+        # Delete the user which will trigger cascade deletes for related objects
+        db.session.delete(user)
+        db.session.commit()
+        
+        logger.info(f'User {user_id} deleted successfully by admin {current_user.id}')
+        return jsonify({'message': f'User {user_id} deleted permanently.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Failed to delete user {user_id}: {str(e)}')
+        return jsonify({'error': 'Failed to delete user', 'details': str(e)}), 500
+
+@user_bp.route('/users/bulk-delete', methods=['POST'])
+@token_required
+@role_required('admin')
+def bulk_delete_users(current_user):
+    """Bulk delete multiple users (admin only)"""
+    logger = logging.getLogger('talentsphere.user.bulk_delete')
+    try:
+        data = request.get_json()
+        user_ids = data.get('user_ids', [])
+        if not isinstance(user_ids, list) or not user_ids:
+            return jsonify({'error': 'user_ids must be a non-empty list'}), 400
+            
+        # Don't allow deleting the currently logged-in admin
+        if current_user.id in user_ids:
+            user_ids.remove(current_user.id)
+            logger.warning(f'Removed current admin (ID: {current_user.id}) from bulk delete list')
+            
+        # Import all models that might have foreign key constraints
+        from src.models.application import Application, ApplicationActivity
+        from src.models.notification import Review, ReviewVote, Message
+        
+        # Clean up references that might cause constraint violations
+        with db.session.no_autoflush:
+            # Handle referrer_id in Applications (nullable foreign key)
+            Application.query.filter(Application.referrer_id.in_(user_ids)).update({'referrer_id': None}, synchronize_session=False)
+            
+            # Handle reviews moderated by these users (nullable foreign key)
+            Review.query.filter(Review.moderated_by.in_(user_ids)).update({'moderated_by': None}, synchronize_session=False)
+            
+            # Delete messages where these users are senders or recipients (non-nullable foreign keys)
+            Message.query.filter((Message.sender_id.in_(user_ids)) | (Message.recipient_id.in_(user_ids))).delete(synchronize_session=False)
+        
+        deleted = []
+        errors = []
+        for user_id in user_ids:
+            try:
+                user = User.query.get(user_id)
+                if user:
+                    logger.info(f'Admin {current_user.id} ({current_user.email}) is deleting user {user_id} ({user.email})')
+                    db.session.delete(user)
+                    deleted.append(user_id)
+                else:
+                    errors.append({'user_id': user_id, 'error': 'User not found'})
+            except Exception as e:
+                db.session.rollback()  # Rollback on individual user error
+                errors.append({'user_id': user_id, 'error': str(e)})
+        db.session.commit()
+        logger.info(f'Bulk delete completed by admin {current_user.id}. Deleted: {deleted}. Errors: {errors}')
+        return jsonify({'deleted': deleted, 'errors': errors}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Bulk delete failed: {str(e)}')
+        return jsonify({'error': 'Bulk delete failed', 'details': str(e)}), 500
 
 @user_bp.route('/users/<int:user_id>/profile-completion', methods=['GET'])
 @token_required

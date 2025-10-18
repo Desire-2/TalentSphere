@@ -21,6 +21,13 @@ export default defineConfig(({ command, mode }) => {
     server: {
       port: 5173,
       host: true,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5001',
+          changeOrigin: true,
+          secure: false,
+        }
+      }
     },
     build: {
       outDir: 'dist',

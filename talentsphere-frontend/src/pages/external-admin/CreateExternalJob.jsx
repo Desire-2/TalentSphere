@@ -1532,31 +1532,31 @@ Tools: Git, Jest, Cypress
 
         {/* Enhanced Header */}
         <div className="enhanced-header p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/external-admin/jobs')}
-                className="flex items-center hover:bg-gray-100 transition-all duration-200"
+                className="flex items-center hover:bg-gray-100 transition-all duration-200 self-start sm:self-auto"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Jobs
               </Button>
-              <Separator orientation="vertical" className="h-8" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-2">
-                  <Sparkles className="h-8 w-8 text-blue-600 animate-pulse" />
+              <Separator orientation="vertical" className="hidden sm:block h-8" />
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-1 sm:space-y-0 sm:space-x-2">
+                  <Sparkles className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600 animate-pulse" />
                   <span>Create External Job</span>
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-600 mt-1 text-sm sm:text-base">
                   Post a job from an external source or partner company
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
               {/* Template Import Button */}
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1564,7 +1564,7 @@ Tools: Git, Jest, Cypress
                     console.log('Import button clicked, current state:', showTemplateImport);
                     setShowTemplateImport(!showTemplateImport);
                   }}
-                  className="template-import-button flex items-center space-x-2 secondary-button bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200"
+                  className="template-import-button flex items-center space-x-2 secondary-button bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200 w-full sm:w-auto"
                   disabled={loading}
                 >
                   <FileText className="h-4 w-4 text-blue-600" />
@@ -2611,14 +2611,14 @@ Tools: Git, Jest, Cypress
               </Card>
 
               {/* Form Actions */}
-              <div className="enhanced-card p-6 border-t-4 border-t-indigo-500">
-                <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                  <div className="flex items-center space-x-4">
+              <div className="enhanced-card p-4 sm:p-6 border-t-4 border-t-indigo-500">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between space-y-4 lg:space-y-0 gap-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-4 w-full lg:w-auto">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/external-admin/jobs')}
-                      className="secondary-button flex items-center space-x-2"
+                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Cancel</span>
@@ -2629,7 +2629,7 @@ Tools: Git, Jest, Cypress
                       variant="secondary"
                       onClick={saveDraft}
                       disabled={loading}
-                      className="secondary-button flex items-center space-x-2"
+                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
                     >
                       {autoSaveStatus === 'saving' ? (
                         <>
@@ -2649,17 +2649,17 @@ Tools: Git, Jest, Cypress
                       variant="outline"
                       onClick={handleSaveAsTemplate}
                       disabled={loading || (!formData.title && !formData.description)}
-                      className="secondary-button flex items-center space-x-2"
+                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
                     >
                       <FileText className="h-4 w-4" />
                       <span>Save as Template</span>
                     </Button>
                   </div>
                   
-                  <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
                     {!formProgress.requiredCompleted && (
-                      <div className="text-sm text-amber-600 flex items-center space-x-1 animate-pulse">
-                        <AlertCircle className="h-4 w-4" />
+                      <div className="text-sm text-amber-600 flex items-center space-x-1 animate-pulse text-center sm:text-left">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
                         <span>Complete required fields to publish</span>
                       </div>
                     )}
@@ -2667,7 +2667,7 @@ Tools: Git, Jest, Cypress
                     <Button
                       type="submit"
                       disabled={loading || !formProgress.requiredCompleted}
-                      className={`gradient-button flex items-center space-x-2 ${formProgress.requiredCompleted ? 'pulse-glow' : ''}`}
+                      className={`gradient-button flex items-center justify-center space-x-2 w-full sm:w-auto ${formProgress.requiredCompleted ? 'pulse-glow' : ''}`}
                     >
                       {loading ? (
                         <>

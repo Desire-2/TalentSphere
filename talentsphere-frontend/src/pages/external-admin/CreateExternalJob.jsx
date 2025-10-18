@@ -1579,7 +1579,7 @@ Tools: Git, Jest, Cypress
                   (() => {
                     console.log('Rendering template modal portal');
                     return (
-                      <div className="fixed inset-0 z-[99998] flex items-center justify-center">
+                      <div className="fixed inset-0 z-[99998] flex items-start sm:items-center justify-center pt-6 sm:pt-0">
                         {/* Backdrop Overlay */}
                         <div 
                           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -1591,7 +1591,7 @@ Tools: Git, Jest, Cypress
                         
                         {/* Template Import Modal */}
                         <div 
-                          className="template-import-dropdown relative w-[520px] max-w-[95vw] max-h-[90vh] bg-white rounded-xl border shadow-2xl overflow-hidden"
+                          className="import-modal-wrapper template-import-dropdown relative w-[520px] max-w-[95vw] max-h-[90vh] bg-white rounded-xl border shadow-2xl overflow-hidden"
                           onClick={(e) => {
                             console.log('Modal clicked');
                             e.stopPropagation();
@@ -1657,7 +1657,7 @@ Tools: Git, Jest, Cypress
                     </div>
 
                     {/* Content */}
-                    <div className="p-4 max-h-96 overflow-y-auto">
+                    <div className="p-4 max-h-[60vh] md:max-h-96 overflow-y-auto">
                       
                       {/* Template Import Mode */}
                       {importMode === 'template' && (
@@ -1749,7 +1749,7 @@ Tools: Git, Jest, Cypress
                       {/* JSON Import Mode */}
                       {importMode === 'json' && (
                         <div className="space-y-4">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                             <div>
                               <h4 className="font-medium text-gray-900">Paste JSON Data</h4>
                               <p className="text-sm text-gray-600">Import job data from JSON format</p>
@@ -1770,7 +1770,7 @@ Tools: Git, Jest, Cypress
                               placeholder="Paste your JSON data here..."
                               value={jsonText}
                               onChange={(e) => handleJsonTextChange(e.target.value)}
-                              className="min-h-32 font-mono text-sm border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                              className="min-h-32 md:min-h-[160px] w-full font-mono text-sm border-gray-200 focus:border-purple-400 focus:ring-purple-400"
                             />
                             {jsonError && (
                               <div className="flex items-center space-x-2 text-red-600 text-sm">
@@ -1797,11 +1797,11 @@ Tools: Git, Jest, Cypress
                           )}
 
                           {/* Import Actions */}
-                          <div className="flex space-x-2">
+                          <div className="flex flex-col md:flex-row w-full gap-2">
                             <Button
                               onClick={handleJsonImport}
                               disabled={!jsonText.trim() || !!jsonError}
-                              className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
+                              className="w-full md:flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                             >
                               <Import className="h-4 w-4 mr-2" />
                               Import JSON Data
@@ -1813,7 +1813,7 @@ Tools: Git, Jest, Cypress
                                 setJsonError('');
                                 setJsonPreview(null);
                               }}
-                              className="px-4"
+                              className="w-full md:w-auto"
                             >
                               Clear
                             </Button>

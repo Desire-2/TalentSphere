@@ -23,7 +23,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: "https://talentsphere-frontend.onrender.com,https://localhost:3000"
+        value: "https://talentsphere-frontend.onrender.com,https://jobs.afritechbridge.online,https://talentsphere.afritechbridge.online,https://talent-sphere-emmz.vercel.app,https://localhost:3000"
       - key: PORT
         value: 10000
       - key: SLOW_QUERY_THRESHOLD

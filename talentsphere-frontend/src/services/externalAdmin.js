@@ -169,30 +169,30 @@ export const externalAdminService = {
 
   // Profile and settings management
   getProfile: async () => {
-    const response = await api.get('/profile');
+    const response = await api.get('/auth/profile');
     return response;
   },
 
   updateProfile: async (profileData) => {
-    const response = await api.put('/profile', profileData);
+    const response = await api.put('/auth/profile', profileData);
     return response;
   },
 
   // Settings management - most endpoints don't exist, so we'll use basic user endpoints
   getSettings: async () => {
     // Use profile endpoint for basic settings
-    const response = await api.get('/profile');
+    const response = await api.get('/auth/profile');
     return response;
   },
 
   updateSettings: async (settings) => {
     // Use profile update endpoint
-    const response = await api.put('/profile', settings);
+    const response = await api.put('/auth/profile', settings);
     return response;
   },
 
   changePassword: async (passwordData) => {
-    const response = await api.post('/change-password', passwordData);
+    const response = await api.post('/auth/change-password', passwordData);
     return response;
   },
 
@@ -207,7 +207,7 @@ export const externalAdminService = {
 
   // Export user data - use basic profile export
   exportUserData: async () => {
-    const response = await api.get('/profile');
+    const response = await api.get('/auth/profile');
     return response;
   },
 

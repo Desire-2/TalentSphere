@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Save,
   ArrowLeft,
@@ -28,7 +28,8 @@ import {
   Award,
   BookOpen,
   Upload,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -161,20 +162,16 @@ const FormField = React.memo(({
 // Add display name for React DevTools
 FormField.displayName = 'FormField';
 
-const CreateScholarship = () => {
+const EditScholarship = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [loading, setLoading] = useState(false);
+  const [loadingScholarship, setLoadingScholarship] = useState(true);
   const [categories, setCategories] = useState([]);
   const [errors, setErrors] = useState({});
   const [isPreview, setIsPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
-  
-  // JSON Import State
-  const [showJsonImport, setShowJsonImport] = useState(false);
-  const [jsonText, setJsonText] = useState('');
-  const [jsonError, setJsonError] = useState('');
-  const [jsonPreview, setJsonPreview] = useState(null);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -238,69 +235,10 @@ const CreateScholarship = () => {
   // PERFORMANCE OPTIMIZATION: Use useRef for timeout tracking to prevent accumulation
   const validationTimeoutRef = useRef(null);
 
-  // Form sections for better organization
-  const formSections = [
-    {
-      id: 'basic',
-      title: 'Scholarship Information',
-      icon: GraduationCap,
-      description: 'Basic details about the scholarship',
-      fields: ['title', 'summary', 'description', 'scholarship_type', 'category_id']
-    },
-    {
-      id: 'organization',
-      title: 'Organization Information',
-      icon: Building2,
-      description: 'Details about the scholarship provider',
-      fields: ['external_organization_name', 'external_organization_website', 'external_organization_logo', 'source_url']
-    },
-    {
-      id: 'academic',
-      title: 'Academic Information',
-      icon: BookOpen,
-      description: 'Academic level and field requirements',
-      fields: ['study_level', 'field_of_study']
-    },
-    {
-      id: 'location',
-      title: 'Location & Eligibility',
-      icon: MapPin,
-      description: 'Geographic and eligibility requirements',
-      fields: ['location_type', 'country', 'city', 'state', 'nationality_requirements', 'gender_requirements']
-    },
-    {
-      id: 'financial',
-      title: 'Financial Information',
-      icon: DollarSign,
-      description: 'Scholarship amount and funding details',
-      fields: ['amount_min', 'amount_max', 'currency', 'funding_type', 'renewable', 'duration_years']
-    },
-    {
-      id: 'requirements',
-      title: 'Requirements & Criteria',
-      icon: Target,
-      description: 'Academic and other requirements',
-      fields: ['min_gpa', 'max_age', 'other_requirements']
-    },
-    {
-      id: 'application',
-      title: 'Application Process',
-      icon: FileText,
-      description: 'How students can apply',
-      fields: ['application_type', 'application_deadline', 'application_email', 'application_url', 'application_instructions']
-    },
-    {
-      id: 'documents',
-      title: 'Required Documents',
-      icon: Shield,
-      description: 'Documents students need to submit',
-      fields: ['requires_transcript', 'requires_recommendation_letters', 'requires_essay', 'requires_portfolio']
-    }
-  ];
-
   useEffect(() => {
     fetchCategories();
-  }, []);
+    fetchScholarship();
+  }, [id]);
 
   // Calculate form completion progress
   useEffect(() => {
@@ -333,6 +271,87 @@ const CreateScholarship = () => {
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load scholarship categories');
+    }
+  };
+
+  const fetchScholarship = async () => {
+    try {
+      setLoadingScholarship(true);
+      const response = await scholarshipService.getExternalScholarshipById(id);
+      
+      // Handle different response structures
+      const scholarship = response?.scholarship || response?.data || response;
+      
+      if (scholarship) {
+        // Format datetime-local value (YYYY-MM-DDTHH:MM)
+        let formattedDeadline = '';
+        if (scholarship.application_deadline) {
+          const deadline = new Date(scholarship.application_deadline);
+          if (!isNaN(deadline.getTime())) {
+            formattedDeadline = deadline.toISOString().slice(0, 16);
+          }
+        }
+
+        // Populate form with scholarship data
+        setFormData({
+          title: scholarship.title || '',
+          summary: scholarship.summary || '',
+          description: scholarship.description || '',
+          scholarship_type: scholarship.scholarship_type || '',
+          category_id: scholarship.category_id?.toString() || '',
+          
+          external_organization_name: scholarship.external_organization_name || '',
+          external_organization_website: scholarship.external_organization_website || '',
+          external_organization_logo: scholarship.external_organization_logo || '',
+          source_url: scholarship.source_url || '',
+          
+          study_level: scholarship.study_level || '',
+          field_of_study: scholarship.field_of_study || '',
+          
+          location_type: scholarship.location_type || 'any',
+          country: scholarship.country || '',
+          city: scholarship.city || '',
+          state: scholarship.state || '',
+          
+          amount_min: scholarship.amount_min?.toString() || '',
+          amount_max: scholarship.amount_max?.toString() || '',
+          currency: scholarship.currency || 'USD',
+          funding_type: scholarship.funding_type || 'full',
+          renewable: scholarship.renewable || false,
+          duration_years: scholarship.duration_years || 1,
+          
+          min_gpa: scholarship.min_gpa?.toString() || '',
+          max_age: scholarship.max_age?.toString() || '',
+          nationality_requirements: scholarship.nationality_requirements || '',
+          gender_requirements: scholarship.gender_requirements || 'any',
+          other_requirements: scholarship.other_requirements || '',
+          
+          application_type: scholarship.application_type || 'external',
+          application_deadline: formattedDeadline,
+          application_email: scholarship.application_email || '',
+          application_url: scholarship.application_url || '',
+          application_instructions: scholarship.application_instructions || '',
+          required_documents: scholarship.required_documents || '',
+          
+          requires_transcript: scholarship.requires_transcript !== false,
+          requires_recommendation_letters: scholarship.requires_recommendation_letters !== false,
+          num_recommendation_letters: scholarship.num_recommendation_letters || 2,
+          requires_essay: scholarship.requires_essay !== false,
+          essay_topics: scholarship.essay_topics || '',
+          requires_portfolio: scholarship.requires_portfolio || false,
+          
+          status: scholarship.status || 'published'
+        });
+      } else {
+        toast.error('Scholarship not found');
+        navigate('/external-admin/scholarships');
+      }
+    } catch (error) {
+      console.error('Error fetching scholarship:', error);
+      toast.error('Failed to load scholarship');
+      navigate('/external-admin/scholarships');
+    } finally {
+      setLoadingScholarship(false);
     }
   };
 
@@ -461,109 +480,6 @@ const CreateScholarship = () => {
     stableInputChange(field, value);
   }, [stableInputChange]);
 
-  // JSON Import Handlers
-  const handleParseJson = useCallback(() => {
-    try {
-      setJsonError('');
-      const parsed = JSON.parse(jsonText);
-      setJsonPreview(parsed);
-      toast.success('JSON parsed successfully! Review the preview below.');
-    } catch (error) {
-      setJsonError(`Invalid JSON: ${error.message}`);
-      setJsonPreview(null);
-      toast.error('Invalid JSON format');
-    }
-  }, [jsonText]);
-
-  const handleImportJson = useCallback(() => {
-    if (!jsonPreview) {
-      toast.error('Please parse the JSON first');
-      return;
-    }
-
-    // Map JSON fields to form data
-    const importedData = {
-      // Basic Information
-      title: jsonPreview.title || '',
-      summary: jsonPreview.summary || '',
-      description: jsonPreview.description || '',
-      scholarship_type: jsonPreview.scholarship_type || '',
-      category_id: jsonPreview.category_id || '',
-      
-      // Organization Information
-      external_organization_name: jsonPreview.external_organization_name || jsonPreview.organization_name || '',
-      external_organization_website: jsonPreview.external_organization_website || jsonPreview.organization_website || '',
-      external_organization_logo: jsonPreview.external_organization_logo || jsonPreview.organization_logo || '',
-      source_url: jsonPreview.source_url || '',
-      
-      // Academic Information
-      study_level: jsonPreview.study_level || '',
-      field_of_study: jsonPreview.field_of_study || '',
-      
-      // Location
-      location_type: jsonPreview.location_type || 'any',
-      country: jsonPreview.country || '',
-      city: jsonPreview.city || '',
-      state: jsonPreview.state || '',
-      
-      // Financial Information
-      amount_min: jsonPreview.amount_min || '',
-      amount_max: jsonPreview.amount_max || '',
-      currency: jsonPreview.currency || 'USD',
-      funding_type: jsonPreview.funding_type || 'full',
-      renewable: jsonPreview.renewable || false,
-      duration_years: jsonPreview.duration_years || 1,
-      
-      // Eligibility
-      min_gpa: jsonPreview.min_gpa || '',
-      citizenship_requirements: jsonPreview.citizenship_requirements || '',
-      age_min: jsonPreview.age_min || '',
-      age_max: jsonPreview.age_max || '',
-      gender_requirements: jsonPreview.gender_requirements || 'any',
-      
-      // Dates
-      application_deadline: jsonPreview.application_deadline || '',
-      award_date: jsonPreview.award_date || '',
-      
-      // Application
-      application_type: jsonPreview.application_type || 'external',
-      application_url: jsonPreview.application_url || '',
-      application_email: jsonPreview.application_email || '',
-      application_instructions: jsonPreview.application_instructions || '',
-      required_documents: jsonPreview.required_documents || '',
-      
-      // Additional Information
-      benefits: jsonPreview.benefits || '',
-      requirements: jsonPreview.requirements || '',
-      selection_criteria: jsonPreview.selection_criteria || '',
-      contact_email: jsonPreview.contact_email || '',
-      contact_phone: jsonPreview.contact_phone || '',
-      
-      // SEO and Metadata
-      meta_keywords: jsonPreview.meta_keywords || '',
-      tags: jsonPreview.tags || ''
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      ...importedData
-    }));
-
-    setShowJsonImport(false);
-    setJsonText('');
-    setJsonPreview(null);
-    setJsonError('');
-    
-    toast.success('Form populated from JSON successfully!');
-  }, [jsonPreview]);
-
-  const handleCloseJsonImport = useCallback(() => {
-    setShowJsonImport(false);
-    setJsonText('');
-    setJsonPreview(null);
-    setJsonError('');
-  }, []);
-
   // Cleanup timeout ref on unmount
   useEffect(() => {
     return () => {
@@ -622,21 +538,29 @@ const CreateScholarship = () => {
         category_id: parseInt(formData.category_id),
       };
 
-      const response = await scholarshipService.createScholarship(scholarshipData);
+      await scholarshipService.updateScholarship(id, scholarshipData);
       
-      toast.success('Scholarship created successfully!');
+      toast.success('Scholarship updated successfully!');
       navigate('/external-admin/scholarships');
       
     } catch (error) {
-      console.error('Error creating scholarship:', error);
-      toast.error(error.response?.data?.error || 'Failed to create scholarship');
+      console.error('Error updating scholarship:', error);
+      toast.error(error.response?.data?.error || 'Failed to update scholarship');
     } finally {
       setLoading(false);
     }
   };
 
-  // Note: FormField component is defined at the top of the file (memoized version)
-  // Do not redefine it here to avoid cursor focus issues
+  if (loadingScholarship) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading scholarship...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -649,20 +573,12 @@ const CreateScholarship = () => {
               Back to Scholarships
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Create New Scholarship</h1>
-              <p className="text-gray-600 mt-1">Post scholarship opportunities for students</p>
+              <h1 className="text-3xl font-bold text-gray-900">Edit Scholarship</h1>
+              <p className="text-gray-600 mt-1">Update scholarship information</p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowJsonImport(true)}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import JSON
-            </Button>
             <Button
               variant="outline"
               onClick={() => setIsPreview(!isPreview)}
@@ -1344,13 +1260,13 @@ const CreateScholarship = () => {
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Create Scholarship
+                    Update Scholarship
                   </>
                 )}
               </Button>
@@ -1358,110 +1274,8 @@ const CreateScholarship = () => {
           </div>
         </form>
       </div>
-
-      {/* JSON Import Modal */}
-      <Dialog open={showJsonImport} onOpenChange={setShowJsonImport}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Import Scholarship Data from JSON
-            </DialogTitle>
-            <DialogDescription>
-              Paste your scholarship data in JSON format below. You can preview and then import it to auto-fill the form.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {/* JSON Input */}
-            <div>
-              <Label htmlFor="json-input">JSON Data</Label>
-              <Textarea
-                id="json-input"
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-                placeholder={`{\n  "title": "Example Scholarship",\n  "external_organization_name": "Example Foundation",\n  "description": "Scholarship description...",\n  "amount_max": "10000",\n  "currency": "USD",\n  ...\n}`}
-                rows={12}
-                className="font-mono text-sm"
-              />
-              {jsonError && (
-                <Alert variant="destructive" className="mt-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{jsonError}</AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            {/* Parse Button */}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={handleParseJson}
-                disabled={!jsonText.trim()}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Parse & Preview JSON
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCloseJsonImport}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-
-            {/* JSON Preview */}
-            {jsonPreview && (
-              <div className="space-y-3">
-                <Separator />
-                <div>
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    Preview - Fields to be Imported
-                  </h4>
-                  <div className="bg-gray-50 border rounded-lg p-4 max-h-64 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      {Object.entries(jsonPreview).map(([key, value]) => (
-                        <div key={key} className="flex gap-2">
-                          <span className="font-medium text-gray-600">{key}:</span>
-                          <span className="text-gray-900 truncate" title={String(value)}>
-                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Import Button */}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    onClick={handleImportJson}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Import & Auto-Fill Form
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Help Text */}
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                <strong>Tip:</strong> The JSON should contain scholarship fields like title, description, 
-                external_organization_name, amount_max, currency, etc. All matching fields will be imported automatically.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
-export default CreateScholarship;
+export default EditScholarship;

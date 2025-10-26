@@ -4,7 +4,7 @@ import { Label } from '../ui/label';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
-const MarkdownEditor = ({ 
+const MarkdownEditor = React.memo(({ 
   label, 
   field, 
   value, 
@@ -16,9 +16,9 @@ const MarkdownEditor = ({
   className = '',
   height = 300
 }) => {
-  const handleChange = (content) => {
+  const handleChange = React.useCallback((content) => {
     onChange(field, content || '');
-  };
+  }, [field, onChange]);
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -73,6 +73,8 @@ const MarkdownEditor = ({
       </div>
     </div>
   );
-};
+});
+
+MarkdownEditor.displayName = 'MarkdownEditor';
 
 export default MarkdownEditor;

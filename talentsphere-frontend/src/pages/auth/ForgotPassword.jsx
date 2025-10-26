@@ -37,6 +37,7 @@ const ForgotPassword = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(null); // null = unknown, true = sent, false = failed
 
   const {
     register,
@@ -52,6 +53,7 @@ const ForgotPassword = () => {
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setError('');
+    setEmailSent(null);
     
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/auth/forgot-password`, {
@@ -66,12 +68,23 @@ const ForgotPassword = () => {
 
       if (response.ok) {
         setEmail(data.email);
+        // Backend may include an `email_sent` boolean (true if SMTP succeeded or simulated)
+        setEmailSent(result.hasOwnProperty('email_sent') ? !!result.email_sent : true);
         setIsSubmitted(true);
       } else {
+        // Surface server-provided error when available
         setError(result.error || 'Failed to send reset email');
+        setEmailSent(result.hasOwnProperty('email_sent') ? !!result.email_sent : false);
       }
     } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+      // Detect a common connection error (e.g., ERR_CONNECTION_REFUSED / failed to fetch)
+      const msg = err && err.message ? err.message.toLowerCase() : '';
+      if (msg.includes('failed to fetch') || msg.includes('networkrequest failed') || msg.includes('network error') || msg.includes('networkrequestfailed')) {
+        setError('Cannot reach backend server. Please make sure the backend is running and reachable.');
+      } else {
+        setError('Network error. Please check your connection and try again.');
+      }
+      setEmailSent(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -101,21 +114,33 @@ const ForgotPassword = () => {
                     <Mail className="w-6 h-6 text-green-600" />
                   </div>
                   <p className="text-sm text-green-700">
-                    We've sent a password reset link to:
+                        {emailSent === true ? "We've sent a password reset link to:" : "If an account exists we attempted to send a password reset link to:"}
                   </p>
                   <p className="font-semibold text-green-800 mt-1">
                     {email}
                   </p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <div className="flex items-center justify-center mb-2">
                     <Clock className="w-5 h-5 text-blue-600" />
                   </div>
-                  <p className="text-xs text-blue-700">
-                    The link will expire in <strong>1 hour</strong> for security reasons
-                  </p>
+                      <p className="text-xs text-blue-700">
+                        The link will expire in <strong>1 hour</strong> for security reasons
+                      </p>
                 </div>
+
+                    {emailSent === false && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm text-yellow-800 font-semibold">We couldn't send the email right now</p>
+                            <p className="text-xs text-yellow-700">We've logged the attempt. Please try again in a few minutes or contact support if the problem persists.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                 <div className="text-left space-y-3">
                   <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -149,6 +174,8 @@ const ForgotPassword = () => {
                   onClick={() => {
                     setIsSubmitted(false);
                     setEmail('');
+                    setError('');
+                    setEmailSent(null);
                   }}
                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                 >

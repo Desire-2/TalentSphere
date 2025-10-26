@@ -120,6 +120,167 @@ def mark_all_notifications_read(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to mark notifications as read', 'details': str(e)}), 500
 
+@notification_bp.route('/notifications/<int:notification_id>/unread', methods=['POST'])
+@token_required
+def mark_notification_unread(current_user, notification_id):
+    """Mark notification as unread"""
+    try:
+        notification = Notification.query.filter_by(
+            id=notification_id, user_id=current_user.id
+        ).first()
+        
+        if not notification:
+            return jsonify({'error': 'Notification not found'}), 404
+        
+        notification.is_read = False
+        notification.read_at = None
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Notification marked as unread',
+            'notification': notification.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to mark notification as unread', 'details': str(e)}), 500
+
+@notification_bp.route('/notifications/<int:notification_id>', methods=['DELETE'])
+@token_required
+def delete_notification(current_user, notification_id):
+    """Delete a notification"""
+    try:
+        notification = Notification.query.filter_by(
+            id=notification_id, user_id=current_user.id
+        ).first()
+        
+        if not notification:
+            return jsonify({'error': 'Notification not found'}), 404
+        
+        db.session.delete(notification)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Notification deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete notification', 'details': str(e)}), 500
+
+@notification_bp.route('/notifications/bulk-read', methods=['POST'])
+@token_required
+def bulk_mark_read(current_user):
+    """Bulk mark notifications as read"""
+    try:
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if not notification_ids:
+            return jsonify({'error': 'No notification IDs provided'}), 400
+        
+        notifications = Notification.query.filter(
+            and_(
+                Notification.id.in_(notification_ids),
+                Notification.user_id == current_user.id
+            )
+        ).all()
+        
+        for notification in notifications:
+            notification.is_read = True
+            notification.read_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{len(notifications)} notifications marked as read'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to mark notifications as read', 'details': str(e)}), 500
+
+@notification_bp.route('/notifications/bulk-unread', methods=['POST'])
+@token_required
+def bulk_mark_unread(current_user):
+    """Bulk mark notifications as unread"""
+    try:
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if not notification_ids:
+            return jsonify({'error': 'No notification IDs provided'}), 400
+        
+        notifications = Notification.query.filter(
+            and_(
+                Notification.id.in_(notification_ids),
+                Notification.user_id == current_user.id
+            )
+        ).all()
+        
+        for notification in notifications:
+            notification.is_read = False
+            notification.read_at = None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{len(notifications)} notifications marked as unread'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to mark notifications as unread', 'details': str(e)}), 500
+
+@notification_bp.route('/notifications/bulk-delete', methods=['POST'])
+@token_required
+def bulk_delete_notifications(current_user):
+    """Bulk delete notifications"""
+    try:
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if not notification_ids:
+            return jsonify({'error': 'No notification IDs provided'}), 400
+        
+        notifications = Notification.query.filter(
+            and_(
+                Notification.id.in_(notification_ids),
+                Notification.user_id == current_user.id
+            )
+        ).all()
+        
+        count = len(notifications)
+        
+        for notification in notifications:
+            db.session.delete(notification)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{count} notifications deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete notifications', 'details': str(e)}), 500
+
+@notification_bp.route('/notifications/unread-count', methods=['GET'])
+@token_required
+def get_unread_count(current_user):
+    """Get unread notification count"""
+    try:
+        count = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False
+        ).count()
+        
+        return jsonify({
+            'unread_count': count
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get unread count', 'details': str(e)}), 500
+
 @notification_bp.route('/messages', methods=['GET'])
 @token_required
 def get_messages(current_user):

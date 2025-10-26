@@ -84,12 +84,17 @@ const ScholarshipsManagement = () => {
         ...(typeFilter !== 'all' && { scholarship_type: typeFilter })
       };
 
+      console.log('Fetching scholarships with params:', params);
       const response = await scholarshipService.getExternalScholarships(params);
       
       // Debug logging
       console.log('Scholarships API response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', response ? Object.keys(response) : 'null');
+      console.log('External scholarships:', response?.external_scholarships);
       
       if (response && response.external_scholarships) {
+        console.log('Setting scholarships:', response.external_scholarships.length, 'items');
         setScholarships(response.external_scholarships);
         setPagination({
           page: response.pagination?.page || 1,
@@ -99,10 +104,12 @@ const ScholarshipsManagement = () => {
         });
         
         if (response.summary) {
+          console.log('Setting stats:', response.summary);
           setStats(response.summary);
         }
       } else {
         console.warn('Invalid response structure:', response);
+        console.warn('Setting empty scholarships array');
         setScholarships([]);
         setPagination({
           page: 1,
@@ -113,8 +120,13 @@ const ScholarshipsManagement = () => {
       }
     } catch (error) {
       console.error('Error fetching scholarships:', error);
-      setError('Failed to load scholarships. Please try again.');
-      toast.error('Failed to load scholarships');
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to load scholarships. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

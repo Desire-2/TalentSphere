@@ -3,12 +3,28 @@ import api from './api';
 export const authService = {
   // Register new user
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
-    if (response.token) {
+    try {
+      const response = await api.post('/auth/register', userData);
+      
+      // Ensure we have the necessary data
+      if (!response) {
+        throw new Error('No response received from server');
+      }
+      
+      if (!response.token || !response.user) {
+        throw new Error('Invalid response format: missing token or user data');
+      }
+      
+      // Save token and user data to localStorage
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      
+      return response;
+    } catch (error) {
+      console.error('Registration service error:', error);
+      // Rethrow the error to be handled by the store
+      throw error;
     }
-    return response;
   },
 
   // Login user

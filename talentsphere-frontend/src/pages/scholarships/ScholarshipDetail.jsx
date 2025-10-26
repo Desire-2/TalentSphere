@@ -17,7 +17,8 @@ import {
   CheckCircle,
   Info,
   FileText,
-  Globe
+  Globe,
+  Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -154,31 +155,48 @@ const ScholarshipDetail = () => {
     setIsApplying(true);
     
     try {
-      if (scholarship.external_application_url) {
-        const formattedUrl = formatExternalUrl(scholarship.external_application_url);
-        const domain = getDomainFromUrl(scholarship.external_application_url);
+      // Determine application type
+      const applicationType = scholarship.application_type || 'external';
+      
+      if (applicationType === 'external' || scholarship.application_url) {
+        // External scholarship - redirect to external URL
+        const applicationUrl = scholarship.application_url || scholarship.external_application_url;
         
-        // For external applications, show confirmation and redirect
-        if (window.confirm(
-          `You will be redirected to the external application portal at ${domain}.\n\nDo you want to continue?`
-        )) {
-          // Track application attempt
-          try {
-            await scholarshipService.trackApplicationClick(id);
-          } catch (trackError) {
-            console.warn('Could not track application click:', trackError);
+        if (applicationUrl) {
+          const formattedUrl = formatExternalUrl(applicationUrl);
+          const domain = getDomainFromUrl(applicationUrl);
+          
+          // For external applications, show confirmation and redirect
+          if (window.confirm(
+            `You will be redirected to the external application portal at ${domain}.\n\nDo you want to continue?`
+          )) {
+            // Track application attempt
+            try {
+              await scholarshipService.trackApplicationClick(id);
+            } catch (trackError) {
+              console.warn('Could not track application click:', trackError);
+            }
+            
+            // Open external application URL
+            window.open(formattedUrl, '_blank');
+            
+            // Show success message after a short delay
+            setTimeout(() => {
+              alert('Application portal opened in a new tab. Please complete your application on the external website.\n\nTip: Keep this page open for reference while applying!');
+            }, 500);
           }
-          
-          // Open external application URL
-          window.open(formattedUrl, '_blank');
-          
-          // Show success message after a short delay
-          setTimeout(() => {
-            alert('Application portal opened in a new tab. Please complete your application on the external website.\n\nTip: Keep this page open for reference while applying!');
-          }, 500);
         }
-      } else {
-        // Handle internal application process
+      } else if (applicationType === 'email' && scholarship.application_email) {
+        // Email application - compose email
+        const subject = `Application for ${scholarship.title}`;
+        const body = `Dear Selection Committee,\n\nI am writing to express my interest in applying for the ${scholarship.title} scholarship.\n\n[Your application details here]\n\nThank you for considering my application.\n\nBest regards,\n${user?.first_name} ${user?.last_name}`;
+        
+        const mailtoLink = `mailto:${scholarship.application_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.open(mailtoLink);
+        
+        alert('Your email client will open shortly. Please send your application to the provided email address.');
+      } else if (applicationType === 'internal') {
+        // Internal scholarship - redirect to application form
         navigate(`/scholarships/${id}/apply`);
       }
     } catch (error) {
@@ -463,10 +481,15 @@ const ScholarshipDetail = () => {
                     </>
                   ) : deadlinePassed ? (
                     'Application Closed'
-                  ) : scholarship.external_application_url ? (
+                  ) : (scholarship.application_type === 'external' || scholarship.application_url) ? (
                     <>
                       Apply Externally
                       <ExternalLink className="w-4 h-4 ml-2" />
+                    </>
+                  ) : (scholarship.application_type === 'email' && scholarship.application_email) ? (
+                    <>
+                      Send Application Email
+                      <Mail className="w-4 h-4 ml-2" />
                     </>
                   ) : (
                     'Apply Now'
@@ -480,7 +503,7 @@ const ScholarshipDetail = () => {
                 )}
 
                 {/* Application Information */}
-                {scholarship.external_application_url && (
+                {(scholarship.application_type === 'external' || scholarship.application_url) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <div className="flex items-start">
                       <ExternalLink className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
@@ -488,12 +511,12 @@ const ScholarshipDetail = () => {
                         <h4 className="text-sm font-medium text-blue-900 mb-1">External Application</h4>
                         <p className="text-xs text-blue-700 leading-relaxed mb-2">
                           This scholarship requires application through an external portal at{' '}
-                          <span className="font-medium">{getDomainFromUrl(scholarship.external_application_url)}</span>.
+                          <span className="font-medium">{getDomainFromUrl(scholarship.application_url || scholarship.external_application_url)}</span>.
                           Clicking "Apply Externally" will open the scholarship provider's website in a new tab.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-2">
                           <a 
-                            href={formatExternalUrl(scholarship.external_application_url)}
+                            href={formatExternalUrl(scholarship.application_url || scholarship.external_application_url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-blue-600 hover:text-blue-800 underline"
@@ -516,7 +539,29 @@ const ScholarshipDetail = () => {
                   </div>
                 )}
 
-                {!scholarship.external_application_url && isAuthenticated && (
+                {scholarship.application_type === 'email' && scholarship.application_email && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-4">
+                    <div className="flex items-start">
+                      <Mail className="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-purple-900 mb-1">Email Application</h4>
+                        <p className="text-xs text-purple-700 leading-relaxed mb-2">
+                          This scholarship requires application by email. Clicking "Send Application Email" will open your email client.
+                        </p>
+                        <p className="text-xs text-purple-800 font-medium">
+                          Send to: <a href={`mailto:${scholarship.application_email}`} className="text-purple-600 hover:text-purple-800 underline">{scholarship.application_email}</a>
+                        </p>
+                        {scholarship.application_instructions && (
+                          <p className="text-xs text-purple-700 leading-relaxed mt-2">
+                            Instructions: {scholarship.application_instructions}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {scholarship.application_type === 'internal' && isAuthenticated && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                     <div className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
@@ -524,7 +569,7 @@ const ScholarshipDetail = () => {
                         <h4 className="text-sm font-medium text-green-900 mb-1">Internal Application</h4>
                         <p className="text-xs text-green-700 leading-relaxed">
                           You can apply for this scholarship directly through TalentSphere. 
-                          Your profile information will be used to pre-fill the application.
+                          Your profile information will be used to pre-fill the application form.
                         </p>
                       </div>
                     </div>
@@ -542,8 +587,11 @@ const ScholarshipDetail = () => {
                         <li>• Read all eligibility requirements carefully</li>
                         <li>• Prepare any required documents in advance</li>
                         <li>• Apply well before the deadline to avoid technical issues</li>
-                        {scholarship.external_application_url && (
+                        {(scholarship.application_type === 'external' || scholarship.application_url) && (
                           <li>• Keep this page open for reference while applying on the external site</li>
+                        )}
+                        {scholarship.application_type === 'internal' && (
+                          <li>• Your profile information will help us verify your eligibility</li>
                         )}
                       </ul>
                     </div>

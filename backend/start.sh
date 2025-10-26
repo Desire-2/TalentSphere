@@ -167,7 +167,15 @@ echo ""
 echo "⚡ Running performance optimizations..."
 if [ -f "optimize_database.py" ]; then
     echo "🗄️  Optimizing database..."
-    python optimize_database.py || echo "⚠️  Database optimization failed - continuing with startup"
+    # Run with 30-second timeout to prevent hanging
+    timeout 40 python3 optimize_database.py || {
+        exit_code=$?
+        if [ $exit_code -eq 124 ]; then
+            echo "⏱️  Database optimization timed out - continuing with startup"
+        else
+            echo "⚠️  Database optimization failed (exit code: $exit_code) - continuing with startup"
+        fi
+    }
 else
     echo "⚠️  Database optimization script not found"
 fi
@@ -175,7 +183,7 @@ fi
 # Check Redis connection (optional)
 if [[ -n "$REDIS_URL" ]]; then
     echo "🔴 Testing Redis connection..."
-    python -c "
+    python3 -c "
 try:
     import redis
     r = redis.from_url('${REDIS_URL}')
@@ -191,7 +199,7 @@ fi
 if [[ "${FLASK_ENV}" != "production" ]]; then
     echo ""
     echo "🗄️  Testing database connection..."
-    python -c "
+    python3 -c "
 import sys
 sys.path.insert(0, '.')
 try:

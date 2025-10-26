@@ -86,9 +86,20 @@ class ApiService {
 
       let data;
       try {
-        data = await response.json();
+        const responseText = await response.text();
+        if (ENABLE_API_LOGGING) {
+          console.log('🌐 Response text length:', responseText.length);
+        }
+        
+        // Only parse if there's content
+        if (responseText && responseText.trim().length > 0) {
+          data = JSON.parse(responseText);
+        } else {
+          data = {};
+        }
       } catch (jsonError) {
         console.error('❌ Failed to parse JSON response:', jsonError);
+        console.error('Response was:', response);
         throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
       }
 
@@ -97,7 +108,7 @@ class ApiService {
           status: response.status,
           ok: response.ok,
           url: url,
-          dataKeys: Object.keys(data),
+          dataKeys: data ? Object.keys(data) : [],
           dataPreview: data
         });
       }

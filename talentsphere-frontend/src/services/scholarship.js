@@ -85,16 +85,38 @@ export const scholarshipService = {
 
   // External admin scholarship management
   getExternalScholarships: async (params = {}) => {
-    const queryParams = new URLSearchParams();
-    
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-        queryParams.append(key, params[key]);
-      }
-    });
-    
-    const response = await api.get(`/external-scholarships?${queryParams.toString()}`);
-    return response.data;
+    try {
+      const queryParams = new URLSearchParams();
+      
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+          queryParams.append(key, params[key]);
+        }
+      });
+      
+      console.log('Fetching external scholarships with params:', params);
+      const response = await api.get(`/external-scholarships?${queryParams.toString()}`);
+      console.log('External scholarships raw response:', response);
+      console.log('External scholarships response.data:', response.data);
+      
+      // Return the data directly - api.get already extracts response.data
+      return response.data || response;
+    } catch (error) {
+      console.error('Error in getExternalScholarships:', error);
+      console.error('Error response:', error.response);
+      console.error('Error details:', error.response?.data);
+      throw error;
+    }
+  },
+
+  getExternalScholarshipById: async (id) => {
+    try {
+      const response = await api.get(`/scholarships/${id}`);
+      return response.data || response;
+    } catch (error) {
+      console.error('Error fetching scholarship by ID:', error);
+      throw error;
+    }
   },
 
   getExternalScholarshipStats: async () => {

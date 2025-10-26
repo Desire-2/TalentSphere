@@ -192,7 +192,7 @@ def get_cached_company_profile(company_id: int) -> Optional[Dict]:
     from src.models.company import Company
     
     company = Company.query.get(company_id)
-    return company.to_dict(include_details=True) if company else None
+    return company.to_dict(include_stats=True) if company else None
 
 @cached("employer_stats", ttl=900)  # 15 minutes
 def get_cached_employer_stats(user_id: int, company_id: Optional[int] = None) -> Dict:

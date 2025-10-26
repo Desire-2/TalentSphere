@@ -771,6 +771,106 @@ def get_my_bookmarked_scholarships(current_user):
         return jsonify({'error': 'Failed to get bookmarked scholarships', 'details': str(e)}), 500
 
 
+# Scholarship application endpoints
+@scholarship_bp.route('/scholarships/<int:scholarship_id>/apply', methods=['POST'])
+@token_required
+@role_required(['job_seeker', 'admin'])
+def apply_to_scholarship(scholarship_id, current_user):
+    """Apply to an internal scholarship"""
+    try:
+        scholarship = Scholarship.query.get_or_404(scholarship_id)
+        
+        # Check if scholarship accepts internal applications
+        if scholarship.application_type != 'internal':
+            return jsonify({'error': 'This scholarship does not accept internal applications'}), 400
+        
+        # Check if deadline has passed
+        if scholarship.is_expired():
+            return jsonify({'error': 'Application deadline has passed'}), 400
+        
+        # Check if user already applied
+        existing_application = ScholarshipApplication.query.filter_by(
+            scholarship_id=scholarship_id,
+            user_id=current_user.id
+        ).first()
+        
+        if existing_application:
+            return jsonify({'error': 'You have already applied for this scholarship'}), 400
+        
+        # Get application data from request
+        data = request.get_json() or {}
+        
+        # Create new application
+        application = ScholarshipApplication(
+            scholarship_id=scholarship_id,
+            user_id=current_user.id,
+            status='submitted',
+            application_data=json.dumps({
+                'first_name': data.get('first_name'),
+                'last_name': data.get('last_name'),
+                'email': data.get('email'),
+                'phone': data.get('phone'),
+                'date_of_birth': data.get('date_of_birth'),
+                'current_institution': data.get('current_institution'),
+                'study_level': data.get('study_level'),
+                'current_gpa': data.get('current_gpa'),
+                'field_of_study': data.get('field_of_study'),
+                'country': data.get('country'),
+                'state': data.get('state'),
+                'city': data.get('city'),
+                'postal_code': data.get('postal_code'),
+                'motivation_essay': data.get('motivation_essay'),
+                'career_goals': data.get('career_goals'),
+                'achievements': data.get('achievements'),
+                'financial_need_statement': data.get('financial_need_statement'),
+                'extracurricular_activities': data.get('extracurricular_activities'),
+                'community_service': data.get('community_service'),
+                'leadership_experience': data.get('leadership_experience'),
+                'additional_information': data.get('additional_information'),
+            })
+        )
+        
+        # Update scholarship application count
+        scholarship.application_count = (scholarship.application_count or 0) + 1
+        
+        db.session.add(application)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Application submitted successfully',
+            'application_id': application.id,
+            'status': 'submitted',
+            'submitted_at': application.created_at.isoformat()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to submit application', 'details': str(e)}), 500
+
+
+@scholarship_bp.route('/scholarships/<int:scholarship_id>/track-application', methods=['POST'])
+@token_required
+@role_required(['job_seeker', 'admin'])
+def track_application_click(scholarship_id, current_user):
+    """Track when a user clicks on external application link"""
+    try:
+        scholarship = Scholarship.query.get_or_404(scholarship_id)
+        
+        # Update scholarship application tracking count
+        if scholarship.application_type == 'external':
+            scholarship.application_count = (scholarship.application_count or 0) + 1
+            db.session.commit()
+        
+        return jsonify({
+            'message': 'Application click tracked',
+            'application_count': scholarship.application_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to track application', 'details': str(e)}), 500
+
+
 # Error handlers
 @scholarship_bp.errorhandler(400)
 def bad_request(error):

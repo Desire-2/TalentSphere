@@ -73,11 +73,12 @@ def role_required(*allowed_roles):
     return decorator
 
 @auth_bp.route('/register', methods=['POST'])
-@db_transaction
 def register():
     """Enhanced register endpoint with comprehensive employer support"""
     try:
         data = request.get_json()
+        
+        current_app.logger.info(f"Registration attempt for email: {data.get('email')}")
         
         # Validate required fields
         required_fields = ['email', 'password', 'first_name', 'last_name', 'role']
@@ -97,7 +98,9 @@ def register():
             return jsonify({'error': 'Invalid email format'}), 400
         
         # Check if user already exists
-        if User.query.filter_by(email=data['email']).first():
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user:
+            current_app.logger.warning(f"Registration failed: Email already exists - {data.get('email')}")
             return jsonify({'error': 'Email already registered'}), 409
         
         # Validate password
@@ -212,12 +215,23 @@ def register():
                     profile.company_id = company.id
         
         db.session.commit()
+        current_app.logger.info(f"User account created successfully for: {user.email}")
         
         # Generate token
         token = user.generate_token()
+        current_app.logger.info(f"Token generated successfully for: {user.email}")
         
-        # Send welcome email
-        welcome_email_sent = send_welcome_email(user)
+        # Send welcome email (don't fail registration if email fails)
+        welcome_email_sent = False
+        try:
+            welcome_email_sent = send_welcome_email(user)
+            if welcome_email_sent:
+                current_app.logger.info(f"Welcome email sent to: {user.email}")
+            else:
+                current_app.logger.warning(f"Welcome email could not be sent to: {user.email}")
+        except Exception as email_error:
+            current_app.logger.error(f"Error sending welcome email to {user.email}: {str(email_error)}")
+            # Continue with registration even if email fails
         
         # Prepare response data
         response_data = {
@@ -240,10 +254,14 @@ def register():
                 if company:
                     response_data['company'] = company.to_dict()
         
+        current_app.logger.info(f"Registration completed successfully for: {user.email}")
         return jsonify(response_data), 201
         
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Registration error: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
 
 @auth_bp.route('/verify-employer', methods=['POST'])
@@ -1084,22 +1102,33 @@ def forgot_password():
         
         # Always return success to prevent email enumeration attacks
         if user:
-            # Generate reset token
-            reset_token = user.generate_reset_token()
+            # Generate reset token and persist it. Protect against DB errors.
+            try:
+                reset_token = user.generate_reset_token()
+                db.session.commit()
+            except Exception as db_err:
+                db.session.rollback()
+                current_app.logger.error(f"Error saving reset token for {user.email}: {str(db_err)}")
+                # Continue and still attempt to return success (avoid revealing failure)
+                reset_token = getattr(user, 'reset_token', None) or ''
             
-            # Save to database
-            db.session.commit()
-            
-            # Send reset email
-            if send_reset_email(user.email, reset_token, user.get_full_name()):
-                return jsonify({
-                    'success': True,
-                    'message': 'If an account with this email exists, a password reset link has been sent.'
-                }), 200
-            else:
-                return jsonify({
-                    'error': 'Failed to send reset email. Please try again later.'
-                }), 500
+            # Send reset email. Do not propagate email send failures as 500 to the client
+            try:
+                email_sent = send_reset_email(user.email, reset_token, user.get_full_name())
+            except Exception as send_err:
+                email_sent = False
+                current_app.logger.error(f"Error while sending reset email to {user.email}: {str(send_err)}")
+
+            if not email_sent:
+                # Log a warning but return a generic success response to avoid email enumeration
+                current_app.logger.warning(f"Password reset email could not be sent to {user.email}. Check SMTP settings or credentials.")
+
+            # Always return success to the client so callers can't enumerate emails and to avoid 500s
+            return jsonify({
+                'success': True,
+                'email_sent': bool(email_sent),
+                'message': 'If an account with this email exists, a password reset link has been sent.'
+            }), 200
         else:
             # Still return success to prevent email enumeration
             return jsonify({

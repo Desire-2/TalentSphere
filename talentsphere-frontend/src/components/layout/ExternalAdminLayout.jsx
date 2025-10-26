@@ -14,7 +14,9 @@ import {
   ExternalLink,
   Users,
   FileText,
-  Loader2
+  Loader2,
+  Bell,
+  User
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../ui/button';
@@ -111,9 +113,14 @@ const ExternalAdminLayout = () => {
       icon: ExternalLink
     },
     {
+      name: 'Notifications',
+      href: '/external-admin/notifications',
+      icon: Bell
+    },
+    {
       name: 'Profile & Settings',
       href: '/external-admin/profile',
-      icon: Settings
+      icon: User
     }
   ];
 

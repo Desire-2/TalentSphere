@@ -26,7 +26,7 @@ import { externalAdminService } from '../../services/externalAdmin';
 import { useAuthStore } from '../../stores/authStore';
 
 const ExternalAdminProfile = () => {
-  const { user, updateUser } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   
@@ -84,7 +84,20 @@ const ExternalAdminProfile = () => {
   const loadProfile = async () => {
     try {
       const response = await externalAdminService.getProfile();
-      setProfile(response.profile);
+      // Backend returns profile data directly, not wrapped in a 'profile' key
+      const profileData = {
+        first_name: response.first_name || '',
+        last_name: response.last_name || '',
+        email: response.email || '',
+        phone: response.phone || '',
+        bio: response.bio || '',
+        company: response.company || '',
+        website: response.website || '',
+        location: response.location || '',
+        timezone: response.timezone || 'UTC',
+        avatar_url: response.profile_picture || response.avatar_url || ''
+      };
+      setProfile(profileData);
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('Failed to load profile');
@@ -106,12 +119,28 @@ const ExternalAdminProfile = () => {
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      const response = await externalAdminService.updateProfile(profile);
-      updateUser(response.user);
+      // Map frontend profile fields to backend expected fields
+      const profileData = {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: profile.phone,
+        location: profile.location,
+        bio: profile.bio,
+        profile_picture: profile.avatar_url, // Backend expects profile_picture
+        // Note: email, company, website, timezone may not be supported by backend
+      };
+      
+      const response = await externalAdminService.updateProfile(profileData);
+      
+      // Update the user state in authStore
+      if (response.user) {
+        setUser(response.user);
+      }
+      
       toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(error.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }

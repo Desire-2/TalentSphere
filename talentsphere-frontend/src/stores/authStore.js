@@ -35,7 +35,12 @@ export const useAuthStore = create((set, get) => ({
   register: async (userData) => {
     set({ isLoading: true, error: null });
     try {
+      console.log('🔐 Starting registration process...', { email: userData.email, role: userData.role });
+      
       const data = await authService.register(userData);
+      
+      console.log('✅ Registration successful', { user: data.user, hasToken: !!data.token });
+      
       set({
         user: data.user,
         token: data.token,
@@ -43,12 +48,34 @@ export const useAuthStore = create((set, get) => ({
         isLoading: false,
         error: null
       });
+      
       return data;
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
+      
+      // Check if the error indicates account already exists
+      const errorMessage = error.message || 'Registration failed';
+      
+      // If the account was created but there's a token/session issue, 
+      // check localStorage for the token
+      const token = authService.getToken();
+      const user = authService.getCurrentUser();
+      
+      if (token && user) {
+        console.log('⚠️ Account exists but initial setup had issues. Using cached credentials.');
+        set({
+          user: user,
+          token: token,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null
+        });
+        return { user, token };
+      }
+      
       set({
         isLoading: false,
-        error: error.message || 'Registration failed'
+        error: errorMessage
       });
       throw error;
     }
@@ -144,6 +171,13 @@ export const useAuthStore = create((set, get) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  // Update user data directly (for cases where profile is updated via different service)
+  setUser: (userData) => {
+    set({ user: userData });
+    // Update localStorage
+    localStorage.setItem('user', JSON.stringify(userData));
   },
 
   // Initialize auth state from localStorage

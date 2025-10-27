@@ -51,6 +51,63 @@ import MDEditor from '@uiw/react-md-editor';
 import { externalAdminService } from '../../services/externalAdmin';
 import { toast } from 'sonner';
 
+const coerceToString = (value, fallback = '') => {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => coerceToString(item, ''))
+      .filter((item) => item && item.trim().length > 0)
+      .join(', ');
+    return joined || fallback;
+  }
+
+  if (typeof value === 'object') {
+    const prioritizedKeys = ['name', 'title', 'label', 'value', 'text'];
+    for (const key of prioritizedKeys) {
+      if (typeof value[key] === 'string' && value[key].trim()) {
+        return value[key];
+      }
+    }
+
+    const urlLikeKeys = ['url', 'website', 'link', 'href'];
+    for (const key of urlLikeKeys) {
+      if (typeof value[key] === 'string' && value[key].trim()) {
+        return value[key];
+      }
+    }
+  }
+
+  return fallback;
+};
+
+const coerceToIdString = (value, fallback = '') => {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  if (typeof value === 'object') {
+    if (value.id !== undefined && value.id !== null) {
+      return String(value.id);
+    }
+    if (value.value !== undefined && value.value !== null) {
+      return String(value.value);
+    }
+  }
+
+  return String(value);
+};
+
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
 const StableInput = React.memo(({ field, type, value, placeholder, required, className, rows, onInputChange }) => {
   // Create a stable onChange handler - this is the key to preventing focus loss
@@ -185,14 +242,10 @@ const CreateExternalJob = () => {
   const [fieldAnimations, setFieldAnimations] = useState({});
   
   // Enhanced Markdown Editor Features
-  const [markdownPreview, setMarkdownPreview] = useState(false);
-  const [markdownFullscreen, setMarkdownFullscreen] = useState(false);
-  const [suggestions, setSuggestions] = useState({});
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSnippets, setShowSnippets] = useState(false);
   
   // JSON Import Feature
-  const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
   const [jsonPreview, setJsonPreview] = useState(null);
@@ -392,7 +445,8 @@ Please share:
   // Refs for debouncing
   const validationTimeoutRef = useRef(null);
   const suggestionsTimeoutRef = useRef(null);
-  const animationTimeoutRef = useRef({});
+  const suggestJobCategoryRef = useRef(null);
+  const suggestCompanyInfoRef = useRef(null);
   
   const [formData, setFormData] = useState({
     // Job Details
@@ -415,7 +469,7 @@ Please share:
     category_id: undefined,
     
     // Location
-    location_type: 'remote',
+  location_type: 'on-site',
     location_city: '',
     location_state: '',
     location_country: '',
@@ -445,8 +499,14 @@ Please share:
     status: 'published'
   });
 
+  const formDataRef = useRef(formData);
+
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
   // Form sections for better organization
-  const formSections = [
+  const formSections = useMemo(() => ([
     {
       id: 'basic',
       title: 'Job Information',
@@ -489,11 +549,15 @@ Please share:
       description: 'How candidates can apply',
       fields: ['application_type', 'application_url', 'application_email', 'application_instructions']
     }
-  ];
+  ]), []);
 
   // Calculate form completion percentage
   const formProgress = useMemo(() => {
     const requiredFields = ['title', 'external_company_name', 'description'];
+
+    if (formData.location_type === 'on-site') {
+      requiredFields.push('location_city', 'location_country');
+    }
     const allFields = formSections.flatMap(section => section.fields);
     
     const completedFields = allFields.filter(field => {
@@ -515,6 +579,23 @@ Please share:
   }, [formData, formSections]);
 
   // Auto-save functionality with optimized debouncing
+  // Auto-save logic: define the auto-save function first to avoid TDZ (handleAutoSave used in effect)
+  const handleAutoSave = useCallback(async () => {
+    if (!isDirty) return;
+
+    setAutoSaveStatus('saving');
+    try {
+      // Here you would call your auto-save API
+      // For now, just simulate a save
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAutoSaveStatus('saved');
+      setIsDirty(false);
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+      setAutoSaveStatus('error');
+    }
+  }, [isDirty]);
+
   useEffect(() => {
     if (isDirty) {
       const timer = setTimeout(() => {
@@ -523,10 +604,10 @@ Please share:
 
       return () => clearTimeout(timer);
     }
-  }, [formData, isDirty]);
+  }, [formData, handleAutoSave, isDirty]);
 
   // Fetch templates function
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       const response = await externalAdminService.getJobTemplates({ 
         include_public: true,
@@ -542,7 +623,7 @@ Please share:
       // Don't show error toast as templates are optional
       setTemplates([]);
     }
-  };
+  }, []);
 
   // Save current form as template
   const handleSaveAsTemplate = useCallback(async () => {
@@ -608,6 +689,48 @@ Please share:
     }
   }, [formData, fetchTemplates]);
 
+  // Auto-save draft functionality
+  const saveDraft = useCallback(async () => {
+    const draftData = { ...formData, status: 'draft' };
+    setAutoSaveStatus('saving');
+
+    try {
+      const city = draftData.location_city?.trim() || null;
+      const state = draftData.location_state?.trim() || null;
+      const country = draftData.location_country?.trim() || null;
+
+      const jobData = {
+        ...draftData,
+        city,
+        state,
+        country,
+        salary_min: draftData.salary_min ? parseInt(draftData.salary_min) : null,
+        salary_max: draftData.salary_max ? parseInt(draftData.salary_max) : null,
+        years_experience_min: draftData.years_experience_min ? parseInt(draftData.years_experience_min) : 0,
+        years_experience_max: draftData.years_experience_max ? parseInt(draftData.years_experience_max) : null,
+        // Ensure category_id is properly set
+        category_id: draftData.category_id ? parseInt(draftData.category_id) : 1,
+      };
+
+      delete jobData.location_city;
+      delete jobData.location_state;
+      delete jobData.location_country;
+
+      await externalAdminService.createExternalJob(jobData);
+      toast.success('✨ Draft saved successfully!', {
+        icon: '💾'
+      });
+      setAutoSaveStatus('saved');
+      setIsDirty(false);
+      return true;
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      toast.error('❌ Failed to save draft');
+      setAutoSaveStatus('error');
+      return false;
+    }
+  }, [formData]);
+
   // Cleanup timeout refs on unmount
   useEffect(() => {
     return () => {
@@ -669,7 +792,7 @@ Please share:
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPreview, formProgress.requiredCompleted, loading, navigate, showTemplateImport, formData.title, formData.description, handleSaveAsTemplate]);
+  }, [isPreview, formProgress.requiredCompleted, loading, navigate, showTemplateImport, formData.title, formData.description, handleSaveAsTemplate, saveDraft]);
 
   // Click outside handler for template import dropdown
   // Commented out click outside handler since we're using portal with backdrop
@@ -685,21 +808,6 @@ Please share:
   //     return () => document.removeEventListener('mousedown', handleClickOutside);
   //   }
   // }, [showTemplateImport]);
-
-  const handleAutoSave = async () => {
-    if (!isDirty) return;
-    
-    setAutoSaveStatus('saving');
-    try {
-      // Here you would call your auto-save API
-      // For now, just simulate a save
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAutoSaveStatus('saved');
-      setIsDirty(false);
-    } catch (error) {
-      setAutoSaveStatus('error');
-    }
-  };
 
   // Optimized field animation - disabled for critical input fields to prevent typing lag
   const animateField = useCallback((fieldName) => {
@@ -725,49 +833,13 @@ Please share:
     }
   }, [fieldAnimations]);
 
-  // Memoized editor change handler for rich text and markdown editors
-  const memoizedEditorChangeHandler = useCallback((field, value) => {
-    // Optimized handler specifically for rich text editors
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setIsDirty(true);
-    
-    // Lightweight validation for editors - longer delay to avoid interrupting typing
-    if (validationTimeoutRef.current) {
-      clearTimeout(validationTimeoutRef.current);
-    }
-    validationTimeoutRef.current = setTimeout(() => {
-      validateField(field, value);
-    }, 800); // Longer delay for rich text editing
-  }, []); // Remove validateField dependency since it has no deps itself
-
-  useEffect(() => {
-    fetchCategories();
-    fetchTemplates();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await externalAdminService.getJobCategories();
-      // Ensure we always set an array
-      if (Array.isArray(response)) {
-        setCategories(response);
-      } else if (response && Array.isArray(response.categories)) {
-        setCategories(response.categories);
-      } else {
-        setCategories([]);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load job categories');
-      setCategories([]); // Ensure categories is always an array
-    }
-  };
-
-  // Optimized validation function - DEFINED FIRST to prevent hoisting issues
+  // Field validation logic (needs to be declared before any handlers that depend on it)
   const validateField = useCallback((field, value) => {
     setErrors(prevErrors => {
       const newErrors = { ...prevErrors };
-      
+      const currentFormData = formDataRef.current || {};
+      const locationType = (field === 'location_type' ? value : currentFormData.location_type) || 'remote';
+
       switch (field) {
         case 'title':
           if (!value?.trim()) {
@@ -800,7 +872,7 @@ Please share:
             delete newErrors[field];
           }
           break;
-        case 'description':
+        case 'description': {
           // Strip HTML tags for character count validation
           const textContent = value?.replace(/<[^>]*>/g, '').trim() || '';
           if (!textContent) {
@@ -811,20 +883,103 @@ Please share:
             delete newErrors[field];
           }
           break;
+        }
+        case 'location_type': {
+          if (value === 'on-site') {
+            const city = currentFormData.location_city?.trim();
+            const country = currentFormData.location_country?.trim();
+
+            if (!city) {
+              newErrors.location_city = 'City is required for on-site jobs';
+            } else {
+              delete newErrors.location_city;
+            }
+
+            if (!country) {
+              newErrors.location_country = 'Country is required for on-site jobs';
+            } else {
+              delete newErrors.location_country;
+            }
+          } else {
+            delete newErrors.location_city;
+            delete newErrors.location_country;
+          }
+          delete newErrors[field];
+          break;
+        }
+        case 'location_city': {
+          if (locationType === 'on-site' && !value?.trim()) {
+            newErrors[field] = 'City is required for on-site jobs';
+          } else {
+            delete newErrors[field];
+          }
+          break;
+        }
+        case 'location_country': {
+          if (locationType === 'on-site' && !value?.trim()) {
+            newErrors[field] = 'Country is required for on-site jobs';
+          } else {
+            delete newErrors[field];
+          }
+          break;
+        }
         default:
           // For other fields, remove any existing errors
           delete newErrors[field];
       }
-      
+
       return newErrors;
     });
-  }, []); // No dependencies - pure function based on parameters
+  }, []);
+
+  // Memoized editor change handler for rich text and markdown editors
+  const memoizedEditorChangeHandler = useCallback((field, value) => {
+    // Optimized handler specifically for rich text editors
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+    
+    // Lightweight validation for editors - longer delay to avoid interrupting typing
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+    validationTimeoutRef.current = setTimeout(() => {
+      validateField(field, value);
+    }, 800); // Longer delay for rich text editing
+  }, [validateField]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await externalAdminService.getJobCategories();
+      // Ensure we always set an array
+      if (Array.isArray(response)) {
+        setCategories(response);
+      } else if (response && Array.isArray(response.categories)) {
+        setCategories(response.categories);
+      } else {
+        setCategories([]);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load job categories');
+      setCategories([]); // Ensure categories is always an array
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchTemplates();
+  }, [fetchCategories, fetchTemplates]);
 
   // Ultra-optimized stable input change handler - CRITICAL FOR INPUT PERFORMANCE
   const stableInputChange = useCallback((field, value) => {
     // IMMEDIATE state update - NO processing, NO delays, NO blocking operations
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updatedFormData = { ...prev, [field]: value };
+      formDataRef.current = updatedFormData;
+      return updatedFormData;
+    });
     setIsDirty(true);
+    animateField(field);
     
     // ALL other operations are completely separated and non-blocking
     
@@ -835,9 +990,13 @@ Please share:
     
     // Debounced validation - completely separate from input handling
     validationTimeoutRef.current = setTimeout(() => {
-      // Capture current values to avoid stale closures
-      const currentFormData = formData;
       validateField(field, value);
+
+      if (field === 'location_type') {
+        const currentValues = formDataRef.current;
+        validateField('location_city', currentValues.location_city);
+        validateField('location_country', currentValues.location_country);
+      }
     }, 500); // Increased delay to reduce interference during typing
     
     // Suggestions are completely optional and heavily debounced
@@ -848,9 +1007,13 @@ Please share:
       suggestionsTimeoutRef.current = setTimeout(() => {
         try {
           if (field === 'title') {
-            suggestJobCategory(value);
+            if (suggestJobCategoryRef.current) {
+              suggestJobCategoryRef.current(value);
+            }
           } else if (field === 'external_company_name') {
-            suggestCompanyInfo(value);
+            if (suggestCompanyInfoRef.current) {
+              suggestCompanyInfoRef.current(value);
+            }
           }
         } catch (error) {
           // Silently ignore suggestion errors to prevent input interruption
@@ -858,7 +1021,7 @@ Please share:
         }
       }, 1500); // Even longer delay for suggestions
     }
-  }, []); // CRITICAL: Empty dependency array for absolute stability
+  }, [animateField, validateField]);
 
   // Enhanced Markdown Helper Functions
   const insertMarkdownTemplate = useCallback((template) => {
@@ -946,7 +1109,7 @@ Tools: Git, Jest, Cypress
         category_id: template.category_id?.toString() || '',
         
         // Location information
-        location_type: template.location_type || 'remote',
+  location_type: template.location_type || 'on-site',
         location_city: template.location_city || '',
         location_state: template.location_state || '',
         location_country: template.location_country || '',
@@ -993,7 +1156,7 @@ Tools: Git, Jest, Cypress
       
       // Clear any existing errors since we're starting fresh
       setErrors({});
-      
+
     } catch (error) {
       console.error('Error importing template:', error);
       toast.error('Failed to import template');
@@ -1012,62 +1175,65 @@ Tools: Git, Jest, Cypress
 
       // Parse JSON
       const parsedData = JSON.parse(jsonText);
+
+      const companySource = parsedData.company || parsedData.employer || {};
+      const locationSource = parsedData.location || {};
+      const salarySource = parsedData.salary || parsedData.compensation || {};
       
       // Validate and map JSON fields to form structure
       const mappedData = {
         // Basic information
-        title: parsedData.title || parsedData.job_title || parsedData.name || '',
-        summary: parsedData.summary || parsedData.job_summary || parsedData.description_short || '',
-        description: parsedData.description || parsedData.job_description || parsedData.details || '',
+        title: coerceToString(parsedData.title ?? parsedData.job_title ?? parsedData.name, formData.title),
+        summary: coerceToString(parsedData.summary ?? parsedData.job_summary ?? parsedData.description_short, ''),
+        description: coerceToString(parsedData.description ?? parsedData.job_description ?? parsedData.details, formData.description),
         
         // Requirements
-        required_skills: parsedData.required_skills || parsedData.requirements || parsedData.must_have || '',
-        preferred_skills: parsedData.preferred_skills || parsedData.nice_to_have || parsedData.preferred || '',
-        education_requirement: parsedData.education_requirement || parsedData.education || parsedData.degree || '',
+        required_skills: coerceToString(parsedData.required_skills ?? parsedData.requirements ?? parsedData.must_have, ''),
+        preferred_skills: coerceToString(parsedData.preferred_skills ?? parsedData.nice_to_have ?? parsedData.preferred, ''),
+        education_requirement: coerceToString(parsedData.education_requirement ?? parsedData.education ?? parsedData.degree, ''),
         
         // Job details
-        employment_type: parsedData.employment_type || parsedData.job_type || parsedData.type || 'full-time',
-        experience_level: parsedData.experience_level || parsedData.experience || parsedData.level || 'mid',
+        employment_type: coerceToString(parsedData.employment_type ?? parsedData.job_type ?? parsedData.type, 'full-time'),
+        experience_level: coerceToString(parsedData.experience_level ?? parsedData.experience ?? parsedData.level, 'mid'),
         
         // Location
-        location_type: parsedData.location_type || parsedData.remote_type || (parsedData.is_remote ? 'remote' : 'on-site'),
-        location_city: parsedData.location_city || parsedData.city || parsedData.location?.city || '',
-        location_state: parsedData.location_state || parsedData.state || parsedData.location?.state || '',
-        location_country: parsedData.location_country || parsedData.country || parsedData.location?.country || '',
+        location_type: coerceToString(parsedData.location_type ?? parsedData.remote_type ?? (parsedData.is_remote ? 'remote' : ''), 'on-site'),
+        location_city: coerceToString(parsedData.location_city ?? parsedData.city ?? locationSource.city, ''),
+        location_state: coerceToString(parsedData.location_state ?? parsedData.state ?? locationSource.state, ''),
+        location_country: coerceToString(parsedData.location_country ?? parsedData.country ?? locationSource.country, ''),
         
         // Salary
-        salary_min: parsedData.salary_min || parsedData.salary?.min || parsedData.compensation?.min || '',
-        salary_max: parsedData.salary_max || parsedData.salary?.max || parsedData.compensation?.max || '',
-        salary_currency: parsedData.salary_currency || parsedData.currency || 'USD',
-        salary_period: parsedData.salary_period || parsedData.salary_type || 'yearly',
-        salary_negotiable: parsedData.salary_negotiable || false,
+        salary_min: parsedData.salary_min ?? salarySource.min ?? '',
+        salary_max: parsedData.salary_max ?? salarySource.max ?? '',
+        salary_currency: coerceToString(parsedData.salary_currency ?? parsedData.currency ?? salarySource.currency, 'USD'),
+        salary_period: coerceToString(parsedData.salary_period ?? parsedData.salary_type ?? salarySource.period, 'yearly'),
+        salary_negotiable: Boolean(parsedData.salary_negotiable ?? salarySource.negotiable ?? false),
         show_salary: parsedData.show_salary !== false,
         
         // Application
-        application_type: parsedData.application_type || parsedData.apply_method || 'external',
-        application_url: parsedData.application_url || parsedData.apply_url || parsedData.url || '',
-        application_email: parsedData.application_email || parsedData.apply_email || parsedData.email || '',
-        application_instructions: parsedData.application_instructions || parsedData.apply_instructions || '',
+        application_type: coerceToString(parsedData.application_type ?? parsedData.apply_method, 'external'),
+        application_url: coerceToString(parsedData.application_url ?? parsedData.apply_url ?? parsedData.url ?? salarySource.url, ''),
+        application_email: coerceToString(parsedData.application_email ?? parsedData.apply_email ?? parsedData.email, ''),
+        application_instructions: coerceToString(parsedData.application_instructions ?? parsedData.apply_instructions, ''),
         
         // Company (if provided)
-        external_company_name: parsedData.company_name || parsedData.company || parsedData.employer || formData.external_company_name || '',
-        external_company_website: parsedData.company_website || parsedData.website || formData.external_company_website || '',
-        external_company_logo: parsedData.company_logo || parsedData.logo || formData.external_company_logo || '',
+        external_company_name: coerceToString(parsedData.company_name ?? companySource?.name ?? parsedData.employer, formData.external_company_name || ''),
+        external_company_website: coerceToString(parsedData.company_website ?? companySource?.website ?? companySource?.url ?? parsedData.website, formData.external_company_website || ''),
+        external_company_logo: coerceToString(parsedData.company_logo ?? companySource?.logo ?? parsedData.logo, formData.external_company_logo || ''),
         
         // Metadata
-        category_id: parsedData.category_id || formData.category_id || '',
-        source_url: parsedData.source_url || parsedData.url || formData.source_url || '',
-        job_source: parsedData.job_source || formData.job_source || 'json_import',
-        status: parsedData.status || formData.status || 'draft'
+        category_id: coerceToIdString(parsedData.category_id ?? parsedData.category ?? formData.category_id, formData.category_id || ''),
+        source_url: coerceToString(parsedData.source_url ?? parsedData.url ?? formData.source_url, formData.source_url || ''),
+        job_source: coerceToString(parsedData.job_source, formData.job_source || 'json_import'),
+        status: coerceToString(parsedData.status, formData.status || 'draft')
       };
 
       // Update form data
       setFormData(mappedData);
       setJsonText('');
       setJsonError('');
-      setJsonPreview(null);
-      setShowJsonImport(false);
-      setIsDirty(true);
+  setJsonPreview(null);
+  setIsDirty(true);
 
       // Show success message
       toast.success('🎉 JSON data imported successfully!', {
@@ -1168,14 +1334,14 @@ Tools: Git, Jest, Cypress
           toast.info(`💡 Suggested category: ${category.name}`, {
             action: {
               label: 'Apply',
-              onClick: () => handleInputChange('category_id', category.id.toString())
+              onClick: () => stableInputChange('category_id', category.id.toString())
             }
           });
         }
         break;
       }
     }
-  }, [categories, formData.category_id]);
+  }, [categories, formData.category_id, stableInputChange]);
 
   const suggestCompanyInfo = useCallback((companyName) => {
     // Mock company info suggestion - in reality, this could query a company database
@@ -1184,62 +1350,42 @@ Tools: Git, Jest, Cypress
       toast.info(`💡 Suggested website: ${suggestedWebsite}`, {
         action: {
           label: 'Apply',
-          onClick: () => handleInputChange('external_company_website', suggestedWebsite)
+          onClick: () => stableInputChange('external_company_website', suggestedWebsite)
         }
       });
     }
-  }, [formData.external_company_website]);
+  }, [formData.external_company_website, stableInputChange]);
 
-  // Wrapper for backward compatibility with existing select components
-  const handleInputChange = useCallback((field, value) => {
-    stableInputChange(field, value);
-  }, [stableInputChange]);
+  useEffect(() => {
+    suggestJobCategoryRef.current = suggestJobCategory;
+  }, [suggestJobCategory]);
 
-  // Auto-save draft functionality
-  const saveDraft = async () => {
-    const draftData = { ...formData, status: 'draft' };
-    setAutoSaveStatus('saving');
-    
-    try {
-      const jobData = {
-        ...draftData,
-        salary_min: draftData.salary_min ? parseInt(draftData.salary_min) : null,
-        salary_max: draftData.salary_max ? parseInt(draftData.salary_max) : null,
-        years_experience_min: draftData.years_experience_min ? parseInt(draftData.years_experience_min) : 0,
-        years_experience_max: draftData.years_experience_max ? parseInt(draftData.years_experience_max) : null,
-        // Ensure category_id is properly set
-        category_id: draftData.category_id ? parseInt(draftData.category_id) : 1,
-      };
-
-      await externalAdminService.createExternalJob(jobData);
-      toast.success('✨ Draft saved successfully!', {
-        icon: '💾'
-      });
-      setAutoSaveStatus('saved');
-      setIsDirty(false);
-      return true;
-    } catch (error) {
-      toast.error('❌ Failed to save draft');
-      setAutoSaveStatus('error');
-      return false;
-    }
-  };
+  useEffect(() => {
+    suggestCompanyInfoRef.current = suggestCompanyInfo;
+  }, [suggestCompanyInfo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate all fields
     const requiredFields = [
-      { field: 'title', validator: (val) => val?.trim() },
-      { field: 'external_company_name', validator: (val) => val?.trim() },
-      { field: 'description', validator: (val) => val?.replace(/<[^>]*>/g, '').trim() }
+      { field: 'title', validator: (val) => val?.trim(), message: 'Job title is required' },
+      { field: 'external_company_name', validator: (val) => val?.trim(), message: 'Company name is required' },
+      { field: 'description', validator: (val) => val?.replace(/<[^>]*>/g, '').trim(), message: 'Job description is required' }
     ];
+
+    if (formData.location_type === 'on-site') {
+      requiredFields.push(
+        { field: 'location_city', validator: (val) => val?.trim(), message: 'City is required for on-site jobs' },
+        { field: 'location_country', validator: (val) => val?.trim(), message: 'Country is required for on-site jobs' }
+      );
+    }
     
     const fieldErrors = {};
     
-    requiredFields.forEach(({ field, validator }) => {
+    requiredFields.forEach(({ field, validator, message }) => {
       if (!validator(formData[field])) {
-        fieldErrors[field] = `${field.replace('_', ' ')} is required`;
+        fieldErrors[field] = message || `${field.replace('_', ' ')} is required`;
       }
     });
     
@@ -1271,18 +1417,28 @@ Tools: Git, Jest, Cypress
     setLoading(true);
     
     try {
+      const city = formData.location_city?.trim() || null;
+      const state = formData.location_state?.trim() || null;
+      const country = formData.location_country?.trim() || null;
+
       // Prepare the job data
       const jobData = {
         ...formData,
+        city,
+        state,
+        country,
         // Convert salary fields to numbers where appropriate
         salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
         years_experience_min: formData.years_experience_min ? parseInt(formData.years_experience_min) : 0,
         years_experience_max: formData.years_experience_max ? parseInt(formData.years_experience_max) : null,
         // Ensure category_id is properly set (backend will use default if null/undefined)
-        category_id: formData.category_id ? parseInt(formData.category_id) : 1, // Default to "Other" category
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
       };
+
+      delete jobData.location_city;
+      delete jobData.location_state;
+      delete jobData.location_country;
 
       await externalAdminService.createExternalJob(jobData);
       
@@ -1532,31 +1688,31 @@ Tools: Git, Jest, Cypress
 
         {/* Enhanced Header */}
         <div className="enhanced-header p-6">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/external-admin/jobs')}
-                className="flex items-center hover:bg-gray-100 transition-all duration-200 self-start sm:self-auto"
+                className="flex items-center hover:bg-gray-100 transition-all duration-200"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Jobs
               </Button>
-              <Separator orientation="vertical" className="hidden sm:block h-8" />
-              <div className="text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-1 sm:space-y-0 sm:space-x-2">
-                  <Sparkles className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600 animate-pulse" />
+              <Separator orientation="vertical" className="h-8" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-2">
+                  <Sparkles className="h-8 w-8 text-blue-600 animate-pulse" />
                   <span>Create External Job</span>
                 </h1>
-                <p className="text-gray-600 mt-1 text-sm sm:text-base">
+                <p className="text-gray-600 mt-1">
                   Post a job from an external source or partner company
                 </p>
               </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+            <div className="flex items-center space-x-4">
               {/* Template Import Button */}
-              <div className="relative w-full sm:w-auto">
+              <div className="relative">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1564,7 +1720,7 @@ Tools: Git, Jest, Cypress
                     console.log('Import button clicked, current state:', showTemplateImport);
                     setShowTemplateImport(!showTemplateImport);
                   }}
-                  className="template-import-button flex items-center space-x-2 secondary-button bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200 w-full sm:w-auto"
+                  className="template-import-button flex items-center space-x-2 secondary-button bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200"
                   disabled={loading}
                 >
                   <FileText className="h-4 w-4 text-blue-600" />
@@ -1579,7 +1735,7 @@ Tools: Git, Jest, Cypress
                   (() => {
                     console.log('Rendering template modal portal');
                     return (
-                      <div className="fixed inset-0 z-[99998] flex items-start sm:items-center justify-center pt-6 sm:pt-0">
+                      <div className="fixed inset-0 z-[99998] flex items-center justify-center">
                         {/* Backdrop Overlay */}
                         <div 
                           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -1591,7 +1747,7 @@ Tools: Git, Jest, Cypress
                         
                         {/* Template Import Modal */}
                         <div 
-                          className="import-modal-wrapper template-import-dropdown relative w-[520px] max-w-[95vw] max-h-[90vh] bg-white rounded-xl border shadow-2xl overflow-hidden"
+                          className="template-import-dropdown relative w-[520px] max-w-[95vw] max-h-[90vh] bg-white rounded-xl border shadow-2xl overflow-hidden"
                           onClick={(e) => {
                             console.log('Modal clicked');
                             e.stopPropagation();
@@ -1657,7 +1813,7 @@ Tools: Git, Jest, Cypress
                     </div>
 
                     {/* Content */}
-                    <div className="p-4 max-h-[60vh] md:max-h-96 overflow-y-auto">
+                    <div className="p-4 max-h-96 overflow-y-auto">
                       
                       {/* Template Import Mode */}
                       {importMode === 'template' && (
@@ -1749,7 +1905,7 @@ Tools: Git, Jest, Cypress
                       {/* JSON Import Mode */}
                       {importMode === 'json' && (
                         <div className="space-y-4">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-gray-900">Paste JSON Data</h4>
                               <p className="text-sm text-gray-600">Import job data from JSON format</p>
@@ -1770,7 +1926,7 @@ Tools: Git, Jest, Cypress
                               placeholder="Paste your JSON data here..."
                               value={jsonText}
                               onChange={(e) => handleJsonTextChange(e.target.value)}
-                              className="min-h-32 md:min-h-[160px] w-full font-mono text-sm border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+                              className="min-h-32 font-mono text-sm border-gray-200 focus:border-purple-400 focus:ring-purple-400"
                             />
                             {jsonError && (
                               <div className="flex items-center space-x-2 text-red-600 text-sm">
@@ -1781,27 +1937,50 @@ Tools: Git, Jest, Cypress
                           </div>
 
                           {/* JSON Preview */}
-                          {jsonPreview && (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 text-green-800 mb-2">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm font-medium">Valid JSON detected</span>
+                          {jsonPreview && (() => {
+                            const previewTitle =
+                              coerceToString(jsonPreview.title, '', ['title', 'name']) ||
+                              coerceToString(jsonPreview.job_title, '', ['job_title', 'title', 'name']) ||
+                              '';
+
+                            const previewCompany =
+                              coerceToString(jsonPreview.company_name, '', ['company_name', 'name']) ||
+                              coerceToString(jsonPreview.company, '', ['company', 'name', 'title']) ||
+                              '';
+
+                            const previewType =
+                              coerceToString(jsonPreview.employment_type, '', ['employment_type', 'type']) ||
+                              coerceToString(jsonPreview.job_type, '', ['job_type', 'type']) ||
+                              '';
+
+                            const previewLocation =
+                              coerceToString(jsonPreview.location_city, '', ['location_city', 'city', 'name']) ||
+                              coerceToString(jsonPreview.city, '', ['city', 'location', 'name']) ||
+                              coerceToString(jsonPreview.location, '', ['location', 'city', 'name']) ||
+                              '';
+
+                            return (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                <div className="flex items-center space-x-2 text-green-800 mb-2">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Valid JSON detected</span>
+                                </div>
+                                <div className="text-xs text-green-700">
+                                  <p>• Title: {previewTitle || 'Not specified'}</p>
+                                  <p>• Company: {previewCompany || 'Not specified'}</p>
+                                  <p>• Type: {previewType || 'Not specified'}</p>
+                                  <p>• Location: {previewLocation || 'Not specified'}</p>
+                                </div>
                               </div>
-                              <div className="text-xs text-green-700">
-                                <p>• Title: {jsonPreview.title || jsonPreview.job_title || 'Not specified'}</p>
-                                <p>• Company: {jsonPreview.company_name || jsonPreview.company || 'Not specified'}</p>
-                                <p>• Type: {jsonPreview.employment_type || jsonPreview.job_type || 'Not specified'}</p>
-                                <p>• Location: {jsonPreview.location_city || jsonPreview.city || 'Not specified'}</p>
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* Import Actions */}
-                          <div className="flex flex-col md:flex-row w-full gap-2">
+                          <div className="flex space-x-2">
                             <Button
                               onClick={handleJsonImport}
                               disabled={!jsonText.trim() || !!jsonError}
-                              className="w-full md:flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
+                              className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                             >
                               <Import className="h-4 w-4 mr-2" />
                               Import JSON Data
@@ -1813,7 +1992,7 @@ Tools: Git, Jest, Cypress
                                 setJsonError('');
                                 setJsonPreview(null);
                               }}
-                              className="w-full md:w-auto"
+                              className="px-4"
                             >
                               Clear
                             </Button>
@@ -2055,7 +2234,7 @@ Tools: Git, Jest, Cypress
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField label="Employment Type" field="employment_type">
-                      <Select value={formData.employment_type} onValueChange={(value) => handleInputChange('employment_type', value)}>
+                      <Select value={formData.employment_type} onValueChange={(value) => stableInputChange('employment_type', value)}>
                         <SelectTrigger className="enhanced-input">
                           <SelectValue />
                         </SelectTrigger>
@@ -2095,7 +2274,7 @@ Tools: Git, Jest, Cypress
                     </FormField>
 
                     <FormField label="Experience Level" field="experience_level">
-                      <Select value={formData.experience_level} onValueChange={(value) => handleInputChange('experience_level', value)}>
+                      <Select value={formData.experience_level} onValueChange={(value) => stableInputChange('experience_level', value)}>
                         <SelectTrigger className="enhanced-input">
                           <SelectValue />
                         </SelectTrigger>
@@ -2120,7 +2299,7 @@ Tools: Git, Jest, Cypress
                     </FormField>
 
                     <FormField label="Job Category" field="category_id">
-                      <Select value={formData.category_id || undefined} onValueChange={(value) => handleInputChange('category_id', value)}>
+                      <Select value={formData.category_id || undefined} onValueChange={(value) => stableInputChange('category_id', value)}>
                         <SelectTrigger className="enhanced-input">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -2264,7 +2443,7 @@ Tools: Git, Jest, Cypress
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField label="Location Type" field="location_type">
-                    <Select value={formData.location_type} onValueChange={(value) => handleInputChange('location_type', value)}>
+                    <Select value={formData.location_type} onValueChange={(value) => stableInputChange('location_type', value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -2292,34 +2471,44 @@ Tools: Git, Jest, Cypress
                   </FormField>
 
                   {formData.location_type !== 'remote' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                      <FormField
-                        label="City"
-                        field="location_city"
-                        placeholder="e.g., San Francisco"
-                        errors={errors}
-                        fieldAnimations={fieldAnimations}
-                        formData={formData}
-                        onInputChange={stableInputChange}
-                      />
-                      <FormField
-                        label="State/Province"
-                        field="location_state"
-                        placeholder="e.g., California"
-                        errors={errors}
-                        fieldAnimations={fieldAnimations}
-                        formData={formData}
-                        onInputChange={stableInputChange}
-                      />
-                      <FormField
-                        label="Country"
-                        field="location_country"
-                        placeholder="e.g., USA"
-                        errors={errors}
-                        fieldAnimations={fieldAnimations}
-                        formData={formData}
-                        onInputChange={stableInputChange}
-                      />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                        <FormField
+                          label="City"
+                          field="location_city"
+                          placeholder="e.g., San Francisco"
+                          required={formData.location_type === 'on-site'}
+                          tooltip={formData.location_type === 'on-site' ? 'City is required for on-site positions' : 'Recommended for hybrid positions'}
+                          errors={errors}
+                          fieldAnimations={fieldAnimations}
+                          formData={formData}
+                          onInputChange={stableInputChange}
+                        />
+                        <FormField
+                          label="State/Province"
+                          field="location_state"
+                          placeholder="e.g., California"
+                          tooltip="Optional: State or province name"
+                          errors={errors}
+                          fieldAnimations={fieldAnimations}
+                          formData={formData}
+                          onInputChange={stableInputChange}
+                        />
+                        <FormField
+                          label="Country"
+                          field="location_country"
+                          placeholder="e.g., USA"
+                          required={formData.location_type === 'on-site'}
+                          tooltip={formData.location_type === 'on-site' ? 'Country is required for on-site positions' : 'Recommended for hybrid positions'}
+                          errors={errors}
+                          fieldAnimations={fieldAnimations}
+                          formData={formData}
+                          onInputChange={stableInputChange}
+                        />
+                      </div>
+                      <p className="text-xs text-amber-600">
+                        City and country are required for on-site or hybrid roles.
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -2361,7 +2550,7 @@ Tools: Git, Jest, Cypress
                       onInputChange={stableInputChange}
                     />
                     <FormField label="Currency" field="salary_currency">
-                      <Select value={formData.salary_currency} onValueChange={(value) => handleInputChange('salary_currency', value)}>
+                      <Select value={formData.salary_currency} onValueChange={(value) => stableInputChange('salary_currency', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -2374,7 +2563,7 @@ Tools: Git, Jest, Cypress
                       </Select>
                     </FormField>
                     <FormField label="Period" field="salary_period">
-                      <Select value={formData.salary_period} onValueChange={(value) => handleInputChange('salary_period', value)}>
+                      <Select value={formData.salary_period} onValueChange={(value) => stableInputChange('salary_period', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -2391,7 +2580,7 @@ Tools: Git, Jest, Cypress
                     <div className="flex items-center space-x-3">
                       <Switch
                         checked={formData.show_salary}
-                        onCheckedChange={(checked) => handleInputChange('show_salary', checked)}
+                        onCheckedChange={(checked) => stableInputChange('show_salary', checked)}
                       />
                       <div>
                         <Label className="text-sm font-medium">Show Salary Range</Label>
@@ -2402,7 +2591,7 @@ Tools: Git, Jest, Cypress
                     <div className="flex items-center space-x-3">
                       <Switch
                         checked={formData.salary_negotiable}
-                        onCheckedChange={(checked) => handleInputChange('salary_negotiable', checked)}
+                        onCheckedChange={(checked) => stableInputChange('salary_negotiable', checked)}
                       />
                       <div>
                         <Label className="text-sm font-medium">Negotiable</Label>
@@ -2500,7 +2689,7 @@ Tools: Git, Jest, Cypress
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField label="Application Type" field="application_type">
-                    <Select value={formData.application_type} onValueChange={(value) => handleInputChange('application_type', value)}>
+                    <Select value={formData.application_type} onValueChange={(value) => stableInputChange('application_type', value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -2611,14 +2800,14 @@ Tools: Git, Jest, Cypress
               </Card>
 
               {/* Form Actions */}
-              <div className="enhanced-card p-4 sm:p-6 border-t-4 border-t-indigo-500">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between space-y-4 lg:space-y-0 gap-4">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-4 w-full lg:w-auto">
+              <div className="enhanced-card p-6 border-t-4 border-t-indigo-500">
+                <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                  <div className="flex items-center space-x-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/external-admin/jobs')}
-                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
+                      className="secondary-button flex items-center space-x-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Cancel</span>
@@ -2629,7 +2818,7 @@ Tools: Git, Jest, Cypress
                       variant="secondary"
                       onClick={saveDraft}
                       disabled={loading}
-                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
+                      className="secondary-button flex items-center space-x-2"
                     >
                       {autoSaveStatus === 'saving' ? (
                         <>
@@ -2649,17 +2838,17 @@ Tools: Git, Jest, Cypress
                       variant="outline"
                       onClick={handleSaveAsTemplate}
                       disabled={loading || (!formData.title && !formData.description)}
-                      className="secondary-button flex items-center justify-center space-x-2 w-full sm:w-auto"
+                      className="secondary-button flex items-center space-x-2"
                     >
                       <FileText className="h-4 w-4" />
                       <span>Save as Template</span>
                     </Button>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+                  <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
                     {!formProgress.requiredCompleted && (
-                      <div className="text-sm text-amber-600 flex items-center space-x-1 animate-pulse text-center sm:text-left">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <div className="text-sm text-amber-600 flex items-center space-x-1 animate-pulse">
+                        <AlertCircle className="h-4 w-4" />
                         <span>Complete required fields to publish</span>
                       </div>
                     )}
@@ -2667,7 +2856,7 @@ Tools: Git, Jest, Cypress
                     <Button
                       type="submit"
                       disabled={loading || !formProgress.requiredCompleted}
-                      className={`gradient-button flex items-center justify-center space-x-2 w-full sm:w-auto ${formProgress.requiredCompleted ? 'pulse-glow' : ''}`}
+                      className={`gradient-button flex items-center space-x-2 ${formProgress.requiredCompleted ? 'pulse-glow' : ''}`}
                     >
                       {loading ? (
                         <>

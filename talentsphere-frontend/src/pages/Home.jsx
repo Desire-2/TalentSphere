@@ -182,7 +182,7 @@ const Home = () => {
 
   // Safe render functions to handle object data
   const safeRenderLocation = (location) => {
-    if (!location) return 'Remote';
+    if (!location || location === '') return null; // Return null for empty location
     if (typeof location === 'string') return location;
     if (typeof location === 'object') {
       if (location.display) return location.display;
@@ -191,7 +191,7 @@ const Home = () => {
       if (location.city) return location.city;
       if (location.country) return location.country;
     }
-    return 'Remote';
+    return null; // Return null if no valid location found
   };
 
   const safeRenderText = (value, defaultValue = '') => {
@@ -485,13 +485,29 @@ const Home = () => {
                     <div className="flex items-center text-gray-600">
                       <MapPin className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
                       <span className="text-sm">
-                        {job.location?.is_remote 
-                          ? 'Remote' 
-                          : (job.location?.display 
-                              ? safeRenderText(job.location.display)
-                              : safeRenderLocation(job.location)
-                            )
-                        }
+                        {(() => {
+                          // Check if job has explicit location_type set to 'remote'
+                          if (job.location_type === 'remote') {
+                            return 'Remote';
+                          }
+                          
+                          // Check if job is marked as remote through is_remote flag
+                          if (job.is_remote || job.location?.is_remote || job.location?.type === 'remote') {
+                            return 'Remote';
+                          }
+                          
+                          // Check if job is hybrid
+                          if (job.location_type === 'hybrid' || job.location?.type === 'hybrid') {
+                            const locationStr = job.location?.display || safeRenderLocation(job.location);
+                            return locationStr ? `${locationStr} (Hybrid)` : 'Hybrid';
+                          }
+                          
+                          // Try to get location display
+                          const locationDisplay = job.location?.display || safeRenderLocation(job.location);
+                          
+                          // If we have a location, show it; otherwise show "Location not specified"
+                          return locationDisplay || 'Location not specified';
+                        })()}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-600">

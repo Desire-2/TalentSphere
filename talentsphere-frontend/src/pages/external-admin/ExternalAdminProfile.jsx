@@ -10,9 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { 
   User, 
-  Settings, 
-  Shield, 
-  Bell, 
+  Settings,
+  Shield,
   Eye, 
   Key,
   Save,
@@ -55,16 +54,6 @@ const ExternalAdminProfile = () => {
     allowed_ips: []
   });
 
-  // Notification preferences
-  const [notifications, setNotifications] = useState({
-    email_notifications: true,
-    job_application_alerts: true,
-    weekly_reports: true,
-    system_updates: true,
-    marketing_emails: false,
-    digest_frequency: 'daily',
-    notification_time: '09:00'
-  });
 
   // Privacy settings
   const [privacy, setPrivacy] = useState({
@@ -97,142 +86,6 @@ const ExternalAdminProfile = () => {
         timezone: response.timezone || 'UTC',
         avatar_url: response.profile_picture || response.avatar_url || ''
       };
-      setProfile(profileData);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      toast.error('Failed to load profile');
-    }
-  };
-
-  const loadSettings = async () => {
-    try {
-      const response = await externalAdminService.getSettings();
-      setSecurity(response.security || security);
-      setNotifications(response.notifications || notifications);
-      setPrivacy(response.privacy || privacy);
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      toast.error('Failed to load settings');
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      setLoading(true);
-      // Map frontend profile fields to backend expected fields
-      const profileData = {
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        phone: profile.phone,
-        location: profile.location,
-        bio: profile.bio,
-        profile_picture: profile.avatar_url, // Backend expects profile_picture
-        // Note: email, company, website, timezone may not be supported by backend
-      };
-      
-      const response = await externalAdminService.updateProfile(profileData);
-      
-      // Update the user state in authStore
-      if (response.user) {
-        setUser(response.user);
-      }
-      
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error(error.message || 'Failed to update profile');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (security.new_password !== security.confirm_password) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await externalAdminService.changePassword({
-        current_password: security.current_password,
-        new_password: security.new_password
-      });
-      
-      setSecurity(prev => ({
-        ...prev,
-        current_password: '',
-        new_password: '',
-        confirm_password: ''
-      }));
-      
-      toast.success('Password changed successfully');
-    } catch (error) {
-      console.error('Error changing password:', error);
-      toast.error('Failed to change password');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    try {
-      setLoading(true);
-      await externalAdminService.updateSettings({
-        notifications,
-        privacy,
-        security: {
-          two_factor_enabled: security.two_factor_enabled,
-          session_timeout: security.session_timeout,
-          allowed_ips: security.allowed_ips
-        }
-      });
-      toast.success('Settings saved successfully');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateApiKey = async () => {
-    try {
-      setLoading(true);
-      const response = await externalAdminService.generateApiKey();
-      setSecurity(prev => ({ ...prev, api_key: response.api_key }));
-      toast.success('API key generated successfully');
-    } catch (error) {
-      console.error('Error generating API key:', error);
-      toast.error('Failed to generate API key');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const revokeApiKey = async () => {
-    if (!confirm('Are you sure you want to revoke your API key? This action cannot be undone.')) return;
-
-    try {
-      setLoading(true);
-      await externalAdminService.revokeApiKey();
-      setSecurity(prev => ({ ...prev, api_key: '' }));
-      toast.success('API key revoked successfully');
-    } catch (error) {
-      console.error('Error revoking API key:', error);
-      toast.error('Failed to revoke API key');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const exportData = async () => {
-    try {
-      setLoading(true);
-      const response = await externalAdminService.exportUserData();
-      
-      const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `external-admin-data-${new Date().toISOString().split('T')[0]}.json`;
@@ -275,7 +128,7 @@ const ExternalAdminProfile = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+  <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -283,10 +136,6 @@ const ExternalAdminProfile = () => {
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Security
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
           </TabsTrigger>
           <TabsTrigger value="privacy" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
@@ -539,107 +388,6 @@ const ExternalAdminProfile = () => {
             </Button>
           </div>
         </TabsContent>
-
-        {/* Notifications Tab */}
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Email Notifications */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Email Notifications</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Job Application Alerts</p>
-                      <p className="text-sm text-gray-600">Get notified when someone applies to your jobs</p>
-                    </div>
-                    <Switch
-                      checked={notifications.job_application_alerts}
-                      onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, job_application_alerts: checked }))}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Weekly Reports</p>
-                      <p className="text-sm text-gray-600">Receive weekly performance summaries</p>
-                    </div>
-                    <Switch
-                      checked={notifications.weekly_reports}
-                      onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, weekly_reports: checked }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">System Updates</p>
-                      <p className="text-sm text-gray-600">Get notified about platform updates</p>
-                    </div>
-                    <Switch
-                      checked={notifications.system_updates}
-                      onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, system_updates: checked }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Marketing Emails</p>
-                      <p className="text-sm text-gray-600">Receive promotional content and tips</p>
-                    </div>
-                    <Switch
-                      checked={notifications.marketing_emails}
-                      onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, marketing_emails: checked }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Digest Settings */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Digest Settings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="digest_frequency">Digest Frequency</Label>
-                    <Select value={notifications.digest_frequency} onValueChange={(value) => setNotifications(prev => ({ ...prev, digest_frequency: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="never">Never</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="notification_time">Preferred Time</Label>
-                    <Input
-                      id="notification_time"
-                      type="time"
-                      value={notifications.notification_time}
-                      onChange={(e) => setNotifications(prev => ({ ...prev, notification_time: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {loading ? 'Saving...' : 'Save Notification Settings'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Privacy Tab */}
         <TabsContent value="privacy" className="space-y-6">
           <Card>

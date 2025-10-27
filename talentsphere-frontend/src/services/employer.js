@@ -164,34 +164,6 @@ class EmployerService {
     }
   }
 
-  // Notifications
-  async getNotifications(params = {}) {
-    try {
-      return await apiService.getNotifications(params);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      throw error;
-    }
-  }
-
-  async markNotificationRead(notificationId) {
-    try {
-      return await apiService.markNotificationRead(notificationId);
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-      throw error;
-    }
-  }
-
-  async markAllNotificationsRead() {
-    try {
-      return await apiService.markAllNotificationsRead();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-      throw error;
-    }
-  }
-
   // Featured ads
   async getFeaturedAdPackages() {
     try {

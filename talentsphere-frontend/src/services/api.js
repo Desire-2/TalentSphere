@@ -368,20 +368,6 @@ class ApiService {
     return this.get(`/public/featured-jobs?limit=${limit}`);
   }
 
-  // Notification endpoints
-  async getNotifications(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.get(`/notifications${queryString ? `?${queryString}` : ''}`);
-  }
-
-  async markNotificationRead(id) {
-    return this.post(`/notifications/${id}/read`);
-  }
-
-  async markAllNotificationsRead() {
-    return this.post('/notifications/mark-all-read');
-  }
-
   async getMessages(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.get(`/messages${queryString ? `?${queryString}` : ''}`);
@@ -461,10 +447,6 @@ class ApiService {
   // Statistics endpoints
   async getApplicationStats() {
     return this.get('/application-stats');
-  }
-
-  async getNotificationStats() {
-    return this.get('/notifications/stats');
   }
 
   // Employer Dashboard specific endpoints

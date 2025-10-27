@@ -10,13 +10,11 @@ import {
   Settings,
   Menu,
   X,
-  Bell,
   Search,
   ChevronDown,
   LogOut,
   TrendingUp
 } from 'lucide-react';
-import EnhancedNotificationDropdown from '../notifications/EnhancedNotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -168,9 +166,6 @@ const AdminLayout = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <EnhancedNotificationDropdown />
-
               {/* User menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { 
   Settings, 
   Shield, 
-  Bell, 
   Eye, 
   EyeOff, 
   Lock, 
@@ -49,15 +48,6 @@ const ProfileSettings = () => {
     twoFactorEnabled: false
   });
 
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    jobAlerts: true,
-    applicationUpdates: true,
-    marketingEmails: false,
-    weeklyDigest: true
-  });
-
   const [privacySettings, setPrivacySettings] = useState({
     profileVisibility: 'public',
     showLastActive: true,
@@ -85,12 +75,6 @@ const ProfileSettings = () => {
       setLoading(true);
       const response = await apiService.getProfile();
       setProfile(response);
-      
-      // Load notification settings (from local storage or API)
-      const savedNotifications = localStorage.getItem('notificationSettings');
-      if (savedNotifications) {
-        setNotificationSettings(JSON.parse(savedNotifications));
-      }
       
       // Load privacy settings
       const jobSeekerProfile = response.job_seeker_profile || {};
@@ -139,10 +123,6 @@ const ProfileSettings = () => {
     setSecuritySettings(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleNotificationChange = (field, value) => {
-    setNotificationSettings(prev => ({ ...prev, [field]: value }));
-  };
-
   const handlePrivacyChange = (field, value) => {
     setPrivacySettings(prev => ({ ...prev, [field]: value }));
   };
@@ -181,20 +161,6 @@ const ProfileSettings = () => {
     } catch (error) {
       console.error('Failed to change password:', error);
       setMessage({ type: 'error', text: error.message || 'Failed to change password' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveNotifications = async () => {
-    try {
-      setSaving(true);
-      // Save to local storage for now
-      localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
-      setMessage({ type: 'success', text: 'Notification preferences saved' });
-    } catch (error) {
-      console.error('Failed to save notifications:', error);
-      setMessage({ type: 'error', text: 'Failed to save notification preferences' });
     } finally {
       setSaving(false);
     }
@@ -302,7 +268,7 @@ const ProfileSettings = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Account Settings</h1>
-        <p className="text-muted-foreground">Manage your account security, privacy, and notification preferences</p>
+  <p className="text-muted-foreground">Manage your account security and privacy preferences</p>
       </div>
 
       {/* Alert Messages */}
@@ -315,9 +281,8 @@ const ProfileSettings = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
@@ -427,97 +392,6 @@ const ProfileSettings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                Notification Preferences
-              </CardTitle>
-              <CardDescription>
-                Choose how you want to be notified about important updates
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Email Notifications */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Email Notifications</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Job Alerts</p>
-                      <p className="text-sm text-gray-500">Get notified about new jobs matching your preferences</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.jobAlerts}
-                      onCheckedChange={(checked) => handleNotificationChange('jobAlerts', checked)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Application Updates</p>
-                      <p className="text-sm text-gray-500">Updates on your job applications and interview invitations</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.applicationUpdates}
-                      onCheckedChange={(checked) => handleNotificationChange('applicationUpdates', checked)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Weekly Digest</p>
-                      <p className="text-sm text-gray-500">Summary of new opportunities and profile activity</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.weeklyDigest}
-                      onCheckedChange={(checked) => handleNotificationChange('weeklyDigest', checked)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Marketing Emails</p>
-                      <p className="text-sm text-gray-500">Tips, career advice, and promotional content</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.marketingEmails}
-                      onCheckedChange={(checked) => handleNotificationChange('marketingEmails', checked)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Push Notifications */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Push Notifications</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Browser Notifications</p>
-                    <p className="text-sm text-gray-500">Real-time notifications in your browser</p>
-                  </div>
-                  <Switch
-                    checked={notificationSettings.pushNotifications}
-                    onCheckedChange={(checked) => handleNotificationChange('pushNotifications', checked)}
-                  />
-                </div>
-              </div>
-
-              <Button onClick={handleSaveNotifications} disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Notification Preferences'}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Privacy Tab */}
         <TabsContent value="privacy" className="space-y-6">
           <Card>

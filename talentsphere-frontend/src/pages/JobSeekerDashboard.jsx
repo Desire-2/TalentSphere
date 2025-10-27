@@ -37,7 +37,6 @@ import {
   BarChart3,
   Plus,
   Filter,
-  Bell,
   RefreshCw
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
@@ -320,15 +319,6 @@ const JobSeekerDashboard = () => {
       navigate(`/jobs/${jobId}`);
     } catch (error) {
       console.error('Error navigating to job:', error);
-    }
-  };
-
-  const handleNotificationClick = async (notificationId) => {
-    try {
-      await apiService.markNotificationRead(notificationId);
-      // Refresh notifications or update local state
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
     }
   };
 

@@ -143,7 +143,7 @@ export const isPathAllowedForUser = (pathname, user) => {
   }
   
   // Most other protected paths are accessible to authenticated users
-  const protectedPaths = ['/dashboard', '/profile', '/notifications'];
+  const protectedPaths = ['/dashboard', '/profile'];
   if (protectedPaths.some(path => pathname.startsWith(path))) {
     return true;
   }

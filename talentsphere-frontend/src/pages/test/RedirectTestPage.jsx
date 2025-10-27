@@ -16,8 +16,7 @@ const RedirectTestPage = () => {
     { path: '/admin', label: 'Admin Dashboard', description: 'Admin only area' },
     { path: '/external-admin', label: 'External Admin', description: 'External admin only area' },
     { path: '/jobs/post', label: 'Post Job', description: 'Employer functionality' },
-    { path: '/jobseeker/profile', label: 'Job Seeker Profile', description: 'Job seeker area' },
-    { path: '/notifications', label: 'Notifications', description: 'User notifications' },
+  { path: '/jobseeker/profile', label: 'Job Seeker Profile', description: 'Job seeker area' },
   ];
 
   const handleTestRedirect = (path) => {

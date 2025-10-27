@@ -19,13 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   Settings,
   Shield,
-  Bell,
   Eye,
   UserCog,
   Lock,
   Key,
   Mail,
-  Phone,
   Globe,
   Database,
   Trash2,
@@ -33,7 +31,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Smartphone,
+  
   Loader2,
   Save,
   Building2,
@@ -74,26 +72,6 @@ const CompanySettings = () => {
     session_timeout: 24,
     ip_whitelist_enabled: false,
     allowed_ips: []
-  });
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    email_notifications: {
-      new_applications: true,
-      application_updates: true,
-      job_expiry_warnings: true,
-      system_updates: true,
-      marketing_emails: false,
-      weekly_reports: true
-    },
-    push_notifications: {
-      instant_messages: true,
-      new_applications: true,
-      urgent_updates: true
-    },
-    sms_notifications: {
-      urgent_only: false,
-      application_deadlines: false
-    }
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -153,20 +131,17 @@ const CompanySettings = () => {
       const [
         accountResponse,
         securityResponse,
-        notificationResponse,
         privacyResponse,
         billingResponse
       ] = await Promise.all([
         apiService.getCompanyAccountSettings(),
         apiService.getCompanySecuritySettings(),
-        apiService.getCompanyNotificationSettings(),
         apiService.getCompanyPrivacySettings(),
         apiService.getCompanyBillingSettings()
       ]);
 
       setAccountSettings(accountResponse || {});
       setSecuritySettings(securityResponse || {});
-      setNotificationSettings(notificationResponse || {});
       setPrivacySettings(privacyResponse || {});
       setBillingSettings(billingResponse || {});
       
@@ -191,10 +166,6 @@ const CompanySettings = () => {
         case 'security':
           await apiService.updateCompanySecuritySettings(data);
           setSecuritySettings(data);
-          break;
-        case 'notifications':
-          await apiService.updateCompanyNotificationSettings(data);
-          setNotificationSettings(data);
           break;
         case 'privacy':
           await apiService.updateCompanyPrivacySettings(data);
@@ -296,10 +267,9 @@ const CompanySettings = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
@@ -529,97 +499,6 @@ const CompanySettings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Notification Settings */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Email Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(notificationSettings?.email_notifications || {}).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
-                  </div>
-                  <Switch
-                    checked={value}
-                    onCheckedChange={(checked) => 
-                      setNotificationSettings(prev => ({
-                        ...prev,
-                        email_notifications: { ...prev.email_notifications, [key]: checked }
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5" />
-                Push Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(notificationSettings?.push_notifications || {}).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
-                  </div>
-                  <Switch
-                    checked={value}
-                    onCheckedChange={(checked) => 
-                      setNotificationSettings(prev => ({
-                        ...prev,
-                        push_notifications: { ...prev.push_notifications, [key]: checked }
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5" />
-                SMS Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(notificationSettings?.sms_notifications || {}).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-base capitalize">{key.replace(/_/g, ' ')}</Label>
-                  </div>
-                  <Switch
-                    checked={value}
-                    onCheckedChange={(checked) => 
-                      setNotificationSettings(prev => ({
-                        ...prev,
-                        sms_notifications: { ...prev.sms_notifications, [key]: checked }
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          
-          <Button onClick={() => saveSettings('notifications', notificationSettings)} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            Save Notification Settings
-          </Button>
-        </TabsContent>
-
         {/* Privacy Settings */}
         <TabsContent value="privacy" className="space-y-6">
           <Card>

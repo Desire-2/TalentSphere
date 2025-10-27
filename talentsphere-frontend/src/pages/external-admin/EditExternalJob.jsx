@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
@@ -17,9 +17,9 @@ import {
 import {
   Briefcase, Building2, MapPin, DollarSign, Users, 
   ExternalLink, Shield, ArrowLeft, Save, Clock, 
-  Sparkles, Target, Info, CheckCircle, AlertCircle, 
+  Target, Info, CheckCircle, AlertCircle, 
   ChevronDown, ChevronUp, Edit, Loader2, Eye,
-  RotateCcw, FileText
+  RotateCcw
 } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
 import { Badge } from '../../components/ui/badge';
@@ -27,11 +27,148 @@ import { Progress } from '../../components/ui/progress';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Switch } from '../../components/ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
-import RichTextEditor from '../../components/ui/RichTextEditor';
 import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import MDEditor from '@uiw/react-md-editor';
 import { externalAdminService } from '../../services/externalAdmin';
 import { toast } from 'sonner';
+
+// Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
+const StableInput = React.memo(({ field, type, value, placeholder, required, className, rows, onInputChange, min, max, step }) => {
+  // Create a stable onChange handler - this is the key to preventing focus loss
+  const handleChange = useCallback((e) => {
+    const newValue = e.target.value;
+    // IMMEDIATE call to parent handler - no processing, no delays
+    onInputChange(field, newValue);
+  }, [field, onInputChange]);
+
+  // Pre-compute all input properties to avoid recalculation
+  const inputProps = useMemo(() => ({
+    id: field,
+    name: field,
+    value: value || '',
+    onChange: handleChange,
+    placeholder: placeholder || '',
+    required: required || false,
+    className: className || '',
+    ...(min !== undefined && { min }),
+    ...(max !== undefined && { max }),
+    ...(step !== undefined && { step }),
+    // Performance optimizations
+    autoComplete: 'off', // Prevent browser autocomplete interference
+    spellCheck: false, // Prevent spell check lag
+    autoCorrect: 'off', // Prevent mobile auto-correction lag
+    autoCapitalize: 'off', // Prevent mobile capitalization delays
+    // Additional optimization attributes
+    'data-gramm': 'false', // Disable Grammarly
+    'data-gramm_editor': 'false', // Disable Grammarly editor
+    'data-enable-grammarly': 'false' // Additional Grammarly disable
+  }), [field, value, handleChange, placeholder, required, className, min, max, step]);
+
+  if (type === 'textarea') {
+    return <Textarea {...inputProps} rows={rows || 3} />;
+  }
+
+  return <Input {...inputProps} type={type || 'text'} />;
+});
+
+// Add display name for React DevTools
+StableInput.displayName = 'StableInput';
+
+// CRITICAL: FormField component defined outside main component to prevent cursor loss
+const FormField = React.memo(({ 
+  label, 
+  field, 
+  type = 'text', 
+  placeholder, 
+  required = false, 
+  tooltip, 
+  icon: Icon,
+  selectOptions,
+  className = '',
+  errors = {},
+  formData = {},
+  onInputChange,
+  ...props
+}) => {
+  const hasError = errors[field];
+  const fieldValue = formData[field] || '';
+  
+  // Memoize the select change handler to prevent re-creation
+  const handleSelectChange = useCallback((value) => {
+    onInputChange(field, value);
+  }, [field, onInputChange]);
+  
+  return (
+    <div className={`space-y-2 form-field ${className}`}>
+      <div className="flex items-center justify-between">
+        <Label htmlFor={field} className="text-sm font-medium flex items-center space-x-2">
+          {Icon && <Icon className="h-4 w-4 text-gray-500" />}
+          <span>{label}</span>
+          {required && <span className="text-red-500">*</span>}
+        </Label>
+        {tooltip && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      
+      {type === 'select' ? (
+        <Select value={fieldValue} onValueChange={handleSelectChange}>
+          <SelectTrigger className={hasError ? 'border-red-500' : ''}>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {selectOptions?.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <StableInput
+          field={field}
+          type={type}
+          value={fieldValue}
+          placeholder={placeholder}
+          required={required}
+          className={`${type === 'textarea' ? 'min-h-[100px]' : ''} ${hasError ? 'border-red-500' : ''}`}
+          rows={type === 'textarea' ? 4 : undefined}
+          onInputChange={onInputChange}
+          {...props}
+        />
+      )}
+      
+      {hasError && (
+        <p className="text-sm text-red-600 flex items-center space-x-1">
+          <AlertCircle className="h-4 w-4" />
+          <span>{hasError}</span>
+        </p>
+      )}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  // Only re-render if the specific field's value or error has changed
+  return (
+    prevProps.formData[prevProps.field] === nextProps.formData[nextProps.field] &&
+    prevProps.errors[prevProps.field] === nextProps.errors[nextProps.field] &&
+    prevProps.field === nextProps.field &&
+    prevProps.type === nextProps.type &&
+    prevProps.label === nextProps.label &&
+    prevProps.placeholder === nextProps.placeholder &&
+    prevProps.required === nextProps.required
+  );
+});
+
+// Add display name for React DevTools
+FormField.displayName = 'FormField';
 
 const EditExternalJob = () => {
   const navigate = useNavigate();
@@ -44,7 +181,6 @@ const EditExternalJob = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(new Set());
-  const [editorType, setEditorType] = useState('rich'); // 'rich' or 'markdown'
   const [originalData, setOriginalData] = useState(null); // Store original job data
   
   const [formData, setFormData] = useState({
@@ -98,12 +234,15 @@ const EditExternalJob = () => {
     status: 'published'
   });
 
+  // PERFORMANCE OPTIMIZATION: Use useRef for timeout tracking to prevent accumulation
+  const validationTimeoutRef = useRef(null);
+
   // Fetch job data and categories on component mount
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch job data and categories in parallel
+        // Fetch job data and categories in parallel for better performance
         const [jobResponse, categoriesResponse] = await Promise.all([
           externalAdminService.getExternalJobById(id),
           externalAdminService.getJobCategories()
@@ -112,7 +251,7 @@ const EditExternalJob = () => {
         // Store original data for comparison
         setOriginalData(jobResponse);
 
-        // Pre-populate form with job data
+        // Pre-populate form with job data - use single setState for better performance
         const jobData = jobResponse;
         setFormData({
           title: jobData.title || '',
@@ -151,8 +290,11 @@ const EditExternalJob = () => {
         setCategories(categoriesResponse);
       } catch (error) {
         console.error('Error fetching job data:', error);
-        toast.error('Failed to load job data');
-        navigate('/external-admin/jobs');
+        toast.error(error.message || 'Failed to load job data');
+        // Give user option to retry instead of immediately navigating away
+        setTimeout(() => {
+          navigate('/external-admin/jobs');
+        }, 2000);
       } finally {
         setLoading(false);
       }
@@ -229,65 +371,112 @@ const EditExternalJob = () => {
   })();
 
   // Form validation
-  const validateField = (field, value) => {
-    const newErrors = { ...errors };
+  const validateField = useCallback((field, value) => {
+    setErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      
+      switch (field) {
+        case 'title':
+          if (!value.trim()) newErrors.title = 'Job title is required';
+          else if (value.length < 3) newErrors.title = 'Title must be at least 3 characters';
+          else delete newErrors.title;
+          break;
+        case 'description':
+          if (!value.trim()) newErrors.description = 'Job description is required';
+          else if (value.length < 50) newErrors.description = 'Description must be at least 50 characters';
+          else delete newErrors.description;
+          break;
+        case 'external_company_name':
+          if (!value.trim()) newErrors.external_company_name = 'Company name is required';
+          else delete newErrors.external_company_name;
+          break;
+        case 'external_company_website':
+          if (value && !value.match(/^https?:\/\/.+/)) newErrors.external_company_website = 'Please enter a valid URL';
+          else delete newErrors.external_company_website;
+          break;
+        case 'application_url':
+          if (formData.application_type === 'external' && !value.trim()) {
+            newErrors.application_url = 'Application URL is required for external applications';
+          } else if (value && !value.match(/^https?:\/\/.+/)) {
+            newErrors.application_url = 'Please enter a valid URL';
+          } else {
+            delete newErrors.application_url;
+          }
+          break;
+        case 'application_email':
+          if (formData.application_type === 'email' && !value.trim()) {
+            newErrors.application_email = 'Application email is required for email applications';
+          } else if (value && !value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            newErrors.application_email = 'Please enter a valid email address';
+          } else {
+            delete newErrors.application_email;
+          }
+          break;
+        case 'salary_min':
+        case 'salary_max':
+          if (value && isNaN(parseInt(value))) {
+            newErrors[field] = 'Please enter a valid number';
+          } else {
+            delete newErrors[field];
+          }
+          break;
+        case 'location_city':
+          if (formData.location_type === 'on-site' && !value.trim()) {
+            newErrors.location_city = 'City is required for on-site jobs';
+          } else {
+            delete newErrors.location_city;
+          }
+          break;
+        case 'location_country':
+          if (formData.location_type === 'on-site' && !value.trim()) {
+            newErrors.location_country = 'Country is required for on-site jobs';
+          } else {
+            delete newErrors.location_country;
+          }
+          break;
+        default:
+          break;
+      }
+      
+      // Only update if errors actually changed
+      if (JSON.stringify(newErrors) === JSON.stringify(prevErrors)) {
+        return prevErrors; // Return same object reference to prevent re-render
+      }
+      
+      return newErrors;
+    });
+  }, [formData.application_type, formData.location_type]);
+
+  // Ultra-optimized stable input change handler - CRITICAL FOR INPUT PERFORMANCE
+  const stableInputChange = useCallback((field, value) => {
+    // IMMEDIATE state update - NO processing, NO delays, NO blocking operations
+    setFormData(prev => ({ ...prev, [field]: value }));
     
-    switch (field) {
-      case 'title':
-        if (!value.trim()) newErrors.title = 'Job title is required';
-        else if (value.length < 3) newErrors.title = 'Title must be at least 3 characters';
-        else delete newErrors.title;
-        break;
-      case 'description':
-        if (!value.trim()) newErrors.description = 'Job description is required';
-        else if (value.length < 50) newErrors.description = 'Description must be at least 50 characters';
-        else delete newErrors.description;
-        break;
-      case 'external_company_name':
-        if (!value.trim()) newErrors.external_company_name = 'Company name is required';
-        else delete newErrors.external_company_name;
-        break;
-      case 'external_company_website':
-        if (value && !value.match(/^https?:\/\/.+/)) newErrors.external_company_website = 'Please enter a valid URL';
-        else delete newErrors.external_company_website;
-        break;
-      case 'application_url':
-        if (formData.application_type === 'external' && !value.trim()) {
-          newErrors.application_url = 'Application URL is required for external applications';
-        } else if (value && !value.match(/^https?:\/\/.+/)) {
-          newErrors.application_url = 'Please enter a valid URL';
-        } else {
-          delete newErrors.application_url;
-        }
-        break;
-      case 'application_email':
-        if (formData.application_type === 'email' && !value.trim()) {
-          newErrors.application_email = 'Application email is required for email applications';
-        } else if (value && !value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-          newErrors.application_email = 'Please enter a valid email address';
-        } else {
-          delete newErrors.application_email;
-        }
-        break;
-      case 'salary_min':
-      case 'salary_max':
-        if (value && isNaN(parseInt(value))) {
-          newErrors[field] = 'Please enter a valid number';
-        } else {
-          delete newErrors[field];
-        }
-        break;
-      default:
-        break;
+    // Clear any existing validation timeout to prevent accumulation
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
     }
     
-    setErrors(newErrors);
-  };
+    // DISABLED validation during typing for maximum performance
+    // Validation will only run on blur or form submit
+    // validationTimeoutRef.current = setTimeout(() => {
+    //   validateField(field, value);
+    // }, 1000);
+  }, []); // CRITICAL: Empty dependency array for absolute stability
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    validateField(field, value);
-  };
+  // Wrapper for backward compatibility with existing select components
+  const handleInputChange = useCallback((field, value) => {
+    stableInputChange(field, value);
+  }, [stableInputChange]);
+
+  // Cleanup timeout ref on unmount
+  useEffect(() => {
+    return () => {
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Save draft functionality
   const saveDraft = async () => {
@@ -321,8 +510,18 @@ const EditExternalJob = () => {
       validateField(field, formData[field]);
     });
     
-    if (Object.keys(errors).length > 0) {
-      setErrors(errors);
+    // Additional validation for on-site jobs
+    if (formData.location_type === 'on-site') {
+      if (!formData.location_city?.trim()) {
+        fieldErrors.location_city = 'City is required for on-site jobs';
+      }
+      if (!formData.location_country?.trim()) {
+        fieldErrors.location_country = 'Country is required for on-site jobs';
+      }
+    }
+    
+    if (Object.keys(errors).length > 0 || Object.keys(fieldErrors).length > 0) {
+      setErrors({ ...errors, ...fieldErrors });
       toast.error('Please fix the errors before submitting');
       return;
     }
@@ -330,9 +529,13 @@ const EditExternalJob = () => {
     setUpdating(true);
     
     try {
-      // Prepare the job data
+      // Prepare the job data with proper field mapping
       const jobData = {
         ...formData,
+        // Map location fields to match backend
+        city: formData.location_city,
+        state: formData.location_state,
+        country: formData.location_country,
         // Convert salary fields to numbers where appropriate
         salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
@@ -340,6 +543,11 @@ const EditExternalJob = () => {
         years_experience_max: formData.years_experience_max ? parseInt(formData.years_experience_max) : null,
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
       };
+
+      // Remove the frontend-only location fields
+      delete jobData.location_city;
+      delete jobData.location_state;
+      delete jobData.location_country;
 
       await externalAdminService.updateExternalJob(id, jobData);
       toast.success('External job updated successfully!');
@@ -406,74 +614,6 @@ const EditExternalJob = () => {
     });
   };
 
-  // Enhanced form field component
-  const FormField = ({ label, field, type = 'text', placeholder, required, tooltip, icon: Icon, selectOptions, ...props }) => {
-    const hasError = errors[field];
-    
-    return (
-      <div className="space-y-2 form-field">
-        <div className="flex items-center justify-between">
-          <Label htmlFor={field} className="text-sm font-medium flex items-center space-x-2">
-            {Icon && <Icon className="h-4 w-4 text-gray-500" />}
-            <span>{label}</span>
-            {required && <span className="text-red-500">*</span>}
-          </Label>
-          {tooltip && (
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-        
-        {type === 'textarea' ? (
-          <Textarea
-            id={field}
-            value={formData[field]}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            placeholder={placeholder}
-            className={`min-h-[100px] ${hasError ? 'border-red-500' : ''}`}
-            {...props}
-          />
-        ) : type === 'select' ? (
-          <Select value={formData[field]} onValueChange={(value) => handleInputChange(field, value)}>
-            <SelectTrigger className={hasError ? 'border-red-500' : ''}>
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {selectOptions?.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            id={field}
-            type={type}
-            value={formData[field]}
-            onChange={(e) => handleInputChange(field, e.target.value)}
-            placeholder={placeholder}
-            className={hasError ? 'border-red-500' : ''}
-            {...props}
-          />
-        )}
-        
-        {hasError && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
-            <AlertCircle className="h-4 w-4" />
-            <span>{hasError}</span>
-          </p>
-        )}
-      </div>
-    );
-  };
-
   // Preview component
   const JobPreview = () => (
     <Card className="border-2 border-blue-200 bg-blue-50/50">
@@ -521,21 +661,20 @@ const EditExternalJob = () => {
         {formData.description && (
           <div>
             <h4 className="font-semibold mb-2">Description</h4>
-            {editorType === 'rich' ? (
-              <div 
-                className="text-gray-700 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: formData.description }}
-              />
-            ) : (
-              <div className="text-gray-700 prose prose-sm max-w-none">
-                <MDEditor.Markdown source={formData.description} />
-              </div>
-            )}
+            <div className="text-gray-700 prose prose-sm max-w-none">
+              <MDEditor.Markdown source={formData.description} />
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
   );
+
+  const sharedFieldProps = useMemo(() => ({
+    formData,
+    errors,
+    onInputChange: handleInputChange
+  }), [formData, errors, handleInputChange]);
 
   if (loading) {
     return (
@@ -627,6 +766,7 @@ const EditExternalJob = () => {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField
+                    {...sharedFieldProps}
                     label="Job Title"
                     field="title"
                     placeholder="e.g., Senior Frontend Developer"
@@ -636,6 +776,7 @@ const EditExternalJob = () => {
                   />
                   
                   <FormField
+                    {...sharedFieldProps}
                     label="Job Summary"
                     field="summary"
                     type="textarea"
@@ -644,71 +785,22 @@ const EditExternalJob = () => {
                   />
 
                   <div className="space-y-4">
-                    {/* Editor Type Selector */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border editor-selector">
-                      <div>
-                        <h4 className="font-medium text-sm">Description Editor</h4>
-                        <p className="text-xs text-gray-600">Choose your preferred editing experience</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditorType('rich')}
-                          className={`px-3 py-1 text-xs rounded-md transition-colors editor-toggle-btn ${
-                            editorType === 'rich' 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-white text-gray-700 border hover:bg-gray-50'
-                          }`}
-                        >
-                          📝 Rich Text
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditorType('markdown')}
-                          className={`px-3 py-1 text-xs rounded-md transition-colors editor-toggle-btn ${
-                            editorType === 'markdown' 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-white text-gray-700 border hover:bg-gray-50'
-                          }`}
-                        >
-                          📄 Markdown
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Rich Text Editor */}
-                    {editorType === 'rich' && (
-                      <RichTextEditor
-                        label="Job Description"
-                        field="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        placeholder="Detailed description of the role, responsibilities, and requirements..."
-                        required
-                        tooltip="Use the rich text editor to format your job description with bold, italic, lists, and more"
-                        error={errors.description}
-                        height={350}
-                      />
-                    )}
-
-                    {/* Markdown Editor */}
-                    {editorType === 'markdown' && (
-                      <MarkdownEditor
-                        label="Job Description"
-                        field="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        placeholder="Detailed description of the role, responsibilities, and requirements..."
-                        required
-                        tooltip="Use markdown syntax to format your job description"
-                        error={errors.description}
-                        height={350}
-                      />
-                    )}
+                    <MarkdownEditor
+                      label="Job Description"
+                      field="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      placeholder="Detailed description of the role, responsibilities, and requirements..."
+                      required
+                      tooltip="Use markdown syntax to format your job description"
+                      error={errors.description}
+                      height={350}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
+                      {...sharedFieldProps}
                       label="Employment Type"
                       field="employment_type"
                       type="select"
@@ -724,6 +816,7 @@ const EditExternalJob = () => {
                     />
                     
                     <FormField
+                      {...sharedFieldProps}
                       label="Experience Level"
                       field="experience_level"
                       type="select"
@@ -738,6 +831,7 @@ const EditExternalJob = () => {
                   </div>
 
                   <FormField
+                    {...sharedFieldProps}
                     label="Job Category"
                     field="category_id"
                     type="select"
@@ -761,6 +855,7 @@ const EditExternalJob = () => {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField
+                    {...sharedFieldProps}
                     label="Company Name"
                     field="external_company_name"
                     placeholder="e.g., TechCorp Inc."
@@ -770,6 +865,7 @@ const EditExternalJob = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
+                      {...sharedFieldProps}
                       label="Company Website"
                       field="external_company_website"
                       type="url"
@@ -778,6 +874,7 @@ const EditExternalJob = () => {
                     />
                     
                     <FormField
+                      {...sharedFieldProps}
                       label="Company Logo URL"
                       field="external_company_logo"
                       type="url"
@@ -801,6 +898,7 @@ const EditExternalJob = () => {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField
+                    {...sharedFieldProps}
                     label="Work Type"
                     field="location_type"
                     type="select"
@@ -814,19 +912,27 @@ const EditExternalJob = () => {
                   {formData.location_type !== 'remote' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
+                        {...sharedFieldProps}
                         label="City"
                         field="location_city"
                         placeholder="e.g., San Francisco"
+                        required={formData.location_type === 'on-site'}
+                        tooltip={formData.location_type === 'on-site' ? 'City is required for on-site positions' : 'Recommended for hybrid positions'}
                       />
                       <FormField
+                        {...sharedFieldProps}
                         label="State/Province"
                         field="location_state"
                         placeholder="e.g., CA"
+                        tooltip="Optional: State or province name"
                       />
                       <FormField
+                        {...sharedFieldProps}
                         label="Country"
                         field="location_country"
                         placeholder="e.g., United States"
+                        required={formData.location_type === 'on-site'}
+                        tooltip={formData.location_type === 'on-site' ? 'Country is required for on-site positions' : 'Recommended for hybrid positions'}
                       />
                     </div>
                   )}
@@ -847,6 +953,7 @@ const EditExternalJob = () => {
                 <CardContent className="space-y-6 pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
+                      {...sharedFieldProps}
                       label="Minimum Salary"
                       field="salary_min"
                       type="number"
@@ -854,6 +961,7 @@ const EditExternalJob = () => {
                       tooltip="Minimum salary offered for this position"
                     />
                     <FormField
+                      {...sharedFieldProps}
                       label="Maximum Salary"
                       field="salary_max"
                       type="number"
@@ -864,6 +972,7 @@ const EditExternalJob = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
+                      {...sharedFieldProps}
                       label="Currency"
                       field="salary_currency"
                       type="select"
@@ -876,6 +985,7 @@ const EditExternalJob = () => {
                       ]}
                     />
                     <FormField
+                      {...sharedFieldProps}
                       label="Pay Period"
                       field="salary_period"
                       type="select"
@@ -928,6 +1038,7 @@ const EditExternalJob = () => {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField
+                    {...sharedFieldProps}
                     label="Required Skills"
                     field="required_skills"
                     type="textarea"
@@ -936,6 +1047,7 @@ const EditExternalJob = () => {
                   />
                   
                   <FormField
+                    {...sharedFieldProps}
                     label="Preferred Skills"
                     field="preferred_skills"
                     type="textarea"
@@ -945,12 +1057,14 @@ const EditExternalJob = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
+                      {...sharedFieldProps}
                       label="Minimum Experience (Years)"
                       field="years_experience_min"
                       type="number"
                       placeholder="0"
                     />
                     <FormField
+                      {...sharedFieldProps}
                       label="Maximum Experience (Years)"
                       field="years_experience_max"
                       type="number"
@@ -959,6 +1073,7 @@ const EditExternalJob = () => {
                   </div>
                   
                   <FormField
+                    {...sharedFieldProps}
                     label="Education Requirement"
                     field="education_requirement"
                     type="textarea"
@@ -980,6 +1095,7 @@ const EditExternalJob = () => {
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField
+                    {...sharedFieldProps}
                     label="Application Type"
                     field="application_type"
                     type="select"
@@ -991,6 +1107,7 @@ const EditExternalJob = () => {
 
                   {formData.application_type === 'external' ? (
                     <FormField
+                      {...sharedFieldProps}
                       label="Application URL"
                       field="application_url"
                       type="url"
@@ -1000,6 +1117,7 @@ const EditExternalJob = () => {
                     />
                   ) : (
                     <FormField
+                      {...sharedFieldProps}
                       label="Application Email"
                       field="application_email"
                       type="email"
@@ -1010,6 +1128,7 @@ const EditExternalJob = () => {
                   )}
 
                   <FormField
+                    {...sharedFieldProps}
                     label="Application Instructions"
                     field="application_instructions"
                     type="textarea"
@@ -1040,12 +1159,14 @@ const EditExternalJob = () => {
                   <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
+                        {...sharedFieldProps}
                         label="Job Source"
                         field="job_source"
                         placeholder="e.g., LinkedIn, Indeed, Company Website"
                         tooltip="Where this job was originally posted"
                       />
                       <FormField
+                        {...sharedFieldProps}
                         label="Original Source URL"
                         field="source_url"
                         type="url"

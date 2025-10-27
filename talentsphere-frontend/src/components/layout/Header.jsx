@@ -18,7 +18,6 @@ import {
   X, 
   Briefcase, 
   Search,
-  Bell,
   MessageSquare,
   Zap,
   Star,
@@ -30,7 +29,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getInitials } from '../../utils/helpers';
-import NotificationDropdownReal from '../notifications/NotificationDropdownReal';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -169,9 +167,6 @@ const Header = () => {
                 >
                   <Search className="w-4 h-4" />
                 </Button>
-
-                {/* Enhanced Notifications with Real-time Features */}
-                <NotificationDropdownReal />
 
                 {/* Enhanced Messages */}
                 <Button 

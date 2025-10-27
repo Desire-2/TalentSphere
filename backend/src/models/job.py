@@ -166,16 +166,21 @@ class Job(db.Model):
     
     def get_location_display(self):
         """Get formatted location string"""
-        if self.is_remote:
-            if self.location_type == 'remote':
-                return "Remote"
-            elif self.location_type == 'hybrid':
-                location_parts = [self.city, self.state, self.country]
-                location = ', '.join(filter(None, location_parts))
-                return f"{location} (Hybrid)" if location else "Hybrid"
+        # Check location_type first for explicit remote/hybrid jobs
+        if self.location_type == 'remote':
+            return "Remote"
+        elif self.location_type == 'hybrid':
+            location_parts = [self.city, self.state, self.country]
+            location = ', '.join(filter(None, location_parts))
+            return f"{location} (Hybrid)" if location else "Hybrid"
         
+        # Build location from city, state, country
         location_parts = [self.city, self.state, self.country]
-        return ', '.join(filter(None, location_parts)) or "Location not specified"
+        location_str = ', '.join(filter(None, location_parts))
+        
+        # Return the location if available, otherwise return empty string
+        # Frontend will handle the display appropriately
+        return location_str
     
     def to_dict(self, include_details=False, include_stats=False):
         """Convert job to dictionary"""
@@ -211,6 +216,7 @@ class Job(db.Model):
             'summary': self.summary,
             'employment_type': self.employment_type,
             'experience_level': self.experience_level,
+            'location_type': self.location_type,  # Add location_type at top level for easier access
             'job_source': self.job_source,
             'source_url': self.source_url,
             'external_company_name': self.external_company_name,

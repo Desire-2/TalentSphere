@@ -45,7 +45,7 @@ const MarkdownEditor = React.memo(({
           height={height}
           preview="edit"
           hideToolbar={false}
-          visibleDragBar={false}
+          visibleDragbar={false}
           textareaProps={{
             placeholder: placeholder,
             style: {

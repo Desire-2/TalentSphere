@@ -536,6 +536,15 @@ def create_job(current_user):
             except ValueError:
                 return jsonify({'error': 'Invalid application deadline format'}), 400
         
+        # Debug: Log location data being received
+        location_data = {
+            'location_type': data.get('location_type'),
+            'city': data.get('city'),
+            'state': data.get('state'),
+            'country': data.get('country')
+        }
+        current_app.logger.info(f"Creating job with location data: {location_data}")
+        
         # Create job
         job = Job(
             company_id=company_id,
@@ -548,11 +557,11 @@ def create_job(current_user):
             employment_type=data['employment_type'],
             experience_level=data['experience_level'],
             education_requirement=data.get('education_requirement', '').strip() if data.get('education_requirement') else None,
-            location_type=data['location_type'],
+            location_type=data.get('location_type', 'on-site'),  # Default to on-site if not provided
             city=data.get('city', '').strip() if data.get('city') else None,
             state=data.get('state', '').strip() if data.get('state') else None,
             country=data.get('country', '').strip() if data.get('country') else None,
-            is_remote=data['location_type'] == 'remote',
+            is_remote=data.get('location_type') == 'remote',
             remote_policy=data.get('remote_policy', '').strip() if data.get('remote_policy') else None,
             salary_min=data.get('salary_min'),
             salary_max=data.get('salary_max'),

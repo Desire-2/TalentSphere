@@ -28,7 +28,8 @@ import {
   Award,
   BookOpen,
   Upload,
-  X
+  X,
+  Share2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -44,6 +45,7 @@ import { Switch } from '../../components/ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import MarkdownEditor from '../../components/ui/MarkdownEditor';
+import ShareScholarship from '../../components/scholarships/ShareScholarship';
 import { scholarshipService } from '../../services/scholarship';
 import { toast } from 'sonner';
 
@@ -175,6 +177,10 @@ const CreateScholarship = () => {
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
   const [jsonPreview, setJsonPreview] = useState(null);
+  
+  // Success and Share State
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [createdScholarship, setCreatedScholarship] = useState(null);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -624,8 +630,13 @@ const CreateScholarship = () => {
 
       const response = await scholarshipService.createScholarship(scholarshipData);
       
-      toast.success('Scholarship created successfully!');
-      navigate('/external-admin/scholarships');
+      // Store the created scholarship for sharing
+      setCreatedScholarship(response);
+      setShowSuccessDialog(true);
+      
+      toast.success('Scholarship created successfully!', {
+        description: 'Share it now to reach more students!'
+      });
       
     } catch (error) {
       console.error('Error creating scholarship:', error);
@@ -1457,6 +1468,96 @@ const CreateScholarship = () => {
                 external_organization_name, amount_max, currency, etc. All matching fields will be imported automatically.
               </AlertDescription>
             </Alert>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog with Share Options */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+              Scholarship Created Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your scholarship has been published and is now live. Share it to help students discover this opportunity!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Success Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
+                <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-green-900">Published</p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
+                <Eye className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-blue-900">Live Now</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
+                <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-purple-900">Ready to Share</p>
+              </div>
+            </div>
+
+            {/* Share Options */}
+            {createdScholarship && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <Share2 className="w-6 h-6 text-blue-600" />
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-900">Share Your Scholarship</h3>
+                    <p className="text-sm text-gray-600">Reach more students and maximize applications</p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <ShareScholarship 
+                    scholarship={createdScholarship}
+                    trigger={
+                      <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
+                        <Share2 className="w-4 h-4 mr-2" />
+                        Share Now
+                      </Button>
+                    }
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => navigate(`/scholarships/${createdScholarship.id}`)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Scholarship
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  navigate('/external-admin/scholarships');
+                }}
+              >
+                Go to Dashboard
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  window.location.reload();
+                }}
+              >
+                Create Another Scholarship
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

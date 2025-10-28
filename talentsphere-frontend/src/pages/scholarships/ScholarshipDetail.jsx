@@ -29,6 +29,7 @@ import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
 import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import SEOHelmet from '../../components/seo/SEOHelmet';
+import ShareScholarship from '../../components/scholarships/ShareScholarship';
 import { 
   generateScholarshipStructuredData, 
   generateBreadcrumbStructuredData,
@@ -318,10 +319,9 @@ const ScholarshipDetail = () => {
               Back to Scholarships
             </Button>
             <div className="flex space-x-2">
-              <Button onClick={handleShare} variant="outline" size="sm">
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
+              {/* Share Scholarship Component */}
+              <ShareScholarship scholarship={scholarship} />
+              
               {isAuthenticated && (
                 <Button onClick={handleBookmark} variant="outline" size="sm">
                   {isBookmarked ? (

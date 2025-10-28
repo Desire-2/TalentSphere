@@ -41,6 +41,10 @@ def token_required(f):
     """Decorator to require valid JWT token"""
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow CORS preflight requests to pass through without authentication
+        if request.method == 'OPTIONS':
+            return current_app.make_default_options_response()
+
         token = None
         auth_header = request.headers.get('Authorization')
         

@@ -84,7 +84,18 @@ cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost
 # Normalize origins into a clean list and remove empty entries
 allowed_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
 # Always include localhost dev ports if not present (helps local testing)
-for dev_origin in ("http://localhost:5173", "http://localhost:5174", "http://localhost:3000"):
+fallback_dev_origins = (
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:5173",
+    "http://0.0.0.0:5174",
+)
+
+for dev_origin in fallback_dev_origins:
     if dev_origin not in allowed_origins:
         allowed_origins.append(dev_origin)
 
@@ -92,8 +103,14 @@ for dev_origin in ("http://localhost:5173", "http://localhost:5174", "http://loc
 print(f"🔒 CORS allowed origins: {allowed_origins}")
 
 # Initialize CORS with credentials support and required headers
-CORS(app, origins=allowed_origins, supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Origin"])
+CORS(
+    app,
+    origins=allowed_origins,
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    expose_headers=["Content-Type"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
 
 allowed_origins_set = set(allowed_origins)
 
@@ -113,8 +130,9 @@ def ensure_cors_headers(response):
             response.headers['Vary'] = 'Origin'
 
         response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        response.headers.setdefault('Access-Control-Max-Age', '600')
 
     return response
 

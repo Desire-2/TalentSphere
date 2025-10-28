@@ -8,6 +8,7 @@ from src.models.user import User
 from src.models.job import Job
 from src.models.application import Application
 from src.models.notification import Message
+from src.services.email_service import NotificationType
 
 
 class NotificationTemplateHandler:
@@ -313,7 +314,7 @@ class EnhancedNotificationService:
             
             return self.email_service.create_and_send_notification(
                 user_id=user_id,
-                notification_type='welcome',
+                notification_type=NotificationType.WELCOME,
                 title=f"Welcome to TalentSphere, {user.get_full_name()}!",
                 message="Welcome to TalentSphere! We're excited to help you find your dream job.",
                 variables=template_data,

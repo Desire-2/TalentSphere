@@ -37,6 +37,7 @@ class NotificationType(Enum):
     INTERVIEW_REMINDER = "interview_reminder"
     DEADLINE_REMINDER = "deadline_reminder"
     DIGEST = "digest"
+    WELCOME = "welcome"
 
 
 @dataclass
@@ -291,7 +292,8 @@ class EmailService:
                     NotificationType.INTERVIEW_REMINDER: 'interview_reminder',
                     NotificationType.DEADLINE_REMINDER: 'deadline_reminder',
                     NotificationType.COMPANY_UPDATE: 'company_update',
-                    NotificationType.SYSTEM: 'system_notification'
+                    NotificationType.SYSTEM: 'system_notification',
+                    NotificationType.WELCOME: 'welcome'
                 }
                 
                 template_name = template_map.get(notification_type, 'system_notification')
@@ -328,7 +330,8 @@ class EmailService:
         important_types = [
             NotificationType.APPLICATION_STATUS,
             NotificationType.INTERVIEW_REMINDER,
-            NotificationType.DEADLINE_REMINDER
+            NotificationType.DEADLINE_REMINDER,
+            NotificationType.WELCOME
         ]
         return notification_type in important_types
     

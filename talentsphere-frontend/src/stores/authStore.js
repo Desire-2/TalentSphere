@@ -55,6 +55,37 @@ export const useAuthStore = create((set, get) => ({
       
       // Check if the error indicates account already exists
       const errorMessage = error.message || 'Registration failed';
+
+      // If the registration request likely reached the server but the response failed (CORS, proxy, etc.)
+      // try a follow-up login with the same credentials. This handles the case where the user account was
+      // created successfully but the client interpreted the response as a network failure.
+      if (
+        errorMessage.includes('Cannot connect to server') &&
+        userData?.email &&
+        userData?.password
+      ) {
+        try {
+          console.warn('⚠️ Registration response failed, attempting fallback login...');
+          const fallbackLogin = await authService.login({
+            email: userData.email,
+            password: userData.password
+          });
+
+          console.log('✅ Fallback login succeeded after registration error');
+
+          set({
+            user: fallbackLogin.user,
+            token: fallbackLogin.token,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null
+          });
+
+          return fallbackLogin;
+        } catch (loginError) {
+          console.error('❌ Fallback login after registration failed:', loginError);
+        }
+      }
       
       // If the account was created but there's a token/session issue, 
       // check localStorage for the token
@@ -93,6 +124,7 @@ export const useAuthStore = create((set, get) => ({
         error: null
       });
     } catch (error) {
+      console.warn('Logout request failed, clearing client state anyway:', error);
       // Even if logout fails on server, clear local state
       set({
         user: null,

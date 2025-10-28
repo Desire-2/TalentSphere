@@ -12,8 +12,13 @@ from datetime import datetime, timedelta
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
 from src.utils.db_utils import db_transaction, safe_db_operation
+from src.services.notification_templates import EnhancedNotificationService
+from src.services.email_service import email_service
 
 auth_bp = Blueprint('auth', __name__)
+
+# Notification services
+enhanced_notification_service = EnhancedNotificationService(email_service)
 
 def validate_email(email):
     """Validate email format"""
@@ -221,24 +226,41 @@ def register():
         token = user.generate_token()
         current_app.logger.info(f"Token generated successfully for: {user.email}")
         
-        # Send welcome email (don't fail registration if email fails)
+        # Send welcome notification/email (don't fail registration if these fail)
         welcome_email_sent = False
+        welcome_notification_sent = False
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         try:
-            welcome_email_sent = send_welcome_email(user)
-            if welcome_email_sent:
-                current_app.logger.info(f"Welcome email sent to: {user.email}")
-            else:
-                current_app.logger.warning(f"Welcome email could not be sent to: {user.email}")
-        except Exception as email_error:
-            current_app.logger.error(f"Error sending welcome email to {user.email}: {str(email_error)}")
-            # Continue with registration even if email fails
+            welcome_notification_sent = enhanced_notification_service.send_welcome_email(
+                user.id,
+                frontend_url=frontend_url
+            )
+            welcome_email_sent = welcome_notification_sent
+            if welcome_notification_sent:
+                current_app.logger.info(f"Enhanced welcome notification sent to: {user.email}")
+        except Exception as notification_error:
+            current_app.logger.error(
+                f"Enhanced welcome notification failed for {user.email}: {str(notification_error)}"
+            )
+        
+        # Fallback to basic SMTP email if enhanced notification failed
+        if not welcome_email_sent:
+            try:
+                welcome_email_sent = send_basic_welcome_email(user)
+                if welcome_email_sent:
+                    current_app.logger.info(f"Fallback welcome email sent to: {user.email}")
+                else:
+                    current_app.logger.warning(f"Fallback welcome email could not be sent to: {user.email}")
+            except Exception as email_error:
+                current_app.logger.error(f"Error sending fallback welcome email to {user.email}: {str(email_error)}")
         
         # Prepare response data
         response_data = {
             'message': 'User registered successfully',
             'user': user.to_dict(),
             'token': token,
-            'welcome_email_sent': welcome_email_sent
+            'welcome_email_sent': welcome_email_sent,
+            'welcome_notification_sent': welcome_notification_sent
         }
         
         # Add profile data
@@ -502,25 +524,31 @@ def get_employer_dashboard_stats(current_user):
 def send_welcome_email(current_user):
     """Send welcome email to new users"""
     try:
-        # In a real application, you would integrate with an email service
-        # For now, just return success
-        
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         email_type = 'employer_welcome' if current_user.role == 'employer' else 'jobseeker_welcome'
-        
-        # Log the welcome email sending
-        welcome_data = {
-            'user_id': current_user.id,
-            'email': current_user.email,
-            'role': current_user.role,
-            'email_type': email_type,
-            'sent_at': datetime.utcnow().isoformat()
-        }
+
+        enhanced_sent = enhanced_notification_service.send_welcome_email(
+            current_user.id,
+            frontend_url=frontend_url
+        )
+
+        fallback_sent = False
+        if not enhanced_sent:
+            fallback_sent = send_basic_welcome_email(current_user)
+
+        sent = enhanced_sent or fallback_sent
+        status_message = 'Welcome email sent successfully' if sent else 'Welcome email queued but delivery failed'
+        status_code = 200 if sent else 207  # 207 Multi-Status to indicate partial success
         
         return jsonify({
-            'message': 'Welcome email sent successfully',
+            'message': status_message,
             'email_type': email_type,
-            'sent_to': current_user.email
-        }), 200
+            'sent_to': current_user.email,
+            'delivery': {
+                'enhanced_notification': enhanced_sent,
+                'fallback_email': fallback_sent
+            }
+        }), status_code
         
     except Exception as e:
         return jsonify({'error': 'Failed to send welcome email', 'details': str(e)}), 500
@@ -792,7 +820,7 @@ def deactivate_account(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to deactivate account', 'details': str(e)}), 500
 
-def send_welcome_email(user):
+def send_basic_welcome_email(user):
     """Send welcome email to new users"""
     try:
         # Get email configuration from environment variables

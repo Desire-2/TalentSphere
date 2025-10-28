@@ -9,7 +9,7 @@ load_dotenv()
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from src.models.user import db
 from src.utils.db_optimization import create_optimized_engine
@@ -94,6 +94,29 @@ print(f"🔒 CORS allowed origins: {allowed_origins}")
 # Initialize CORS with credentials support and required headers
 CORS(app, origins=allowed_origins, supports_credentials=True,
      allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Origin"])
+
+allowed_origins_set = set(allowed_origins)
+
+@app.after_request
+def ensure_cors_headers(response):
+    """Guarantee CORS headers for whitelisted origins, even on error responses."""
+    origin = request.headers.get('Origin')
+
+    if origin and origin in allowed_origins_set:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        # Ensure caches vary by origin when responses are shared
+        vary_header = response.headers.get('Vary')
+        if vary_header:
+            if 'Origin' not in vary_header:
+                response.headers['Vary'] = f"{vary_header}, Origin"
+        else:
+            response.headers['Vary'] = 'Origin'
+
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers.setdefault('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.setdefault('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+
+    return response
 
 # Initialize performance monitoring
 performance_metrics(app)

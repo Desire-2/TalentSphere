@@ -92,20 +92,16 @@ const UserManagement = () => {
     error, 
     fetchUsers, 
     toggleUserStatus,
-    changeUserRole 
+    changeUserRole,
+    deleteUser: deleteUserFromStore,
+    bulkDeleteUsers: bulkDeleteUsersFromStore
   } = useAdminStore();
 
   // Delete user API call
-  const deleteUser = async (userId) => {
+  const handleDeleteUser = async (userId) => {
     try {
       setActionLoading(prev => ({ ...prev, [userId]: true }));
-      await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      await deleteUserFromStore(userId, { hardDelete: true });
       await fetchUsers(filters);
       setSelectedUsers(prev => prev.filter(id => id !== userId));
       console.log('✅ User deleted successfully');
@@ -118,27 +114,24 @@ const UserManagement = () => {
   };
 
   // Bulk delete users
-  const bulkDeleteUsers = async () => {
+  const handleBulkDeleteUsers = async () => {
     setActionLoading(prev => ({ ...prev, bulk: true }));
     try {
-      const response = await fetch('/api/users/bulk-delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ user_ids: selectedUsers })
-      });
-      const result = await response.json();
-      if (response.ok) {
+      const result = await bulkDeleteUsersFromStore(selectedUsers, { hardDelete: true }) || {};
+      const deletedUsers = Array.isArray(result.deleted) ? result.deleted : [];
+      const errors = Array.isArray(result.errors) ? result.errors : [];
+
+      if (deletedUsers.length > 0) {
         await fetchUsers(filters);
         setSelectedUsers([]);
         setBulkAction('');
-        alert(`Bulk delete completed. Deleted: ${result.deleted.length}, Errors: ${result.errors.length}`);
         console.log('✅ Bulk delete completed successfully', result);
-      } else {
-        console.error('❌ Bulk delete failed:', result);
-        alert('Bulk delete failed: ' + (result.error || 'Unknown error'));
+      }
+
+      alert(`Bulk delete completed. Deleted: ${deletedUsers.length}, Errors: ${errors.length}`);
+
+      if (errors.length > 0) {
+        console.error('❌ Bulk delete encountered errors:', errors);
       }
     } catch (error) {
       console.error('❌ Bulk delete failed:', error);
@@ -162,7 +155,6 @@ const UserManagement = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [actionLoading, setActionLoading] = useState({});
   const [showUserDetails, setShowUserDetails] = useState(null);
-  const [showBulkActions, setShowBulkActions] = useState(false);
   const [bulkAction, setBulkAction] = useState('');
   const [emailTemplate, setEmailTemplate] = useState({
     subject: '',
@@ -227,7 +219,7 @@ const UserManagement = () => {
   const handleBulkAction = async () => {
     if (!bulkAction || selectedUsers.length === 0) return;
     if (bulkAction === 'delete') {
-      await bulkDeleteUsers();
+      await handleBulkDeleteUsers();
       return;
     }
     setActionLoading(prev => ({ ...prev, bulk: true }));
@@ -963,7 +955,7 @@ const UserManagement = () => {
                                     disabled={actionLoading[user.id]}
                                     onClick={() => {
                                       if (window.confirm(`Are you sure you want to delete ${user.full_name}? This action cannot be undone.`)) {
-                                        deleteUser(user.id);
+                                        handleDeleteUser(user.id);
                                       }
                                     }}
                                   >

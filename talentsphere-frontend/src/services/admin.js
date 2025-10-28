@@ -32,6 +32,21 @@ export const adminService = {
     return response;
   },
 
+  deleteUser: async (userId, { hardDelete = true } = {}) => {
+    const queryString = hardDelete ? '?hard=true' : '';
+    const response = await api.delete(`/users/${userId}${queryString}`);
+    return response;
+  },
+
+  bulkDeleteUsers: async (userIds = [], { hardDelete = true } = {}) => {
+    const payload = { user_ids: userIds };
+    if (!hardDelete) {
+      payload.hard_delete = false;
+    }
+    const response = await api.post('/users/bulk-delete', payload);
+    return response;
+  },
+
   // Job Management
   getJobsAdmin: async (params = {}) => {
     console.log('🔧 AdminService getJobsAdmin called with params:', params);

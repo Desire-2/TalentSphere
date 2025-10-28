@@ -94,6 +94,58 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  deleteUser: async (userId, options = {}) => {
+    try {
+      const response = await adminService.deleteUser(userId, options);
+      const users = get().users.filter(user => user.id !== userId);
+      const pagination = get().pagination;
+      let updatedPagination = pagination;
+      if (pagination && typeof pagination.total === 'number') {
+        const newTotal = Math.max(0, pagination.total - 1);
+        updatedPagination = {
+          ...pagination,
+          total: newTotal,
+          pages: pagination.per_page ? Math.max(1, Math.ceil(newTotal / pagination.per_page)) : pagination.pages
+        };
+      }
+      set({ users, pagination: updatedPagination });
+      return response;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      throw error;
+    }
+  },
+
+  bulkDeleteUsers: async (userIds = [], options = {}) => {
+    try {
+      const result = await adminService.bulkDeleteUsers(userIds, options);
+      if (Array.isArray(result.deleted) && result.deleted.length > 0) {
+        const users = get().users.filter(user => !result.deleted.includes(user.id));
+        const pagination = get().pagination;
+        let updatedPagination = pagination;
+        if (pagination && typeof pagination.total === 'number') {
+          const newTotal = Math.max(0, pagination.total - result.deleted.length);
+          updatedPagination = {
+            ...pagination,
+            total: newTotal,
+            pages: pagination.per_page ? Math.max(1, Math.ceil(newTotal / pagination.per_page)) : pagination.pages
+          };
+          if (updatedPagination.page > updatedPagination.pages) {
+            updatedPagination = {
+              ...updatedPagination,
+              page: updatedPagination.pages
+            };
+          }
+        }
+        set({ users, pagination: updatedPagination });
+      }
+      return result;
+    } catch (error) {
+      console.error('Bulk delete users error:', error);
+      throw error;
+    }
+  },
+
   fetchJobs: async (params = {}) => {
     console.log('🏪 AdminStore fetchJobs called with params:', params);
     set({ isLoading: true, error: null });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -54,6 +54,11 @@ import {
   X
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import {
+  getAndClearIntendedDestination,
+  getPostLoginRedirect,
+  extractReturnUrl
+} from '../../utils/redirectUtils';
 
 const baseSchema = z.object({
   first_name: z.string().min(2, 'First name must be at least 2 characters'),
@@ -129,6 +134,79 @@ const Register = () => {
   
   const { register: registerUser, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getRedirectDestination = (user) => {
+    const storedDestination = getAndClearIntendedDestination();
+    let stateDestination = location.state?.from;
+
+    if (typeof stateDestination === 'string') {
+      stateDestination = {
+        pathname: stateDestination,
+        search: ''
+      };
+    }
+
+    const urlReturnTo = extractReturnUrl(location);
+
+    let intendedDestination = null;
+
+    if (storedDestination) {
+      intendedDestination = storedDestination;
+    } else if (stateDestination?.pathname) {
+      intendedDestination = {
+        pathname: stateDestination.pathname,
+        search: stateDestination.search || '',
+        state: stateDestination.state || null
+      };
+    } else if (urlReturnTo) {
+      try {
+        const url = new URL(urlReturnTo, window.location.origin);
+        intendedDestination = {
+          pathname: url.pathname,
+          search: url.search,
+          state: null
+        };
+      } catch (parseError) {
+        console.warn('Unable to parse return URL on registration:', urlReturnTo, parseError);
+      }
+    }
+
+    const resolvedUser = user || {};
+    const redirect = getPostLoginRedirect(resolvedUser, intendedDestination, '/dashboard');
+
+    return {
+      pathname: redirect.pathname,
+      search: redirect.search || '',
+      ...(redirect.state ? { state: redirect.state } : {})
+    };
+  };
+
+  const getRedirectMessage = () => {
+    const urlReturnTo = extractReturnUrl(location);
+
+    if (urlReturnTo && urlReturnTo !== '/dashboard') {
+      try {
+        const url = new URL(urlReturnTo, window.location.origin);
+        return `You'll be redirected to ${url.pathname} after creating your account.`;
+      } catch (parseError) {
+        console.warn('Unable to parse return URL for message:', urlReturnTo, parseError);
+      }
+    }
+
+    const fromState = location.state?.from;
+    const fromPathname = typeof fromState === 'string'
+      ? fromState
+      : fromState?.pathname;
+
+    if (fromPathname && fromPathname !== '/dashboard') {
+      return `You'll be redirected to ${fromPathname} after creating your account.`;
+    }
+
+    return null;
+  };
+
+  const redirectMessage = getRedirectMessage();
 
   const {
     register,
@@ -392,8 +470,15 @@ const Register = () => {
       
       console.log('🧹 Cleaned data for submission:', cleanedData);
       
-      await registerUser(cleanedData);
-      navigate('/dashboard');
+      const response = await registerUser(cleanedData);
+      const latestUser = response?.user || useAuthStore.getState().user;
+
+      const redirectDestination = getRedirectDestination(latestUser);
+
+      navigate(redirectDestination.pathname + (redirectDestination.search || ''), {
+        replace: true,
+        ...(redirectDestination.state ? { state: redirectDestination.state } : {})
+      });
     } catch (error) {
       console.error('💥 Registration error:', error);
     }
@@ -506,6 +591,15 @@ const Register = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {redirectMessage && (
+              <Alert className="mb-6 border-blue-200 bg-blue-50">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  {redirectMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {error && (
                 <Alert variant="destructive" className="border-red-200 bg-red-50">
@@ -1562,6 +1656,25 @@ const Register = () => {
               <div className="mt-6 text-center">
                 <Link
                   to="/login"
+                  state={(() => {
+                    const fromState = location.state?.from;
+                    const returnTo = extractReturnUrl(location);
+                    const payload = {};
+
+                    const formattedFrom = typeof fromState === 'string'
+                      ? { pathname: fromState }
+                      : fromState;
+
+                    if (formattedFrom) {
+                      payload.from = formattedFrom;
+                    }
+
+                    if (returnTo) {
+                      payload.returnTo = returnTo;
+                    }
+
+                    return Object.keys(payload).length ? payload : undefined;
+                  })()}
                   className="group inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-800 transition-all duration-300 px-4 py-2 rounded-lg hover:bg-blue-50 hover:shadow-md"
                 >
                   <User className="w-4 h-4 group-hover:scale-110 transition-transform" />

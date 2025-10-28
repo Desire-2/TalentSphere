@@ -244,6 +244,25 @@ const Login = () => {
               <div className="mt-6 text-center">
                 <Link
                   to="/register"
+                  state={(() => {
+                    const fromState = location.state?.from;
+                    const returnTo = extractReturnUrl(location);
+                    const payload = {};
+
+                    const formattedFrom = typeof fromState === 'string'
+                      ? { pathname: fromState }
+                      : fromState;
+
+                    if (formattedFrom) {
+                      payload.from = formattedFrom;
+                    }
+
+                    if (returnTo) {
+                      payload.returnTo = returnTo;
+                    }
+
+                    return Object.keys(payload).length ? payload : undefined;
+                  })()}
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
                   Create your account

@@ -32,12 +32,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
+import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import { toast } from 'sonner';
 
 const ScholarshipApplication = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
+  const { navigateToLogin } = useAuthNavigation();
 
   // State management
   const [scholarship, setScholarship] = useState(null);
@@ -86,7 +88,7 @@ const ScholarshipApplication = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/scholarships/${id}/apply` } });
+      navigateToLogin({ overridePath: { pathname: `/scholarships/${id}/apply` } });
       return;
     }
     
@@ -94,7 +96,7 @@ const ScholarshipApplication = () => {
       fetchScholarship();
       populatePersonalInfo();
     }
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, navigateToLogin]);
 
   const fetchScholarship = async () => {
     try {

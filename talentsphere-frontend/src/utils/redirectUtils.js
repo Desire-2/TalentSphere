@@ -165,26 +165,40 @@ export const isPathAllowedForUser = (pathname, user) => {
  * @param {Object} options - Additional options
  */
 export const redirectToLogin = (navigate, location, options = {}) => {
-  const currentPath = location.pathname;
-  const currentSearch = location.search;
-  const currentState = location.state;
-  
-  // Store the current location as intended destination
-  storeIntendedDestination(currentPath, {
-    search: currentSearch,
-    state: currentState
+  const { overridePath, replace = true } = options || {};
+
+  let destinationPathname = location.pathname;
+  let destinationSearch = location.search;
+  let destinationState = location.state;
+
+  if (typeof overridePath === 'string') {
+    destinationPathname = overridePath;
+    destinationSearch = '';
+    destinationState = null;
+  } else if (overridePath && typeof overridePath === 'object') {
+    destinationPathname = overridePath.pathname || destinationPathname;
+    if ('search' in overridePath) {
+      destinationSearch = overridePath.search || '';
+    }
+    if ('state' in overridePath) {
+      destinationState = overridePath.state;
+    }
+  }
+
+  storeIntendedDestination(destinationPathname, {
+    search: destinationSearch,
+    state: destinationState
   });
-  
-  // Navigate to login with the stored location in state as well (for immediate access)
+
   navigate('/login', {
-    state: { 
+    state: {
       from: {
-        pathname: currentPath,
-        search: currentSearch,
-        state: currentState
+        pathname: destinationPathname,
+        search: destinationSearch,
+        state: destinationState
       }
     },
-    replace: true
+    replace
   });
 };
 

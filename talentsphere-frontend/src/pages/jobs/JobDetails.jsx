@@ -175,7 +175,16 @@ const JobDetails = () => {
   }, [id, isAuthenticated, user]);
 
   const handleApply = async () => {
-    console.log('🚀 Apply button clicked!', { id, user, isAuthenticated, job });
+    if (!job) {
+      return;
+    }
+
+    const applicationType = job.application_type || 'internal';
+    const overridePath = applicationType === 'internal'
+      ? { pathname: `/jobs/${id}/apply` }
+      : { pathname: `/jobs/${id}` };
+
+    console.log('🚀 Apply button clicked!', { id, user, isAuthenticated, job, applicationType, overridePath });
     
     requireAuth(async () => {
       if (user?.role !== 'job_seeker') {
@@ -200,14 +209,14 @@ const JobDetails = () => {
       }
 
       // Check application method and redirect accordingly
-      const applicationType = job.application_type || 'internal';
-      console.log('🔍 Application type:', applicationType);
+      const currentApplicationType = job.application_type || 'internal';
+      console.log('🔍 Application type:', currentApplicationType);
 
       try {
         setApplying(true);
         setError(null);
 
-        if (applicationType === 'external' && job.application_url) {
+        if (currentApplicationType === 'external' && job.application_url) {
           // External application - open URL in new tab
           console.log('🌐 Opening external URL:', job.application_url);
           window.open(job.application_url, '_blank', 'noopener,noreferrer');
@@ -218,7 +227,7 @@ const JobDetails = () => {
           } catch (trackError) {
             console.warn('Could not track external application click:', trackError);
           }
-        } else if (applicationType === 'email' && job.application_email) {
+        } else if (currentApplicationType === 'email' && job.application_email) {
           // Email application - open email client
           console.log('📧 Opening email application:', job.application_email);
           const subject = encodeURIComponent(`Application for ${job.title} at ${job.company?.name || 'Your Company'}`);
@@ -254,7 +263,7 @@ ${user.name || user.email}`);
       } finally {
         setApplying(false);
       }
-    });
+    }, { overridePath });
   };
 
   const toggleBookmark = async () => {

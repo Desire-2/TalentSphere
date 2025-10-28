@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
+import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import SEOHelmet from '../../components/seo/SEOHelmet';
 import { 
   generateScholarshipStructuredData, 
@@ -46,6 +47,7 @@ const ScholarshipDetail = () => {
   const [isApplying, setIsApplying] = useState(false);
   const [showExternalConfirm, setShowExternalConfirm] = useState(false);
   const { isAuthenticated, user } = useAuthStore();
+  const { requireAuth, navigateToProtectedRoute } = useAuthNavigation();
 
   // Helper function to validate and format URL
   const formatExternalUrl = (url) => {
@@ -141,70 +143,65 @@ const ScholarshipDetail = () => {
   };
 
   const handleApply = async () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/scholarships/${id}` } });
+    if (!scholarship) {
       return;
     }
 
-    // Check if deadline has passed
-    if (isDeadlinePassed(scholarship.application_deadline)) {
-      alert('The application deadline for this scholarship has passed.');
-      return;
-    }
+    const applicationType = scholarship.application_type || 'external';
+    const overridePath = applicationType === 'internal'
+      ? { pathname: `/scholarships/${id}/apply` }
+      : { pathname: `/scholarships/${id}` };
 
-    setIsApplying(true);
-    
-    try {
-      // Determine application type
-      const applicationType = scholarship.application_type || 'external';
-      
-      if (applicationType === 'external' || scholarship.application_url) {
-        // External scholarship - redirect to external URL
-        const applicationUrl = scholarship.application_url || scholarship.external_application_url;
-        
-        if (applicationUrl) {
-          const formattedUrl = formatExternalUrl(applicationUrl);
-          const domain = getDomainFromUrl(applicationUrl);
-          
-          // For external applications, show confirmation and redirect
-          if (window.confirm(
-            `You will be redirected to the external application portal at ${domain}.\n\nDo you want to continue?`
-          )) {
-            // Track application attempt
-            try {
-              await scholarshipService.trackApplicationClick(id);
-            } catch (trackError) {
-              console.warn('Could not track application click:', trackError);
-            }
-            
-            // Open external application URL
-            window.open(formattedUrl, '_blank');
-            
-            // Show success message after a short delay
-            setTimeout(() => {
-              alert('Application portal opened in a new tab. Please complete your application on the external website.\n\nTip: Keep this page open for reference while applying!');
-            }, 500);
-          }
-        }
-      } else if (applicationType === 'email' && scholarship.application_email) {
-        // Email application - compose email
-        const subject = `Application for ${scholarship.title}`;
-        const body = `Dear Selection Committee,\n\nI am writing to express my interest in applying for the ${scholarship.title} scholarship.\n\n[Your application details here]\n\nThank you for considering my application.\n\nBest regards,\n${user?.first_name} ${user?.last_name}`;
-        
-        const mailtoLink = `mailto:${scholarship.application_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.open(mailtoLink);
-        
-        alert('Your email client will open shortly. Please send your application to the provided email address.');
-      } else if (applicationType === 'internal') {
-        // Internal scholarship - redirect to application form
-        navigate(`/scholarships/${id}/apply`);
+    requireAuth(async () => {
+      if (isDeadlinePassed(scholarship.application_deadline)) {
+        alert('The application deadline for this scholarship has passed.');
+        return;
       }
-    } catch (error) {
-      console.error('Error during application:', error);
-      alert('There was an error processing your application. Please try again.');
-    } finally {
-      setIsApplying(false);
-    }
+
+      setIsApplying(true);
+
+      try {
+        if (applicationType === 'external' || scholarship.application_url) {
+          const applicationUrl = scholarship.application_url || scholarship.external_application_url;
+
+          if (applicationUrl) {
+            const formattedUrl = formatExternalUrl(applicationUrl);
+            const domain = getDomainFromUrl(applicationUrl);
+
+            if (window.confirm(
+              `You will be redirected to the external application portal at ${domain}.\n\nDo you want to continue?`
+            )) {
+              try {
+                await scholarshipService.trackApplicationClick(id);
+              } catch (trackError) {
+                console.warn('Could not track application click:', trackError);
+              }
+
+              window.open(formattedUrl, '_blank');
+
+              setTimeout(() => {
+                alert('Application portal opened in a new tab. Please complete your application on the external website.\n\nTip: Keep this page open for reference while applying!');
+              }, 500);
+            }
+          }
+        } else if (applicationType === 'email' && scholarship.application_email) {
+          const subject = `Application for ${scholarship.title}`;
+          const body = `Dear Selection Committee,\n\nI am writing to express my interest in applying for the ${scholarship.title} scholarship.\n\n[Your application details here]\n\nThank you for considering my application.\n\nBest regards,\n${user?.first_name} ${user?.last_name}`;
+
+          const mailtoLink = `mailto:${scholarship.application_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          window.open(mailtoLink);
+
+          alert('Your email client will open shortly. Please send your application to the provided email address.');
+        } else if (applicationType === 'internal') {
+          navigateToProtectedRoute(`/scholarships/${id}/apply`);
+        }
+      } catch (error) {
+        console.error('Error during application:', error);
+        alert('There was an error processing your application. Please try again.');
+      } finally {
+        setIsApplying(false);
+      }
+    }, { overridePath });
   };
 
   const handleBookmark = async () => {

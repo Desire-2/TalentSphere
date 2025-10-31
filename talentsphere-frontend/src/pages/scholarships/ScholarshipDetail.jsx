@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   GraduationCap,
   MapPin,
@@ -401,10 +403,30 @@ const ScholarshipDetail = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="prose max-w-none">
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                      h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                      h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                      h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                      p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                      ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                      ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                      li: ({node, ...props}) => <li {...props} className="ml-4" />,
+                      strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                      em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                      blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-blue-500 pl-4 italic text-gray-600 my-4" />,
+                      code: ({node, inline, ...props}) => 
+                        inline 
+                          ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
+                          : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
+                      hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                    }}
+                  >
                     {safeRender(scholarship.description)}
-                  </p>
+                  </ReactMarkdown>
                 </div>
               </CardContent>
             </Card>
@@ -419,10 +441,30 @@ const ScholarshipDetail = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                        h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                        h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                        h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                        p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                        ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                        ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                        li: ({node, ...props}) => <li {...props} className="ml-4" />,
+                        strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                        em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                        blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-green-500 pl-4 italic text-gray-600 my-4" />,
+                        code: ({node, inline, ...props}) => 
+                          inline 
+                            ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
+                            : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
+                        hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                      }}
+                    >
                       {safeRender(scholarship.eligibility_requirements)}
-                    </p>
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
@@ -438,10 +480,30 @@ const ScholarshipDetail = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <div className="prose prose-blue max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                        h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                        h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                        h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                        p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                        ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                        ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                        li: ({node, ...props}) => <li {...props} className="ml-4" />,
+                        strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                        em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                        blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-purple-500 pl-4 italic text-gray-600 my-4" />,
+                        code: ({node, inline, ...props}) => 
+                          inline 
+                            ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
+                            : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
+                        hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                      }}
+                    >
                       {safeRender(scholarship.application_process)}
-                    </p>
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>

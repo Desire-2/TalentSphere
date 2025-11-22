@@ -50,6 +50,7 @@ import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import MDEditor from '@uiw/react-md-editor';
 import { externalAdminService } from '../../services/externalAdmin';
 import { toast } from 'sonner';
+import { parseJobWithAI } from '../../services/aiJobParser';
 
 const coerceToString = (value, fallback = '') => {
   if (value === undefined || value === null) {
@@ -240,6 +241,11 @@ const CreateExternalJob = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'saving', 'saved', 'error'
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [fieldAnimations, setFieldAnimations] = useState({});
+  
+  // AI Job Parser State
+  const [aiParserText, setAiParserText] = useState('');
+  const [aiParsing, setAiParsing] = useState(false);
+  const [showAiParser, setShowAiParser] = useState(false);
   
   // Enhanced Markdown Editor Features
   const [showTemplates, setShowTemplates] = useState(false);
@@ -1364,6 +1370,138 @@ Tools: Git, Jest, Cypress
     suggestCompanyInfoRef.current = suggestCompanyInfo;
   }, [suggestCompanyInfo]);
 
+  // AI Job Parser Handler
+  const handleAiParse = async () => {
+    if (!aiParserText.trim()) {
+      toast.error('Please paste job content to parse');
+      return;
+    }
+
+    setAiParsing(true);
+    
+    try {
+      // Show loading toast
+      const loadingToast = toast.loading('🤖 AI is analyzing the job posting...', {
+        description: 'This may take a few seconds'
+      });
+
+      // Parse the content using AI (pass categories for intelligent matching)
+      const parsedData = await parseJobWithAI(aiParserText, categories);
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
+      // Merge with existing form data (preserve any manually entered data)
+      const mergedData = {
+        ...formData,
+        ...parsedData,
+        // Convert empty strings to undefined for proper form handling
+        category_id: parsedData.category_id || formData.category_id || undefined,
+        salary_min: parsedData.salary_min?.toString() || formData.salary_min || '',
+        salary_max: parsedData.salary_max?.toString() || formData.salary_max || '',
+        years_experience_min: parsedData.years_experience_min?.toString() || formData.years_experience_min || '0',
+        years_experience_max: parsedData.years_experience_max?.toString() || formData.years_experience_max || '',
+      };
+      
+      // Analyze which fields were auto-filled
+      const filledFields = [];
+      const fieldLabels = {
+        title: 'Job Title',
+        summary: 'Job Summary',
+        description: 'Job Description',
+        external_company_name: 'Company Name',
+        external_company_website: 'Company Website',
+        external_company_logo: 'Company Logo',
+        employment_type: 'Employment Type',
+        experience_level: 'Experience Level',
+        category_id: 'Job Category',
+        location_type: 'Location Type',
+        location_city: 'City',
+        location_state: 'State',
+        location_country: 'Country',
+        salary_min: 'Min Salary',
+        salary_max: 'Max Salary',
+        salary_currency: 'Currency',
+        salary_period: 'Salary Period',
+        salary_negotiable: 'Negotiable',
+        required_skills: 'Required Skills',
+        preferred_skills: 'Preferred Skills',
+        years_experience_min: 'Min Experience',
+        years_experience_max: 'Max Experience',
+        education_requirement: 'Education',
+        application_type: 'Application Type',
+        application_url: 'Application URL',
+        application_email: 'Application Email',
+        application_instructions: 'Application Instructions',
+        source_url: 'Source URL'
+      };
+      
+      // Check which fields have values
+      Object.keys(parsedData).forEach(key => {
+        const value = parsedData[key];
+        if (value !== null && value !== undefined && value !== '' && key !== 'job_source') {
+          if (fieldLabels[key]) {
+            filledFields.push(fieldLabels[key]);
+          }
+        }
+      });
+      
+      console.log('📊 Auto-filled fields:', filledFields);
+      console.log('📝 Total fields filled:', filledFields.length);
+      
+      // Update form data
+      setFormData(mergedData);
+      setIsDirty(true);
+      
+      // Clear any existing errors
+      setErrors({});
+      
+      // Clear the AI parser text
+      setAiParserText('');
+      setShowAiParser(false);
+      
+      // Show success message with detailed field count
+      const fieldSummary = filledFields.length > 5 
+        ? `${filledFields.slice(0, 3).join(', ')}, and ${filledFields.length - 3} more fields`
+        : filledFields.join(', ');
+      
+      toast.success('✨ AI successfully parsed the job posting!', {
+        description: `Auto-filled ${filledFields.length} fields: ${fieldSummary}`,
+        duration: 6000,
+        action: {
+          label: 'View Details',
+          onClick: () => {
+            console.table(filledFields);
+            setIsPreview(true);
+          }
+        }
+      });
+      
+      // Log detailed analysis to console for debugging
+      console.log('✅ Parsing completed successfully!');
+      console.log('📋 Field-by-field analysis:');
+      console.table(
+        Object.keys(fieldLabels).map(key => ({
+          Field: fieldLabels[key],
+          'Auto-Filled': parsedData[key] ? '✓' : '✗',
+          Value: parsedData[key] ? String(parsedData[key]).substring(0, 50) : 'Not extracted'
+        }))
+      );
+      
+      // Optional: Scroll to form or highlight filled fields
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+    } catch (error) {
+      console.error('AI parsing error:', error);
+      toast.error('❌ Failed to parse job posting', {
+        description: error.message || 'Please check the content and try again',
+        duration: 6000
+      });
+    } finally {
+      setAiParsing(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -1711,7 +1849,21 @@ Tools: Git, Jest, Cypress
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Template Import Button */}
+              {/* AI Parser Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAiParser(!showAiParser)}
+                className="flex items-center space-x-2 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-200"
+                disabled={loading || aiParsing}
+              >
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                <span className="font-medium">AI Auto-Fill</span>
+                <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-700">
+                  Beta
+                </Badge>
+              </Button>
+              
               <div className="relative">
                 <Button
                   variant="outline"
@@ -2082,6 +2234,141 @@ Tools: Git, Jest, Cypress
             )}
           </div>
         </div>
+
+        {/* AI Job Parser Section */}
+        {showAiParser && (
+          <Card className="enhanced-card border-2 border-purple-300 shadow-xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Sparkles className="h-6 w-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">🤖 AI-Powered Job Parser</CardTitle>
+                    <CardDescription className="text-purple-100">
+                      Paste any job posting content and let AI extract and fill the form automatically
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAiParser(false)}
+                  className="h-8 w-8 p-0 hover:bg-white/20 text-white rounded-full"
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6">
+              {/* Instructions */}
+              <Alert className="border-purple-200 bg-purple-50">
+                <Info className="h-4 w-4 text-purple-600" />
+                <AlertDescription className="text-purple-800">
+                  <strong>How it works:</strong> Copy and paste a job posting from LinkedIn, Indeed, or any website. 
+                  Our AI will automatically extract the job title, company info, requirements, salary, and more!
+                </AlertDescription>
+              </Alert>
+
+              {/* Text Area for Job Content */}
+              <div className="space-y-2">
+                <Label htmlFor="ai-parser-input" className="text-base font-semibold flex items-center space-x-2">
+                  <FileText className="h-4 w-4 text-purple-600" />
+                  <span>Paste Job Posting Content</span>
+                </Label>
+                <Textarea
+                  id="ai-parser-input"
+                  value={aiParserText}
+                  onChange={(e) => setAiParserText(e.target.value)}
+                  placeholder="Paste the entire job posting here... 
+
+Example:
+Senior Software Engineer at TechCorp
+Location: San Francisco, CA (Hybrid)
+Salary: $120,000 - $180,000/year
+
+About the role:
+We're looking for an experienced software engineer...
+
+Requirements:
+- 5+ years of experience with React and Node.js
+- Strong knowledge of TypeScript
+- Experience with AWS and Docker
+
+How to apply:
+Visit https://techcorp.com/careers to apply"
+                  className="min-h-[300px] font-mono text-sm resize-y border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  disabled={aiParsing}
+                />
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>{aiParserText.length} characters</span>
+                  <span className="text-purple-600">Minimum 50 characters recommended</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleAiParse}
+                  disabled={aiParsing || !aiParserText.trim() || aiParserText.length < 50}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
+                  size="lg"
+                >
+                  {aiParsing ? (
+                    <>
+                      <div className="loading-spinner w-5 h-5 mr-2" />
+                      <span>AI is analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5 mr-2" />
+                      <span>Parse with AI & Auto-Fill Form</span>
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAiParserText('');
+                    setShowAiParser(false);
+                  }}
+                  disabled={aiParsing}
+                  className="px-6"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-purple-200">
+                <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                  <HelpCircle className="h-4 w-4 mr-1" />
+                  Tips for Best Results
+                </h4>
+                <ul className="space-y-1 text-sm text-purple-700">
+                  <li className="flex items-start space-x-2">
+                    <span className="text-purple-500">✓</span>
+                    <span>Include the complete job posting with all sections</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-purple-500">✓</span>
+                    <span>More details = better accuracy (company info, requirements, salary, etc.)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-purple-500">✓</span>
+                    <span>Works with LinkedIn, Indeed, Glassdoor, and custom job posts</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-purple-500">✓</span>
+                    <span>Review and edit the auto-filled fields before publishing</span>
+                  </li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Template Import Success Banner */}
         {selectedTemplate && (

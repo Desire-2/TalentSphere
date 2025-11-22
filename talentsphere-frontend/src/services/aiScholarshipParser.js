@@ -54,22 +54,40 @@ ${categoryContext}
 CRITICAL INSTRUCTIONS:
 1. Extract ALL fields that have information available in the text
 2. For category_id: Match the scholarship to the most appropriate category from the list above. Return the numeric ID.
-3. For dates: Convert to ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
-4. For amounts: Extract numeric values only (no currency symbols or text)
-5. For URLs: Ensure they start with http:// or https://
+3. For dates: Convert to ISO 8601 format (YYYY-MM-DDTHH:mm:ss). Look for keywords: deadline, due date, application closes, apply by
+4. For amounts: Extract numeric values only (no currency symbols or text). Look for: award amount, scholarship value, funding, stipend, grant
+5. For URLs: Ensure they start with http:// or https://. Extract website, apply link, application portal
 6. For boolean fields: Use true/false (lowercase)
-7. For location: Parse city, state, and country separately
-8. For study_level: Extract ALL applicable study levels and return as comma-separated string. Valid values: undergraduate, graduate, postgraduate, phd, vocational. Example: "undergraduate,graduate" or "phd,postgraduate"
-9. For scholarship_type: Use lowercase (merit-based, need-based, sports, academic, research, diversity, community, athletic, art, stem, international)
-10. For gender_requirements: Use lowercase (any, male, female, other)
-11. For description: Convert to clean markdown format with proper headings and formatting
-12. For funding_type: Use lowercase (full, partial, tuition-only, living-expenses)
-13. For application_type: Use lowercase (external, email, internal)
-14. For location_type: Use lowercase (any, specific-country, specific-city)
-15. Leave fields empty/null if information is not available
+7. For location: Parse city, state, and country separately. "Any location" = location_type: "any"
+8. For study_level: Extract ALL applicable study levels and return as comma-separated string. Valid values: undergraduate, graduate, postgraduate, phd, vocational. Example: "undergraduate,graduate" or "phd,postgraduate". Look for: bachelor's, master's, doctoral, PhD, undergraduate, graduate
+9. For scholarship_type: Use lowercase (merit-based, need-based, sports, academic, research, diversity, community, athletic, art, stem, international). Infer from context if not explicitly stated
+10. For gender_requirements: Use lowercase (any, male, female, other). "Open to all" or no mention = "any"
+11. For description: Convert to clean markdown format with proper headings and formatting. Include all details about the scholarship
+12. For funding_type: Use lowercase (full, partial, tuition-only, living-expenses). "Full funding" includes tuition + living. "Tuition only" = tuition-only
+13. For application_type: Use lowercase (external, email, internal). If there's a website link = "external", if email address = "email"
+14. For location_type: Use lowercase (any, specific-country, specific-city). No location restriction = "any"
+15. For required_documents: List all documents mentioned (transcripts, essays, letters, CV, etc.)
+16. For essay_topics: Extract any essay prompts or topics mentioned
+17. For num_recommendation_letters: Extract the specific number of letters required (default: 2)
+18. For renewable: Look for keywords: renewable, multi-year, annually renewable
+19. For duration_years: Extract scholarship duration (1-10 years). Default: 1
+20. For field_of_study: Extract specific fields like Engineering, Medicine, Business, STEM, Arts, etc.
+21. For nationality_requirements: Extract citizenship or residency requirements
+22. For other_requirements: Extract additional criteria (work experience, community service, etc.)
+23. For min_gpa: Extract minimum GPA (0.0-4.0 scale). Convert from percentage if needed
+24. For max_age: Extract age limits if mentioned
+25. Leave fields empty/null if information is not available
 
 SCHOLARSHIP POSTING:
 ${rawContent}
+
+EXTRACTION EXAMPLES:
+- "Full tuition + $2,000/month stipend" → amount_min: 24000, amount_max: null, funding_type: "full"
+- "Bachelor's and Master's students" → study_level: "undergraduate,graduate"
+- "Open to all nationalities" → nationality_requirements: "Open to all", location_type: "any"
+- "3.5 GPA required" → min_gpa: 3.5
+- "Two letters of recommendation" → requires_recommendation_letters: true, num_recommendation_letters: 2
+- "Essay on career goals (500 words)" → requires_essay: true, essay_topics: "Career goals essay (500 words)"
 
 Return ONLY a valid JSON object with this exact structure (no additional text, no markdown formatting):
 {
@@ -90,7 +108,7 @@ Return ONLY a valid JSON object with this exact structure (no additional text, n
   "state": "State/Province name",
   "amount_min": "numeric_value_only",
   "amount_max": "numeric_value_only",
-  "currency": "USD|EUR|GBP|CAD|AUD",
+  "currency": "USD|EUR|GBP|CAD|AUD|CNY|INR|JPY|etc. (3-letter ISO code, detect from $ € £ ¥ symbols or text)",
   "funding_type": "full|partial|tuition-only|living-expenses",
   "renewable": true or false,
   "duration_years": "numeric_value",
@@ -229,6 +247,27 @@ function validateAndCleanScholarshipData(data) {
     }
   }
   
+  // Currency validation and normalization
+  if (data.currency) {
+    let currency = String(data.currency).toUpperCase().trim();
+    
+    // Map common currency symbols to codes
+    const currencyMap = {
+      '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY', 
+      '₹': 'INR', 'C$': 'CAD', 'A$': 'AUD', '元': 'CNY',
+      'USD': 'USD', 'EUR': 'EUR', 'GBP': 'GBP', 'CAD': 'CAD',
+      'AUD': 'AUD', 'JPY': 'JPY', 'CNY': 'CNY', 'INR': 'INR'
+    };
+    
+    if (currencyMap[currency]) {
+      cleaned.currency = currencyMap[currency];
+    } else if (currency.length === 3) {
+      cleaned.currency = currency;
+    } else {
+      cleaned.currency = 'USD'; // Default fallback
+    }
+  }
+  
   if (data.amount_min) {
     const amount = parseInt(String(data.amount_min).replace(/[^0-9]/g, ''));
     if (!isNaN(amount) && amount >= 0) {
@@ -244,9 +283,16 @@ function validateAndCleanScholarshipData(data) {
   }
   
   if (data.min_gpa) {
-    const gpa = parseFloat(data.min_gpa);
+    let gpa = parseFloat(data.min_gpa);
+    
+    // Convert percentage to 4.0 scale if needed (e.g., 85% → 3.4)
+    if (!isNaN(gpa) && gpa > 4.0 && gpa <= 100) {
+      console.warn(`⚠️ Converting GPA from percentage: ${gpa}% → ${(gpa / 25).toFixed(2)}`);
+      gpa = gpa / 25; // Convert percentage to 4.0 scale (100% = 4.0)
+    }
+    
     if (!isNaN(gpa) && gpa >= 0 && gpa <= 4.0) {
-      cleaned.min_gpa = gpa.toString();
+      cleaned.min_gpa = gpa.toFixed(2).toString();
     }
   }
   
@@ -441,11 +487,11 @@ export function analyzeFilledFields(parsedData) {
     basic: ['title', 'summary', 'description', 'scholarship_type', 'category_id'],
     organization: ['external_organization_name', 'external_organization_website', 'external_organization_logo', 'source_url'],
     academic: ['study_level', 'field_of_study'],
-    location: ['location_type', 'country', 'city', 'state', 'nationality_requirements', 'gender_requirements'],
+    location: ['location_type', 'country', 'city', 'state'],
+    eligibility: ['nationality_requirements', 'gender_requirements', 'min_gpa', 'max_age', 'other_requirements'],
     financial: ['amount_min', 'amount_max', 'currency', 'funding_type', 'renewable', 'duration_years'],
-    requirements: ['min_gpa', 'max_age', 'other_requirements'],
-    application: ['application_type', 'application_deadline', 'application_email', 'application_url', 'application_instructions'],
-    documents: ['requires_transcript', 'requires_recommendation_letters', 'requires_essay', 'requires_portfolio', 'required_documents']
+    application: ['application_type', 'application_deadline', 'application_email', 'application_url', 'application_instructions', 'required_documents'],
+    documents: ['requires_transcript', 'requires_recommendation_letters', 'num_recommendation_letters', 'requires_essay', 'essay_topics', 'requires_portfolio']
   };
   
   const analysis = {

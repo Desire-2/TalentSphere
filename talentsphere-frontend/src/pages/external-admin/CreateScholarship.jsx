@@ -928,7 +928,10 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   required
                   tooltip="The type of scholarship being offered"
                 >
-                  <Select value={formData.scholarship_type} onValueChange={(value) => handleInputChange('scholarship_type', value)}>
+                  <Select 
+                    value={formData.scholarship_type || undefined} 
+                    onValueChange={(value) => handleInputChange('scholarship_type', value)}
+                  >
                     <SelectTrigger className={errors.scholarship_type ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select scholarship type" />
                     </SelectTrigger>
@@ -948,16 +951,25 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   required
                   tooltip="Select the most appropriate category"
                 >
-                  <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
+                  <Select 
+                    value={formData.category_id ? formData.category_id.toString() : undefined} 
+                    onValueChange={(value) => handleInputChange('category_id', value)}
+                  >
                     <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
+                      {categories.length > 0 ? (
+                        categories.map(category => (
+                          <SelectItem key={category.id} value={category.id.toString()}>
+                            {category.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-4 text-sm text-gray-500 text-center">
+                          Loading categories...
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </FormField>
@@ -1109,7 +1121,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 field="location_type"
                 tooltip="Geographic scope of this scholarship"
               >
-                <Select value={formData.location_type} onValueChange={(value) => handleInputChange('location_type', value)}>
+                <Select value={formData.location_type || undefined} onValueChange={(value) => handleInputChange('location_type', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select location type" />
                   </SelectTrigger>
@@ -1168,7 +1180,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="gender_requirements"
                   tooltip="Any gender-specific requirements"
                 >
-                  <Select value={formData.gender_requirements} onValueChange={(value) => handleInputChange('gender_requirements', value)}>
+                  <Select value={formData.gender_requirements || undefined} onValueChange={(value) => handleInputChange('gender_requirements', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender requirement" />
                     </SelectTrigger>
@@ -1223,7 +1235,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="currency"
                   tooltip="Currency for the scholarship amount"
                 >
-                  <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+                  <Select value={formData.currency || undefined} onValueChange={(value) => handleInputChange('currency', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
@@ -1244,7 +1256,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="funding_type"
                   tooltip="Type of funding provided"
                 >
-                  <Select value={formData.funding_type} onValueChange={(value) => handleInputChange('funding_type', value)}>
+                  <Select value={formData.funding_type || undefined} onValueChange={(value) => handleInputChange('funding_type', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select funding type" />
                     </SelectTrigger>
@@ -1347,7 +1359,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 required
                 tooltip="How students should apply"
               >
-                <Select value={formData.application_type} onValueChange={(value) => handleInputChange('application_type', value)}>
+                <Select value={formData.application_type || undefined} onValueChange={(value) => handleInputChange('application_type', value)}>
                   <SelectTrigger className={errors.application_type ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select application type" />
                   </SelectTrigger>
@@ -1520,7 +1532,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 field="status"
                 tooltip="Whether to publish immediately or save as draft"
               >
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <Select value={formData.status || undefined} onValueChange={(value) => handleInputChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

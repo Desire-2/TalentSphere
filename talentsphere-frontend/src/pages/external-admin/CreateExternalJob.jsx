@@ -1505,6 +1505,21 @@ Tools: Git, Jest, Cypress
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate field length limits
+    const lengthErrors = {};
+    if (formData.title && formData.title.length > 500) {
+      lengthErrors.title = 'Title must be 500 characters or less';
+    }
+    if (formData.summary && formData.summary.length > 1000) {
+      lengthErrors.summary = 'Summary must be 1000 characters or less';
+    }
+    
+    if (Object.keys(lengthErrors).length > 0) {
+      setErrors(lengthErrors);
+      toast.error('Please fix field length errors');
+      return;
+    }
+    
     // Validate all fields
     const requiredFields = [
       { field: 'title', validator: (val) => val?.trim(), message: 'Job title is required' },

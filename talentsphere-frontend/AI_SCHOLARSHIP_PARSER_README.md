@@ -29,7 +29,7 @@ The AI Scholarship Parser is an intelligent automation tool that uses Google Gem
 - Source URL
 
 ### Academic Information (2 fields)
-- Study level
+- Study level (comma-separated for multiple levels)
 - Field of study
 
 ### Location & Eligibility (6 fields)
@@ -271,6 +271,7 @@ diversity, community, athletic, art, stem, international
 ### Study Levels
 ```
 undergraduate, graduate, postgraduate, phd, vocational
+(Can be comma-separated for multiple levels: "undergraduate,graduate")
 ```
 
 ### Funding Types

@@ -59,7 +59,7 @@ CRITICAL INSTRUCTIONS:
 5. For URLs: Ensure they start with http:// or https://
 6. For boolean fields: Use true/false (lowercase)
 7. For location: Parse city, state, and country separately
-8. For study_level: Use lowercase (undergraduate, graduate, postgraduate, phd, vocational)
+8. For study_level: Extract ALL applicable study levels and return as comma-separated string. Valid values: undergraduate, graduate, postgraduate, phd, vocational. Example: "undergraduate,graduate" or "phd,postgraduate"
 9. For scholarship_type: Use lowercase (merit-based, need-based, sports, academic, research, diversity, community, athletic, art, stem, international)
 10. For gender_requirements: Use lowercase (any, male, female, other)
 11. For description: Convert to clean markdown format with proper headings and formatting
@@ -82,7 +82,7 @@ Return ONLY a valid JSON object with this exact structure (no additional text, n
   "external_organization_website": "https://organization.com",
   "external_organization_logo": "https://organization.com/logo.png",
   "source_url": "https://original-scholarship-url.com",
-  "study_level": "undergraduate|graduate|postgraduate|phd|vocational",
+  "study_level": "comma-separated list: undergraduate,graduate,postgraduate,phd,vocational (include all that apply)",
   "field_of_study": "Engineering, Medicine, etc.",
   "location_type": "any|specific-country|specific-city",
   "country": "Country name",
@@ -190,6 +190,28 @@ function validateAndCleanScholarshipData(data) {
       }
     }
   });
+  
+  // Enforce field length limits to match database schema
+  if (cleaned.title && cleaned.title.length > 500) {
+    console.warn(`⚠️ Title truncated from ${cleaned.title.length} to 500 characters`);
+    cleaned.title = cleaned.title.substring(0, 497) + '...';
+  }
+  
+  if (cleaned.summary && cleaned.summary.length > 1000) {
+    console.warn(`⚠️ Summary truncated from ${cleaned.summary.length} to 1000 characters`);
+    cleaned.summary = cleaned.summary.substring(0, 997) + '...';
+  }
+  
+  // Validate and clean study levels (can be comma-separated)
+  if (cleaned.study_level) {
+    const validLevels = ['undergraduate', 'graduate', 'postgraduate', 'phd', 'vocational'];
+    const levels = cleaned.study_level.split(',').map(l => l.trim().toLowerCase()).filter(l => validLevels.includes(l));
+    if (levels.length > 0) {
+      cleaned.study_level = levels.join(',');
+    } else {
+      delete cleaned.study_level;
+    }
+  }
   
   // Clean and validate URLs
   const urlFields = ['external_organization_website', 'external_organization_logo', 'source_url', 'application_url'];

@@ -646,6 +646,21 @@ const CreateScholarship = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate field length limits
+    const lengthErrors = {};
+    if (formData.title && formData.title.length > 500) {
+      lengthErrors.title = 'Title must be 500 characters or less';
+    }
+    if (formData.summary && formData.summary.length > 1000) {
+      lengthErrors.summary = 'Summary must be 1000 characters or less';
+    }
+    
+    if (Object.keys(lengthErrors).length > 0) {
+      setErrors(lengthErrors);
+      toast.error('Please fix field length errors');
+      return;
+    }
+    
     // Validate all fields
     const requiredFields = [
       { field: 'title', validator: (val) => val?.trim() },
@@ -1026,20 +1041,42 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 <FormField
                   label="Study Level"
                   field="study_level"
-                  tooltip="Academic level this scholarship is for"
+                  tooltip="Academic level(s) this scholarship is for - select all that apply"
                 >
-                  <Select value={formData.study_level} onValueChange={(value) => handleInputChange('study_level', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select study level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scholarshipService.getStudyLevels().map(level => (
-                        <SelectItem key={level.value} value={level.value}>
-                          {level.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {scholarshipService.getStudyLevels().map(level => {
+                        const isSelected = formData.study_level?.split(',').includes(level.value);
+                        return (
+                          <button
+                            key={level.value}
+                            type="button"
+                            onClick={() => {
+                              const currentLevels = formData.study_level ? formData.study_level.split(',') : [];
+                              const newLevels = isSelected
+                                ? currentLevels.filter(l => l !== level.value)
+                                : [...currentLevels, level.value];
+                              handleInputChange('study_level', newLevels.join(','));
+                            }}
+                            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                            }`}
+                          >
+                            {level.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formData.study_level && (
+                      <p className="text-sm text-gray-600">
+                        Selected: {formData.study_level.split(',').map(v => 
+                          scholarshipService.getStudyLevels().find(l => l.value === v)?.label
+                        ).filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                  </div>
                 </FormField>
 
                 <FormField

@@ -55,15 +55,15 @@ class Job(db.Model):
     posted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     # External job source information
-    external_company_name = db.Column(db.String(200))  # For external jobs without company profile
-    external_company_website = db.Column(db.String(255))  # External company website
+    external_company_name = db.Column(db.String(300))  # For external jobs without company profile
+    external_company_website = db.Column(db.String(500))  # External company website
     external_company_logo = db.Column(db.String(255))  # External company logo URL
     job_source = db.Column(db.String(50), default='internal')  # internal, external, scraped
     source_url = db.Column(db.String(500))  # Original job posting URL for external jobs
     
     # Basic Information
-    title = db.Column(db.String(200), nullable=False, index=True)
-    slug = db.Column(db.String(200), nullable=False, index=True)
+    title = db.Column(db.String(500), nullable=False, index=True)
+    slug = db.Column(db.String(500), nullable=False, index=True)
     description = db.Column(db.Text, nullable=False)
     summary = db.Column(db.Text)  # Short description for listings
     

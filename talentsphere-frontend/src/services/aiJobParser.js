@@ -213,10 +213,23 @@ const validateAndCleanJobData = (data) => {
   const validSalaryPeriods = ['yearly', 'monthly', 'hourly'];
   const salaryPeriod = toString(data.salary_period, 'yearly').toLowerCase();
 
+  // Enforce field length limits to match database schema
+  let title = toString(data.title);
+  if (title.length > 500) {
+    console.warn(`⚠️ Job title truncated from ${title.length} to 500 characters`);
+    title = title.substring(0, 497) + '...';
+  }
+  
+  let summary = toString(data.summary);
+  if (summary.length > 1000) {
+    console.warn(`⚠️ Job summary truncated from ${summary.length} to 1000 characters`);
+    summary = summary.substring(0, 997) + '...';
+  }
+  
   return {
     // Basic Information
-    title: toString(data.title),
-    summary: toString(data.summary),
+    title: title,
+    summary: summary,
     description: toString(data.description),
     
     // Company Information

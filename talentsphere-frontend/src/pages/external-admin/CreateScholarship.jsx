@@ -47,6 +47,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import ShareScholarship from '../../components/scholarships/ShareScholarship';
 import { scholarshipService } from '../../services/scholarship';
+import { parseScholarshipWithAI, analyzeFilledFields } from '../../services/aiScholarshipParser';
 import { toast } from 'sonner';
 
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
@@ -181,6 +182,11 @@ const CreateScholarship = () => {
   // Success and Share State
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [createdScholarship, setCreatedScholarship] = useState(null);
+  
+  // AI Parser State
+  const [aiParserText, setAiParserText] = useState('');
+  const [aiParsing, setAiParsing] = useState(false);
+  const [showAiParser, setShowAiParser] = useState(false);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -570,6 +576,64 @@ const CreateScholarship = () => {
     setJsonError('');
   }, []);
 
+  // AI Parser Handler
+  const handleAiParse = useCallback(async () => {
+    if (!aiParserText.trim()) {
+      toast.error('Please paste scholarship content to parse');
+      return;
+    }
+
+    try {
+      setAiParsing(true);
+      console.log('🤖 Starting AI scholarship parsing...');
+      
+      const parsedData = await parseScholarshipWithAI(aiParserText, categories);
+      
+      // Analyze which fields were filled
+      const analysis = analyzeFilledFields(parsedData);
+      
+      console.log('📊 AI Parser Field Analysis:');
+      console.table(
+        Object.entries(analysis.sections).map(([section, data]) => ({
+          Section: section,
+          'Total Fields': data.total,
+          'Filled': data.filled,
+          'Empty': data.empty,
+          'Fill Rate': `${Math.round((data.filled / data.total) * 100)}%`
+        }))
+      );
+      
+      // Merge parsed data with existing form data
+      setFormData(prev => ({
+        ...prev,
+        ...parsedData
+      }));
+      
+      // Clear AI parser text and close panel
+      setAiParserText('');
+      setShowAiParser(false);
+      
+      // Success notification with details
+      const filledCount = analysis.filledFields;
+      const totalCount = analysis.totalFields;
+      const fillPercentage = Math.round((filledCount / totalCount) * 100);
+      
+      toast.success('Scholarship parsed successfully!', {
+        description: `${filledCount}/${totalCount} fields auto-filled (${fillPercentage}%). Check the form and fill any missing fields.`
+      });
+      
+      console.log('✅ AI parsing completed successfully');
+      
+    } catch (error) {
+      console.error('❌ AI parsing error:', error);
+      toast.error('Failed to parse scholarship', {
+        description: error.message
+      });
+    } finally {
+      setAiParsing(false);
+    }
+  }, [aiParserText, categories]);
+
   // Cleanup timeout ref on unmount
   useEffect(() => {
     return () => {
@@ -669,6 +733,15 @@ const CreateScholarship = () => {
             <Button
               type="button"
               variant="outline"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 border-0"
+              onClick={() => setShowAiParser(!showAiParser)}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI Auto-Fill
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setShowJsonImport(true)}
             >
               <Upload className="w-4 h-4 mr-2" />
@@ -694,6 +767,91 @@ const CreateScholarship = () => {
             <Progress value={formProgress} className="h-2" />
           </CardContent>
         </Card>
+
+        {/* AI Parser Panel - Collapsible */}
+        {showAiParser && (
+          <Card className="border-purple-200 shadow-lg bg-gradient-to-br from-purple-50 to-indigo-50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-purple-900">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  AI Scholarship Parser
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAiParser(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription className="text-purple-700">
+                Paste scholarship content below and let AI extract all the information automatically
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label htmlFor="ai-parser-input" className="text-sm font-medium text-purple-900 mb-2 block">
+                  Scholarship Content
+                </Label>
+                <Textarea
+                  id="ai-parser-input"
+                  value={aiParserText}
+                  onChange={(e) => setAiParserText(e.target.value)}
+                  placeholder="Paste scholarship details here...
+
+Example:
+Fulbright Scholarship 2024
+The Fulbright Program offers scholarships for international students...
+Award Amount: $10,000 - $25,000 per year
+Deadline: March 31, 2024
+Requirements: Minimum GPA 3.5, Bachelor's degree..."
+                  className="min-h-[300px] font-mono text-sm bg-white border-purple-200 focus:border-purple-400"
+                  disabled={aiParsing}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <div className="flex items-center gap-2 text-sm text-purple-700">
+                  <Info className="h-4 w-4" />
+                  <span>AI will extract 40+ fields automatically</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setAiParserText('');
+                      setShowAiParser(false);
+                    }}
+                    disabled={aiParsing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleAiParse}
+                    disabled={aiParsing || !aiParserText.trim()}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                  >
+                    {aiParsing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Parsing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Parse with AI
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

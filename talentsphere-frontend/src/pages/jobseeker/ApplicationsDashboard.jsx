@@ -39,6 +39,7 @@ import {
   ChevronDown,
   MoreVertical
 } from 'lucide-react';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 
 const ApplicationsDashboard = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -287,7 +288,14 @@ const ApplicationsDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Google Ads - Leaderboard */}
+      <div className="mb-6">
+        <div className="flex justify-center">
+          <LeaderboardAd className="rounded-lg shadow-sm" />
+        </div>
+      </div>
+
+      {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardContent className="p-6">
@@ -422,6 +430,13 @@ const ApplicationsDashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Google Ads - Responsive between sections */}
+      <div className="mb-6">
+        <div className="flex justify-center">
+          <ResponsiveAd className="rounded-lg shadow-sm" />
+        </div>
+      </div>
 
       {/* Applications Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -39,6 +39,7 @@ import {
   Filter,
   RefreshCw
 } from 'lucide-react';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
 import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
@@ -874,6 +875,13 @@ const JobSeekerDashboard = () => {
         </Card>
       )}
 
+      {/* Google Ads - Leaderboard */}
+      <section className="mb-8">
+        <div className="flex justify-center">
+          <LeaderboardAd className="rounded-lg shadow-sm" />
+        </div>
+      </section>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
@@ -936,6 +944,13 @@ const JobSeekerDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Google Ads - Responsive between sections */}
+      <section className="mb-8">
+        <div className="flex justify-center">
+          <ResponsiveAd className="rounded-lg shadow-sm" />
+        </div>
+      </section>
 
       <Tabs defaultValue="recommendations" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5 bg-white shadow-lg rounded-xl p-1">

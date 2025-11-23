@@ -39,6 +39,7 @@ import {
   generateScholarshipSEODescription,
   generateKeywords
 } from '../../utils/seoUtils';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 
 const ScholarshipDetail = () => {
   const { id } = useParams();
@@ -340,6 +341,12 @@ const ScholarshipDetail = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Google Ads - Leaderboard */}
+        <div className="mb-8">
+          <div className="flex justify-center">
+            <LeaderboardAd className="rounded-lg shadow-sm" />
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -393,6 +400,13 @@ const ScholarshipDetail = () => {
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* Google Ads - Responsive between sections */}
+            <div className="mb-6">
+              <div className="flex justify-center">
+                <ResponsiveAd className="rounded-lg shadow-sm" />
+              </div>
+            </div>
 
             {/* Description */}
             <Card className="border-0 shadow-lg">
@@ -512,6 +526,11 @@ const ScholarshipDetail = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Google Ads - Square Ad */}
+            <div className="flex justify-center">
+              <SquareAd className="rounded-lg shadow-sm" />
+            </div>
+
             {/* Apply Card */}
             <Card className="border-0 shadow-lg">
               <CardHeader>

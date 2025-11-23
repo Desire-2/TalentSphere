@@ -35,6 +35,7 @@ import apiService from '../../services/api';
 import ShareJob from '../../components/jobs/ShareJob';
 import MarkdownRenderer from '../../components/ui/MarkdownRenderer';
 import SmartTextRenderer from '../../components/ui/SmartTextRenderer';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -391,6 +392,13 @@ ${user.name || user.email}`);
 
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Google Ads - Leaderboard */}
+        <div className="mb-6">
+          <div className="flex justify-center">
+            <LeaderboardAd className="rounded-lg shadow-sm" />
+          </div>
+        </div>
+
         {/* Back Button */}
         <div className="mb-6">
           <Button variant="ghost" asChild>
@@ -684,6 +692,13 @@ ${user.name || user.email}`);
         </CardContent>
       </Card>
 
+      {/* Google Ads - Responsive between sections */}
+      <div className="mb-8">
+        <div className="flex justify-center">
+          <ResponsiveAd className="rounded-lg shadow-sm" />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
@@ -865,6 +880,11 @@ ${user.name || user.email}`);
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Google Ads - Square Ad */}
+          <div className="flex justify-center">
+            <SquareAd className="rounded-lg shadow-sm" />
+          </div>
+
           {/* Company Info */}
           <Card>
             <CardHeader>

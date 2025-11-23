@@ -24,6 +24,7 @@ import { scholarshipService } from '../../services/scholarship';
 import { useAuthStore } from '../../stores/authStore';
 import SEOHelmet from '../../components/seo/SEOHelmet';
 import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
+import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 
 // Sample data for demonstration when API is not available
 const getSampleCategories = () => [
@@ -253,29 +254,21 @@ const ScholarshipList = () => {
 
   const fetchCategories = async () => {
     try {
+      console.log('📚 Fetching scholarship categories...');
       const response = await scholarshipService.getScholarshipCategories();
+      console.log('📚 Categories response:', response);
       
-      // Handle different possible response structures
-      let categoriesData = [];
-      
-      if (response) {
-        if (Array.isArray(response)) {
-          categoriesData = response;
-        } else if (response.categories) {
-          categoriesData = response.categories;
-        } else if (response.data) {
-          categoriesData = Array.isArray(response.data) ? response.data : response.data.categories || [];
-        }
+      // Service now returns array directly or empty array on error
+      if (Array.isArray(response) && response.length > 0) {
+        setCategories(response);
+        console.log(`✅ Loaded ${response.length} scholarship categories`);
+      } else {
+        console.warn('⚠️ No categories returned, using sample categories');
+        // If no categories available, provide sample categories
+        setCategories(getSampleCategories());
       }
-      
-      // If no categories available, provide sample categories
-      if (categoriesData.length === 0) {
-        categoriesData = getSampleCategories();
-      }
-      
-      setCategories(categoriesData);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('❌ Error fetching categories:', error);
       // Provide sample data on error for demonstration
       setCategories(getSampleCategories());
     }
@@ -402,10 +395,22 @@ const ScholarshipList = () => {
         </div>
       </div>
 
+      {/* Google Ads - Leaderboard */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex justify-center mb-8">
+          <LeaderboardAd className="rounded-lg shadow-sm" />
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar - Filters */}
           <div className="lg:w-1/4">
+            {/* Google Ads - Square Ad */}
+            <div className="mb-6">
+              <SquareAd className="rounded-lg shadow-sm mx-auto" />
+            </div>
+
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Filter className="w-5 h-5 mr-2 text-blue-600" />
@@ -455,6 +460,13 @@ const ScholarshipList = () => {
                   {totalScholarships} scholarships found
                   {searchTerm && ` for "${searchTerm}"`}
                 </p>
+              </div>
+            </div>
+
+            {/* Google Ads - Responsive before scholarships */}
+            <div className="mb-8">
+              <div className="flex justify-center">
+                <ResponsiveAd className="rounded-lg shadow-sm" />
               </div>
             </div>
 

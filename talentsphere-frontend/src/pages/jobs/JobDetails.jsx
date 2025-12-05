@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import './JobDetails.css';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -50,6 +51,8 @@ const JobDetails = () => {
   const [applicationData, setApplicationData] = useState(null);
   const [applying, setApplying] = useState(false);
   const [similarJobs, setSimilarJobs] = useState([]);
+  const [similarJobsLoading, setSimilarJobsLoading] = useState(false);
+  const [similarJobsError, setSimilarJobsError] = useState(null);
 
   const getApplyButtonText = () => {
     const applicationType = job.application_type || 'internal';
@@ -153,11 +156,22 @@ const JobDetails = () => {
         }
         
         // Load similar jobs if available
+        setSimilarJobsLoading(true);
+        setSimilarJobsError(null);
         try {
-          const similar = await apiService.getSimilarJobs(id, { limit: 3 });
-          setSimilarJobs(similar.jobs || []);
+          const similar = await apiService.getSimilarJobs(id, { limit: 5 });
+          if (similar.success) {
+            setSimilarJobs(similar.similar_jobs || []);
+          } else {
+            setSimilarJobs([]);
+            setSimilarJobsError(similar.error || 'Failed to load similar jobs');
+          }
         } catch (similarError) {
           console.warn('Could not load similar jobs:', similarError);
+          setSimilarJobsError('Failed to load similar jobs');
+          setSimilarJobs([]);
+        } finally {
+          setSimilarJobsLoading(false);
         }
         
       } catch (error) {
@@ -702,29 +716,134 @@ ${user.name || user.email}`);
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Job Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Job Description</CardTitle>
+          {/* Enhanced Job Description */}
+          <Card className="enhanced-card shadow-xl border-0 bg-gradient-to-br from-white via-gray-50/30 to-blue-50/20">
+            <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold">Job Description</CardTitle>
+                    <CardDescription className="text-blue-100 mt-1">
+                      Detailed overview of the role and responsibilities
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge className="bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm">
+                  <Eye className="w-3 h-3 mr-1" />
+                  Details
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent>
+            
+            <CardContent className="p-0 bg-white/80 backdrop-blur-sm">
+              {/* Enhanced Summary Section */}
               {job.summary && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-                  <SmartTextRenderer 
-                    content={job.summary}
-                    className="text-sm"
-                  />
+                <div className="relative p-6 border-b border-gray-100">
+                  {/* Decorative Background */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 opacity-60"></div>
+                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600 rounded-r"></div>
+                  
+                  <div className="relative">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <Info className="w-4 h-4 text-white" />
+                      </div>
+                      <h4 className="font-bold text-lg text-gray-900">Position Overview</h4>
+                      <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent"></div>
+                    </div>
+                    <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-sm">
+                      <SmartTextRenderer 
+                        content={job.summary}
+                        className="text-gray-700 leading-relaxed text-base"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
-              <div className="prose prose-sm max-w-none">
+
+              {/* Enhanced Description Content */}
+              <div className="p-6">
+                <div className="flex items-center space-x-2 mb-6">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <Briefcase className="w-4 h-4 text-white" />
+                  </div>
+                  <h4 className="font-bold text-lg text-gray-900">Complete Job Details</h4>
+                  <div className="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent"></div>
+                </div>
+
                 {job.description ? (
-                  <SmartTextRenderer 
-                    content={job.description}
-                    className=""
-                  />
+                  <div className="relative">
+                    {/* Enhanced Markdown/Smart Text Rendering */}
+                    <div className="enhanced-job-description prose prose-lg max-w-none 
+                                  prose-headings:text-gray-900 prose-headings:font-bold 
+                                  prose-h1:text-2xl prose-h1:mb-4 prose-h1:mt-6 prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2
+                                  prose-h2:text-xl prose-h2:mb-3 prose-h2:mt-5 prose-h2:text-indigo-700
+                                  prose-h3:text-lg prose-h3:mb-2 prose-h3:mt-4 prose-h3:text-purple-600
+                                  prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
+                                  prose-ul:my-4 prose-li:my-2 prose-li:text-gray-700
+                                  prose-ol:my-4 prose-ol:list-decimal
+                                  prose-strong:text-gray-900 prose-strong:font-semibold
+                                  prose-em:text-indigo-600 prose-em:italic
+                                  prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-purple-700
+                                  prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-lg prose-pre:p-4
+                                  prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50 prose-blockquote:p-4 prose-blockquote:my-4 prose-blockquote:rounded-r-lg
+                                  prose-a:text-indigo-600 prose-a:hover:text-indigo-800 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                                  ">
+                      
+                      {/* Smart content rendering with enhanced markdown support */}
+                      {job.description.includes('##') || job.description.includes('**') || job.description.includes('*') || job.description.includes('-') ? (
+                        <MarkdownRenderer 
+                          content={job.description}
+                          className="enhanced-markdown-content"
+                        />
+                      ) : (
+                        <SmartTextRenderer 
+                          content={job.description}
+                          className="enhanced-text-content"
+                        />
+                      )}
+                    </div>
+
+                    {/* Interactive Elements for Better UX */}
+                    <div className="mt-8 flex items-center justify-between text-sm text-gray-500 border-t border-gray-100 pt-4">
+                      <div className="flex items-center space-x-4">
+                        <span className="flex items-center space-x-1">
+                          <Timer className="w-4 h-4" />
+                          <span>{Math.ceil(job.description.split(' ').length / 200)} min read</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <FileText className="w-4 h-4" />
+                          <span>{job.description.split(' ').length} words</span>
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-gray-500 hover:text-indigo-600"
+                          onClick={() => {
+                            navigator.clipboard.writeText(job.description);
+                            // Add toast notification here if available
+                          }}
+                        >
+                          <Share2 className="w-4 h-4 mr-1" />
+                          Copy Description
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <p className="text-gray-500 italic">No description available</p>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg mb-2">No detailed description available</p>
+                    <p className="text-gray-400 text-sm">The job description has not been provided for this position.</p>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -841,17 +960,222 @@ ${user.name || user.email}`);
             </Card>
           )}
 
-          {/* Application Instructions */}
+          {/* Enhanced Application Instructions */}
           {job.application_instructions && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Application Instructions</CardTitle>
+            <Card className="overflow-hidden border-0 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 shadow-lg ring-1 ring-emerald-200/50">
+              <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white relative">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 opacity-20">
+                  <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:15px_15px]"></div>
+                </div>
+                
+                <div className="relative">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/20">
+                        <FileText className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                        <Info className="w-2.5 h-2.5 text-yellow-900" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold mb-1">Application Instructions</h3>
+                      <p className="text-emerald-100 text-sm font-medium">
+                        Follow these guidelines for the best application experience
+                      </p>
+                    </div>
+                    <Badge className="ml-auto bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm px-3 py-1">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Important
+                    </Badge>
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <SmartTextRenderer 
-                  content={job.application_instructions}
-                  className=""
-                />
+
+              <CardContent className="p-0 bg-white/80 backdrop-blur-sm">
+                <div className="p-6 space-y-4">
+                  {/* Instructions Content with Enhanced Bullet Design */}
+                  <div className="bg-white/70 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-4">How to Apply</h4>
+                        <div className="space-y-3">
+                          {/* Enhanced Bullet Point Display */}
+                          {job.application_instructions.split('\n').filter(line => line.trim()).map((instruction, index) => {
+                            const trimmedInstruction = instruction.trim();
+                            if (!trimmedInstruction) return null;
+                            
+                            return (
+                              <div key={index} className="flex items-start gap-3 group">
+                                <div className="flex-shrink-0 mt-1.5">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200">
+                                    <span className="text-white font-bold text-xs">{index + 1}</span>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 rounded-xl p-4 border border-emerald-100/50 group-hover:border-emerald-200 transition-all duration-200">
+                                    <SmartTextRenderer 
+                                      content={trimmedInstruction.replace(/^[-•*]\s*/, '')}
+                                      className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          
+                          {/* Fallback for single instruction */}
+                          {!job.application_instructions.includes('\n') && (
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-1.5">
+                                <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                                  <CheckCircle className="w-3 h-3 text-white" />
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 rounded-xl p-4 border border-emerald-100/50">
+                                  <SmartTextRenderer 
+                                    content={job.application_instructions}
+                                    className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Application Type Specific Guidelines */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        {job.application_type === 'external' ? (
+                          <ExternalLink className="w-5 h-5 text-blue-600" />
+                        ) : job.application_type === 'email' ? (
+                          <Mail className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <FileText className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-2">Application Method</h4>
+                        <div className="text-sm text-gray-700">
+                          {job.application_type === 'external' && (
+                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
+                              <ExternalLink className="w-4 h-4 text-blue-600" />
+                              <span>Apply directly on the company's website using the "Apply on Company Site" button below.</span>
+                            </div>
+                          )}
+                          {job.application_type === 'email' && (
+                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
+                              <Mail className="w-4 h-4 text-blue-600" />
+                              <span>Send your application via email using the "Apply via Email" button below.</span>
+                            </div>
+                          )}
+                          {(!job.application_type || job.application_type === 'internal') && (
+                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                              <span>Apply directly through our platform using the "Apply Now" button below.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Tips Section */}
+                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-6 border border-amber-100">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Star className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-3">Application Tips</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span>Tailor your resume to match job requirements</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span>Write a compelling cover letter</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span>Highlight relevant experience</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span>Follow all application instructions</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information if Email Application */}
+                  {job.application_type === 'email' && job.application_email && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Mail className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
+                          <div className="flex items-center gap-2 p-3 bg-purple-100/50 rounded-xl">
+                            <Mail className="w-4 h-4 text-purple-600" />
+                            <span className="font-medium text-purple-900">{job.application_email}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="ml-auto h-7 px-2 text-xs"
+                              onClick={() => navigator.clipboard.writeText(job.application_email)}
+                            >
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Application Deadline if Available */}
+                  {job.application_deadline && (
+                    <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-2xl p-6 border border-red-100">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-2">Application Deadline</h4>
+                          <div className="flex items-center gap-2 p-3 bg-red-100/50 rounded-xl">
+                            <Clock className="w-4 h-4 text-red-600" />
+                            <span className="font-medium text-red-900">
+                              {new Date(job.application_deadline).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                            <Badge variant="destructive" className="ml-auto">
+                              {(() => {
+                                const daysLeft = Math.ceil((new Date(job.application_deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? `${daysLeft} days left` : 'Expired';
+                              })()}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -918,11 +1242,25 @@ ${user.name || user.email}`);
             </CardHeader>
             <CardContent className="space-y-4">
               {(job.company?.description || job.external_company_description) && (
-                <div className="text-sm">
-                  <SmartTextRenderer 
-                    content={job.company?.description || job.external_company_description}
-                    className=""
-                  />
+                <div className="enhanced-job-description prose prose-sm max-w-none 
+                              prose-headings:text-gray-900 prose-headings:font-semibold 
+                              prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-3
+                              prose-ul:my-3 prose-li:my-1 prose-li:text-gray-700
+                              prose-strong:text-gray-900 prose-strong:font-semibold
+                              bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-xl p-4 border border-blue-100">
+                  {(job.company?.description || job.external_company_description).includes('##') || 
+                   (job.company?.description || job.external_company_description).includes('**') || 
+                   (job.company?.description || job.external_company_description).includes('*') ? (
+                    <MarkdownRenderer 
+                      content={job.company?.description || job.external_company_description}
+                      className="enhanced-company-description"
+                    />
+                  ) : (
+                    <SmartTextRenderer 
+                      content={job.company?.description || job.external_company_description}
+                      className="text-gray-700 leading-relaxed"
+                    />
+                  )}
                 </div>
               )}
               
@@ -1035,64 +1373,318 @@ ${user.name || user.email}`);
             </Card>
           )}
 
-          {/* Similar Jobs */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Similar Jobs</CardTitle>
+          {/* Enhanced Similar Jobs with Premium Visual Design */}
+          <Card className="overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 shadow-xl border-0 ring-1 ring-slate-200/50">
+            <CardHeader className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-30">
+                <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px]"></div>
+              </div>
+              
+              <div className="relative">
+                <CardTitle className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/20">
+                      <Briefcase className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <Star className="w-2.5 h-2.5 text-yellow-900" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold mb-1">Similar Opportunities</h3>
+                    <p className="text-indigo-100 text-sm font-medium">
+                      AI-powered job matching • Tailored for you
+                    </p>
+                  </div>
+                  {similarJobs.length > 0 && (
+                    <Badge className="ml-auto bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm px-3 py-1">
+                      <Eye className="w-3 h-3 mr-1" />
+                      {similarJobs.length} matches
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {similarJobs.length > 0 ? (
-                  similarJobs.map((similarJob, index) => (
-                    <div key={similarJob.id} className="border-b pb-3 last:border-b-0">
-                      <h4 className="font-medium text-sm">
-                        <Link 
-                          to={`/jobs/${similarJob.id}`} 
-                          className="hover:text-blue-600 transition-colors"
-                        >
-                          {similarJob.title}
-                        </Link>
-                      </h4>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {getCompanyName(similarJob)} • {getJobLocation(similarJob)}
-                      </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center space-x-2">
-                          {similarJob.is_featured && (
-                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5">
-                              Featured
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                            {snakeToTitle(similarJob.employment_type)}
-                          </Badge>
+
+            <CardContent className="p-0 bg-white/80 backdrop-blur-sm">
+              {similarJobsLoading ? (
+                <div className="p-8">
+                  <div className="text-center mb-6">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-pulse">
+                      <Briefcase className="w-6 h-6 text-indigo-500" />
+                    </div>
+                    <p className="text-gray-600 font-medium">Finding your perfect matches...</p>
+                  </div>
+                  <div className="space-y-6">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-2xl animate-pulse">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                          <div className="flex-1">
+                            <div className="h-5 bg-gray-200 rounded w-3/4 mb-3"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+                            <div className="flex gap-2">
+                              <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                              <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+                            </div>
+                          </div>
+                          <div className="w-16 h-8 bg-gray-200 rounded-full"></div>
                         </div>
-                        {getSalaryDisplay(similarJob) !== 'Salary not disclosed' && (
-                          <p className="text-xs text-gray-500">
-                            {getSalaryDisplay(similarJob)}
-                          </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : similarJobsError ? (
+                <div className="p-8 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-10 h-10 text-red-500" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Oops! Something went wrong</h4>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">{similarJobsError}</p>
+                  <Button 
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
+                    onClick={() => window.location.reload()}
+                  >
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              ) : similarJobs.length > 0 ? (
+                <div className="space-y-1">
+                  {similarJobs.map((similarJob, index) => (
+                    <div 
+                      key={similarJob.id} 
+                      className="relative group hover:shadow-lg transition-all duration-300 bg-white/70 hover:bg-white border-b border-slate-100 last:border-b-0"
+                    >
+                      {/* Hover Effect Gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/0 via-purple-50/0 to-blue-50/0 group-hover:from-indigo-50/50 group-hover:via-purple-50/30 group-hover:to-blue-50/50 transition-all duration-300 rounded-lg"></div>
+                      
+                      <div className="relative p-6">
+                        {/* Job Header with Enhanced Match Score */}
+                        <div className="flex items-start gap-4 mb-4">
+                          {/* Company Logo Placeholder */}
+                          <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:shadow-md transition-all duration-200">
+                            <Building className="w-6 h-6 text-slate-600" />
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-700 transition-colors duration-200">
+                              <Link 
+                                to={`/jobs/${similarJob.id}`} 
+                                className="hover:underline line-clamp-2"
+                              >
+                                {similarJob.title}
+                              </Link>
+                            </h4>
+                            
+                            <div className="flex items-center gap-3 text-sm text-gray-600 mb-3">
+                              <div className="flex items-center gap-1">
+                                <Building className="w-4 h-4" />
+                                <span className="font-medium">{getCompanyName(similarJob)}</span>
+                              </div>
+                              {getJobLocation(similarJob) && (
+                                <>
+                                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                  <div className="flex items-center gap-1">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{getJobLocation(similarJob)}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Match Score with Visual Progress */}
+                            {similarJob.similarity_score && (
+                              <div className="mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs font-medium text-gray-600">Match Score</span>
+                                      <span className="text-xs font-bold text-gray-900">{Math.round(similarJob.similarity_score)}%</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full transition-all duration-500 rounded-full ${
+                                          similarJob.similarity_score >= 80 
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                            : similarJob.similarity_score >= 60 
+                                            ? 'bg-gradient-to-r from-yellow-500 to-orange-500' 
+                                            : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                                        }`}
+                                        style={{ width: `${similarJob.similarity_score}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                  <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                                    similarJob.similarity_score >= 80 
+                                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200' 
+                                      : similarJob.similarity_score >= 60 
+                                      ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-700 border border-orange-200' 
+                                      : 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 border border-gray-200'
+                                  }`}>
+                                    {similarJob.similarity_score >= 80 ? 'Excellent' : similarJob.similarity_score >= 60 ? 'Good' : 'Fair'}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Enhanced Match Reasons */}
+                        {similarJob.match_reasons && similarJob.match_reasons.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Why it matches</p>
+                            <div className="flex flex-wrap gap-2">
+                              {similarJob.match_reasons.slice(0, 3).map((reason, i) => (
+                                <span 
+                                  key={i}
+                                  className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 text-xs font-medium rounded-full border border-indigo-200 shadow-sm"
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1.5" />
+                                  {reason}
+                                </span>
+                              ))}
+                              {similarJob.match_reasons.length > 3 && (
+                                <span className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full border border-gray-200">
+                                  +{similarJob.match_reasons.length - 3} more reasons
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Enhanced Job Details Row */}
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                          <div className="flex items-center gap-3">
+                            {/* Employment Type */}
+                            <Badge className="bg-gradient-to-r from-slate-100 to-gray-100 text-slate-700 border-slate-200 hover:from-slate-200 hover:to-gray-200 px-3 py-1">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {snakeToTitle(similarJob.employment_type)}
+                            </Badge>
+                            
+                            {/* Experience Level */}
+                            {similarJob.experience_level && (
+                              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200 hover:from-blue-200 hover:to-indigo-200 px-3 py-1">
+                                <GraduationCap className="w-3 h-3 mr-1" />
+                                {snakeToTitle(similarJob.experience_level)}
+                              </Badge>
+                            )}
+                            
+                            {/* Featured Badge with Animation */}
+                            {similarJob.is_featured && (
+                              <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200 px-3 py-1 animate-pulse">
+                                <Star className="w-3 h-3 mr-1 fill-current" />
+                                Featured
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Salary and Posted Date */}
+                          <div className="text-right">
+                            {getSalaryDisplay(similarJob) !== 'Salary not disclosed' && (
+                              <p className="text-sm font-bold text-green-600 mb-1">
+                                {getSalaryDisplay(similarJob)}
+                              </p>
+                            )}
+                            <p className="flex items-center justify-end gap-1 text-xs text-gray-500">
+                              <Timer className="w-3 h-3" />
+                              {similarJob.days_since_posted !== undefined 
+                                ? `${similarJob.days_since_posted}d ago`
+                                : formatRelativeTime(similarJob.created_at)
+                              }
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badges */}
+                        {(similarJob.is_bookmarked || similarJob.has_applied) && (
+                          <div className="flex gap-2 pt-3 border-t border-gray-100 mt-3">
+                            {similarJob.has_applied && (
+                              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200 px-3 py-1">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Applied
+                              </Badge>
+                            )}
+                            {similarJob.is_bookmarked && (
+                              <Badge className="bg-gradient-to-r from-blue-100 to-sky-100 text-blue-700 border-blue-200 px-3 py-1">
+                                <BookmarkCheck className="w-3 h-3 mr-1" />
+                                Bookmarked
+                              </Badge>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatRelativeTime(similarJob.created_at)}
-                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-6">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <Briefcase className="w-6 h-6 text-gray-400" />
+                  ))}
+                  
+                  {/* Enhanced Action Buttons */}
+                  <div className="p-6 bg-gradient-to-r from-slate-50 to-gray-50 border-t border-slate-200">
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm hover:shadow-md transition-all duration-200" 
+                        asChild
+                      >
+                        <Link to={`/jobs?category=${job.category?.id || ''}`}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Browse {job.category?.name || 'Related'} Jobs
+                        </Link>
+                      </Button>
+                      {isAuthenticated && user?.role === 'job_seeker' && (
+                        <Button 
+                          className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200" 
+                          asChild
+                        >
+                          <Link to="/recommendations">
+                            <Star className="w-4 h-4 mr-2" />
+                            Get AI Recommendations
+                          </Link>
+                        </Button>
+                      )}
                     </div>
-                    <h4 className="font-medium text-sm text-gray-900 mb-1">No similar jobs found</h4>
-                    <p className="text-xs text-gray-600">Check back later for recommendations</p>
                   </div>
-                )}
-              </div>
-              <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                <Link to={`/jobs?category=${job.category?.id || ''}`}>
-                  View More {job.category?.name || 'Related'} Jobs
-                </Link>
-              </Button>
+                </div>
+              ) : (
+                <div className="p-12 text-center">
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Briefcase className="w-12 h-12 text-slate-400" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
+                      <Star className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-xl font-bold text-gray-900 mb-3">No Similar Jobs Found</h4>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
+                    We couldn't find jobs similar to this one right now, but don't worry! 
+                    Explore our other opportunities or get personalized recommendations.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Button 
+                      variant="outline" 
+                      className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 px-6 py-3 rounded-full shadow-sm hover:shadow-md transition-all duration-200" 
+                      asChild
+                    >
+                      <Link to={`/jobs?category=${job.category?.id || ''}`}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Browse {job.category?.name || 'Related'} Jobs
+                      </Link>
+                    </Button>
+                    {isAuthenticated && user?.role === 'job_seeker' && (
+                      <Button 
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200" 
+                        asChild
+                      >
+                        <Link to="/recommendations">
+                          <Star className="w-4 h-4 mr-2" />
+                          Get Personalized Jobs
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

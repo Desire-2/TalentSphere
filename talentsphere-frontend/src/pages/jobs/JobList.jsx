@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -719,6 +719,15 @@ const JobCard = ({
   getJobLocation,
   getSalaryDisplay
 }) => {
+  const navigate = useNavigate();
+
+  const handleCardClick = (e) => {
+    // Prevent navigation when clicking on interactive elements
+    if (e.target.closest('button') || e.target.closest('a')) {
+      return;
+    }
+    navigate(`/jobs/${job.id}`);
+  };
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
@@ -746,7 +755,7 @@ const JobCard = ({
         animate="visible"
         className="group"
       >
-        <Card className="hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-xl">
+        <Card className="hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-xl cursor-pointer" onClick={handleCardClick}>
           <CardContent className="p-6">
             <div className="flex items-start gap-6">
               {/* Company Avatar */}
@@ -958,7 +967,7 @@ const JobCard = ({
       animate="visible"
       className="group stagger-item"
     >
-      <Card className="h-full hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-2xl hover:border-blue-200/50">
+      <Card className="h-full hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-2xl hover:border-blue-200/50 cursor-pointer" onClick={handleCardClick}>
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between mb-4">
             {/* Company Avatar and Basic Info */}

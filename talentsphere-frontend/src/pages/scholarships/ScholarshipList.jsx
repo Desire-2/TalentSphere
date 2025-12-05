@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   GraduationCap,
   Search,
@@ -167,9 +167,18 @@ const ScholarshipList = () => {
     location: ''
   });
   const { isAuthenticated, user } = useAuthStore();
+  const navigate = useNavigate();
 
   // Constants
   const itemsPerPage = 12;
+
+  const handleCardClick = (scholarshipId, e) => {
+    // Prevent navigation when clicking on interactive elements
+    if (e.target.closest('a') || e.target.closest('button')) {
+      return;
+    }
+    navigate(`/scholarships/${scholarshipId}`);
+  };
 
   // Helper function to get location display text
   const getLocationDisplay = (location) => {
@@ -497,7 +506,11 @@ const ScholarshipList = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {scholarships.map((scholarship) => (
-                  <Card key={scholarship.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:scale-[1.02]">
+                  <Card 
+                    key={scholarship.id} 
+                    className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:scale-[1.02] cursor-pointer"
+                    onClick={(e) => handleCardClick(scholarship.id, e)}
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">

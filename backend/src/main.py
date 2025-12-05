@@ -80,7 +80,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 # Enable CORS for all routes
 # Get allowed origins from environment variable (comma-separated)
-cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost:5174")
+cors_origins = os.getenv('CORS_ORIGINS', "http://localhost:5173,http://localhost:5174,http://192.168.0.5:5173")
 # Normalize origins into a clean list and remove empty entries
 allowed_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
 # Always include localhost dev ports if not present (helps local testing)

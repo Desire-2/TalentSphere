@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import './CreateExternalJob.css';
+import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import { 
   Save,
   ArrowLeft,
@@ -46,8 +47,6 @@ import { Progress } from '../../components/ui/progress';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Switch } from '../../components/ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
-import MarkdownEditor from '../../components/ui/MarkdownEditor';
-import MDEditor from '@uiw/react-md-editor';
 import { externalAdminService } from '../../services/externalAdmin';
 import { toast } from 'sonner';
 import { parseJobWithAI } from '../../services/aiJobParser';
@@ -2250,113 +2249,256 @@ Tools: Git, Jest, Cypress
           </div>
         </div>
 
-        {/* AI Job Parser Section */}
+        {/* Enhanced AI Job Parser Section */}
         {showAiParser && (
-          <Card className="enhanced-card border-2 border-purple-300 shadow-xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50">
-            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Sparkles className="h-6 w-6 animate-pulse" />
+          <Card className="enhanced-card border-0 shadow-2xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 ring-1 ring-purple-200/50">
+            <CardHeader className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:25px_25px]"></div>
+              </div>
+              
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/20">
+                      <Sparkles className="h-7 w-7 animate-pulse" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <Zap className="w-3 h-3 text-yellow-900" />
+                    </div>
                   </div>
                   <div>
-                    <CardTitle className="text-xl">🤖 AI-Powered Job Parser</CardTitle>
-                    <CardDescription className="text-purple-100">
-                      Paste any job posting content and let AI extract and fill the form automatically
+                    <CardTitle className="text-2xl font-bold mb-1">TalentSphere AI Assistant</CardTitle>
+                    <CardDescription className="text-indigo-100 text-base">
+                      Advanced job posting analysis • Intelligent field extraction • Professional content enhancement
                     </CardDescription>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAiParser(false)}
-                  className="h-8 w-8 p-0 hover:bg-white/20 text-white rounded-full"
-                >
-                  ×
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm px-3 py-1">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    AI Powered
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAiParser(false)}
+                    className="h-9 w-9 p-0 hover:bg-white/20 text-white rounded-xl"
+                  >
+                    ×
+                  </Button>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 p-6">
-              {/* Instructions */}
-              <Alert className="border-purple-200 bg-purple-50">
-                <Info className="h-4 w-4 text-purple-600" />
-                <AlertDescription className="text-purple-800">
-                  <strong>How it works:</strong> Copy and paste a job posting from LinkedIn, Indeed, or any website. 
-                  Our AI will automatically extract the job title, company info, requirements, salary, and more!
-                </AlertDescription>
-              </Alert>
 
-              {/* Text Area for Job Content */}
-              <div className="space-y-2">
-                <Label htmlFor="ai-parser-input" className="text-base font-semibold flex items-center space-x-2">
-                  <FileText className="h-4 w-4 text-purple-600" />
-                  <span>Paste Job Posting Content</span>
-                </Label>
-                <Textarea
-                  id="ai-parser-input"
-                  value={aiParserText}
-                  onChange={(e) => setAiParserText(e.target.value)}
-                  placeholder="Paste the entire job posting here... 
-
-Example:
-Senior Software Engineer at TechCorp
-Location: San Francisco, CA (Hybrid)
-Salary: $120,000 - $180,000/year
-
-About the role:
-We're looking for an experienced software engineer...
-
-Requirements:
-- 5+ years of experience with React and Node.js
-- Strong knowledge of TypeScript
-- Experience with AWS and Docker
-
-How to apply:
-Visit https://techcorp.com/careers to apply"
-                  className="min-h-[300px] font-mono text-sm resize-y border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                  disabled={aiParsing}
-                />
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{aiParserText.length} characters</span>
-                  <span className="text-purple-600">Minimum 50 characters recommended</span>
+            <CardContent className="space-y-6 p-8 bg-white/80 backdrop-blur-sm">
+              {/* Enhanced Instructions with Visual Benefits */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-1">Smart Extraction</h4>
+                  <p className="text-sm text-gray-600">Identifies 25+ job fields automatically from any text</p>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-1">Content Enhancement</h4>
+                  <p className="text-sm text-gray-600">Improves and structures content for maximum appeal</p>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-1">95% Time Savings</h4>
+                  <p className="text-sm text-gray-600">Reduces job posting time from 30 minutes to 2 minutes</p>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center space-x-3">
+              {/* Enhanced Input Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="ai-parser-input" className="text-lg font-semibold flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
+                    <span>Job Posting Content</span>
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      Supports all major job boards
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Any format
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <Textarea
+                    id="ai-parser-input"
+                    value={aiParserText}
+                    onChange={(e) => setAiParserText(e.target.value)}
+                    placeholder={`Paste complete job posting here from any source...
+
+✨ EXAMPLE - LinkedIn Job Post:
+Senior Full Stack Developer | TechCorp | San Francisco, CA (Hybrid)
+$120k - $180k • Full-time • 5+ years experience
+
+🚀 About the Role:
+Join our innovative engineering team building next-generation software solutions...
+
+📋 What You'll Do:
+• Develop scalable web applications using React and Node.js
+• Collaborate with product teams on feature development
+• Lead technical discussions and code reviews
+• Mentor junior developers
+
+🎯 What We're Looking For:
+• 5+ years of full-stack development experience
+• Expert knowledge of JavaScript, React, TypeScript
+• Experience with AWS, Docker, and microservices
+• Strong problem-solving and communication skills
+
+💰 Compensation & Benefits:
+• Base salary: $120,000 - $180,000
+• Equity package
+• Full health/dental/vision insurance
+• Flexible PTO and remote work options
+
+📧 How to Apply:
+Send your resume to careers@techcorp.com or apply at https://techcorp.com/careers`}
+                    className="min-h-[350px] font-mono text-sm resize-y border-2 border-purple-200 focus:border-purple-400 focus:ring-purple-400 bg-white/90 backdrop-blur-sm"
+                    disabled={aiParsing}
+                  />
+                  
+                  {/* Smart Paste Suggestions */}
+                  {aiParserText.length === 0 && (
+                    <div className="absolute top-4 right-4 space-y-2">
+                      <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-3 py-2 rounded-lg border border-blue-200 text-xs">
+                        <div className="flex items-center space-x-1">
+                          <Info className="w-3 h-3 text-blue-600" />
+                          <span className="text-blue-800 font-medium">Try pasting from:</span>
+                        </div>
+                        <div className="mt-1 space-x-1">
+                          <Badge variant="outline" className="text-xs">LinkedIn</Badge>
+                          <Badge variant="outline" className="text-xs">Indeed</Badge>
+                          <Badge variant="outline" className="text-xs">Company Site</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Smart Content Analysis */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className={`flex items-center space-x-1 ${aiParserText.length >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
+                      <div className={`w-2 h-2 rounded-full ${aiParserText.length >= 100 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span>{aiParserText.length} characters</span>
+                    </span>
+                    <span className={`flex items-center space-x-1 ${aiParserText.split('\n').length >= 5 ? 'text-green-600' : 'text-gray-500'}`}>
+                      <div className={`w-2 h-2 rounded-full ${aiParserText.split('\n').length >= 5 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span>{aiParserText.split('\n').length} lines</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {aiParserText.length >= 100 && (
+                      <Badge className="bg-green-100 text-green-700 px-2 py-1">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Ready for AI
+                      </Badge>
+                    )}
+                    {aiParserText.length > 0 && aiParserText.length < 100 && (
+                      <Badge variant="outline" className="text-orange-600 border-orange-200">
+                        Need more content
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Action Buttons */}
+              <div className="flex flex-col space-y-4">
                 <Button
                   onClick={handleAiParse}
-                  disabled={aiParsing || !aiParserText.trim() || aiParserText.length < 50}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
+                  disabled={aiParsing || !aiParserText.trim() || aiParserText.length < 100}
+                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                   size="lg"
                 >
                   {aiParsing ? (
                     <>
-                      <div className="loading-spinner w-5 h-5 mr-2" />
-                      <span>AI is analyzing...</span>
+                      <div className="w-6 h-6 mr-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      <span>AI is analyzing job posting...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      <span>Parse with AI & Auto-Fill Form</span>
+                      <Sparkles className="h-6 w-6 mr-3 animate-pulse" />
+                      <span>Analyze with TalentSphere AI</span>
                     </>
                   )}
                 </Button>
                 
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAiParserText('');
-                    setShowAiParser(false);
-                  }}
-                  disabled={aiParsing}
-                  className="px-6"
-                >
-                  Cancel
-                </Button>
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAiParserText('');
+                    }}
+                    disabled={aiParsing}
+                    className="flex-1"
+                  >
+                    Clear Content
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAiParser(false)}
+                    disabled={aiParsing}
+                    className="flex-1"
+                  >
+                    Close AI Assistant
+                  </Button>
+                </div>
               </div>
 
-              {/* Help Text */}
+              {/* Processing Status */}
+              {aiParsing && (
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center animate-pulse">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">AI Analysis in Progress</h4>
+                      <div className="space-y-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                          <span>Extracting job details and company information</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
+                          <span>Analyzing requirements and skills</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
+                          <span>Enhancing content for professional presentation</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* AI Parser Help Text */}
+        {!showAiParser && (
+          <div className="mt-6">
+            {/* Help Text */}
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-purple-200">
                 <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
                   <HelpCircle className="h-4 w-4 mr-1" />
@@ -2381,8 +2523,7 @@ Visit https://techcorp.com/careers to apply"
                   </li>
                 </ul>
               </div>
-            </CardContent>
-          </Card>
+          </div>
         )}
 
         {/* Template Import Success Banner */}
@@ -3041,17 +3182,43 @@ Visit https://techcorp.com/careers to apply"
                     />
                   )}
 
-                  <FormField
-                    label="Application Instructions"
-                    field="application_instructions"
-                    type="textarea"
-                    placeholder="Please include your portfolio and cover letter..."
-                    tooltip="Additional instructions or requirements for applicants"
-                    errors={errors}
-                    fieldAnimations={fieldAnimations}
-                    formData={formData}
-                    onInputChange={stableInputChange}
-                  />
+                  {/* Enhanced Application Instructions with Markdown Support */}
+                  <div className="enhanced-form-field">
+                    <MarkdownEditor
+                      label="Application Instructions"
+                      field="application_instructions"
+                      value={formData.application_instructions || ''}
+                      onChange={(field, value) => {
+                        setFormData(prev => ({ ...prev, [field]: value }));
+                        setIsDirty(true);
+                      }}
+                      placeholder={`Write detailed application instructions here. You can use markdown formatting:
+
+## How to Apply
+
+1. **Submit your resume** in PDF format
+2. **Include a cover letter** explaining your interest
+3. **Provide 2-3 work samples** or portfolio links
+4. **Answer the following questions:**
+   - Why are you interested in this role?
+   - What makes you a good fit?
+
+### Required Documents
+- [ ] Resume/CV
+- [ ] Cover letter
+- [ ] Portfolio or work samples
+- [ ] References (optional)
+
+**Application deadline:** Please apply by [insert date]
+
+*Note: Only shortlisted candidates will be contacted.*`}
+                      tooltip="Use markdown formatting to create structured, professional application instructions with headers, lists, checkboxes, and emphasis"
+                      required={false}
+                      error={errors.application_instructions}
+                      height={400}
+                      className="mb-4"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 

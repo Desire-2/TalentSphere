@@ -47,7 +47,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import ShareScholarship from '../../components/scholarships/ShareScholarship';
 import { scholarshipService } from '../../services/scholarship';
-import { parseScholarshipWithAI, analyzeFilledFields } from '../../services/aiScholarshipParser';
 import { toast } from 'sonner';
 
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
@@ -182,11 +181,6 @@ const CreateScholarship = () => {
   // Success and Share State
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [createdScholarship, setCreatedScholarship] = useState(null);
-  
-  // AI Parser State
-  const [aiParserText, setAiParserText] = useState('');
-  const [aiParsing, setAiParsing] = useState(false);
-  const [showAiParser, setShowAiParser] = useState(false);
 
   const [formData, setFormData] = useState({
     // Basic Information
@@ -576,64 +570,6 @@ const CreateScholarship = () => {
     setJsonError('');
   }, []);
 
-  // AI Parser Handler
-  const handleAiParse = useCallback(async () => {
-    if (!aiParserText.trim()) {
-      toast.error('Please paste scholarship content to parse');
-      return;
-    }
-
-    try {
-      setAiParsing(true);
-      console.log('🤖 Starting AI scholarship parsing...');
-      
-      const parsedData = await parseScholarshipWithAI(aiParserText, categories);
-      
-      // Analyze which fields were filled
-      const analysis = analyzeFilledFields(parsedData);
-      
-      console.log('📊 AI Parser Field Analysis:');
-      console.table(
-        Object.entries(analysis.sections).map(([section, data]) => ({
-          Section: section,
-          'Total Fields': data.total,
-          'Filled': data.filled,
-          'Empty': data.empty,
-          'Fill Rate': `${Math.round((data.filled / data.total) * 100)}%`
-        }))
-      );
-      
-      // Merge parsed data with existing form data
-      setFormData(prev => ({
-        ...prev,
-        ...parsedData
-      }));
-      
-      // Clear AI parser text and close panel
-      setAiParserText('');
-      setShowAiParser(false);
-      
-      // Success notification with details
-      const filledCount = analysis.filledFields;
-      const totalCount = analysis.totalFields;
-      const fillPercentage = Math.round((filledCount / totalCount) * 100);
-      
-      toast.success('Scholarship parsed successfully!', {
-        description: `${filledCount}/${totalCount} fields auto-filled (${fillPercentage}%). Check the form and fill any missing fields.`
-      });
-      
-      console.log('✅ AI parsing completed successfully');
-      
-    } catch (error) {
-      console.error('❌ AI parsing error:', error);
-      toast.error('Failed to parse scholarship', {
-        description: error.message
-      });
-    } finally {
-      setAiParsing(false);
-    }
-  }, [aiParserText, categories]);
-
   // Cleanup timeout ref on unmount
   useEffect(() => {
     return () => {
@@ -645,21 +581,6 @@ const CreateScholarship = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate field length limits
-    const lengthErrors = {};
-    if (formData.title && formData.title.length > 500) {
-      lengthErrors.title = 'Title must be 500 characters or less';
-    }
-    if (formData.summary && formData.summary.length > 1000) {
-      lengthErrors.summary = 'Summary must be 1000 characters or less';
-    }
-    
-    if (Object.keys(lengthErrors).length > 0) {
-      setErrors(lengthErrors);
-      toast.error('Please fix field length errors');
-      return;
-    }
     
     // Validate all fields
     const requiredFields = [
@@ -748,15 +669,6 @@ const CreateScholarship = () => {
             <Button
               type="button"
               variant="outline"
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 border-0"
-              onClick={() => setShowAiParser(!showAiParser)}
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              AI Auto-Fill
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
               onClick={() => setShowJsonImport(true)}
             >
               <Upload className="w-4 h-4 mr-2" />
@@ -782,91 +694,6 @@ const CreateScholarship = () => {
             <Progress value={formProgress} className="h-2" />
           </CardContent>
         </Card>
-
-        {/* AI Parser Panel - Collapsible */}
-        {showAiParser && (
-          <Card className="border-purple-200 shadow-lg bg-gradient-to-br from-purple-50 to-indigo-50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-purple-900">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  AI Scholarship Parser
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAiParser(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardDescription className="text-purple-700">
-                Paste scholarship content below and let AI extract all the information automatically
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label htmlFor="ai-parser-input" className="text-sm font-medium text-purple-900 mb-2 block">
-                  Scholarship Content
-                </Label>
-                <Textarea
-                  id="ai-parser-input"
-                  value={aiParserText}
-                  onChange={(e) => setAiParserText(e.target.value)}
-                  placeholder="Paste scholarship details here...
-
-Example:
-Fulbright Scholarship 2024
-The Fulbright Program offers scholarships for international students...
-Award Amount: $10,000 - $25,000 per year
-Deadline: March 31, 2024
-Requirements: Minimum GPA 3.5, Bachelor's degree..."
-                  className="min-h-[300px] font-mono text-sm bg-white border-purple-200 focus:border-purple-400"
-                  disabled={aiParsing}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between gap-3 pt-2">
-                <div className="flex items-center gap-2 text-sm text-purple-700">
-                  <Info className="h-4 w-4" />
-                  <span>AI will extract 40+ fields automatically</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setAiParserText('');
-                      setShowAiParser(false);
-                    }}
-                    disabled={aiParsing}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleAiParse}
-                    disabled={aiParsing || !aiParserText.trim()}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                  >
-                    {aiParsing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Parsing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Parse with AI
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -928,10 +755,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   required
                   tooltip="The type of scholarship being offered"
                 >
-                  <Select 
-                    value={formData.scholarship_type || undefined} 
-                    onValueChange={(value) => handleInputChange('scholarship_type', value)}
-                  >
+                  <Select value={formData.scholarship_type} onValueChange={(value) => handleInputChange('scholarship_type', value)}>
                     <SelectTrigger className={errors.scholarship_type ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select scholarship type" />
                     </SelectTrigger>
@@ -951,25 +775,16 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   required
                   tooltip="Select the most appropriate category"
                 >
-                  <Select 
-                    value={formData.category_id ? formData.category_id.toString() : undefined} 
-                    onValueChange={(value) => handleInputChange('category_id', value)}
-                  >
+                  <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
                     <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.length > 0 ? (
-                        categories.map(category => (
-                          <SelectItem key={category.id} value={category.id.toString()}>
-                            {category.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-4 text-sm text-gray-500 text-center">
-                          Loading categories...
-                        </div>
-                      )}
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FormField>
@@ -1053,42 +868,20 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 <FormField
                   label="Study Level"
                   field="study_level"
-                  tooltip="Academic level(s) this scholarship is for - select all that apply"
+                  tooltip="Academic level this scholarship is for"
                 >
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {scholarshipService.getStudyLevels().map(level => {
-                        const isSelected = formData.study_level?.split(',').includes(level.value);
-                        return (
-                          <button
-                            key={level.value}
-                            type="button"
-                            onClick={() => {
-                              const currentLevels = formData.study_level ? formData.study_level.split(',') : [];
-                              const newLevels = isSelected
-                                ? currentLevels.filter(l => l !== level.value)
-                                : [...currentLevels, level.value];
-                              handleInputChange('study_level', newLevels.join(','));
-                            }}
-                            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-                            }`}
-                          >
-                            {level.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {formData.study_level && (
-                      <p className="text-sm text-gray-600">
-                        Selected: {formData.study_level.split(',').map(v => 
-                          scholarshipService.getStudyLevels().find(l => l.value === v)?.label
-                        ).filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                  </div>
+                  <Select value={formData.study_level} onValueChange={(value) => handleInputChange('study_level', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select study level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scholarshipService.getStudyLevels().map(level => (
+                        <SelectItem key={level.value} value={level.value}>
+                          {level.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormField>
 
                 <FormField
@@ -1121,7 +914,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 field="location_type"
                 tooltip="Geographic scope of this scholarship"
               >
-                <Select value={formData.location_type || undefined} onValueChange={(value) => handleInputChange('location_type', value)}>
+                <Select value={formData.location_type} onValueChange={(value) => handleInputChange('location_type', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select location type" />
                   </SelectTrigger>
@@ -1180,7 +973,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="gender_requirements"
                   tooltip="Any gender-specific requirements"
                 >
-                  <Select value={formData.gender_requirements || undefined} onValueChange={(value) => handleInputChange('gender_requirements', value)}>
+                  <Select value={formData.gender_requirements} onValueChange={(value) => handleInputChange('gender_requirements', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender requirement" />
                     </SelectTrigger>
@@ -1235,7 +1028,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="currency"
                   tooltip="Currency for the scholarship amount"
                 >
-                  <Select value={formData.currency || undefined} onValueChange={(value) => handleInputChange('currency', value)}>
+                  <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
@@ -1256,7 +1049,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                   field="funding_type"
                   tooltip="Type of funding provided"
                 >
-                  <Select value={formData.funding_type || undefined} onValueChange={(value) => handleInputChange('funding_type', value)}>
+                  <Select value={formData.funding_type} onValueChange={(value) => handleInputChange('funding_type', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select funding type" />
                     </SelectTrigger>
@@ -1359,7 +1152,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 required
                 tooltip="How students should apply"
               >
-                <Select value={formData.application_type || undefined} onValueChange={(value) => handleInputChange('application_type', value)}>
+                <Select value={formData.application_type} onValueChange={(value) => handleInputChange('application_type', value)}>
                   <SelectTrigger className={errors.application_type ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select application type" />
                   </SelectTrigger>
@@ -1532,7 +1325,7 @@ Requirements: Minimum GPA 3.5, Bachelor's degree..."
                 field="status"
                 tooltip="Whether to publish immediately or save as draft"
               >
-                <Select value={formData.status || undefined} onValueChange={(value) => handleInputChange('status', value)}>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

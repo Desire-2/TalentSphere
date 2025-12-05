@@ -169,14 +169,23 @@ def get_scholarship_categories():
         
         categories = query.order_by(ScholarshipCategory.display_order, ScholarshipCategory.name).all()
         
+        print(f"📚 Fetched {len(categories)} scholarship categories (include_children={include_children}, only_active={only_active})")
+        
         # Filter parent categories only if include_children is requested
         if include_children:
             parent_categories = [cat for cat in categories if cat.parent_id is None]
-            return jsonify([cat.to_dict(include_children=True) for cat in parent_categories]), 200
+            result = [cat.to_dict(include_children=True) for cat in parent_categories]
+            print(f"📚 Returning {len(result)} parent categories with children")
+            return jsonify(result), 200
         else:
-            return jsonify([cat.to_dict() for cat in categories]), 200
+            result = [cat.to_dict() for cat in categories]
+            print(f"📚 Returning {len(result)} categories")
+            return jsonify(result), 200
         
     except Exception as e:
+        print(f"❌ Error in get_scholarship_categories: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to get scholarship categories', 'details': str(e)}), 500
 
 

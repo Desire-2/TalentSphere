@@ -63,23 +63,25 @@ export const scholarshipService = {
     try {
       const response = await api.get(`/scholarship-categories?include_children=${includeChildren}`);
       
-      // Handle different possible response structures
-      if (response.data) {
-        return response.data;
-      } else if (response.categories) {
+      console.log('📚 Scholarship categories response:', response);
+      
+      // Backend returns a direct array of categories
+      // api.get already extracts response.data, so response should be the array
+      if (Array.isArray(response)) {
         return response;
+      } else if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.categories && Array.isArray(response.categories)) {
+        return response.categories;
       } else {
-        // If response is an array, wrap it in the expected structure
-        return {
-          categories: Array.isArray(response) ? response : []
-        };
+        console.warn('Unexpected scholarship categories response format:', response);
+        return [];
       }
     } catch (error) {
-      console.error('Error in getScholarshipCategories:', error);
-      // Return empty result structure on error
-      return {
-        categories: []
-      };
+      console.error('❌ Error in getScholarshipCategories:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      // Return empty array on error
+      return [];
     }
   },
 

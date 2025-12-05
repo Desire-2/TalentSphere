@@ -258,19 +258,29 @@ const EditScholarship = () => {
 
   const fetchCategories = async () => {
     try {
+      console.log('📚 Fetching scholarship categories...');
       const response = await scholarshipService.getScholarshipCategories();
-      // Handle different response structures
-      const categoryArray = Array.isArray(response) 
-        ? response 
-        : (response?.data && Array.isArray(response.data) 
-          ? response.data 
-          : (response?.categories && Array.isArray(response.categories) 
-            ? response.categories 
-            : []));
-      setCategories(categoryArray);
+      console.log('📚 Categories response:', response);
+      
+      // Service now returns array directly or empty array on error
+      if (Array.isArray(response)) {
+        if (response.length > 0) {
+          setCategories(response);
+          console.log(`✅ Loaded ${response.length} scholarship categories`);
+        } else {
+          console.warn('⚠️ No scholarship categories found');
+          setCategories([]);
+          toast.error('No scholarship categories available. Please contact administrator.');
+        }
+      } else {
+        console.error('❌ Invalid categories response format:', response);
+        setCategories([]);
+        toast.error('Failed to load scholarship categories - invalid format');
+      }
     } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load scholarship categories');
+      console.error('❌ Error fetching categories:', error);
+      setCategories([]);
+      toast.error('Failed to load scholarship categories. Please try again.');
     }
   };
 

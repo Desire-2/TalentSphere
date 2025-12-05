@@ -1,0 +1,130 @@
+/* Enhanced Job Description Styling */
+.enhanced-job-description {
+  /* Custom list styling */
+  @apply text-gray-700;
+}
+
+.enhanced-job-description ul {
+  @apply space-y-2 my-4;
+}
+
+.enhanced-job-description ul li {
+  @apply flex items-start space-x-3 text-gray-700 leading-relaxed;
+  position: relative;
+}
+
+.enhanced-job-description ul li::before {
+  content: "";
+  @apply w-2 h-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mt-2 flex-shrink-0;
+}
+
+.enhanced-job-description ol {
+  @apply space-y-2 my-4 list-decimal list-inside;
+}
+
+.enhanced-job-description ol li {
+  @apply text-gray-700 leading-relaxed ml-4;
+  counter-increment: item;
+}
+
+.enhanced-job-description ol li::marker {
+  @apply text-indigo-600 font-semibold;
+}
+
+/* Enhanced heading styles */
+.enhanced-job-description h1 {
+  @apply relative;
+}
+
+.enhanced-job-description h1::after {
+  content: "";
+  @apply absolute bottom-0 left-0 w-12 h-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full;
+}
+
+.enhanced-job-description h2 {
+  @apply relative pl-6;
+}
+
+.enhanced-job-description h2::before {
+  content: "";
+  @apply absolute left-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-sm;
+}
+
+.enhanced-job-description h3 {
+  @apply relative pl-5;
+}
+
+.enhanced-job-description h3::before {
+  content: "";
+  @apply absolute left-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full;
+}
+
+/* Enhanced blockquote styling */
+.enhanced-job-description blockquote {
+  @apply relative;
+}
+
+.enhanced-job-description blockquote::before {
+  content: """;
+  @apply absolute -left-2 -top-2 text-4xl text-indigo-400 font-bold leading-none;
+}
+
+/* Enhanced table styling */
+.enhanced-job-description table {
+  @apply w-full border-collapse border border-gray-200 rounded-lg overflow-hidden shadow-sm my-4;
+}
+
+.enhanced-job-description th {
+  @apply bg-gradient-to-r from-indigo-50 to-purple-50 border border-gray-200 px-4 py-3 text-left font-semibold text-gray-900;
+}
+
+.enhanced-job-description td {
+  @apply border border-gray-200 px-4 py-3 text-gray-700;
+}
+
+/* Enhanced code block styling */
+.enhanced-job-description pre {
+  @apply relative;
+}
+
+.enhanced-job-description pre::before {
+  content: "Code";
+  @apply absolute top-2 right-2 text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded;
+}
+
+/* Responsive enhancements */
+@media (max-width: 768px) {
+  .enhanced-job-description {
+    @apply text-base;
+  }
+  
+  .enhanced-job-description h1 {
+    @apply text-xl;
+  }
+  
+  .enhanced-job-description h2 {
+    @apply text-lg pl-5;
+  }
+  
+  .enhanced-job-description h3 {
+    @apply text-base pl-4;
+  }
+}
+
+/* Animation for interactive elements */
+.enhanced-job-description a {
+  @apply transition-all duration-200;
+}
+
+.enhanced-job-description a:hover {
+  @apply transform translate-y-[-1px] shadow-sm;
+}
+
+/* Card enhancement */
+.enhanced-card {
+  @apply transition-all duration-300;
+}
+
+.enhanced-card:hover {
+  @apply transform translate-y-[-2px] shadow-2xl;
+}

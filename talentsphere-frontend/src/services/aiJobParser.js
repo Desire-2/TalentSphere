@@ -41,67 +41,150 @@ export const parseJobWithAI = async (rawContent, categories = []) => {
       : '\n\nNote: Match the job to one of these common categories: Technology, Marketing, Sales, Design, Management, Finance, Healthcare, Education, Engineering, Customer Service, Human Resources, Legal, Operations, Data Science, Product Management';
 
     // Create a comprehensive prompt to extract job information
-    const prompt = `You are an expert job posting analyzer. Parse the following job posting and extract all relevant information into a structured JSON format.
+    const prompt = `You are TalentSphere's AI Job Analyst, an expert system designed to extract and structure job posting information with exceptional accuracy and intelligence. Your role is to transform raw job postings into perfectly structured data that matches our platform's requirements.
 
-Job Posting Content:
+CONTEXT & EXPERTISE:
+- You specialize in identifying job market trends, compensation structures, and skill requirements
+- You understand regional employment patterns and company cultures
+- You can infer missing information based on industry standards and job market context
+- You excel at converting unstructured text into professional, marketing-ready content
+
+JOB POSTING TO ANALYZE:
 """
 ${rawContent}
 """
+
 ${categoryInfo}
 
-Please analyze this job posting and extract the following information. Return ONLY a valid JSON object with these fields:
+ANALYSIS REQUIREMENTS:
+Perform a comprehensive analysis and extract the following information. Use your expertise to infer missing details and enhance the content for maximum appeal to job seekers.
+
+Return ONLY a valid JSON object with these enhanced fields:
 
 {
-  "title": "Job title (string, required)",
-  "summary": "Brief one-line summary of the role (string, 150 chars max)",
-  "description": "Full job description in markdown format (string, required, preserve formatting, use markdown headers, lists, etc.)",
-  "external_company_name": "Company name (string, required)",
-  "external_company_website": "Company website URL (string, must start with http:// or https://)",
-  "external_company_logo": "Company logo URL if mentioned (string, must start with http:// or https://)",
-  "employment_type": "One of: full-time, part-time, contract, freelance, internship (string, required, default: full-time)",
-  "experience_level": "One of: entry, mid, senior, executive (string, required, default: mid)",
-  "category_id": "BEST MATCHING category ID from the list above based on job title, skills, and responsibilities (string, REQUIRED - choose the most relevant one)",
-  "location_type": "IMPORTANT: One of: remote, on-site, hybrid (string, required). Analyze keywords like 'remote work', 'work from home', 'WFH', 'office-based', 'in-office', 'on-site', 'hybrid work', 'flexible location' to determine this accurately",
-  "location_city": "City name ONLY without state/country (string, e.g., 'San Francisco' not 'San Francisco, CA')",
-  "location_state": "State/Province name or abbreviation (string, e.g., 'CA', 'California', 'NY')",
-  "location_country": "Country name (string, e.g., 'USA', 'United States', 'UK', 'Canada')",
-  "salary_min": "Minimum salary as number (number, no currency symbols)",
-  "salary_max": "Maximum salary as number (number, no currency symbols)",
-  "salary_currency": "Currency code like USD, EUR, GBP, CAD (string, default: USD)",
-  "salary_period": "One of: yearly, monthly, hourly (string, default: yearly)",
-  "salary_negotiable": "Whether salary is negotiable (boolean, default: false)",
-  "show_salary": "Whether to show salary (boolean, default: true)",
-  "required_skills": "Comma-separated list of required skills (string)",
-  "preferred_skills": "Comma-separated list of preferred/nice-to-have skills (string)",
-  "years_experience_min": "Minimum years of experience (number, default: 0)",
-  "years_experience_max": "Maximum years of experience (number)",
-  "education_requirement": "Education requirements (string)",
-  "application_type": "One of: external, email (string, required, default: external)",
-  "application_url": "Application URL (string, must start with http:// or https://)",
-  "application_email": "Application email (string)",
-  "application_instructions": "How to apply instructions (string)",
-  "source_url": "Original job posting URL if mentioned (string)"
+  "title": "📝 Optimized job title - professional, compelling, and search-friendly (string, required)",
+  "summary": "🎯 Engaging one-line summary highlighting key value proposition (string, 120-150 chars, focus on benefits to candidate)",
+  "description": "📋 Professionally structured job description in markdown format with clear sections: Overview, Responsibilities, Requirements, Benefits, Company Culture. Use headers (##), bullet points, and emphasis for readability (string, required)",
+  "external_company_name": "🏢 Company name exactly as it appears officially (string, required)",
+  "external_company_website": "🌐 Official company website URL (string, must start with http:// or https://)",
+  "external_company_logo": "🖼️ Company logo URL if mentioned (string, must start with http:// or https://)",
+  "employment_type": "💼 Employment type: full-time, part-time, contract, freelance, internship (string, required, default: full-time)",
+  "experience_level": "🎓 Experience level: entry, mid, senior, executive - infer from requirements and title (string, required, default: mid)",
+  "category_id": "🏷️ BEST MATCHING category ID based on primary job function, skills, and industry (string, REQUIRED)",
+  "location_type": "📍 Work arrangement: remote, on-site, hybrid - analyze all location clues carefully (string, required)",
+  "location_city": "🏙️ City name only (e.g., 'San Francisco', 'New York', 'London')",
+  "location_state": "🗺️ State/Province (e.g., 'CA', 'NY', 'Ontario', 'Berlin')",
+  "location_country": "🌍 Country name (e.g., 'United States', 'Canada', 'United Kingdom', 'Germany')",
+  "salary_min": "💰 Minimum salary as clean number without symbols (number)",
+  "salary_max": "💰 Maximum salary as clean number without symbols (number)",
+  "salary_currency": "💱 Currency code: USD, EUR, GBP, CAD, etc. (string, infer from location if not specified)",
+  "salary_period": "📅 Salary period: yearly, monthly, hourly (string, default: yearly)",
+  "salary_negotiable": "🤝 Is salary negotiable? Look for phrases like 'DOE', 'negotiable', 'competitive' (boolean, default: false)",
+  "show_salary": "👁️ Should salary be displayed? (boolean, default: true if salary provided)",
+  "required_skills": "⚡ Essential skills - prioritize most important, separate with commas (string)",
+  "preferred_skills": "✨ Nice-to-have skills - bonus qualifications, separate with commas (string)",
+  "years_experience_min": "📊 Minimum years of experience required (number, default: 0)",
+  "years_experience_max": "📊 Maximum years of experience or upper range (number)",
+  "education_requirement": "🎓 Education requirements - be specific about degree level and field if mentioned (string)",
+  "application_type": "📬 How to apply: external (website), email (direct email) - analyze application process (string, required, default: external)",
+  "application_url": "🔗 Direct application URL if provided (string, must start with http:// or https://)",
+  "application_email": "📧 Application email address if email application (string)",
+  "application_instructions": "📝 Detailed application instructions in structured markdown format with steps, requirements, and tips (string)",
+  "source_url": "🔗 Original job posting URL if mentioned (string)",
+  "benefits": "🎁 Company benefits and perks - extract from job posting (string)",
+  "remote_policy": "🏠 Remote work policy details if mentioned (string)",
+  "visa_sponsorship": "🛂 Visa sponsorship availability - look for visa, H1B, work permit mentions (boolean, default: false)",
+  "urgency_level": "⚡ Hiring urgency: low, medium, high, urgent - infer from language like 'immediate', 'ASAP', 'soon' (string, default: medium)",
+  "company_size": "👥 Company size category: startup, small, medium, large, enterprise - infer from context (string)",
+  "industry": "🏭 Primary industry sector (string)",
+  "job_function": "⚙️ Primary job function area (string)",
+  "is_featured": "⭐ Should this be featured? High-quality companies/roles deserve featuring (boolean, default: false)"
 }
 
-IMPORTANT INSTRUCTIONS:
-1. Return ONLY valid JSON, no additional text or explanations
-2. For the description field, convert the content to proper markdown format with headers (##), lists (-), bold (**), etc.
-3. If a field is not found in the content, use empty string "" for text fields, null for numbers, or the default value mentioned
-4. For salary, extract numbers only (remove currency symbols, commas)
-5. Standardize employment_type, experience_level, location_type, application_type to match the exact values listed
-6. Skills should be comma-separated (e.g., "React, TypeScript, Node.js")
-7. Ensure all URLs start with http:// or https://
-8. Make intelligent guesses for missing but inferable information (like experience level from job title)
-9. For category_id: Analyze the job title, required skills, and responsibilities to determine the BEST matching category from the list provided
-10. For location parsing:
-    - location_type: Look for keywords like "remote", "work from home", "WFH", "distributed", "office", "on-site", "in-office", "hybrid", "flexible location"
-    - location_city: Extract ONLY the city name (e.g., "San Francisco" from "San Francisco, CA")
-    - location_state: Extract state/province (e.g., "CA", "California", "NY", "New York")
-    - location_country: Extract or infer country (e.g., "USA", "United States", "Canada", "UK")
-    - If format is "City, State" (e.g., "Austin, TX"), split correctly into city and state
-    - If format is "City, State, Country", split into all three fields
-    - For remote jobs, location fields may be empty or specify eligible regions
-11. The JSON must be valid and parseable
+🚀 ADVANCED PROCESSING INSTRUCTIONS:
+
+1. **JSON OUTPUT**: Return ONLY valid, parseable JSON - no markdown, explanations, or additional text
+2. **CONTENT ENHANCEMENT**: Don't just extract - improve and optimize the content for maximum job seeker appeal
+3. **INTELLIGENT INFERENCE**: Use your expertise to fill gaps and enhance incomplete information
+4. **PROFESSIONAL FORMATTING**: Transform casual language into professional, compelling copy
+
+📋 FIELD-SPECIFIC INSTRUCTIONS:
+
+**Title Optimization**: Make titles more appealing while staying accurate (e.g., "Developer" → "Software Developer", add seniority if implied)
+
+**Description Structure**: Convert to markdown with this optimal structure:
+\`\`\`
+## About the Role
+[Engaging overview paragraph]
+
+## Key Responsibilities
+- [Bullet points for main duties]
+
+## What We're Looking For
+- [Requirements as appealing bullet points]
+
+## What We Offer
+- [Benefits and growth opportunities]
+
+## About [Company]
+[Company culture and values]
+\`\`\`
+
+**Skills Processing**:
+- Prioritize technical skills first, then soft skills
+- Standardize technology names (e.g., "js" → "JavaScript", "react" → "React")
+- Remove duplicates and group related skills
+- Separate required vs. preferred intelligently
+
+**Salary Intelligence**:
+- Convert all formats to numbers (e.g., "$80k-100k" → min: 80000, max: 100000)
+- Infer currency from location if not specified
+- Detect negotiability from language like "competitive", "DOE", "based on experience"
+
+**Location Analysis**:
+- Remote indicators: "remote", "work from home", "WFH", "distributed", "anywhere", "location flexible"
+- Hybrid indicators: "hybrid", "flexible", "remote-friendly", "work from home some days"
+- On-site indicators: "office", "on-site", "in-person", "headquarters", specific address
+
+**Experience Level Logic**:
+- Entry: 0-2 years, keywords like "junior", "entry-level", "graduate", "new grad"
+- Mid: 2-5 years, keywords like "mid-level", "intermediate", "experienced"
+- Senior: 5+ years, keywords like "senior", "lead", "expert", "architect"
+- Executive: Management roles, "director", "VP", "C-level", "head of"
+
+**Application Instructions Enhancement**: Convert basic instructions into professional, structured markdown:
+\`\`\`
+## How to Apply
+
+1. **Submit your application** through our careers page
+2. **Include your resume** in PDF format
+3. **Write a compelling cover letter** highlighting relevant experience
+4. **Provide work samples** or portfolio links if applicable
+
+### What to Include
+- [ ] Updated resume/CV
+- [ ] Cover letter tailored to this role
+- [ ] Portfolio or work samples
+- [ ] Professional references
+
+**Application Timeline**: We review applications on a rolling basis and aim to respond within 1 week.
+\`\`\`
+
+**Quality Indicators for Featured Status**:
+- Well-known companies or strong employer brands
+- Comprehensive benefits packages
+- Clear growth opportunities
+- Competitive compensation
+- Professional job posting quality
+
+**Industry & Function Mapping**:
+- Use standard industry classifications
+- Map to primary job function areas
+- Consider company type and role requirements
+
+5. **VALIDATION**: Ensure all required fields are populated and data types match specifications
+6. **CONSISTENCY**: Maintain consistent formatting and professional tone throughout
+7. **ERROR HANDLING**: If unclear, make the most reasonable professional interpretation
 
 Return the JSON now:`;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +49,7 @@ const snakeToTitle = (str) => {
 };
 
 const Home = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [searchType, setSearchType] = useState('jobs'); // 'jobs' or 'scholarships'
@@ -59,6 +60,22 @@ const Home = () => {
     scholarships: true
   });
   const [error, setError] = useState(null);
+
+  const handleJobCardClick = (jobId, e) => {
+    // Prevent navigation when clicking on interactive elements
+    if (e.target.closest('a') || e.target.closest('button')) {
+      return;
+    }
+    navigate(`/jobs/${jobId}`);
+  };
+
+  const handleScholarshipCardClick = (scholarshipId, e) => {
+    // Prevent navigation when clicking on interactive elements
+    if (e.target.closest('a') || e.target.closest('button')) {
+      return;
+    }
+    navigate(`/scholarships/${scholarshipId}`);
+  };
   
   // Initialize ad tracking
   const adTracking = useAdTracking();
@@ -399,6 +416,7 @@ const Home = () => {
                 key={job.id} 
                 className="group bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-white/80 cursor-pointer animate-slide-up"
                 style={{animationDelay: `${index * 0.1}s`}}
+                onClick={(e) => handleJobCardClick(job.id, e)}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-4">
@@ -708,6 +726,7 @@ const Home = () => {
                 key={scholarship.id} 
                 className="group bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-white/80 cursor-pointer animate-slide-up"
                 style={{animationDelay: `${index * 0.1}s`}}
+                onClick={(e) => handleScholarshipCardClick(scholarship.id, e)}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-4">

@@ -90,18 +90,45 @@ class ApiService {
         const responseText = await response.text();
         if (ENABLE_API_LOGGING) {
           console.log('🌐 Response text length:', responseText.length);
+          console.log('🌐 Response preview:', responseText.substring(0, 200));
+        }
+        
+        // Check if response is HTML (error page) instead of JSON
+        const trimmedText = responseText.trim();
+        if (trimmedText.toLowerCase().startsWith('<!doctype') || 
+            trimmedText.toLowerCase().startsWith('<html')) {
+          console.error('❌ Server returned HTML instead of JSON');
+          console.error('URL:', url);
+          console.error('Status:', response.status);
+          console.error('Response preview:', trimmedText.substring(0, 500));
+          
+          // This is likely a CORS error, 404, or server misconfiguration
+          if (response.status === 404) {
+            throw new Error(`API endpoint not found: ${url}`);
+          } else if (response.status === 0) {
+            throw new Error('Network error: Cannot reach API server. Check CORS configuration and API URL.');
+          } else {
+            throw new Error(`Server error (${response.status}): API returned HTML instead of JSON. This may indicate a CORS issue or server misconfiguration.`);
+          }
         }
         
         // Only parse if there's content
-        if (responseText && responseText.trim().length > 0) {
+        if (trimmedText.length > 0) {
           data = JSON.parse(responseText);
         } else {
           data = {};
         }
       } catch (jsonError) {
+        // Re-throw if it's already our custom error
+        if (jsonError.message.includes('API returned HTML') || 
+            jsonError.message.includes('API endpoint not found') ||
+            jsonError.message.includes('Network error')) {
+          throw jsonError;
+        }
+        
         console.error('❌ Failed to parse JSON response:', jsonError);
         console.error('Response was:', response);
-        throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
+        throw new Error(`Server returned invalid JSON. Status: ${response.status}. ${jsonError.message}`);
       }
 
       if (ENABLE_API_LOGGING) {

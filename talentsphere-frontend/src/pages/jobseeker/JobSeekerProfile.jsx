@@ -107,7 +107,22 @@ const JobSeekerProfile = () => {
   const loadProfile = async () => {
     try {
       setLoading(true);
+      
+      // Debug: Check if we have a token before making the request
+      const token = localStorage.getItem('token');
+      console.log('🔍 Loading profile...', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        user: user?.email
+      });
+      
       const response = await apiService.getProfile();
+      console.log('✅ Profile loaded successfully:', {
+        hasData: !!response,
+        role: response?.role,
+        hasJobSeekerProfile: !!response?.job_seeker_profile
+      });
+      
       setProfile(response);
       
       // Set personal data
@@ -158,8 +173,17 @@ const JobSeekerProfile = () => {
       }
       
     } catch (error) {
-      console.error('Failed to load profile:', error);
-      setMessage({ type: 'error', text: 'Failed to load profile data' });
+      console.error('❌ Failed to load profile:', {
+        error: error.message,
+        stack: error.stack,
+        hasToken: !!localStorage.getItem('token'),
+        apiBaseURL: import.meta.env.VITE_API_BASE_URL
+      });
+      
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to load profile data: ${error.message}` 
+      });
     } finally {
       setLoading(false);
     }

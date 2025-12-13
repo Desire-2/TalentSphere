@@ -19,6 +19,12 @@ if (APP_ENVIRONMENT === 'development') {
     ENABLE_DEBUG_LOGS,
     ENABLE_API_LOGGING
   });
+} else {
+  // Production: Log basic config to help debug deployment issues
+  console.log('🌐 Production API Config:', {
+    API_BASE_URL,
+    APP_ENVIRONMENT
+  });
 }
 
 class ApiService {
@@ -49,6 +55,17 @@ class ApiService {
     
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
+      
+      // Debug logging for production issues
+      if (ENABLE_DEBUG_LOGS) {
+        console.log('🔑 Token found and added to headers:', {
+          tokenLength: this.token.length,
+          tokenPreview: this.token.substring(0, 20) + '...',
+          hasAuthorization: !!headers.Authorization
+        });
+      }
+    } else {
+      console.warn('⚠️ No authentication token found in localStorage');
     }
     
     return headers;

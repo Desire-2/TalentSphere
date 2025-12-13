@@ -11,10 +11,10 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    certification_name: '',
+    name: '',
     issuing_organization: '',
     issue_date: '',
-    expiration_date: '',
+    expiry_date: '',
     credential_id: '',
     credential_url: '',
     does_not_expire: false
@@ -23,10 +23,10 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
 
   const resetForm = () => {
     setFormData({
-      certification_name: '',
+      name: '',
       issuing_organization: '',
       issue_date: '',
-      expiration_date: '',
+      expiry_date: '',
       credential_id: '',
       credential_url: '',
       does_not_expire: false
@@ -37,10 +37,10 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
 
   const handleEdit = (cert) => {
     setFormData({
-      certification_name: cert.certification_name || '',
+      name: cert.name || '',
       issuing_organization: cert.issuing_organization || '',
       issue_date: cert.issue_date || '',
-      expiration_date: cert.expiration_date || '',
+      expiry_date: cert.expiry_date || '',
       credential_id: cert.credential_id || '',
       credential_url: cert.credential_url || '',
       does_not_expire: cert.does_not_expire || false
@@ -123,11 +123,11 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
         {isAdding ? (
           <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-lg bg-gray-50">
             <div>
-              <Label htmlFor="certification_name">Certification Name *</Label>
+              <Label htmlFor="name">Certification Name *</Label>
               <Input
-                id="certification_name"
-                value={formData.certification_name}
-                onChange={(e) => setFormData({...formData, certification_name: e.target.value})}
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="e.g., AWS Certified Solutions Architect"
                 required
               />
@@ -154,19 +154,19 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
                 />
               </div>
               <div>
-                <Label htmlFor="expiration_date">Expiration Date</Label>
+                <Label htmlFor="expiry_date">Expiration Date</Label>
                 <Input
-                  id="expiration_date"
+                  id="expiry_date"
                   type="date"
-                  value={formData.expiration_date}
-                  onChange={(e) => setFormData({...formData, expiration_date: e.target.value})}
+                  value={formData.expiry_date}
+                  onChange={(e) => setFormData({...formData, expiry_date: e.target.value})}
                   disabled={formData.does_not_expire}
                 />
                 <label className="flex items-center gap-2 mt-2 text-sm">
                   <input
                     type="checkbox"
                     checked={formData.does_not_expire}
-                    onChange={(e) => setFormData({...formData, does_not_expire: e.target.checked, expiration_date: ''})}
+                    onChange={(e) => setFormData({...formData, does_not_expire: e.target.checked, expiry_date: ''})}
                   />
                   Does not expire
                 </label>
@@ -227,7 +227,7 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
                   <div className="flex items-start gap-2 mb-2">
                     <Award className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
                     <div>
-                      <h3 className="font-semibold">{cert.certification_name}</h3>
+                      <h3 className="font-semibold">{cert.name}</h3>
                       <p className="text-sm text-gray-600">{cert.issuing_organization}</p>
                     </div>
                   </div>
@@ -240,18 +240,18 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
                       <Badge variant="secondary" className="bg-green-100 text-green-800">
                         No Expiration
                       </Badge>
-                    ) : cert.expiration_date && (
+                    ) : cert.expiry_date && (
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-600">
-                          Expires: {formatDate(cert.expiration_date)}
+                          Expires: {formatDate(cert.expiry_date)}
                         </span>
-                        {isExpired(cert.expiration_date) && (
+                        {isExpired(cert.expiry_date) && (
                           <Badge variant="destructive" className="flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             Expired
                           </Badge>
                         )}
-                        {isExpiringSoon(cert.expiration_date) && !isExpired(cert.expiration_date) && (
+                        {isExpiringSoon(cert.expiry_date) && !isExpired(cert.expiry_date) && (
                           <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             Expiring Soon

@@ -28,7 +28,8 @@ import {
   Download,
   Upload,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  User
 } from 'lucide-react';
 
 const ProfileSettings = () => {

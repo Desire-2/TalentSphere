@@ -99,24 +99,45 @@ const SkillsSection = ({ data, onUpdate }) => {
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
-              {technicalSkills.length === 0 ? (
-                <div className="w-full text-center py-4">
-                  <Code className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">No technical skills added yet</p>
-                </div>
-              ) : (
-                technicalSkills.map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="text-sm px-3 py-1.5 bg-blue-100 text-blue-800 hover:bg-blue-200 group">
-                    <Code className="w-3 h-3 mr-1" />
-                    {skill}
-                    <X 
-                      className="w-3.5 h-3.5 ml-2 cursor-pointer opacity-70 hover:opacity-100 hover:text-red-600" 
-                      onClick={() => handleRemoveTechnicalSkill(index)}
-                    />
-                  </Badge>
-                ))
-              )}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">{technicalSkills.length} skill{technicalSkills.length !== 1 ? 's' : ''}</span>
+                {technicalSkills.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTechnicalSkills([]);
+                      handleSaveSkills([], softSkills);
+                    }}
+                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                    disabled={saving}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                {technicalSkills.length === 0 ? (
+                  <div className="w-full text-center py-4">
+                    <Code className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">No technical skills added yet</p>
+                  </div>
+                ) : (
+                  technicalSkills.map((skill, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm px-3 py-1.5 bg-blue-100 text-blue-800 hover:bg-blue-200 group">
+                      <Code className="w-3 h-3 mr-1" />
+                      {skill}
+                      <X 
+                        className="w-4 h-4 ml-2 cursor-pointer text-blue-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
+                        onClick={() => handleRemoveTechnicalSkill(index)}
+                        title="Remove skill"
+                      />
+                    </Badge>
+                  ))
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Input
@@ -151,24 +172,45 @@ const SkillsSection = ({ data, onUpdate }) => {
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
-              {softSkills.length === 0 ? (
-                <div className="w-full text-center py-4">
-                  <Users className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">No soft skills added yet</p>
-                </div>
-              ) : (
-                softSkills.map((skill, index) => (
-                  <Badge key={index} variant="outline" className="text-sm px-3 py-1.5 bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 group">
-                    <Users className="w-3 h-3 mr-1" />
-                    {skill}
-                    <X 
-                      className="w-3.5 h-3.5 ml-2 cursor-pointer opacity-70 hover:opacity-100 hover:text-red-600" 
-                      onClick={() => handleRemoveSoftSkill(index)}
-                    />
-                  </Badge>
-                ))
-              )}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">{softSkills.length} skill{softSkills.length !== 1 ? 's' : ''}</span>
+                {softSkills.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSoftSkills([]);
+                      handleSaveSkills(technicalSkills, []);
+                    }}
+                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                    disabled={saving}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
+                {softSkills.length === 0 ? (
+                  <div className="w-full text-center py-4">
+                    <Users className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">No soft skills added yet</p>
+                  </div>
+                ) : (
+                  softSkills.map((skill, index) => (
+                    <Badge key={index} variant="outline" className="text-sm px-3 py-1.5 bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 group">
+                      <Users className="w-3 h-3 mr-1" />
+                      {skill}
+                      <X 
+                        className="w-4 h-4 ml-2 cursor-pointer text-purple-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
+                        onClick={() => handleRemoveSoftSkill(index)}
+                        title="Remove skill"
+                      />
+                    </Badge>
+                  ))
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Input

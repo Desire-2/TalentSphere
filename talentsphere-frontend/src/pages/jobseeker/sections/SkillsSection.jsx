@@ -3,13 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Badge } from '../../../components/ui/badge';
-import { Target, X, Plus, Code, Users, TrendingUp, Award, Star } from 'lucide-react';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Target, X, Plus, Code, Users, TrendingUp, Award, Star, Trash2 } from 'lucide-react';
 import api from '../../../services/api';
 
 const SkillsSection = ({ data, onUpdate }) => {
   const [newTechnicalSkill, setNewTechnicalSkill] = useState('');
   const [newSoftSkill, setNewSoftSkill] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedTechnical, setSelectedTechnical] = useState([]);
+  const [selectedSoft, setSelectedSoft] = useState([]);
 
   const parsedData = typeof data === 'string' ? JSON.parse(data || '{}') : data || {};
   const initialTechnical = Array.isArray(parsedData.technical_skills) 
@@ -88,6 +91,46 @@ const SkillsSection = ({ data, onUpdate }) => {
     updateSkills(technicalSkills, updated);
   };
 
+  // Multi-select handlers for technical skills
+  const toggleTechnicalSelection = (skill) => {
+    setSelectedTechnical(prev => 
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const toggleAllTechnical = () => {
+    setSelectedTechnical(prev => 
+      prev.length === technicalSkills.length ? [] : [...technicalSkills]
+    );
+  };
+
+  const deleteSelectedTechnical = () => {
+    const updated = technicalSkills.filter(skill => !selectedTechnical.includes(skill));
+    setTechnicalSkills(updated);
+    setSelectedTechnical([]);
+    updateSkills(updated, softSkills);
+  };
+
+  // Multi-select handlers for soft skills
+  const toggleSoftSelection = (skill) => {
+    setSelectedSoft(prev => 
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const toggleAllSoft = () => {
+    setSelectedSoft(prev => 
+      prev.length === softSkills.length ? [] : [...softSkills]
+    );
+  };
+
+  const deleteSelectedSoft = () => {
+    const updated = softSkills.filter(skill => !selectedSoft.includes(skill));
+    setSoftSkills(updated);
+    setSelectedSoft([]);
+    updateSkills(technicalSkills, updated);
+  };
+
   return (
     <div className="space-y-6">
       {/* Technical Skills Card */}
@@ -108,22 +151,55 @@ const SkillsSection = ({ data, onUpdate }) => {
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500">{technicalSkills.length} skill{technicalSkills.length !== 1 ? 's' : ''}</span>
-                {technicalSkills.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setTechnicalSkills([]);
-                      updateSkills([], softSkills);
-                    }}
-                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
-                    disabled={saving}
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    Clear All
-                  </Button>
-                )}
+                <div className="flex items-center gap-3">
+                  {technicalSkills.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="select-all-technical"
+                        checked={selectedTechnical.length === technicalSkills.length && technicalSkills.length > 0}
+                        onCheckedChange={toggleAllTechnical}
+                        disabled={saving}
+                      />
+                      <label htmlFor="select-all-technical" className="text-xs text-gray-600 cursor-pointer">
+                        Select All
+                      </label>
+                    </div>
+                  )}
+                  <span className="text-xs text-gray-500">{technicalSkills.length} skill{technicalSkills.length !== 1 ? 's' : ''}</span>
+                  {selectedTechnical.length > 0 && (
+                    <span className="text-xs font-medium text-blue-600">({selectedTechnical.length} selected)</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {selectedTechnical.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={deleteSelectedTechnical}
+                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                      disabled={saving}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete Selected ({selectedTechnical.length})
+                    </Button>
+                  )}
+                  {technicalSkills.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setTechnicalSkills([]);
+                        setSelectedTechnical([]);
+                        updateSkills([], softSkills);
+                      }}
+                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                      disabled={saving}
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
                 {technicalSkills.length === 0 ? (
@@ -133,15 +209,23 @@ const SkillsSection = ({ data, onUpdate }) => {
                   </div>
                 ) : (
                   technicalSkills.map((skill, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm px-3 py-1.5 bg-blue-100 text-blue-800 hover:bg-blue-200 group">
-                      <Code className="w-3 h-3 mr-1" />
-                      {skill}
-                      <X 
-                        className="w-4 h-4 ml-2 cursor-pointer text-blue-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
-                        onClick={() => handleRemoveTechnicalSkill(index)}
-                        title="Remove skill"
+                    <div key={index} className="flex items-center gap-1.5 group">
+                      <Checkbox
+                        checked={selectedTechnical.includes(skill)}
+                        onCheckedChange={() => toggleTechnicalSelection(skill)}
+                        disabled={saving}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                       />
-                    </Badge>
+                      <Badge variant="secondary" className="text-sm px-3 py-1.5 bg-blue-100 text-blue-800 hover:bg-blue-200">
+                        <Code className="w-3 h-3 mr-1" />
+                        {skill}
+                        <X 
+                          className="w-4 h-4 ml-2 cursor-pointer text-blue-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
+                          onClick={() => handleRemoveTechnicalSkill(index)}
+                          title="Remove skill"
+                        />
+                      </Badge>
+                    </div>
                   ))
                 )}
               </div>
@@ -181,22 +265,55 @@ const SkillsSection = ({ data, onUpdate }) => {
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500">{softSkills.length} skill{softSkills.length !== 1 ? 's' : ''}</span>
-                {softSkills.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSoftSkills([]);
-                      updateSkills(technicalSkills, []);
-                    }}
-                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
-                    disabled={saving}
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    Clear All
-                  </Button>
-                )}
+                <div className="flex items-center gap-3">
+                  {softSkills.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="select-all-soft"
+                        checked={selectedSoft.length === softSkills.length && softSkills.length > 0}
+                        onCheckedChange={toggleAllSoft}
+                        disabled={saving}
+                      />
+                      <label htmlFor="select-all-soft" className="text-xs text-gray-600 cursor-pointer">
+                        Select All
+                      </label>
+                    </div>
+                  )}
+                  <span className="text-xs text-gray-500">{softSkills.length} skill{softSkills.length !== 1 ? 's' : ''}</span>
+                  {selectedSoft.length > 0 && (
+                    <span className="text-xs font-medium text-purple-600">({selectedSoft.length} selected)</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {selectedSoft.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={deleteSelectedSoft}
+                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                      disabled={saving}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete Selected ({selectedSoft.length})
+                    </Button>
+                  )}
+                  {softSkills.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSoftSkills([]);
+                        setSelectedSoft([]);
+                        updateSkills(technicalSkills, []);
+                      }}
+                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                      disabled={saving}
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-gray-50">
                 {softSkills.length === 0 ? (
@@ -206,15 +323,23 @@ const SkillsSection = ({ data, onUpdate }) => {
                   </div>
                 ) : (
                   softSkills.map((skill, index) => (
-                    <Badge key={index} variant="outline" className="text-sm px-3 py-1.5 bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 group">
-                      <Users className="w-3 h-3 mr-1" />
-                      {skill}
-                      <X 
-                        className="w-4 h-4 ml-2 cursor-pointer text-purple-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
-                        onClick={() => handleRemoveSoftSkill(index)}
-                        title="Remove skill"
+                    <div key={index} className="flex items-center gap-1.5 group">
+                      <Checkbox
+                        checked={selectedSoft.includes(skill)}
+                        onCheckedChange={() => toggleSoftSelection(skill)}
+                        disabled={saving}
+                        className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
                       />
-                    </Badge>
+                      <Badge variant="outline" className="text-sm px-3 py-1.5 bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100">
+                        <Users className="w-3 h-3 mr-1" />
+                        {skill}
+                        <X 
+                          className="w-4 h-4 ml-2 cursor-pointer text-purple-600 opacity-50 group-hover:opacity-100 hover:text-red-600 transition-all" 
+                          onClick={() => handleRemoveSoftSkill(index)}
+                          title="Remove skill"
+                        />
+                      </Badge>
+                    </div>
                   ))
                 )}
               </div>

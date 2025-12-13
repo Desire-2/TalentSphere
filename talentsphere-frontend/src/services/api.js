@@ -118,7 +118,16 @@ class ApiService {
         // Handle 401 Unauthorized - Session expired or invalid token
         if (response.status === 401) {
           const errorMsg = data.error || data.message || '';
-          const isTokenExpired = errorMsg.includes('expired') || errorMsg.includes('invalid');
+          const isTokenExpired = errorMsg.includes('expired') || errorMsg.includes('invalid') || errorMsg.includes('missing');
+          
+          if (ENABLE_DEBUG_LOGS) {
+            console.log('🔒 Authentication failed:', {
+              status: response.status,
+              error: errorMsg,
+              isTokenExpired,
+              url: url
+            });
+          }
           
           if (isTokenExpired) {
             if (ENABLE_DEBUG_LOGS) {
@@ -131,17 +140,19 @@ class ApiService {
             
             // Emit custom event for session expiration
             window.dispatchEvent(new CustomEvent('session-expired', {
-              detail: { message: 'Your session has expired. Please login again.' }
+              detail: { message: data.message || 'Your session has expired. Please login again.' }
             }));
             
-            // Redirect to login with return path
+            // Redirect to login with return path (only if not already on login page)
             const returnPath = window.location.pathname;
-            const loginUrl = `/login?returnTo=${encodeURIComponent(returnPath)}`;
-            
-            // Small delay to allow event handlers to run
-            setTimeout(() => {
-              window.location.href = loginUrl;
-            }, 100);
+            if (!returnPath.includes('/login')) {
+              const loginUrl = `/login?returnTo=${encodeURIComponent(returnPath)}`;
+              
+              // Small delay to allow event handlers to run
+              setTimeout(() => {
+                window.location.href = loginUrl;
+              }, 100);
+            }
           }
         }
         

@@ -48,24 +48,75 @@ def token_required(f):
         token = None
         auth_header = request.headers.get('Authorization')
         
+        # Enhanced logging for debugging auth issues
+        if current_app.config.get('DEBUG') or current_app.config.get('FLASK_ENV') == 'development':
+            current_app.logger.debug(f"Auth header present: {bool(auth_header)}")
+            if auth_header:
+                current_app.logger.debug(f"Auth header format: {auth_header[:20]}...")
+        
         if auth_header:
             try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
-            except IndexError:
-                return jsonify({'error': 'Invalid token format'}), 401
+                # Handle both "Bearer token" and "token" formats
+                parts = auth_header.split(" ")
+                if len(parts) == 2 and parts[0].lower() == 'bearer':
+                    token = parts[1]
+                elif len(parts) == 1:
+                    token = parts[0]
+                else:
+                    current_app.logger.warning(f"Invalid auth header format: {auth_header[:50]}")
+                    return jsonify({
+                        'error': 'Invalid token format',
+                        'message': 'Authorization header must be "Bearer <token>" or "<token>"'
+                    }), 401
+            except Exception as e:
+                current_app.logger.error(f"Error parsing auth header: {str(e)}")
+                return jsonify({'error': 'Invalid token format', 'details': str(e)}), 401
         
         if not token:
-            return jsonify({'error': 'Token is missing'}), 401
+            return jsonify({
+                'error': 'Token is missing',
+                'message': 'Authorization header is required'
+            }), 401
         
         try:
+            # Decode and validate token
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            
+            # Get user from database
             current_user = User.query.get(data['user_id'])
-            if not current_user or not current_user.is_active:
-                return jsonify({'error': 'Invalid token'}), 401
+            
+            if not current_user:
+                current_app.logger.warning(f"User not found for token user_id: {data.get('user_id')}")
+                return jsonify({
+                    'error': 'Invalid token',
+                    'message': 'User not found'
+                }), 401
+                
+            if not current_user.is_active:
+                current_app.logger.warning(f"Inactive user attempted access: {current_user.email}")
+                return jsonify({
+                    'error': 'Account inactive',
+                    'message': 'Your account has been deactivated'
+                }), 401
+                
         except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token has expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
+            current_app.logger.info("Token expired")
+            return jsonify({
+                'error': 'Token has expired',
+                'message': 'Please login again'
+            }), 401
+        except jwt.InvalidTokenError as e:
+            current_app.logger.warning(f"Invalid token: {str(e)}")
+            return jsonify({
+                'error': 'Invalid token',
+                'message': 'Token validation failed'
+            }), 401
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error in token validation: {str(e)}")
+            return jsonify({
+                'error': 'Authentication error',
+                'message': 'An error occurred during authentication'
+            }), 500
         
         return f(current_user, *args, **kwargs)
     return decorated

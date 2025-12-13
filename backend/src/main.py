@@ -108,9 +108,10 @@ CORS(
     app,
     origins=allowed_origins,
     supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-    expose_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    expose_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    max_age=600  # Cache preflight requests for 10 minutes
 )
 
 allowed_origins_set = set(allowed_origins)
@@ -131,9 +132,10 @@ def ensure_cors_headers(response):
             response.headers['Vary'] = 'Origin'
 
         response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-        response.headers.setdefault('Access-Control-Max-Age', '600')
+        response.headers['Access-Control-Max-Age'] = '600'
+        response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization'
 
     return response
 

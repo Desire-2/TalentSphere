@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Users, Plus, Edit2, Trash2 } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const MembershipsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -18,15 +19,28 @@ const MembershipsSection = ({ data = [], onUpdate }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const url = editingId ? `/api/profile/professional-memberships/${editingId}` : '/api/profile/professional-memberships';
-      const response = await fetch(url, { method: editingId ? 'PUT' : 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
-      if (response.ok) { resetForm(); onUpdate(); } else alert('Failed to save');
-    } catch (error) { alert('Error saving'); } finally { setSaving(false); }
+      if (editingId) {
+        await apiService.updateProfessionalMembership(editingId, formData);
+      } else {
+        await apiService.addProfessionalMembership(formData);
+      }
+      resetForm();
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error saving membership');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete?')) return;
-    try { const response = await fetch(`/api/profile/professional-memberships/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }); if (response.ok) onUpdate(); } catch (error) { console.error(error); }
+    if (!confirm('Delete this membership?')) return;
+    try {
+      await apiService.deleteProfessionalMembership(id);
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error deleting membership');
+    }
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric' }) : '';

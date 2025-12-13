@@ -5,6 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { Trophy, Plus, Edit2, Trash2, Calendar } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const AwardsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -28,25 +29,28 @@ const AwardsSection = ({ data = [], onUpdate }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const url = editingId ? `/api/profile/awards/${editingId}` : '/api/profile/awards';
-      const response = await fetch(url, {
-        method: editingId ? 'PUT' : 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) { resetForm(); onUpdate(); } else alert('Failed to save award');
-    } catch (error) { alert('Error saving award'); } finally { setSaving(false); }
+      if (editingId) {
+        await apiService.updateAward(editingId, formData);
+      } else {
+        await apiService.addAward(formData);
+      }
+      resetForm();
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error saving award');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this award?')) return;
     try {
-      const response = await fetch(`/api/profile/awards/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) onUpdate(); else alert('Failed to delete');
-    } catch (error) { console.error(error); }
+      await apiService.deleteAward(id);
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error deleting award');
+    }
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : '';

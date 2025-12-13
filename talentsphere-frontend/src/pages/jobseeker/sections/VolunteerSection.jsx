@@ -5,6 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { Heart, Plus, Edit2, Trash2, Calendar } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const VolunteerSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -19,15 +20,28 @@ const VolunteerSection = ({ data = [], onUpdate }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const url = editingId ? `/api/profile/volunteer-experience/${editingId}` : '/api/profile/volunteer-experience';
-      const response = await fetch(url, { method: editingId ? 'PUT' : 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
-      if (response.ok) { resetForm(); onUpdate(); } else alert('Failed to save');
-    } catch (error) { alert('Error saving'); } finally { setSaving(false); }
+      if (editingId) {
+        await apiService.updateVolunteerExperience(editingId, formData);
+      } else {
+        await apiService.addVolunteerExperience(formData);
+      }
+      resetForm();
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error saving volunteer experience');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete?')) return;
-    try { const response = await fetch(`/api/profile/volunteer-experience/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }); if (response.ok) onUpdate(); } catch (error) { console.error(error); }
+    if (!confirm('Delete this volunteer experience?')) return;
+    try {
+      await apiService.deleteVolunteerExperience(id);
+      onUpdate();
+    } catch (error) {
+      alert(error.message || 'Error deleting volunteer experience');
+    }
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '';

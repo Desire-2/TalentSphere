@@ -6,6 +6,7 @@ import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { Badge } from '../../../components/ui/badge';
 import { Briefcase, Plus, Edit2, Trash2, X, Calendar } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const WorkExperienceSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -13,12 +14,13 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
   const [formData, setFormData] = useState({
     job_title: '',
     company_name: '',
-    location: '',
+    company_location: '',
     start_date: '',
     end_date: '',
     is_current: false,
     employment_type: 'Full-time',
-    responsibilities: '',
+    description: '',
+    key_responsibilities: '',
     achievements: '',
     technologies_used: ''
   });
@@ -28,12 +30,13 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
     setFormData({
       job_title: '',
       company_name: '',
-      location: '',
+      company_location: '',
       start_date: '',
       end_date: '',
       is_current: false,
       employment_type: 'Full-time',
-      responsibilities: '',
+      description: '',
+      key_responsibilities: '',
       achievements: '',
       technologies_used: ''
     });
@@ -45,12 +48,13 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
     setFormData({
       job_title: exp.job_title || '',
       company_name: exp.company_name || '',
-      location: exp.location || '',
+      company_location: exp.company_location || '',
       start_date: exp.start_date || '',
       end_date: exp.end_date || '',
       is_current: exp.is_current || false,
       employment_type: exp.employment_type || 'Full-time',
-      responsibilities: Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : exp.responsibilities || '',
+      description: exp.description || '',
+      key_responsibilities: Array.isArray(exp.key_responsibilities) ? exp.key_responsibilities.join('\n') : exp.key_responsibilities || '',
       achievements: Array.isArray(exp.achievements) ? exp.achievements.join('\n') : exp.achievements || '',
       technologies_used: Array.isArray(exp.technologies_used) ? exp.technologies_used.join(', ') : exp.technologies_used || ''
     });
@@ -64,36 +68,33 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
 
     try {
       const payload = {
-        ...formData,
-        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
+        job_title: formData.job_title,
+        company_name: formData.company_name,
+        company_location: formData.company_location,
+        employment_type: formData.employment_type,
+        start_date: formData.start_date,
+        end_date: formData.is_current ? null : formData.end_date,
+        is_current: formData.is_current,
+        description: formData.description,
+        key_responsibilities: formData.key_responsibilities.split('\n').filter(r => r.trim()),
         achievements: formData.achievements.split('\n').filter(a => a.trim()),
         technologies_used: formData.technologies_used.split(',').map(t => t.trim()).filter(t => t)
       };
 
-      const url = editingId 
-        ? `/api/profile/work-experience/${editingId}`
-        : '/api/profile/work-experience';
-      
-      const method = editingId ? 'PUT' : 'POST';
+      let response;
+      if (editingId) {
+        response = await apiService.updateWorkExperience(editingId, payload);
+      } else {
+        response = await apiService.addWorkExperience(payload);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
+      if (response) {
         resetForm();
         onUpdate();
-      } else {
-        alert('Failed to save work experience');
       }
     } catch (error) {
       console.error('Error saving work experience:', error);
-      alert('Error saving work experience');
+      alert(error.message || 'Error saving work experience');
     } finally {
       setSaving(false);
     }
@@ -103,21 +104,11 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
     if (!confirm('Are you sure you want to delete this work experience?')) return;
 
     try {
-      const response = await fetch(`/api/profile/work-experience/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        onUpdate();
-      } else {
-        alert('Failed to delete work experience');
-      }
+      await apiService.deleteWorkExperience(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting work experience:', error);
-      alert('Error deleting work experience');
+      alert(error.message || 'Error deleting work experience');
     }
   };
 
@@ -177,8 +168,8 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
                 <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  value={formData.company_location}
+                  onChange={(e) => setFormData({...formData, company_location: e.target.value})}
                   placeholder="e.g., San Francisco, CA"
                 />
               </div>
@@ -231,13 +222,24 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
             </div>
 
             <div>
-              <Label htmlFor="responsibilities">Key Responsibilities (one per line)</Label>
+              <Label htmlFor="description">Job Description</Label>
               <Textarea
-                id="responsibilities"
-                value={formData.responsibilities}
-                onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                rows={3}
+                placeholder="Brief overview of your role and responsibilities"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="key_responsibilities">Key Responsibilities (one per line)</Label>
+              <Textarea
+                id="key_responsibilities"
+                value={formData.key_responsibilities}
+                onChange={(e) => setFormData({...formData, key_responsibilities: e.target.value})}
                 rows={4}
-                placeholder="• Managed team of 5 developers&#10;• Led architecture design&#10;• Implemented CI/CD pipeline"
+                placeholder="Managed team of 5 developers&#10;Led architecture design&#10;Implemented CI/CD pipeline"
               />
             </div>
 
@@ -306,20 +308,24 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
                 <div className="pr-20">
                   <h3 className="font-semibold text-lg">{exp.job_title}</h3>
                   <p className="text-gray-700 font-medium">{exp.company_name}</p>
-                  <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                  <div className="flex items-center gap-3 text-sm text-gray-600 mt-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(exp.start_date)} - {exp.is_current ? 'Present' : formatDate(exp.end_date)}
                     </span>
-                    {exp.location && <span>• {exp.location}</span>}
+                    {exp.company_location && <span>• {exp.company_location}</span>}
                     <Badge variant="outline" className="text-xs">{exp.employment_type}</Badge>
                   </div>
 
-                  {exp.responsibilities && exp.responsibilities.length > 0 && (
+                  {exp.description && (
+                    <p className="mt-3 text-sm text-gray-700">{exp.description}</p>
+                  )}
+
+                  {exp.key_responsibilities && exp.key_responsibilities.length > 0 && (
                     <div className="mt-3">
                       <p className="text-sm font-medium text-gray-700 mb-1">Key Responsibilities:</p>
                       <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        {exp.responsibilities.map((resp, idx) => (
+                        {exp.key_responsibilities.map((resp, idx) => (
                           <li key={idx}>{resp}</li>
                         ))}
                       </ul>

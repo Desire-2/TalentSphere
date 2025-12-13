@@ -6,6 +6,7 @@ import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { Badge } from '../../../components/ui/badge';
 import { GraduationCap, Plus, Edit2, Trash2, Calendar, Award } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const EducationSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -75,30 +76,20 @@ const EducationSection = ({ data = [], onUpdate }) => {
           : []
       };
 
-      const url = editingId 
-        ? `/api/profile/education/${editingId}`
-        : '/api/profile/education';
-      
-      const method = editingId ? 'PUT' : 'POST';
+      let response;
+      if (editingId) {
+        response = await apiService.updateEducation(editingId, payload);
+      } else {
+        response = await apiService.addEducation(payload);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
+      if (response) {
         resetForm();
         onUpdate();
-      } else {
-        alert('Failed to save education');
       }
     } catch (error) {
       console.error('Error saving education:', error);
-      alert('Error saving education');
+      alert(error.message || 'Error saving education');
     } finally {
       setSaving(false);
     }
@@ -108,21 +99,11 @@ const EducationSection = ({ data = [], onUpdate }) => {
     if (!confirm('Are you sure you want to delete this education record?')) return;
 
     try {
-      const response = await fetch(`/api/profile/education/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        onUpdate();
-      } else {
-        alert('Failed to delete education');
-      }
+      await apiService.deleteEducation(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting education:', error);
-      alert('Error deleting education');
+      alert(error.message || 'Error deleting education');
     }
   };
 

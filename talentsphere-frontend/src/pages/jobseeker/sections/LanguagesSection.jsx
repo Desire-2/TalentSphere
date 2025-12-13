@@ -5,6 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { Languages, Plus, Edit2, Trash2 } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const LanguagesSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -19,22 +20,22 @@ const LanguagesSection = ({ data = [], onUpdate }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const url = editingId ? `/api/profile/languages/${editingId}` : '/api/profile/languages';
-      const response = await fetch(url, {
-        method: editingId ? 'PUT' : 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) { resetForm(); onUpdate(); } else alert('Failed to save');
-    } catch (error) { alert('Error saving'); } finally { setSaving(false); }
+      let response;
+      if (editingId) {
+        response = await apiService.updateLanguage(editingId, formData);
+      } else {
+        response = await apiService.addLanguage(formData);
+      }
+      if (response) { resetForm(); onUpdate(); }
+    } catch (error) { alert(error.message || 'Error saving'); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this language?')) return;
     try {
-      const response = await fetch(`/api/profile/languages/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-      if (response.ok) onUpdate();
-    } catch (error) { console.error(error); }
+      await apiService.deleteLanguage(id);
+      onUpdate();
+    } catch (error) { console.error(error); alert(error.message || 'Error deleting'); }
   };
 
   return (

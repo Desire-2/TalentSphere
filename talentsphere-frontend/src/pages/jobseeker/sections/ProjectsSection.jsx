@@ -6,6 +6,7 @@ import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { Badge } from '../../../components/ui/badge';
 import { FolderGit2, Plus, Edit2, Trash2, ExternalLink, Star, Calendar } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const ProjectsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -73,28 +74,20 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
           .filter(t => t)
       };
 
-      const url = editingId 
-        ? `/api/profile/projects/${editingId}`
-        : '/api/profile/projects';
-      
-      const response = await fetch(url, {
-        method: editingId ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      let response;
+      if (editingId) {
+        response = await apiService.updateProject(editingId, payload);
+      } else {
+        response = await apiService.addProject(payload);
+      }
 
-      if (response.ok) {
+      if (response) {
         resetForm();
         onUpdate();
-      } else {
-        alert('Failed to save project');
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('Error saving project');
+      alert(error.message || 'Error saving project');
     } finally {
       setSaving(false);
     }
@@ -104,19 +97,11 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
     if (!confirm('Are you sure you want to delete this project?')) return;
 
     try {
-      const response = await fetch(`/api/profile/projects/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-
-      if (response.ok) {
-        onUpdate();
-      } else {
-        alert('Failed to delete project');
-      }
+      await apiService.deleteProject(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert('Error deleting project');
+      alert(error.message || 'Error deleting project');
     }
   };
 

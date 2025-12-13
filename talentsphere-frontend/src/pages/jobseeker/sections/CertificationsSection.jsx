@@ -5,6 +5,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { Award, Plus, Edit2, Trash2, ExternalLink, AlertCircle, Calendar } from 'lucide-react';
+import apiService from '../../../services/api';
 
 const CertificationsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -53,28 +54,20 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
     setSaving(true);
 
     try {
-      const url = editingId 
-        ? `/api/profile/certifications/${editingId}`
-        : '/api/profile/certifications';
-      
-      const response = await fetch(url, {
-        method: editingId ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
+      let response;
+      if (editingId) {
+        response = await apiService.updateCertification(editingId, formData);
+      } else {
+        response = await apiService.addCertification(formData);
+      }
 
-      if (response.ok) {
+      if (response) {
         resetForm();
         onUpdate();
-      } else {
-        alert('Failed to save certification');
       }
     } catch (error) {
       console.error('Error saving certification:', error);
-      alert('Error saving certification');
+      alert(error.message || 'Error saving certification');
     } finally {
       setSaving(false);
     }
@@ -84,19 +77,11 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
     if (!confirm('Are you sure you want to delete this certification?')) return;
 
     try {
-      const response = await fetch(`/api/profile/certifications/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-
-      if (response.ok) {
-        onUpdate();
-      } else {
-        alert('Failed to delete certification');
-      }
+      await apiService.deleteCertification(id);
+      onUpdate();
     } catch (error) {
       console.error('Error deleting certification:', error);
-      alert('Error deleting certification');
+      alert(error.message || 'Error deleting certification');
     }
   };
 

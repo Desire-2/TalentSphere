@@ -639,12 +639,12 @@ class ApiService {
 
   // Get notification preferences
   async getNotificationPreferences() {
-    return this.get('/user/notification-preferences');
+    return this.get('/enhanced-notifications/notification-preferences');
   }
 
   // Update notification preferences
   async updateNotificationPreferences(preferences) {
-    return this.put('/user/notification-preferences', preferences);
+    return this.put('/enhanced-notifications/notification-preferences', preferences);
   }
 
   // Get privacy settings
@@ -663,8 +663,8 @@ class ApiService {
   }
 
   // Delete account
-  async deleteAccount() {
-    return this.delete('/user/account');
+  async deleteAccount(data) {
+    return this.delete('/auth/delete-account', data);
   }
 
   // Get profile completion
@@ -679,7 +679,7 @@ class ApiService {
 
   // Send verification email
   async sendVerificationEmail() {
-    return this.post('/auth/send-verification');
+    return this.post('/auth/send-verification-email');
   }
 
   // Verify email

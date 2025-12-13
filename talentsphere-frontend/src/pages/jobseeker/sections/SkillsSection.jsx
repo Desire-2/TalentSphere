@@ -41,16 +41,32 @@ const SkillsSection = ({ data, onUpdate }) => {
 
   const handleAddTechnicalSkill = () => {
     if (newTechnicalSkill.trim()) {
-      const updated = [...technicalSkills, newTechnicalSkill.trim()];
-      updateSkills(updated, softSkills);
+      // Split by comma and filter out empty strings
+      const newSkills = newTechnicalSkill
+        .split(',')
+        .map(skill => skill.trim())
+        .filter(skill => skill && !technicalSkills.includes(skill));
+      
+      if (newSkills.length > 0) {
+        const updated = [...technicalSkills, ...newSkills];
+        updateSkills(updated, softSkills);
+      }
       setNewTechnicalSkill('');
     }
   };
 
   const handleAddSoftSkill = () => {
     if (newSoftSkill.trim()) {
-      const updated = [...softSkills, newSoftSkill.trim()];
-      updateSkills(technicalSkills, updated);
+      // Split by comma and filter out empty strings
+      const newSkills = newSoftSkill
+        .split(',')
+        .map(skill => skill.trim())
+        .filter(skill => skill && !softSkills.includes(skill));
+      
+      if (newSkills.length > 0) {
+        const updated = [...softSkills, ...newSkills];
+        updateSkills(technicalSkills, updated);
+      }
       setNewSoftSkill('');
     }
   };
@@ -104,7 +120,7 @@ const SkillsSection = ({ data, onUpdate }) => {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Add a technical skill (e.g., Python, React, AWS, Docker)..."
+                placeholder="Add skills (comma-separated): Python, React, AWS, Docker..."
                 value={newTechnicalSkill}
                 onChange={(e) => setNewTechnicalSkill(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleAddTechnicalSkill()}
@@ -156,7 +172,7 @@ const SkillsSection = ({ data, onUpdate }) => {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Add a soft skill (e.g., Leadership, Communication, Problem Solving)..."
+                placeholder="Add skills (comma-separated): Leadership, Communication, Problem Solving..."
                 value={newSoftSkill}
                 onChange={(e) => setNewSoftSkill(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleAddSoftSkill()}

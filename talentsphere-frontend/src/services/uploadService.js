@@ -6,9 +6,11 @@
  * like AWS S3, Google Cloud Storage, or Azure Blob Storage.
  */
 
+import config from '../config/environment.js';
+
 class UploadService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    this.baseURL = config.API.API_URL;
   }
 
   /**

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import config from '../../config/environment.js';
 import { 
   Briefcase, 
   Search, 
@@ -140,7 +141,7 @@ const JobManagement = () => {
   // Enhanced analytics functions
   const fetchJobAnalytics = async (jobId) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/admin/jobs/${jobId}/analytics`, {
+      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/analytics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -156,7 +157,7 @@ const JobManagement = () => {
 
   const fetchJobStats = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/admin/jobs/stats', {
+      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -178,7 +179,7 @@ const JobManagement = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/admin/jobs/bulk-action', {
+      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/bulk-action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -212,7 +213,7 @@ const JobManagement = () => {
     setAuthError(false);
     
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
+      const response = await fetch(`${config.API.API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -355,7 +356,7 @@ const JobManagement = () => {
     // Fetch job categories for the filter dropdown
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5001/api/job-categories');
+        const response = await fetch(`${config.API.API_URL}/api/job-categories`);
         const data = await response.json();
         setCategories(data.categories || []);
       } catch (error) {
@@ -385,7 +386,7 @@ const JobManagement = () => {
   const handleJobModeration = async (jobId, action, reason = '', notes = '') => {
     setActionLoading(prev => ({ ...prev, [jobId]: action }));
     try {
-      const response = await fetch(`http://localhost:5001/api/admin/jobs/${jobId}/moderate`, {
+      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/moderate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

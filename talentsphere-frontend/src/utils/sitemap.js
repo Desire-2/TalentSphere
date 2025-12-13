@@ -1,6 +1,7 @@
 import { jobService } from '../services/job';
 import { scholarshipService } from '../services/scholarship';
 import { companyService } from '../services/company';
+import config from '../config/environment.js';
 
 // Generate dynamic sitemap
 export const generateSitemap = async () => {
@@ -100,7 +101,7 @@ ${staticRoutes.map(route => `  <url>
 
 // Generate static sitemap for public folder
 export const generateStaticSitemap = () => {
-  const baseUrl = 'https://talentsphere.com'; // Replace with your actual domain
+  const baseUrl = config.APP.APP_URL; // Use environment variable instead of hardcoded URL
   const currentDate = new Date().toISOString();
 
   const staticRoutes = [

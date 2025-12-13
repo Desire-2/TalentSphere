@@ -59,6 +59,7 @@ class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       mode: 'cors',
+      credentials: 'include', // Important: Send cookies and auth headers with cross-origin requests
       headers: this.getHeaders(),
       ...options,
     };

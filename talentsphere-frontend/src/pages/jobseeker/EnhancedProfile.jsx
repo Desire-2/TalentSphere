@@ -77,53 +77,38 @@ const EnhancedJobSeekerProfile = () => {
     try {
       setLoading(true);
       
-      // Check auth before making request
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('❌ No token found');
-        navigate('/login');
-        return;
-      }
+      // Use apiService instead of direct fetch for consistent auth handling
+      const response = await apiService.get('/profile/complete-profile');
       
-      // Load complete profile data
-      const response = await fetch('/api/profile/complete-profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.error('❌ Unauthorized - token may be invalid or expired');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          navigate('/login');
-          return;
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
       setProfileData({
-        personal: data.user || {},
-        professional: data.job_seeker_profile || {},
-        workExperiences: data.work_experiences || [],
-        educations: data.educations || [],
-        certifications: data.certifications || [],
-        projects: data.projects || [],
-        awards: data.awards || [],
-        languages: data.languages || [],
-        volunteerExperiences: data.volunteer_experiences || [],
-        professionalMemberships: data.professional_memberships || [],
-        preferences: data.job_seeker_profile || {}
+        personal: response.user || {},
+        professional: response.job_seeker_profile || {},
+        workExperiences: response.work_experiences || [],
+        educations: response.educations || [],
+        certifications: response.certifications || [],
+        projects: response.projects || [],
+        awards: response.awards || [],
+        languages: response.languages || [],
+        volunteerExperiences: response.volunteer_experiences || [],
+        professionalMemberships: response.professional_memberships || [],
+        preferences: response.job_seeker_profile || {}
       });
       
       // Load profile analysis
       await loadProfileAnalysis();
     } catch (error) {
       console.error('Failed to load profile:', error);
-      setMessage({ type: 'error', text: 'Failed to load profile data' });
+      
+      // Handle auth errors
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        console.error('❌ Authentication failed - redirecting to login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
+      
+      setMessage({ type: 'error', text: `Failed to load profile: ${error.message}` });
     } finally {
       setLoading(false);
     }
@@ -253,21 +238,12 @@ const EnhancedJobSeekerProfile = () => {
   
   const loadProfileAnalysis = async () => {
     try {
-      const [completenessRes, keywordsRes] = await Promise.all([
-        fetch('/api/profile/completeness-analysis', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch('/api/profile/keywords-analysis', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
+      const [completeness, keywords] = await Promise.all([
+        apiService.get('/profile/completeness-analysis'),
+        apiService.get('/profile/keywords-analysis')
       ]);
       
-      if (completenessRes.ok && keywordsRes.ok) {
-        const completeness = await completenessRes.json();
-        const keywords = await keywordsRes.json();
-        
-        setProfileAnalysis({ completeness, keywords });
-      }
+      setProfileAnalysis({ completeness, keywords });
     } catch (error) {
       console.error('Failed to load profile analysis:', error);
     }
@@ -275,49 +251,42 @@ const EnhancedJobSeekerProfile = () => {
   
   const handleExportText = async () => {
     try {
-      const response = await fetch('/api/profile/export-text', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiService.get('/profile/export-text', {}, { responseType: 'blob' });
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${profileData.personal.first_name}_${profileData.personal.last_name}_Profile.txt`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        setMessage({ type: 'success', text: 'Profile exported successfully!' });
-      }
+      const blob = new Blob([response], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${profileData.personal.first_name}_${profileData.personal.last_name}_Profile.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setMessage({ type: 'success', text: 'Profile exported successfully!' });
     } catch (error) {
+      console.error('Export failed:', error);
       setMessage({ type: 'error', text: 'Failed to export profile' });
     }
   };
   
   const handleExportJSON = async () => {
     try {
-      const response = await fetch('/api/profile/export-json', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const data = await apiService.get('/profile/export-json');
       
-      if (response.ok) {
-        const data = await response.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${profileData.personal.first_name}_${profileData.personal.last_name}_Profile.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        setMessage({ type: 'success', text: 'Profile data exported successfully!' });
-      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${profileData.personal.first_name}_${profileData.personal.last_name}_Profile.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setMessage({ type: 'success', text: 'Profile data exported successfully!' });
     } catch (error) {
+      console.error('Export failed:', error);
       setMessage({ type: 'error', text: 'Failed to export profile data' });
     }
   };

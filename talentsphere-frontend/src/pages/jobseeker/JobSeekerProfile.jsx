@@ -91,12 +91,15 @@ const JobSeekerProfile = () => {
   const [newSkill, setNewSkill] = useState('');
 
   useEffect(() => {
+    // Check authentication before proceeding
     if (!isAuthenticated) {
+      console.warn('🔒 User not authenticated, redirecting to login');
       navigate('/login');
       return;
     }
     
     if (user?.role !== 'job_seeker') {
+      console.warn('🔒 User is not a job seeker, redirecting to dashboard');
       navigate('/dashboard');
       return;
     }
@@ -108,20 +111,10 @@ const JobSeekerProfile = () => {
     try {
       setLoading(true);
       
-      // Debug: Check if we have a token before making the request
-      const token = localStorage.getItem('token');
-      console.log('🔍 Loading profile...', {
-        hasToken: !!token,
-        tokenLength: token?.length,
-        user: user?.email
-      });
+      console.log('🔍 Loading job seeker profile...');
       
       const response = await apiService.getProfile();
-      console.log('✅ Profile loaded successfully:', {
-        hasData: !!response,
-        role: response?.role,
-        hasJobSeekerProfile: !!response?.job_seeker_profile
-      });
+      console.log('✅ Profile loaded successfully');
       
       setProfile(response);
       
@@ -173,16 +166,19 @@ const JobSeekerProfile = () => {
       }
       
     } catch (error) {
-      console.error('❌ Failed to load profile:', {
-        error: error.message,
-        stack: error.stack,
-        hasToken: !!localStorage.getItem('token'),
-        apiBaseURL: import.meta.env.VITE_API_BASE_URL
-      });
+      console.error('❌ Failed to load profile:', error);
+      
+      // Handle authentication errors
+      if (error.message.includes('401') || error.message.includes('Unauthorized') || 
+          error.message.includes('expired') || error.message.includes('invalid')) {
+        console.error('Authentication failed - will redirect to login');
+        // The apiService already handles token cleanup and redirect
+        return;
+      }
       
       setMessage({ 
         type: 'error', 
-        text: `Failed to load profile data: ${error.message}` 
+        text: `Failed to load profile: ${error.message}` 
       });
     } finally {
       setLoading(false);

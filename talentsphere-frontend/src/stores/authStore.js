@@ -1,6 +1,37 @@
 import { create } from 'zustand';
 import { authService } from '../services/auth';
 
+// Listen for session expiration events from API service
+if (typeof window !== 'undefined') {
+  window.addEventListener('session-expired', () => {
+    console.log('🔒 Session expired event received, clearing auth state');
+    const store = useAuthStore.getState();
+    store.logout();
+  });
+  
+  // Listen for storage changes to sync auth state across tabs
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'token' || e.key === 'user') {
+      const store = useAuthStore.getState();
+      if (!e.newValue) {
+        // Token/user was removed in another tab
+        console.log('🔒 Auth data cleared in another tab, syncing...');
+        store.logout();
+      } else {
+        // Token/user was updated in another tab
+        console.log('🔒 Auth data updated in another tab, syncing...');
+        const newToken = localStorage.getItem('token');
+        const newUser = authService.getCurrentUser();
+        if (newToken && newUser) {
+          store.user = newUser;
+          store.token = newToken;
+          store.isAuthenticated = true;
+        }
+      }
+    }
+  });
+}
+
 export const useAuthStore = create((set, get) => ({
   // State
   user: authService.getCurrentUser(),

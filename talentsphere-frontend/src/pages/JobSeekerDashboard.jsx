@@ -237,21 +237,43 @@ const JobSeekerDashboard = () => {
   const calculateProfileCompletion = (profile) => {
     if (!profile) return 0;
     
-    const fields = [
-      profile.name || profile.full_name,
-      profile.email,
-      profile.job_seeker_profile?.desired_position,
-      profile.job_seeker_profile?.skills,
-      profile.job_seeker_profile?.years_of_experience,
-      profile.job_seeker_profile?.education_level,
-      profile.job_seeker_profile?.preferred_location,
-      profile.job_seeker_profile?.resume_url,
-      profile.profile_image,
-      profile.phone_number
-    ];
+    // Weighted scoring for more accurate assessment
+    const weights = { critical: 10, important: 7, optional: 3 };
     
-    const completedFields = fields.filter(field => field && field !== '').length;
-    return Math.round((completedFields / fields.length) * 100);
+    const fields = {
+      critical: [
+        profile.name || profile.full_name,
+        profile.email,
+        profile.job_seeker_profile?.desired_position,
+        profile.job_seeker_profile?.bio || profile.bio,
+      ],
+      important: [
+        profile.job_seeker_profile?.skills,
+        profile.job_seeker_profile?.years_of_experience,
+        profile.job_seeker_profile?.education_level,
+        profile.job_seeker_profile?.resume_url,
+        profile.job_seeker_profile?.job_type_preference,
+      ],
+      optional: [
+        profile.profile_image,
+        profile.phone_number,
+        profile.job_seeker_profile?.preferred_location,
+        profile.job_seeker_profile?.certifications,
+        profile.job_seeker_profile?.portfolio_url,
+        profile.job_seeker_profile?.linkedin_url,
+      ]
+    };
+    
+    let earned = 0, total = 0;
+    
+    Object.entries(fields).forEach(([category, fieldList]) => {
+      fieldList.forEach(field => {
+        total += weights[category];
+        if (field && field !== '' && field !== 0) earned += weights[category];
+      });
+    });
+    
+    return Math.round((earned / total) * 100);
   };
 
   const getStageFromStatus = (status) => {

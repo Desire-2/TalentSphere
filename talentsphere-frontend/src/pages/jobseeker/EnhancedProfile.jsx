@@ -243,9 +243,16 @@ const EnhancedJobSeekerProfile = () => {
         apiService.get('/profile/keywords-analysis')
       ]);
       
+      console.log('📊 Profile Analysis Loaded:', { completeness, keywords });
+      
       setProfileAnalysis({ completeness, keywords });
     } catch (error) {
       console.error('Failed to load profile analysis:', error);
+      // Set default values on error
+      setProfileAnalysis({
+        completeness: { overall_score: 0, sections: {}, recommendations: [] },
+        keywords: { current_keywords: [], suggested_keywords: [] }
+      });
     }
   };
   

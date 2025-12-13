@@ -103,21 +103,45 @@ const ProfileSettings = () => {
   };
 
   const calculateProfileCompletion = (profile) => {
-    const fields = [
-      profile.first_name,
-      profile.last_name,
-      profile.email,
-      profile.phone,
-      profile.bio,
-      profile.location,
-      profile.job_seeker_profile?.desired_position,
-      profile.job_seeker_profile?.skills,
-      profile.job_seeker_profile?.years_of_experience,
-      profile.job_seeker_profile?.education_level
-    ];
+    if (!profile) return 0;
     
-    const completed = fields.filter(field => field && field !== '').length;
-    return Math.round((completed / fields.length) * 100);
+    // Weighted scoring system
+    const weights = { critical: 10, important: 7, optional: 3 };
+    
+    const fields = {
+      critical: [
+        profile.first_name,
+        profile.last_name,
+        profile.email,
+        profile.job_seeker_profile?.desired_position,
+      ],
+      important: [
+        profile.phone,
+        profile.bio,
+        profile.job_seeker_profile?.skills,
+        profile.job_seeker_profile?.years_of_experience,
+        profile.job_seeker_profile?.education_level,
+        profile.job_seeker_profile?.resume_url,
+      ],
+      optional: [
+        profile.location,
+        profile.profile_image,
+        profile.job_seeker_profile?.certifications,
+        profile.job_seeker_profile?.portfolio_url,
+        profile.job_seeker_profile?.linkedin_url,
+      ]
+    };
+    
+    let earned = 0, total = 0;
+    
+    Object.entries(fields).forEach(([category, fieldList]) => {
+      fieldList.forEach(field => {
+        total += weights[category];
+        if (field && field !== '' && field !== 0) earned += weights[category];
+      });
+    });
+    
+    return Math.round((earned / total) * 100);
   };
 
   const handleSecurityChange = (field, value) => {

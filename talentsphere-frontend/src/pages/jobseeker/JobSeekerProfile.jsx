@@ -186,23 +186,78 @@ const JobSeekerProfile = () => {
   };
 
   const calculateProfileCompletion = () => {
-    const allFields = [
-      personalData.first_name,
-      personalData.last_name,
-      personalData.phone,
-      personalData.bio,
-      personalData.location,
-      professionalData.desired_position,
-      professionalData.years_of_experience,
-      professionalData.education_level,
-      skillsList.length > 0 ? 'skills' : '',
-      professionalData.resume_url,
-      preferencesData.preferred_location,
-      preferencesData.job_type_preference
-    ];
-    
-    const completedFields = allFields.filter(field => field && field !== '').length;
-    return Math.round((completedFields / allFields.length) * 100);
+    // Weighted scoring system for better accuracy
+    const weights = {
+      // Critical fields (higher weight)
+      critical: 10,
+      // Important fields (medium weight)  
+      important: 7,
+      // Nice-to-have fields (lower weight)
+      optional: 3
+    };
+
+    const fields = {
+      // Critical personal fields (10 points each)
+      critical: [
+        { value: personalData.first_name, label: 'First Name' },
+        { value: personalData.last_name, label: 'Last Name' },
+        { value: personalData.phone, label: 'Phone' },
+        { value: personalData.bio, label: 'Bio' },
+        { value: professionalData.desired_position, label: 'Desired Position' },
+      ],
+      // Important fields (7 points each)
+      important: [
+        { value: personalData.location, label: 'Location' },
+        { value: professionalData.years_of_experience > 0, label: 'Years of Experience' },
+        { value: professionalData.education_level, label: 'Education Level' },
+        { value: skillsList.length >= 3, label: 'Skills (at least 3)' },
+        { value: professionalData.resume_url, label: 'Resume' },
+        { value: preferencesData.job_type_preference, label: 'Job Type Preference' },
+      ],
+      // Optional fields (3 points each)
+      optional: [
+        { value: personalData.profile_picture, label: 'Profile Picture' },
+        { value: professionalData.certifications, label: 'Certifications' },
+        { value: professionalData.portfolio_url, label: 'Portfolio' },
+        { value: professionalData.linkedin_url, label: 'LinkedIn' },
+        { value: professionalData.github_url, label: 'GitHub' },
+        { value: preferencesData.preferred_location, label: 'Preferred Location' },
+        { value: preferencesData.desired_salary_min, label: 'Desired Salary' },
+        { value: skillsList.length >= 8, label: 'Skills (8+ items)' },
+      ]
+    };
+
+    // Calculate scores
+    let earnedPoints = 0;
+    let totalPoints = 0;
+
+    // Process critical fields
+    fields.critical.forEach(field => {
+      totalPoints += weights.critical;
+      if (field.value && field.value !== '') {
+        earnedPoints += weights.critical;
+      }
+    });
+
+    // Process important fields
+    fields.important.forEach(field => {
+      totalPoints += weights.important;
+      if (field.value && field.value !== '') {
+        earnedPoints += weights.important;
+      }
+    });
+
+    // Process optional fields
+    fields.optional.forEach(field => {
+      totalPoints += weights.optional;
+      if (field.value && field.value !== '') {
+        earnedPoints += weights.optional;
+      }
+    });
+
+    // Calculate percentage
+    const percentage = Math.round((earnedPoints / totalPoints) * 100);
+    return Math.min(percentage, 100);
   };
 
   const handlePersonalDataChange = (field, value) => {

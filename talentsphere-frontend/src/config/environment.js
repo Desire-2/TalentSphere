@@ -6,7 +6,6 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || '/api',
-  URL: import.meta.env.VITE_API_URL || '',
   TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000'),
 };
 

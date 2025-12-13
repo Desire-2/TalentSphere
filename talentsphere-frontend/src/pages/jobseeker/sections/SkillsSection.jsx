@@ -12,16 +12,19 @@ const SkillsSection = ({ data, onUpdate }) => {
   const [saving, setSaving] = useState(false);
 
   const parsedData = typeof data === 'string' ? JSON.parse(data || '{}') : data || {};
-  const technicalSkills = Array.isArray(parsedData.technical_skills) 
+  const initialTechnical = Array.isArray(parsedData.technical_skills) 
     ? parsedData.technical_skills 
     : (typeof parsedData.technical_skills === 'string' 
       ? JSON.parse(parsedData.technical_skills || '[]') 
       : []);
-  const softSkills = Array.isArray(parsedData.soft_skills) 
+  const initialSoft = Array.isArray(parsedData.soft_skills) 
     ? parsedData.soft_skills 
     : (typeof parsedData.soft_skills === 'string' 
       ? JSON.parse(parsedData.soft_skills || '[]') 
       : []);
+  
+  const [technicalSkills, setTechnicalSkills] = useState(initialTechnical);
+  const [softSkills, setSoftSkills] = useState(initialSoft);
 
   const updateSkills = async (updatedTechnical, updatedSoft) => {
     setSaving(true);
@@ -49,6 +52,7 @@ const SkillsSection = ({ data, onUpdate }) => {
       
       if (newSkills.length > 0) {
         const updated = [...technicalSkills, ...newSkills];
+        setTechnicalSkills(updated);
         updateSkills(updated, softSkills);
       }
       setNewTechnicalSkill('');
@@ -65,6 +69,7 @@ const SkillsSection = ({ data, onUpdate }) => {
       
       if (newSkills.length > 0) {
         const updated = [...softSkills, ...newSkills];
+        setSoftSkills(updated);
         updateSkills(technicalSkills, updated);
       }
       setNewSoftSkill('');
@@ -73,11 +78,13 @@ const SkillsSection = ({ data, onUpdate }) => {
 
   const handleRemoveTechnicalSkill = (index) => {
     const updated = technicalSkills.filter((_, i) => i !== index);
+    setTechnicalSkills(updated);
     updateSkills(updated, softSkills);
   };
 
   const handleRemoveSoftSkill = (index) => {
     const updated = softSkills.filter((_, i) => i !== index);
+    setSoftSkills(updated);
     updateSkills(technicalSkills, updated);
   };
 
@@ -108,7 +115,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                     size="sm"
                     onClick={() => {
                       setTechnicalSkills([]);
-                      handleSaveSkills([], softSkills);
+                      updateSkills([], softSkills);
                     }}
                     className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
                     disabled={saving}
@@ -181,7 +188,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                     size="sm"
                     onClick={() => {
                       setSoftSkills([]);
-                      handleSaveSkills(technicalSkills, []);
+                      updateSkills(technicalSkills, []);
                     }}
                     className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
                     disabled={saving}

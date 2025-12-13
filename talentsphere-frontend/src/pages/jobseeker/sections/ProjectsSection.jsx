@@ -12,12 +12,12 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    project_name: '',
+    name: '',
     description: '',
     role: '',
     start_date: '',
     end_date: '',
-    is_current: false,
+    is_ongoing: false,
     project_url: '',
     github_url: '',
     technologies_used: '',
@@ -27,12 +27,12 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
 
   const resetForm = () => {
     setFormData({
-      project_name: '',
+      name: '',
       description: '',
       role: '',
       start_date: '',
       end_date: '',
-      is_current: false,
+      is_ongoing: false,
       project_url: '',
       github_url: '',
       technologies_used: '',
@@ -44,12 +44,12 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
 
   const handleEdit = (project) => {
     setFormData({
-      project_name: project.project_name || '',
+      name: project.name || '',
       description: project.description || '',
       role: project.role || '',
       start_date: project.start_date || '',
       end_date: project.end_date || '',
-      is_current: project.is_current || false,
+      is_ongoing: project.is_ongoing || false,
       project_url: project.project_url || '',
       github_url: project.github_url || '',
       technologies_used: Array.isArray(project.technologies_used) 
@@ -134,11 +134,11 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
           <form onSubmit={handleSubmit} className="space-y-4 border p-4 rounded-lg bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="project_name">Project Name *</Label>
+                <Label htmlFor="name">Project Name *</Label>
                 <Input
-                  id="project_name"
-                  value={formData.project_name}
-                  onChange={(e) => setFormData({...formData, project_name: e.target.value})}
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g., E-commerce Platform"
                   required
                 />
@@ -183,13 +183,13 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                   type="date"
                   value={formData.end_date}
                   onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                  disabled={formData.is_current}
+                  disabled={formData.is_ongoing}
                 />
                 <label className="flex items-center gap-2 mt-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={formData.is_current}
-                    onChange={(e) => setFormData({...formData, is_current: e.target.checked, end_date: ''})}
+                    checked={formData.is_ongoing}
+                    onChange={(e) => setFormData({...formData, is_ongoing: e.target.checked, end_date: ''})}
                   />
                   Ongoing project
                 </label>
@@ -279,7 +279,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                 </div>
 
                 <div className={`${project.is_featured ? 'mt-6' : ''}`}>
-                  <h3 className="font-semibold text-lg mb-2">{project.project_name}</h3>
+                  <h3 className="font-semibold text-lg mb-2">{project.name}</h3>
                   {project.role && (
                     <p className="text-sm text-gray-600 mb-2">{project.role}</p>
                   )}
@@ -288,7 +288,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                   {(project.start_date || project.end_date) && (
                     <div className="text-sm text-gray-600 mb-3 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {formatDate(project.start_date)} - {project.is_current ? 'Present' : formatDate(project.end_date)}
+                      {formatDate(project.start_date)} - {project.is_ongoing ? 'Present' : formatDate(project.end_date)}
                     </div>
                   )}
 

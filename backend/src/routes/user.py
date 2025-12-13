@@ -403,6 +403,153 @@ def update_user_skills(current_user, user_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to update skills', 'details': str(e)}), 500
 
+
+# ==================== USER PROFILE ENDPOINTS (for frontend compatibility) ====================
+
+@user_bp.route('/user/profile', methods=['GET'])
+@token_required
+def get_user_profile(current_user):
+    """Get current user profile (frontend compatibility endpoint)"""
+    try:
+        profile_data = current_user.to_dict(include_sensitive=True)
+        
+        # Add role-specific profile data
+        if current_user.role == 'job_seeker' and current_user.job_seeker_profile:
+            profile_data['job_seeker_profile'] = current_user.job_seeker_profile.to_dict()
+        elif current_user.role == 'employer' and current_user.employer_profile:
+            employer_profile_data = current_user.employer_profile.to_dict()
+            # Add company information if available
+            if current_user.employer_profile.company_id:
+                from src.models.company import Company
+                company = Company.query.get(current_user.employer_profile.company_id)
+                if company:
+                    employer_profile_data['company_name'] = company.name
+                    employer_profile_data['company_website'] = company.website
+                    employer_profile_data['company_logo'] = company.logo_url
+            profile_data['employer_profile'] = employer_profile_data
+        
+        return jsonify(profile_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get profile', 'details': str(e)}), 500
+
+
+@user_bp.route('/user/profile', methods=['PUT'])
+@token_required
+def update_user_profile(current_user):
+    """Update current user profile (frontend compatibility endpoint)"""
+    try:
+        data = request.get_json()
+        
+        # Update basic user information
+        if 'first_name' in data:
+            current_user.first_name = data['first_name']
+        if 'last_name' in data:
+            current_user.last_name = data['last_name']
+        if 'phone' in data:
+            current_user.phone = data['phone']
+        if 'location' in data:
+            current_user.location = data['location']
+        if 'bio' in data:
+            current_user.bio = data['bio']
+        if 'profile_picture' in data:
+            current_user.profile_picture = data['profile_picture']
+        
+        # Update role-specific profile
+        if current_user.role == 'job_seeker':
+            profile = current_user.job_seeker_profile
+            if not profile:
+                profile = JobSeekerProfile(user_id=current_user.id)
+                db.session.add(profile)
+            
+            # Update job seeker specific fields
+            profile_fields = [
+                'professional_title', 'professional_summary', 'career_level', 'notice_period',
+                'resume_url', 'portfolio_url', 'linkedin_url', 'github_url', 'website_url',
+                'desired_position', 'desired_salary_min', 'desired_salary_max', 'salary_currency',
+                'preferred_location', 'job_type_preference', 'availability',
+                'willing_to_relocate', 'willing_to_travel',
+                'work_authorization', 'visa_sponsorship_required',
+                'years_of_experience', 'education_level',
+                'preferred_industries', 'preferred_company_size', 'preferred_work_environment',
+                'profile_visibility', 'open_to_opportunities'
+            ]
+            
+            for field in profile_fields:
+                if field in data:
+                    setattr(profile, field, data[field])
+            
+            # Handle skills separately (can be string or array)
+            if 'skills' in data:
+                skills_data = data['skills']
+                if isinstance(skills_data, list):
+                    profile.skills = json.dumps(skills_data)
+                elif isinstance(skills_data, str):
+                    profile.skills = skills_data
+            
+            # Handle technical_skills
+            if 'technical_skills' in data:
+                tech_skills = data['technical_skills']
+                if isinstance(tech_skills, list):
+                    profile.technical_skills = json.dumps(tech_skills)
+                elif isinstance(tech_skills, str):
+                    profile.technical_skills = tech_skills
+            
+            # Handle soft_skills
+            if 'soft_skills' in data:
+                soft_skills_data = data['soft_skills']
+                if isinstance(soft_skills_data, list):
+                    profile.soft_skills = json.dumps(soft_skills_data)
+                elif isinstance(soft_skills_data, str):
+                    profile.soft_skills = soft_skills_data
+            
+            # Handle certifications
+            if 'certifications' in data:
+                certs = data['certifications']
+                if isinstance(certs, list):
+                    profile.certifications = json.dumps(certs)
+                elif isinstance(certs, str):
+                    profile.certifications = certs
+            
+            profile.updated_at = datetime.utcnow()
+        
+        elif current_user.role == 'employer':
+            profile = current_user.employer_profile
+            if not profile:
+                from src.models.user import EmployerProfile
+                profile = EmployerProfile(user_id=current_user.id)
+                db.session.add(profile)
+            
+            # Update employer specific fields
+            profile_fields = [
+                'company_id', 'job_title', 'department', 'hiring_authority',
+                'work_phone', 'work_email'
+            ]
+            for field in profile_fields:
+                if field in data:
+                    setattr(profile, field, data[field])
+            
+            profile.updated_at = datetime.utcnow()
+        
+        current_user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Return updated profile
+        profile_data = current_user.to_dict(include_sensitive=True)
+        if current_user.role == 'job_seeker' and current_user.job_seeker_profile:
+            profile_data['job_seeker_profile'] = current_user.job_seeker_profile.to_dict()
+        elif current_user.role == 'employer' and current_user.employer_profile:
+            profile_data['employer_profile'] = current_user.employer_profile.to_dict()
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': profile_data
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update profile', 'details': str(e)}), 500
+
 # Error handlers
 @user_bp.errorhandler(400)
 def bad_request(error):

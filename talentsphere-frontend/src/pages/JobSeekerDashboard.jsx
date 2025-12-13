@@ -692,6 +692,14 @@ const JobSeekerDashboard = () => {
             Refresh
           </Button>
           <Button 
+            onClick={() => navigate('/jobseeker/cv-builder')}
+            variant="outline"
+            className="border-purple-200 hover:bg-purple-50 text-purple-700"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            AI CV Builder
+          </Button>
+          <Button 
             onClick={() => navigate('/jobs')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
           >

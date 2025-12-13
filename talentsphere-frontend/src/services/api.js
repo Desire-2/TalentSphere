@@ -115,16 +115,33 @@ class ApiService {
       }
 
       if (!response.ok) {
-        // Handle token expiration
-        if (response.status === 401 && data.error?.includes('expired')) {
-          if (ENABLE_DEBUG_LOGS) {
-            console.log('Token expired, clearing auth data...');
-          }
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          // Redirect to login if this is an admin page
-          if (window.location.pathname.startsWith('/admin')) {
-            window.location.href = '/login';
+        // Handle 401 Unauthorized - Session expired or invalid token
+        if (response.status === 401) {
+          const errorMsg = data.error || data.message || '';
+          const isTokenExpired = errorMsg.includes('expired') || errorMsg.includes('invalid');
+          
+          if (isTokenExpired) {
+            if (ENABLE_DEBUG_LOGS) {
+              console.log('🔒 Token expired or invalid, clearing auth data...');
+            }
+            
+            // Clear authentication data
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Emit custom event for session expiration
+            window.dispatchEvent(new CustomEvent('session-expired', {
+              detail: { message: 'Your session has expired. Please login again.' }
+            }));
+            
+            // Redirect to login with return path
+            const returnPath = window.location.pathname;
+            const loginUrl = `/login?returnTo=${encodeURIComponent(returnPath)}`;
+            
+            // Small delay to allow event handlers to run
+            setTimeout(() => {
+              window.location.href = loginUrl;
+            }, 100);
           }
         }
         
@@ -544,19 +561,24 @@ class ApiService {
 
   // ===== JOB SEEKER PROFILE ENDPOINTS =====
 
-  // Get job seeker profile
+  // Get job seeker profile (uses the main profile endpoint)
   async getJobSeekerProfile() {
-    return this.get('/user/profile');
+    return this.get('/auth/profile');
   }
 
-  // Update job seeker profile
+  // Update job seeker profile (uses the main profile endpoint)
   async updateJobSeekerProfile(profileData) {
-    return this.put('/user/profile', profileData);
+    return this.put('/auth/profile', profileData);
+  }
+
+  // Update profile (alternative method for compatibility)
+  async updateProfile(profileData) {
+    return this.put('/auth/profile', profileData);
   }
 
   // Change password
   async changePassword(passwordData) {
-    return this.put('/user/change-password', passwordData);
+    return this.put('/auth/change-password', passwordData);
   }
 
   // Get notification preferences
@@ -706,6 +728,174 @@ class ApiService {
   // Delete company account
   async deleteCompanyAccount() {
     return this.delete('/my-company/delete');
+  }
+
+  // ===== PROFILE EXTENSIONS ENDPOINTS =====
+  
+  // Work Experience
+  async getWorkExperiences() {
+    return this.get('/profile/work-experience');
+  }
+
+  async addWorkExperience(data) {
+    return this.post('/profile/work-experience', data);
+  }
+
+  async updateWorkExperience(id, data) {
+    return this.put(`/profile/work-experience/${id}`, data);
+  }
+
+  async deleteWorkExperience(id) {
+    return this.delete(`/profile/work-experience/${id}`);
+  }
+
+  // Education
+  async getEducations() {
+    return this.get('/profile/education');
+  }
+
+  async addEducation(data) {
+    return this.post('/profile/education', data);
+  }
+
+  async updateEducation(id, data) {
+    return this.put(`/profile/education/${id}`, data);
+  }
+
+  async deleteEducation(id) {
+    return this.delete(`/profile/education/${id}`);
+  }
+
+  // Certifications
+  async getCertifications() {
+    return this.get('/profile/certifications');
+  }
+
+  async addCertification(data) {
+    return this.post('/profile/certifications', data);
+  }
+
+  async updateCertification(id, data) {
+    return this.put(`/profile/certifications/${id}`, data);
+  }
+
+  async deleteCertification(id) {
+    return this.delete(`/profile/certifications/${id}`);
+  }
+
+  // Projects
+  async getProjects() {
+    return this.get('/profile/projects');
+  }
+
+  async addProject(data) {
+    return this.post('/profile/projects', data);
+  }
+
+  async updateProject(id, data) {
+    return this.put(`/profile/projects/${id}`, data);
+  }
+
+  async deleteProject(id) {
+    return this.delete(`/profile/projects/${id}`);
+  }
+
+  // Awards
+  async getAwards() {
+    return this.get('/profile/awards');
+  }
+
+  async addAward(data) {
+    return this.post('/profile/awards', data);
+  }
+
+  async updateAward(id, data) {
+    return this.put(`/profile/awards/${id}`, data);
+  }
+
+  async deleteAward(id) {
+    return this.delete(`/profile/awards/${id}`);
+  }
+
+  // Languages
+  async getLanguages() {
+    return this.get('/profile/languages');
+  }
+
+  async addLanguage(data) {
+    return this.post('/profile/languages', data);
+  }
+
+  async updateLanguage(id, data) {
+    return this.put(`/profile/languages/${id}`, data);
+  }
+
+  async deleteLanguage(id) {
+    return this.delete(`/profile/languages/${id}`);
+  }
+
+  // Volunteer Experience
+  async getVolunteerExperiences() {
+    return this.get('/profile/volunteer-experience');
+  }
+
+  async addVolunteerExperience(data) {
+    return this.post('/profile/volunteer-experience', data);
+  }
+
+  async updateVolunteerExperience(id, data) {
+    return this.put(`/profile/volunteer-experience/${id}`, data);
+  }
+
+  async deleteVolunteerExperience(id) {
+    return this.delete(`/profile/volunteer-experience/${id}`);
+  }
+
+  // Professional Memberships
+  async getProfessionalMemberships() {
+    return this.get('/profile/professional-memberships');
+  }
+
+  async addProfessionalMembership(data) {
+    return this.post('/profile/professional-memberships', data);
+  }
+
+  async updateProfessionalMembership(id, data) {
+    return this.put(`/profile/professional-memberships/${id}`, data);
+  }
+
+  async deleteProfessionalMembership(id) {
+    return this.delete(`/profile/professional-memberships/${id}`);
+  }
+
+  // Complete Profile
+  async getCompleteProfile() {
+    return this.get('/profile/complete-profile');
+  }
+
+  async updateCompleteProfile(data) {
+    return this.put('/profile/complete-profile', data);
+  }
+
+  // Profile Analysis & Export
+  async getProfileCompletenessAnalysis() {
+    return this.get('/profile/completeness-analysis');
+  }
+
+  async getProfileKeywordsAnalysis() {
+    return this.get('/profile/keywords-analysis');
+  }
+
+  async exportProfileText() {
+    return this.get('/profile/export-text');
+  }
+
+  async exportProfileJSON() {
+    return this.get('/profile/export-json');
+  }
+
+  async exportProfilePDF() {
+    return this.get('/profile/export-pdf');
   }
 }
 

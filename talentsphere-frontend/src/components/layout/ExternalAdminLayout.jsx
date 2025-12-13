@@ -18,6 +18,7 @@ import {
   User
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useSessionManager } from '../../hooks/useSessionManager';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
@@ -28,6 +29,17 @@ const ExternalAdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
+
+  // Initialize session manager for external admin panel
+  useSessionManager({
+    onSessionExpired: () => {
+      console.log('🔒 External admin session expired');
+    },
+    onSessionRefreshed: () => {
+      console.log('🔄 External admin session refreshed');
+    },
+    validateInterval: 3 * 60 * 1000, // Check every 3 minutes for external admin
+  });
 
   // Safety check: redirect to login if not authenticated
   useEffect(() => {

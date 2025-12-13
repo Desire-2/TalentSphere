@@ -36,6 +36,7 @@ from src.routes.recommendations import recommendations_bp
 from src.routes.employer import employer_bp
 from src.routes.share_routes import share_bp
 from src.routes.scholarship import scholarship_bp
+from src.routes.cv_builder import cv_builder_bp
 
 # Import optimized components
 from src.routes.optimized_api import optimized_api_bp
@@ -159,9 +160,18 @@ app.register_blueprint(recommendations_bp, url_prefix='/api')
 app.register_blueprint(employer_bp, url_prefix='/api')
 app.register_blueprint(share_bp, url_prefix='/api')
 app.register_blueprint(scholarship_bp, url_prefix='/api')
+app.register_blueprint(cv_builder_bp)  # Already has /api/cv-builder prefix
 
 # Register optimized API endpoints
 app.register_blueprint(optimized_api_bp, url_prefix='/api')
+
+# Register profile extensions blueprint for comprehensive job seeker profiles
+from src.routes.profile_extensions import profile_extensions_bp
+app.register_blueprint(profile_extensions_bp, url_prefix='/api/profile')
+
+# Register profile export and optimization blueprint
+from src.routes.profile_export import profile_export_bp
+app.register_blueprint(profile_export_bp, url_prefix='/api/profile')
 
 # Health check endpoint (optimized)
 @app.route('/health', methods=['GET'])

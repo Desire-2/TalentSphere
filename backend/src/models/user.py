@@ -145,54 +145,115 @@ class JobSeekerProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
+    # Professional Header
+    professional_title = db.Column(db.String(150))  # e.g., "Senior Software Engineer"
+    professional_summary = db.Column(db.Text)  # 3-4 sentence impactful statement
+    
     # Professional Information
     resume_url = db.Column(db.String(255))
     portfolio_url = db.Column(db.String(255))
     linkedin_url = db.Column(db.String(255))
     github_url = db.Column(db.String(255))
+    website_url = db.Column(db.String(255))
     
     # Job Preferences
     desired_position = db.Column(db.String(100))
     desired_salary_min = db.Column(db.Integer)
     desired_salary_max = db.Column(db.Integer)
+    expected_salary = db.Column(db.Integer)  # Single expected salary field
+    salary_currency = db.Column(db.String(10), default='USD')
     preferred_location = db.Column(db.String(100))
-    job_type_preference = db.Column(db.String(50))  # full-time, part-time, contract, remote
+    preferred_locations = db.Column(db.Text)  # JSON array of preferred locations
+    job_type_preference = db.Column(db.String(50))  # Legacy field: full-time, part-time, contract, remote
+    job_types = db.Column(db.Text)  # JSON array of job types
     availability = db.Column(db.String(50))  # immediate, 2-weeks, 1-month, etc.
+    willing_to_relocate = db.Column(db.Boolean, default=False)
+    willing_to_travel = db.Column(db.String(50))  # none, occasionally, frequently, 50%, etc.
+    
+    # Work Authorization
+    work_authorization = db.Column(db.String(100))  # citizen, permanent_resident, work_visa, etc.
+    visa_sponsorship_required = db.Column(db.Boolean, default=False)
     
     # Experience and Skills
     years_of_experience = db.Column(db.Integer, default=0)
-    skills = db.Column(db.Text)  # JSON string of skills array
+    skills = db.Column(db.Text)  # JSON string of all skills (legacy, kept for compatibility)
+    technical_skills = db.Column(db.Text)  # JSON string of technical skills array
+    soft_skills = db.Column(db.Text)  # JSON string of soft skills array
     education_level = db.Column(db.String(50))
     certifications = db.Column(db.Text)  # JSON string of certifications
+    
+    # Professional Development
+    professional_title = db.Column(db.String(150))  # e.g., "Senior Software Engineer"
+    professional_summary = db.Column(db.Text)  # 3-4 sentence impactful statement
+    career_level = db.Column(db.String(50))  # entry, mid, senior, lead, executive
+    notice_period = db.Column(db.String(50))  # immediate, 2-weeks, 1-month, etc.
+    
+    # Industry Preferences
+    preferred_industries = db.Column(db.Text)  # JSON array
+    preferred_company_size = db.Column(db.String(50))  # startup, small, medium, large, enterprise
+    preferred_work_environment = db.Column(db.String(50))  # office, remote, hybrid
     
     # Profile Visibility
     profile_visibility = db.Column(db.String(20), default='public')  # public, private, employers_only
     open_to_opportunities = db.Column(db.Boolean, default=True)
+    profile_completeness = db.Column(db.Integer, default=0)  # Calculated percentage
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def to_dict(self):
+        import json
+        
+        # Helper function to parse JSON fields
+        def parse_json_field(field_value):
+            if not field_value:
+                return []
+            if isinstance(field_value, str):
+                try:
+                    return json.loads(field_value)
+                except:
+                    return []
+            return field_value
+        
         return {
             'id': self.id,
             'user_id': self.user_id,
+            'professional_title': self.professional_title,
+            'professional_summary': self.professional_summary,
+            'career_level': self.career_level,
+            'notice_period': self.notice_period,
             'resume_url': self.resume_url,
             'portfolio_url': self.portfolio_url,
             'linkedin_url': self.linkedin_url,
             'github_url': self.github_url,
+            'website_url': self.website_url,
             'desired_position': self.desired_position,
             'desired_salary_min': self.desired_salary_min,
             'desired_salary_max': self.desired_salary_max,
+            'expected_salary': self.expected_salary,
+            'salary_currency': self.salary_currency,
             'preferred_location': self.preferred_location,
+            'preferred_locations': parse_json_field(self.preferred_locations),
             'job_type_preference': self.job_type_preference,
+            'job_types': parse_json_field(self.job_types),
             'availability': self.availability,
+            'willing_to_relocate': self.willing_to_relocate,
+            'willing_to_travel': self.willing_to_travel,
+            'work_authorization': self.work_authorization,
+            'visa_sponsorship_required': self.visa_sponsorship_required,
             'years_of_experience': self.years_of_experience,
-            'skills': self.skills,
+            'skills': self.skills,  # Legacy field
+            'technical_skills': self.technical_skills,
+            'soft_skills': self.soft_skills,
             'education_level': self.education_level,
             'certifications': self.certifications,
+            'preferred_industries': self.preferred_industries,
+            'preferred_company_size': self.preferred_company_size,
+            'preferred_work_environment': self.preferred_work_environment,
             'profile_visibility': self.profile_visibility,
             'open_to_opportunities': self.open_to_opportunities,
+            'profile_completeness': self.profile_completeness,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

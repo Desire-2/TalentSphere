@@ -1,0 +1,94 @@
+Error: Failed to parse CV response after multiple attempts. JSON error: Invalid control character at: line 11 column 25 (char 922). Error near: ...    "location": "New York, NY",
+    "linkedin": "linkedin.com/in/desirebikorimana",
+    "portfolio": "https://www.professionalportfolio.com",
+    "github": null
+  },
+  
+  "core_competencies": [
+    "F...
+
+================================================================================
+RAW RESPONSE:
+================================================================================
+```json
+{
+  "professional_summary": "Highly analytical and results-driven Financial Strategy Analyst with 3+ years of experience driving profitability and operational efficiency within competitive consulting environments. Proven ability to leverage complex financial modeling and advanced data analytics (SQL, Python) to inform strategic decision-making, resulting in documented client savings exceeding $2.5 million. Recognized for exceptional stakeholder management and successful implementation of strategic initiatives that optimize resource allocation and mitigate financial risk.",
+  
+  "contact_information": {
+    "full_name": "Desire Bikorimana",
+    "professional_title": "Financial Strategy Analyst | Business Optimization Specialist",
+    "email": "bikorimanadesire5@gmail.com",
+    "phone": "(555) 123-4567",
+    "location": "New York, NY",
+    "linkedin": "linkedin.com/in/desirebikorimana",
+    "portfolio": "https://www.professionalportfolio.com",
+    "github": null
+  },
+  
+  "core_competencies": [
+    "Financial Modeling & Valuation",
+    "Strategic Planning & Execution",
+    "Data Analysis & Visualization (Tableau)",
+    "Process Optimization & Efficiency",
+    "Risk Management & Mitigation",
+    "Stakeholder Communication",
+    "Mergers & Acquisitions (Due Diligence)",
+    "Quantitative Analysis"
+  ],
+  
+  "professional_experience": [
+    {
+      "job_title": "Junior Strategy Consultant",
+      "company": "Apex Global Solutions",
+      "location": "New York, NY",
+      "duration": "June 2021 - Present",
+      "description": "Provided data-driven strategic consulting services to Fortune 500 clients across finance, technology, and manufacturing sectors, focusing on profitability improvement and operational restructuring.",
+      "achievements": [
+        "Led financial due diligence for 6+ M&A transactions, accurately projecting post-merger synergy realization of $1.2 million annually, exceeding initial client estimates by 18%.",
+        "Designed and implemented a proprietary cost-reduction framework across three major client operations, resulting in an average operational expense decrease of 15% within the first two quarters.",
+        "Developed dynamic forecasting models (using advanced Excel and Python) for cash flow management, improving prediction accuracy by 25% and mitigating exposure to currency volatility.",
+        "Streamlined the client reporting process by integrating SQL queries with Tableau dashboards, reducing monthly report generation time by 40 hours (25%) and improving executive decision speed.",
+        "Presented complex financial findings and actionable recommendations directly to C-suite executives, securing buy-in for strategic shifts that optimized resource allocation by 30%."
+      ],
+      "technologies": ["Advanced Excel (VBA)", "SQL", "Tableau", "Power BI", "Microsoft Office Suite"]
+    }
+  ],
+  
+  "education": [
+    {
+      "degree": "Bachelor of Science (B.S.) in Finance and Quantitative Analysis",
+      "institution": "New York University Stern School of Business",
+      "location": "New York, NY",
+      "graduation_date": "May 2021",
+      "gpa": "3.85/4.0",
+      "honors": "Magna Cum Laude, Dean's List (6 Semesters)",
+      "relevant_coursework": [
+        "Advanced Financial Modeling",
+        "Econometrics and Forecasting",
+        "Corporate Valuation",
+        "Investment Banking"
+      ]
+    }
+  ],
+  
+  "certifications": [
+    {
+      "name": "CFA Program Candidate (Level I Passed)",
+      "issuer": "CFA Institute",
+      "date": "December 2022",
+      "credential_id": null
+    },
+    {
+      "name": "Certified Advanced Financial Modeler (CAFM)",
+      "issuer": "Financial Modeling Institute",
+      "date": "August 2021",
+      "credential_id": "CAFM-8492"
+    }
+  ],
+  
+  "projects": [
+    {
+      "name": "Global Market Entry Strategy Model",
+      "role": "Lead Financial Analyst",
+      "description": "Developed a comprehensive financial model to assess the feasibility and potential ROI of entering three emerging markets for a simulated multinational consumer goods company.",
+      "impact": "Identified

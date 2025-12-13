@@ -141,6 +141,68 @@ export const authService = {
       new_password: newPassword 
     });
     return response;
+  },
+
+  // Validate current session
+  validateSession: async () => {
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        return false;
+      }
+
+      const response = await api.post('/auth/verify-token', { token });
+      return response.valid || false;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  },
+
+  // Refresh session token
+  refreshSession: async () => {
+    try {
+      const response = await api.post('/auth/refresh-token');
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        if (response.user) {
+          localStorage.setItem('user', JSON.stringify(response.user));
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return false;
+    }
+  },
+
+  // Get token expiration time (from JWT payload)
+  getTokenExpiration: () => {
+    try {
+      const token = authService.getToken();
+      if (!token) return null;
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return null;
+    }
+  },
+
+  // Check if token is expired or about to expire
+  isTokenExpired: (bufferMinutes = 5) => {
+    try {
+      const expiration = authService.getTokenExpiration();
+      if (!expiration) return true;
+
+      const bufferMs = bufferMinutes * 60 * 1000;
+      return Date.now() >= (expiration - bufferMs);
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true;
+    }
   }
 };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -25,7 +26,9 @@ import {
   ChevronDown,
   Building2,
   Plus,
-  GraduationCap
+  GraduationCap,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { getInitials } from '../../utils/helpers';
@@ -33,7 +36,8 @@ import { getInitials } from '../../utils/helpers';
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const [sessionWarning, setSessionWarning] = useState(false);
+  const { user, isAuthenticated, logout, isTokenExpired, getTokenExpiration } = useAuthStore();
   const navigate = useNavigate();
 
   // Handle scroll effect for header styling
@@ -44,6 +48,55 @@ const Header = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Monitor token expiration and show warnings
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSessionWarning(false);
+      return;
+    }
+
+    const checkTokenExpiration = () => {
+      const expiration = getTokenExpiration();
+      if (!expiration) return;
+
+      const now = Date.now();
+      const timeUntilExpiry = expiration - now;
+      const fiveMinutes = 5 * 60 * 1000;
+
+      // Show warning if token expires in less than 5 minutes
+      if (timeUntilExpiry > 0 && timeUntilExpiry < fiveMinutes && !sessionWarning) {
+        setSessionWarning(true);
+        const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
+        
+        toast.warning('Session Expiring Soon', {
+          description: `Your session will expire in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}. Please save your work.`,
+          duration: 10000,
+          icon: <AlertCircle className="w-5 h-5" />,
+        });
+      }
+    };
+
+    // Check immediately and then every minute
+    checkTokenExpiration();
+    const interval = setInterval(checkTokenExpiration, 60000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, getTokenExpiration, sessionWarning]);
+
+  // Listen for session expired events from API
+  useEffect(() => {
+    const handleSessionExpired = (event) => {
+      toast.error('Session Expired', {
+        description: event.detail?.message || 'Your session has expired. Please login again.',
+        duration: 5000,
+        icon: <AlertCircle className="w-5 h-5" />,
+      });
+    };
+
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
   }, []);
 
   const handleLogout = async () => {
@@ -214,6 +267,42 @@ const Header = () => {
                         )}
                       </div>
                     </div>
+                    
+                    {/* Session Status Indicator */}
+                    {(() => {
+                      const expiration = getTokenExpiration();
+                      if (!expiration) return null;
+                      
+                      const timeUntilExpiry = expiration - Date.now();
+                      const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
+                      const hoursLeft = Math.floor(minutesLeft / 60);
+                      
+                      let statusColor = 'bg-green-100 text-green-700';
+                      let statusText = 'Session Active';
+                      let statusIcon = <RefreshCw className="w-3 h-3" />;
+                      
+                      if (minutesLeft < 5) {
+                        statusColor = 'bg-red-100 text-red-700';
+                        statusText = `Expires in ${minutesLeft}m`;
+                        statusIcon = <AlertCircle className="w-3 h-3" />;
+                      } else if (minutesLeft < 30) {
+                        statusColor = 'bg-yellow-100 text-yellow-700';
+                        statusText = `Expires in ${minutesLeft}m`;
+                        statusIcon = <AlertCircle className="w-3 h-3" />;
+                      } else if (hoursLeft < 2) {
+                        statusText = `${minutesLeft}m remaining`;
+                      } else {
+                        statusText = `${hoursLeft}h remaining`;
+                      }
+                      
+                      return (
+                        <div className={`flex items-center justify-center gap-1 px-2 py-1 mx-2 mb-2 rounded-lg text-xs font-medium ${statusColor}`}>
+                          {statusIcon}
+                          <span>{statusText}</span>
+                        </div>
+                      );
+                    })()}
+                    
                     <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                     <DropdownMenuItem asChild className="rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer">
                       <Link to="/dashboard" className="flex items-center px-3 py-2">

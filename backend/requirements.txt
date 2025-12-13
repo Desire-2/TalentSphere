@@ -28,6 +28,12 @@ bcrypt==4.0.1
 numpy==1.26.4
 pandas==2.2.2
 
+# AI/ML Dependencies
+google-genai==0.3.0
+
+# PDF Generation
+WeasyPrint==63.0
+
 # Core Python Dependencies
 blinker==1.9.0
 click==8.1.6

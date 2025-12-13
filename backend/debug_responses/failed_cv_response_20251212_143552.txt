@@ -1,0 +1,109 @@
+Error: Failed to parse CV response after multiple attempts. JSON error: Expecting ',' delimiter: line 11 column 32 (char 865). Error near: ...cation": "New York, NY",
+    "linkedin": "linkedin.com/in/desirebikorimana",
+    "portfolio": "https://desirebikorimana.com/projects",
+    "github": ""
+  },
+  
+  "core_competencies": [
+    "Financial ...
+
+================================================================================
+RAW RESPONSE:
+================================================================================
+```json
+{
+  "professional_summary": "Highly analytical and results-oriented Strategic Analyst with a robust foundation in financial modeling, data synthesis, and operational efficiency. Proven ability to translate complex quantitative insights into actionable business strategies, leading to documented improvements in cost reduction and process optimization. Seeking to leverage academic excellence and practical project management experience in a challenging corporate environment to drive significant organizational value.",
+  
+  "contact_information": {
+    "full_name": "Desire Bikorimana",
+    "professional_title": "Strategic Business Analyst | Data & Operations Specialist",
+    "email": "bikorimanadesire5@gmail.com",
+    "phone": "(555) 123-4567",
+    "location": "New York, NY",
+    "linkedin": "linkedin.com/in/desirebikorimana",
+    "portfolio": "https://desirebikorimana.com/projects",
+    "github": ""
+  },
+  
+  "core_competencies": [
+    "Financial Modeling & Forecasting",
+    "Strategic Planning",
+    "Data Visualization (Tableau/Power BI)",
+    "Process Optimization (Lean/Six Sigma)",
+    "Quantitative Analysis (SQL/Python)",
+    "Cross-Functional Leadership",
+    "Risk Assessment",
+    "Stakeholder Management"
+  ],
+  
+  "professional_experience": [
+    {
+      "job_title": "Financial Analyst Intern",
+      "company": "Ascend Global Consulting",
+      "location": "Boston, MA",
+      "duration": "June 2023 - August 2023",
+      "description": "Supported the Corporate Finance division by conducting deep-dive market analysis and contributing to client valuation reports for Fortune 500 companies.",
+      "achievements": [
+        "Developed and maintained complex financial models (DCF, LBO) that accurately forecasted Q4 revenue trends, resulting in a 7% reduction in forecasting error compared to prior internal methods.",
+        "Analyzed over 50,000 lines of transactional data using SQL and Excel to identify key cost drivers, leading to recommendations projected to save clients $1.2 million annually.",
+        "Streamlined the quarterly reporting process by automating data extraction, reducing manual preparation time by 35 hours per quarter.",
+        "Presented comprehensive competitive landscape analyses to senior management, influencing strategic recommendations for two major M&A targets valued collectively at $500M."
+      ],
+      "technologies": ["Advanced Excel", "VBA", "Bloomberg Terminal", "SQL", "MS PowerPoint"]
+    }
+  ],
+  
+  "education": [
+    {
+      "degree": "B.S. in Business Administration, Concentration in Finance",
+      "institution": "Georgetown University",
+      "location": "Washington, D.C.",
+      "graduation_date": "May 2024",
+      "gpa": "3.85/4.0",
+      "honors": "Summa Cum Laude, Dean's List (8 Semesters)",
+      "relevant_coursework": ["Advanced Corporate Finance", "Econometrics", "Quantitative Methods", "Investment Portfolio Theory", "Data Analytics for Business"]
+    }
+  ],
+  
+  "certifications": [
+    {
+      "name": "Certified Associate in Project Management (CAPM)",
+      "issuer": "Project Management Institute (PMI)",
+      "date": "March 2024",
+      "credential_id": "PMI-A987654321"
+    },
+    {
+      "name": "Microsoft Certified: Data Analyst Associate",
+      "issuer": "Microsoft",
+      "date": "January 2024",
+      "credential_id": "MCID-DA100"
+    }
+  ],
+  
+  "projects": [
+    {
+      "name": "Strategic Market Entry Model for Tech Startup",
+      "role": "Lead Consultant & Data Modeler",
+      "description": "Led a four-person team to develop a comprehensive go-to-market strategy and financial viability model for a seed-stage FinTech startup targeting the European market.",
+      "impact": "The model successfully identified optimal pricing tiers, forecasting a 25% higher initial user adoption rate and securing $500,000 in early-stage funding based on projected 3-year growth.",
+      "technologies": ["Python (Pandas, NumPy)", "Tableau", "Monte Carlo Simulation", "Advanced Excel"]
+    },
+    {
+      "name": "University Operational Efficiency Audit",
+      "role": "Process Improvement Lead",
+      "description": "Conducted a semester-long audit of the university's administrative procurement processes, identifying bottlenecks and proposing a streamlined digital workflow.",
+      "impact": "Implemented a new digital request system that reduced average approval time by 40% (from 5 days to 3 days) and decreased administrative labor costs by an estimated 18% annually.",
+      "technologies": ["Microsoft Visio", "Lean Methodology", "SurveyMonkey", "Power BI"]
+    }
+  ],
+  
+  "technical_skills": {
+    "programming_languages": ["SQL (Advanced)", "Python (Intermediate)", "R (Basic)"],
+    "frameworks_tools": ["Advanced Excel (Modeling, Pivot Tables, Macros)", "Bloomberg Terminal", "Salesforce CRM", "SAP", "Power BI", "Tableau"],
+    "methodologies": ["Agile/Scrum", "Lean Management", "Six Sigma Principles", "Quantitative Research"],
+    "soft_skills": ["Strategic Communication", "Executive Presentation", "Conflict Resolution", "Team Leadership", "Detail Orientation"]
+  },
+  
+  "awards": [
+    {
+      "title": "

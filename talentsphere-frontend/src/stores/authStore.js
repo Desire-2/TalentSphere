@@ -225,6 +225,65 @@ export const useAuthStore = create((set, get) => ({
       isLoading: false,
       error: null
     });
+  },
+
+  // Validate current session
+  validateSession: async () => {
+    if (!get().isAuthenticated) return false;
+    
+    try {
+      const isValid = await authService.validateSession();
+      
+      if (!isValid) {
+        // Session is invalid, logout
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          error: 'Session expired'
+        });
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  },
+
+  // Refresh session token
+  refreshSession: async () => {
+    if (!get().isAuthenticated) return false;
+    
+    try {
+      const refreshed = await authService.refreshSession();
+      
+      if (refreshed) {
+        // Update token in state
+        const newToken = authService.getToken();
+        const user = authService.getCurrentUser();
+        set({
+          token: newToken,
+          user: user,
+          isAuthenticated: true
+        });
+      }
+      
+      return refreshed;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return false;
+    }
+  },
+
+  // Check if token is expired or about to expire
+  isTokenExpired: (bufferMinutes = 5) => {
+    return authService.isTokenExpired(bufferMinutes);
+  },
+
+  // Get token expiration time
+  getTokenExpiration: () => {
+    return authService.getTokenExpiration();
   }
 }));
 

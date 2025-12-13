@@ -28,11 +28,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '../../stores/authStore';
+import { useSessionManager } from '../../hooks/useSessionManager';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuthStore();
+
+  // Initialize session manager for admin panel
+  useSessionManager({
+    onSessionExpired: () => {
+      console.log('🔒 Admin session expired');
+    },
+    onSessionRefreshed: () => {
+      console.log('🔄 Admin session refreshed');
+    },
+    validateInterval: 3 * 60 * 1000, // Check every 3 minutes for admin
+  });
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, current: location.pathname === '/admin' },

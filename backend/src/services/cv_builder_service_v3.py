@@ -35,7 +35,8 @@ class CVBuilderService:
         self._min_request_interval = 2  # Minimum 2 seconds between requests
         
         # API provider tracking
-        self._current_provider = 'gemini'
+        self._current_provider = 'openrouter'  # Start with OpenRouter as default
+        self._openrouter_quota_exhausted = False  # Track OpenRouter quota status
         self._gemini_quota_exhausted = False
         self.generation_progress = []
         self.section_todos = []
@@ -105,19 +106,74 @@ class CVBuilderService:
             raise Exception(f"OpenRouter API failed: {str(e)}")
     
     def _make_api_request_with_retry(self, prompt: str, max_retries: int = 3) -> str:
-        """Make API request with exponential backoff retry logic and automatic OpenRouter fallback"""
+        """Make API request with exponential backoff retry logic and automatic Gemini fallback
         
-        # If we know Gemini quota is exhausted, use OpenRouter directly
-        if self._gemini_quota_exhausted and self._openrouter_api_key:
-            print(f"[CV Builder] 🔄 Using OpenRouter API (Gemini quota previously exhausted)")
+        Priority order:
+        1. OpenRouter (default) - gpt-4o-mini, fast and reliable
+        2. Gemini (fallback) - when OpenRouter hits limits or fails
+        """
+        
+        # If we know OpenRouter quota is exhausted, use Gemini directly
+        if self._openrouter_quota_exhausted and self._api_key:
+            print(f"[CV Builder] 🔄 Using Gemini API (OpenRouter quota previously exhausted)")
             try:
-                response = self._call_openrouter_api(prompt, temperature=0.7, max_tokens=2048)
-                print(f"[CV Builder] ✅ OpenRouter API succeeded")
+                response = self._call_gemini_api(prompt, temperature=0.7, max_tokens=2048)
+                print(f"[CV Builder] ✅ Gemini API succeeded")
                 return response
             except Exception as e:
-                # If OpenRouter also fails, try Gemini again (quota might have reset)
-                print(f"[CV Builder] ⚠️ OpenRouter failed, trying Gemini again: {str(e)[:100]}")
-                self._gemini_quota_exhausted = False
+                # If Gemini also fails, try OpenRouter again (quota might have reset)
+                print(f"[CV Builder] ⚠️ Gemini failed, trying OpenRouter again: {str(e)[:100]}")
+                self._openrouter_quota_exhausted = False
+        
+        # Try OpenRouter first (PRIMARY API)
+        if self._openrouter_api_key:
+            for attempt in range(max_retries):
+                try:
+                    # Wait to respect rate limits
+                    self._rate_limit_wait()
+                    
+                    response = self._call_openrouter_api(prompt, temperature=0.7, max_tokens=2048)
+                    print(f"[CV Builder] ✅ OpenRouter API succeeded")
+                    return response
+                    
+                except Exception as e:
+                    error_str = str(e)
+                    
+                    # Check if it's a rate limit error
+                    is_rate_limit = any(pattern in error_str for pattern in [
+                        '429', 'quota', 'QUOTA', 'rate limit', 'Rate limit',
+                        'too many requests', 'requests per minute', 'requests per day',
+                        'RESOURCE_EXHAUSTED'
+                    ])
+                    
+                    if is_rate_limit:
+                        if attempt < max_retries - 1:
+                            wait_time = (2 ** attempt) * 2  # Exponential backoff: 2s, 4s, 8s
+                            print(f"[CV Builder] OpenRouter rate limit hit. Waiting {wait_time}s before retry {attempt + 1}/{max_retries}...")
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            # Mark OpenRouter quota as exhausted and try Gemini
+                            self._openrouter_quota_exhausted = True
+                            print(f"[CV Builder] ⚠️ OpenRouter rate limit exhausted after {max_retries} retries")
+                            break
+                    else:
+                        # Non-rate-limit error - log and try Gemini
+                        print(f"[CV Builder] ⚠️ OpenRouter error (attempt {attempt + 1}): {error_str[:150]}")
+                        if attempt < max_retries - 1:
+                            time.sleep(2)
+                            continue
+                        else:
+                            break
+        
+        # Fallback to Gemini if OpenRouter failed or not configured
+        print(f"[CV Builder] 🔄 Falling back to Gemini API...")
+        
+        if not self._api_key:
+            raise Exception(
+                "OpenRouter failed and no Gemini API key found. "
+                "Please configure at least one API: GEMINI_API_KEY or OPENROUTER_API_KEY in .env"
+            )
         
         client = self._get_client()
         
@@ -159,6 +215,7 @@ class CVBuilderService:
                         if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
                             text = ''.join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
                             if text:
+                                print(f"[CV Builder] ✅ Gemini API succeeded")
                                 return text
                     
                     print(f"[CV Builder] Attempt {attempt + 1}: Response has no text")
@@ -168,6 +225,7 @@ class CVBuilderService:
                         continue
                     raise Exception("API returned empty response - no text content found")
                 
+                print(f"[CV Builder] ✅ Gemini API succeeded")
                 return response.text
                 
             except Exception as e:
@@ -197,37 +255,62 @@ class CVBuilderService:
                             except:
                                 pass
                         
-                        print(f"Rate limit hit. Waiting {wait_time}s before retry {attempt + 1}/{max_retries}...")
+                        print(f"[CV Builder] Gemini rate limit hit. Waiting {wait_time}s before retry {attempt + 1}/{max_retries}...")
                         time.sleep(wait_time)
                         continue
                     else:
-                        # Mark quota as exhausted and attempt OpenRouter fallback
+                        # Both APIs exhausted
                         self._gemini_quota_exhausted = True
-                        print(f"[CV Builder] ⚠️ Gemini rate limit exhausted after {max_retries} retries")
-                        
-                        if self._openrouter_api_key:
-                            print(f"[CV Builder] 🔄 Automatically switching to OpenRouter API...")
-                            try:
-                                response = self._call_openrouter_api(prompt, temperature=0.7, max_tokens=2048)
-                                print(f"[CV Builder] ✅ OpenRouter API succeeded")
-                                return response
-                            except Exception as openrouter_error:
-                                raise Exception(
-                                    f"Both Gemini and OpenRouter APIs failed. "
-                                    f"Gemini: Rate limit exceeded. OpenRouter: {str(openrouter_error)}"
-                                )
-                        else:
-                            raise Exception(
-                                "Gemini API rate limit exceeded. Please wait a few minutes and try again, "
-                                "or configure OPENROUTER_API_KEY in your .env file for automatic fallback. "
-                                "Free tier limits: 15 requests per minute, 1500 requests per day."
-                            )
+                        raise Exception(
+                            "Both OpenRouter and Gemini APIs rate limits exceeded. "
+                            "Please wait a few minutes and try again. "
+                            "Free tier limits: OpenRouter ~200 req/day, Gemini 15 req/min & 1500 req/day."
+                        )
                 else:
                     # Not a rate limit error, raise it
                     raise
         
-        raise Exception("Max retries exceeded")
+        raise Exception("Max retries exceeded for both APIs")
         
+    def _call_gemini_api(self, prompt: str, temperature: float = 0.7, max_tokens: int = 2048) -> str:
+        """Direct call to Gemini API (used when it's the fallback)"""
+        client = self._get_client()
+        
+        response = client.models.generate_content(
+            model="gemini-flash-latest",
+            contents=prompt,
+            config={
+                'temperature': temperature,
+                'max_output_tokens': max_tokens,
+            }
+        )
+        
+        # Check if response has valid text
+        if not response:
+            raise Exception("Gemini API returned no response object")
+        
+        # Check for blocked content
+        if hasattr(response, 'prompt_feedback'):
+            feedback = response.prompt_feedback
+            if hasattr(feedback, 'block_reason') and feedback.block_reason:
+                raise Exception(f"Content was blocked by safety filters: {feedback.block_reason}")
+        
+        # Get the text from response
+        if hasattr(response, 'text') and response.text:
+            self._current_provider = 'gemini'
+            return response.text
+        
+        # Try to get candidates
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                text = ''.join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
+                if text:
+                    self._current_provider = 'gemini'
+                    return text
+        
+        raise Exception("Gemini API returned empty response")
+
     def generate_cv_content(
         self, 
         user_data: Dict[str, Any],

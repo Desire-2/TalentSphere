@@ -1632,6 +1632,10 @@ Relationship: {ref.get('relationship', 'Professional contact')}
             
             cleaned = cleaned.strip()
             
+            # Pre-process: Apply quick fixes before attempting json-repair
+            # This helps json-repair succeed more often
+            cleaned = self._quick_json_fixes(cleaned)
+            
             # First attempt: Try with json-repair library (most robust)
             try:
                 from json_repair import repair_json
@@ -1642,7 +1646,9 @@ Relationship: {ref.get('relationship', 'Professional contact')}
             except ImportError:
                 print("[CV Builder] json-repair not available, using fallback methods")
             except Exception as repair_err:
-                print(f"[CV Builder] json-repair failed: {repair_err}, trying manual fixes")
+                print(f"[CV Builder] json-repair failed: {repair_err}")
+                print(f"[CV Builder] Problematic JSON snippet (first 500 chars): {cleaned[:500]}")
+                print("[CV Builder] Trying manual fixes...")
             
             # Second attempt: Apply manual fixes
             cleaned = self._fix_json_formatting(cleaned)
@@ -2057,6 +2063,74 @@ Relationship: {ref.get('relationship', 'Professional contact')}
         else:
             return "Career pivot - focus on transferable skills and adaptability"
     
+    def _quick_json_fixes(self, json_str: str) -> str:
+        """
+        Apply quick, safe JSON fixes before attempting full parsing.
+        These are common AI response issues that can be fixed with simple patterns.
+        
+        Args:
+            json_str: Potentially malformed JSON string
+            
+        Returns:
+            JSON string with quick fixes applied
+        """
+        import re
+        
+        # Fix 1: Remove BOM (Byte Order Mark) if present
+        if json_str.startswith('\ufeff'):
+            json_str = json_str[1:]
+        
+        # Fix 2: Fix unescaped quotes in common patterns
+        # Pattern: "text": "value with "quotes" inside"
+        # This is the most common issue causing "Expecting property name" errors
+        
+        # Strategy: Find patterns like ": "value with "nested" quotes"" and fix them
+        # We'll use a more careful approach to avoid breaking valid JSON
+        
+        # First, temporarily replace correctly escaped quotes
+        json_str = json_str.replace('\\"', '|||ESCAPED_QUOTE|||')
+        
+        # Now fix the pattern: "property": "value with "internal" quotes",
+        # The issue is the internal quotes aren't escaped
+        # We'll find these by looking for quotes inside quoted values
+        def fix_internal_quotes(match):
+            full_match = match.group(0)
+            # Count quotes - if more than 2, we have internal quotes to escape
+            quote_positions = [i for i, char in enumerate(full_match) if char == '"']
+            if len(quote_positions) <= 2:
+                return full_match  # Valid pattern, leave it
+            
+            # We have internal quotes - escape the middle ones
+            result = full_match[:quote_positions[1]]  # Up to and including second quote
+            middle_section = full_match[quote_positions[1]+1:quote_positions[-1]]
+            result += middle_section.replace('"', '\\"')  # Escape internal quotes
+            result += full_match[quote_positions[-1]:]  # Final quote and rest
+            return result
+        
+        # Apply the fix to property values (careful regex to avoid false positives)
+        # Match: ": "anything with possible "quotes" inside"[,}]
+        json_str = re.sub(
+            r':\s*"[^"]*"[^",}\]]*"[^",}\]]*"(?=\s*[,}\]])',
+            fix_internal_quotes,
+            json_str,
+            flags=re.DOTALL
+        )
+        
+        # Restore escaped quotes
+        json_str = json_str.replace('|||ESCAPED_QUOTE|||', '\\"')
+        
+        # Fix 3: Remove trailing commas (extremely common)
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
+        # Fix 4: Fix property names without quotes
+        # Match: {propertyName: or ,propertyName:
+        json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+        
+        # Fix 5: Remove JavaScript comments (sometimes AI adds explanations)
+        json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
+        
+        return json_str
+    
     def _fix_json_formatting(self, json_str: str) -> str:
         """
         Apply comprehensive fixes to malformed JSON from AI responses
@@ -2069,59 +2143,115 @@ Relationship: {ref.get('relationship', 'Professional contact')}
         """
         import re
         
-        # Strategy: Parse line by line and fix issues contextually
-        lines = json_str.split('\n')
-        fixed_lines = []
-        in_string = False
-        current_line = ""
-        
-        for line in lines:
-            # Count unescaped quotes to track if we're inside a string value
-            quote_count = 0
-            i = 0
-            while i < len(line):
-                if line[i] == '"' and (i == 0 or line[i-1] != '\\'):
-                    quote_count += 1
-                i += 1
-            
-            # If we have an odd number of quotes, we're starting or ending a multi-line string
-            # This is actually invalid JSON - strings shouldn't span lines
-            if quote_count % 2 == 1:
-                # If this line has an opening quote for a property value, it's likely malformed
-                # Try to join it with the next line
-                current_line += line
-                in_string = not in_string
-                if not in_string:
-                    # String is complete, add it
-                    fixed_lines.append(current_line)
-                    current_line = ""
-                continue
-            
-            if in_string:
-                # We're in the middle of a multi-line string, append to current
-                current_line += " " + line.strip()
-            else:
-                # Normal line processing
-                if current_line:
-                    fixed_lines.append(current_line)
-                    current_line = ""
-                fixed_lines.append(line)
-        
-        if current_line:
-            fixed_lines.append(current_line)
-        
-        json_str = '\n'.join(fixed_lines)
-        
-        # Now apply simpler fixes
-        # 1. Remove trailing commas
-        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
-        
-        # 2. Remove comments
+        # ===== PHASE 1: Pre-processing cleanup =====
+        # Remove comments (AI sometimes adds explanatory comments)
         json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
         json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
         
-        # 3. Fix multiple consecutive commas
+        # ===== PHASE 2: Fix quote issues (MOST COMMON PROBLEM) =====
+        # Fix single quotes to double quotes (but not in contractions)
+        # Match: 'key' or 'value' but not don't, can't, etc.
+        json_str = re.sub(r"(?<![a-zA-Z])'([^']*?)'(?![a-zA-Z])", r'"\1"', json_str)
+        
+        # Fix unescaped quotes inside strings
+        # This is tricky - we need to escape quotes that are inside string values
+        # Pattern: "text with "nested" quotes"
+        # Strategy: Find strings and escape internal quotes
+        def escape_nested_quotes(match):
+            content = match.group(1)
+            # Escape any unescaped internal quotes
+            content = content.replace('\\"', '|||ESCAPED_QUOTE|||')  # Temporarily mark already escaped
+            content = content.replace('"', '\\"')  # Escape unescaped quotes
+            content = content.replace('|||ESCAPED_QUOTE|||', '\\"')  # Restore already escaped
+            return f'"{content}"'
+        
+        # This regex is complex - it tries to match property values that might have nested quotes
+        # We'll apply it carefully to avoid breaking valid JSON
+        try:
+            # Match patterns like: "property": "value with "nested" quotes"
+            json_str = re.sub(
+                r':\s*"([^"]*?"[^"]*?)"(?=\s*[,}\]])',
+                escape_nested_quotes,
+                json_str
+            )
+        except Exception as e:
+            print(f"[CV Builder] Warning: Nested quote fix failed: {e}")
+        
+        # ===== PHASE 3: Fix property name issues =====
+        # Property names without quotes (common AI mistake)
+        # Match: {propertyName: or ,propertyName:
+        json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+        
+        # ===== PHASE 4: Fix trailing commas =====
+        # Remove trailing commas before closing brackets/braces
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
+        # ===== PHASE 5: Fix multiple consecutive commas =====
         json_str = re.sub(r',\s*,+', ',', json_str)
+        
+        # ===== PHASE 6: Fix newlines in string values =====
+        # JSON doesn't allow literal newlines in strings - they must be \n
+        # Find strings with newlines and escape them
+        def fix_string_newlines(match):
+            content = match.group(1)
+            # Replace literal newlines with \n
+            content = content.replace('\n', '\\n')
+            content = content.replace('\r', '\\r')
+            content = content.replace('\t', '\\t')
+            return f'"{content}"'
+        
+        # Match strings that might contain newlines
+        # This is a simplified approach - we'll try to fix obvious cases
+        lines = json_str.split('\n')
+        fixed_lines = []
+        in_multiline_string = False
+        multiline_buffer = ""
+        
+        for line in lines:
+            # Simple heuristic: if a line starts with quotes but doesn't end with quotes or comma,
+            # it might be a multiline string
+            stripped = line.strip()
+            
+            if in_multiline_string:
+                multiline_buffer += " " + stripped
+                # Check if this line closes the string
+                if stripped.endswith('"') or stripped.endswith('",') or stripped.endswith('"'):
+                    # End of multiline string
+                    fixed_lines.append(multiline_buffer)
+                    in_multiline_string = False
+                    multiline_buffer = ""
+            else:
+                # Check if this starts a multiline string
+                # Pattern: "key": "value that doesn't end
+                if '"' in stripped:
+                    quote_count = stripped.count('"') - stripped.count('\\"')
+                    if quote_count % 2 == 1:  # Odd number of quotes
+                        # Might be starting a multiline string
+                        in_multiline_string = True
+                        multiline_buffer = line
+                    else:
+                        fixed_lines.append(line)
+                else:
+                    fixed_lines.append(line)
+        
+        # If we still have a buffer, add it
+        if multiline_buffer:
+            fixed_lines.append(multiline_buffer)
+        
+        json_str = '\n'.join(fixed_lines)
+        
+        # ===== PHASE 7: Fix missing commas between array/object elements =====
+        # Pattern: }" { or }" [
+        json_str = re.sub(r'\}"\s*\{', '}",{', json_str)
+        json_str = re.sub(r'\]"\s*\{', ']",{', json_str)
+        json_str = re.sub(r'\}"\s*\[', '}",[', json_str)
+        
+        # ===== PHASE 8: Fix boolean/null values with quotes =====
+        # AI sometimes writes "true" instead of true
+        json_str = re.sub(r':\s*"(true|false|null)"', r': \1', json_str)
+        
+        # ===== PHASE 9: Remove leading/trailing whitespace =====
+        json_str = json_str.strip()
         
         return json_str
     

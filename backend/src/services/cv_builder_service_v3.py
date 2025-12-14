@@ -2080,7 +2080,46 @@ Relationship: {ref.get('relationship', 'Professional contact')}
         if json_str.startswith('\ufeff'):
             json_str = json_str[1:]
         
-        # Fix 2: Fix unescaped quotes in common patterns
+        # Fix 2: Handle unterminated strings (CRITICAL FIX for production issue)
+        # Pattern: "property": "value that never closes\n  "next_property":
+        # This is a very common AI error where strings don't have closing quotes
+        lines = json_str.split('\n')
+        fixed_lines = []
+        
+        for i, line in enumerate(lines):
+            # Check if this line has an unterminated string
+            # Count quotes (excluding escaped ones)
+            clean_line = line.replace('\\"', '')
+            quote_count = clean_line.count('"')
+            
+            # If odd number of quotes, this line has an unterminated string
+            if quote_count % 2 == 1:
+                # Find the position of the last unescaped quote
+                last_quote_pos = -1
+                for j in range(len(line) - 1, -1, -1):
+                    if line[j] == '"' and (j == 0 or line[j-1] != '\\'):
+                        last_quote_pos = j
+                        break
+                
+                # Add closing quote before line end (before any trailing comma/whitespace)
+                if last_quote_pos != -1:
+                    # Find the end of the value (before comma or brace)
+                    rest_of_line = line[last_quote_pos+1:].rstrip()
+                    if rest_of_line and not rest_of_line.startswith('"'):
+                        # Need to add closing quote
+                        # Insert it before any trailing punctuation
+                        if rest_of_line.endswith(','):
+                            line = line[:last_quote_pos+1] + line[last_quote_pos+1:].rstrip()[:-1] + '",'
+                        elif rest_of_line:
+                            line = line[:last_quote_pos+1] + line[last_quote_pos+1:].rstrip() + '"'
+                        else:
+                            line = line.rstrip() + '"'
+            
+            fixed_lines.append(line)
+        
+        json_str = '\n'.join(fixed_lines)
+        
+        # Fix 3: Fix unescaped quotes in common patterns
         # Pattern: "text": "value with "quotes" inside"
         # This is the most common issue causing "Expecting property name" errors
         
@@ -2119,14 +2158,14 @@ Relationship: {ref.get('relationship', 'Professional contact')}
         # Restore escaped quotes
         json_str = json_str.replace('|||ESCAPED_QUOTE|||', '\\"')
         
-        # Fix 3: Remove trailing commas (extremely common)
+        # Fix 4: Remove trailing commas (extremely common)
         json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
         
-        # Fix 4: Fix property names without quotes
+        # Fix 5: Fix property names without quotes
         # Match: {propertyName: or ,propertyName:
         json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
         
-        # Fix 5: Remove JavaScript comments (sometimes AI adds explanations)
+        # Fix 6: Remove JavaScript comments (sometimes AI adds explanations)
         json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
         
         return json_str

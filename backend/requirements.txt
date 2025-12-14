@@ -31,6 +31,9 @@ pandas==2.2.2
 # AI/ML Dependencies
 google-genai==0.3.0
 
+# JSON Parsing & Repair
+json-repair==0.30.4
+
 # HTTP Requests
 requests==2.32.3
 

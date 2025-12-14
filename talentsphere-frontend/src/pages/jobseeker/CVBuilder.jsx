@@ -143,8 +143,8 @@ const CVBuilder = () => {
       
       console.log('Generating CV with payload:', payload);
       
-      // Generate CV content from backend AI
-      const response = await api.post('/cv-builder/generate', payload);
+      // Use incremental generation endpoint for better rate limit handling
+      const response = await api.post('/cv-builder/generate-incremental', payload);
       
       if (!response.success) {
         setError(response.message || 'Failed to generate CV content');
@@ -155,7 +155,11 @@ const CVBuilder = () => {
       const cvData = response.data.cv_content;
       setCvContent(cvData);
       setShowPreview(true);
-      setSuccess('✨ AI-powered CV content generated! Preview and customize below.');
+      
+      // Show success with generation stats
+      const genTime = response.data.generation_time || 0;
+      const sectionsCount = response.data.sections_generated?.length || selectedSections.length;
+      setSuccess(`✨ AI-powered CV generated successfully! ${sectionsCount} sections in ${genTime}s. Preview below.`);
       setLoading(false);
     } catch (err) {
       console.error('CV generation failed:', err);

@@ -13,12 +13,14 @@ import json
 from src.models.user import db, User
 from src.models.profile_extensions import WorkExperience, Education, Certification, Project, Award
 from src.services.cv_builder_service import CVBuilderService
+from src.services.cv_builder_service_v2 import CVBuilderServiceV2
 from src.utils.db_utils import safe_db_operation
 
 cv_builder_bp = Blueprint('cv_builder', __name__, url_prefix='/api/cv-builder')
 
-# Initialize CV Builder Service
-cv_service = CVBuilderService()
+# Initialize CV Builder Services
+cv_service = CVBuilderService()  # Legacy service (full generation)
+cv_service_v2 = CVBuilderServiceV2()  # New incremental service
 
 # Token verification decorator
 def token_required(f):
@@ -133,14 +135,27 @@ def generate_cv(current_user):
         # Get CV preferences
         cv_style = data.get('style', 'professional')
         sections = data.get('sections', ['work', 'education', 'skills', 'summary', 'projects', 'certifications'])
+        use_incremental = data.get('incremental', True)  # Default to incremental generation
         
-        # Generate CV content using AI
-        cv_content = cv_service.generate_cv_content(
-            user_data=user_data,
-            job_data=job_data,
-            cv_style=cv_style,
-            include_sections=sections
-        )
+        # Choose service based on preference
+        if use_incremental:
+            print(f"[CV Builder] Using V2 incremental generation")
+            # Generate CV content using V2 incremental AI (better for rate limits)
+            cv_content = cv_service_v2.generate_cv_content(
+                user_data=user_data,
+                job_data=job_data,
+                cv_style=cv_style,
+                include_sections=sections
+            )
+        else:
+            print(f"[CV Builder] Using V1 full generation")
+            # Generate CV content using V1 full generation
+            cv_content = cv_service.generate_cv_content(
+                user_data=user_data,
+                job_data=job_data,
+                cv_style=cv_style,
+                include_sections=sections
+            )
         
         return jsonify({
             'success': True,
@@ -197,7 +212,7 @@ def get_available_styles():
     Frontend uses this to offer template options to users
     """
     try:
-        styles = cv_service.get_style_metadata()
+        styles = cv_service_v2.get_style_metadata()  # Use V2 for consistent metadata
         
         return jsonify({
             'success': True,
@@ -207,6 +222,102 @@ def get_available_styles():
         return jsonify({
             'success': False,
             'message': f'Failed to get styles: {str(e)}'
+        }), 500
+
+
+@cv_builder_bp.route('/generate-incremental', methods=['POST'])
+@token_required
+@role_required('job_seeker', 'admin')
+def generate_cv_incremental(current_user):
+    """
+    Generate CV content incrementally section by section
+    Better for avoiding API rate limits and provides progress updates
+    
+    Request body:
+    {
+        "job_id": 123,  // Optional
+        "job_data": {},  // Optional custom job data
+        "style": "professional",
+        "sections": ["summary", "experience", "education", "skills", "projects"]
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "CV generated successfully with 5 sections",
+        "data": {
+            "cv_content": { /* Complete CV data */ },
+            "sections_generated": ["summary", "experience", "education", "skills", "projects"],
+            "generation_time": 15.5
+        }
+    }
+    """
+    import time as time_module
+    start_time = time_module.time()
+    
+    try:
+        data = request.get_json()
+        
+        # Get user profile data
+        user_data = _get_user_profile_data(current_user)
+        
+        # Get job data if provided
+        job_data = None
+        if data.get('job_id'):
+            from src.models.job import Job
+            job = Job.query.get(data['job_id'])
+            if job:
+                job_data = {
+                    'id': job.id,
+                    'title': job.title,
+                    'company_name': job.company_name,
+                    'description': job.description,
+                    'requirements': job.requirements,
+                    'experience_level': job.experience_level,
+                    'category': job.category.name if job.category else None
+                }
+        elif data.get('job_data'):
+            job_data = data['job_data']
+        
+        # Get preferences
+        cv_style = data.get('style', 'professional')
+        sections = data.get('sections', ['summary', 'experience', 'education', 'skills', 'projects', 'certifications'])
+        
+        print(f"[CV Builder] Incremental generation: {len(sections)} sections")
+        
+        # Generate CV using V2 service (incremental)
+        cv_content = cv_service_v2.generate_cv_content(
+            user_data=user_data,
+            job_data=job_data,
+            cv_style=cv_style,
+            include_sections=sections
+        )
+        
+        generation_time = time_module.time() - start_time
+        
+        return jsonify({
+            'success': True,
+            'message': f'CV generated successfully with {len(sections)} sections',
+            'data': {
+                'cv_content': cv_content,
+                'user_data': {
+                    'name': f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+                    'email': user_data.get('email'),
+                    'phone': user_data.get('phone'),
+                    'location': user_data.get('location')
+                },
+                'sections_generated': sections,
+                'generation_time': round(generation_time, 2)
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Incremental CV generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'CV generation failed: {str(e)}'
         }), 500
 
 

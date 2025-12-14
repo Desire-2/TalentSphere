@@ -17,6 +17,9 @@ except ImportError:
     GEMINI_AVAILABLE = False
     genai = None
 
+# Import enhancements module
+from src.services.cv_builder_enhancements import CVBuilderEnhancements
+
 
 class CVBuilderService:
     """Service for generating AI-powered, job-tailored CV content (frontend handles rendering)"""
@@ -189,17 +192,45 @@ class CVBuilderService:
             # Parse the AI response
             cv_content = self._parse_cv_response(response_text)
             
-            # Validate that all selected sections are present
+            # === ENHANCED: Comprehensive data normalization ===
+            cv_content = CVBuilderEnhancements.normalize_cv_data(cv_content)
+            print("[CV Builder] Data normalization completed")
+            
+            # === ENHANCED: Validate that ALL selected sections are present ===
             cv_content = self._validate_and_fill_sections(cv_content, include_sections)
             
-            # Add metadata
+            # === ENHANCED: Post-generation final section check ===
+            missing_critical = self._final_section_check(cv_content, include_sections)
+            if missing_critical:
+                print(f"[CV Builder] ⚠️  CRITICAL: Still missing sections after validation: {missing_critical}")
+                # Force add them one more time
+                for section in missing_critical:
+                    cv_content = self._force_add_section(cv_content, section)
+            
+            # === ENHANCED: Calculate enhanced ATS score ===
+            cv_content['ats_score'] = CVBuilderEnhancements.calculate_ats_score(cv_content, job_data)
+            print(f"[CV Builder] ATS Score: {cv_content['ats_score']['estimated_score']}/100")
+            
+            # === ENHANCED: Generate optimization tips ===
+            cv_content['optimization_tips'] = CVBuilderEnhancements.generate_optimization_tips(cv_content, job_data)
+            print(f"[CV Builder] Generated {len(cv_content['optimization_tips'])} optimization tips")
+            
+            # === ENHANCED: Add comprehensive metadata ===
             cv_content['metadata'] = {
                 'generated_at': datetime.utcnow().isoformat(),
                 'style': cv_style,
                 'tailored_for_job': job_data.get('title') if job_data else None,
+                'company': job_data.get('company_name') if job_data else None,
                 'sections_included': include_sections,
-                'user_id': user_data.get('id')
+                'sections_validated': len(include_sections),
+                'user_id': user_data.get('id'),
+                'version': '3.0-enhanced'
             }
+            
+            # === ENHANCED: Final quality score ===
+            quality_score = self._calculate_quality_score(cv_content, include_sections)
+            cv_content['metadata']['quality_score'] = quality_score
+            print(f"[CV Builder] Overall quality score: {quality_score}/100")
             
             return cv_content
             
@@ -250,39 +281,160 @@ class CVBuilderService:
         has_projects = bool(user_data.get('projects'))
         has_awards = bool(user_data.get('awards'))
         
-        # Build job matching analysis if job data provided
+        # Build comprehensive job matching analysis if job data provided
         job_context = ""
+        matching_analysis = ""
+        
         if job_data:
+            # Deep analysis of job requirements vs candidate profile
+            job_keywords = self._extract_job_keywords(job_data)
+            profile_keywords = self._extract_profile_keywords(user_data, profile_data)
+            matching_skills = self._analyze_skill_match(job_keywords, profile_keywords)
+            experience_match = self._analyze_experience_match(user_data.get('work_experiences', []), job_data)
+            
+            matching_analysis = f"""
+
+🎯 INTELLIGENT JOB MATCHING ANALYSIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MATCHING SKILLS FOUND: {', '.join(matching_skills[:15]) if matching_skills else 'Analyzing transferable skills'}
+EXPERIENCE RELEVANCE: {experience_match}
+
+STRATEGIC PROFILE-TO-JOB ALIGNMENT:
+This candidate brings {profile_data.get('years_of_experience', 0)} years of experience as a {profile_data.get('professional_title', 'professional')}.
+Target role seeks: {job_data.get('title', 'position')} at {job_data.get('company_name', 'company')}.
+"""
+            
             job_context = f"""
 
-TARGET JOB CONTEXT:
-The CV should be specifically optimized for this position:
+🎯 TARGET JOB CONTEXT (CRITICAL - OPTIMIZE CV FOR THIS SPECIFIC ROLE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 POSITION DETAILS:
 - Job Title: {job_data.get('title', 'Not specified')}
 - Company: {job_data.get('company_name', 'Not specified')}
-- Industry: {job_data.get('category', 'Not specified')}
-- Job Description: {job_data.get('description', 'Not specified')}
-- Required Skills: {job_data.get('requirements', 'Not specified')}
+- Industry/Category: {job_data.get('category', 'Not specified')}
 - Experience Level: {job_data.get('experience_level', 'Not specified')}
+- Employment Type: {job_data.get('job_type', 'Not specified')}
+- Location: {job_data.get('location', 'Not specified')}
+- Salary Range: {job_data.get('salary_min', '')} - {job_data.get('salary_max', '')}
 
-CRITICAL JOB MATCHING INSTRUCTIONS:
-1. **Analyze & Match**: Carefully analyze the job requirements and match them with the candidate's profile
-2. **Prioritize Relevance**: Highlight work experiences that closely match the job requirements
-3. **Keyword Optimization**: Use keywords from the job description naturally throughout the CV
-4. **Skills Alignment**: Emphasize skills that directly match job requirements at the top
-5. **Achievement Quantification**: Quantify achievements that demonstrate relevant capabilities for this role
-6. **Experience Relevance**: If multiple work experiences exist, prioritize and expand those most relevant to this position
-7. **Transferable Skills**: If changing industries/roles, emphasize transferable skills and adaptability
-8. **Professional Summary**: Tailor the summary to position the candidate as ideal for THIS specific role
-9. **Technical Match**: Highlight technologies/tools mentioned in job description that candidate has used
-10. **Industry Keywords**: Include industry-specific terminology from the job posting
+📝 FULL JOB DESCRIPTION:
+{job_data.get('description', 'Not specified')}
+
+✅ REQUIRED QUALIFICATIONS & SKILLS:
+{job_data.get('requirements', 'Not specified')}
+
+🎯 PREFERRED QUALIFICATIONS:
+{job_data.get('preferred_qualifications', 'Analyze job description for implicit preferences')}
+
+🏢 COMPANY CULTURE & VALUES:
+{job_data.get('company_culture', 'Research based on job description tone and requirements')}
+{matching_analysis}
+
+🔍 ADVANCED JOB MATCHING STRATEGY (FOLLOW PRECISELY):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. **DEEP REQUIREMENT ANALYSIS**:
+   - Extract EVERY skill, qualification, and requirement from job description
+   - Identify must-have vs nice-to-have qualifications
+   - Note industry-specific terminology and buzzwords
+   - Understand the job's core responsibilities and pain points
+
+2. **PROFILE-TO-JOB MAPPING**:
+   - Map candidate's experiences to job requirements (use ALL 19 profile fields)
+   - Identify direct matches, transferable skills, and growth areas
+   - Prioritize experiences that solve job's specific challenges
+   - Find quantifiable achievements that demonstrate required capabilities
+
+3. **STRATEGIC PROFESSIONAL SUMMARY**:
+   - Open with candidate's years of experience + professional title
+   - Immediately address the TOP 3 job requirements
+   - Include 2-3 quantifiable achievements relevant to this role
+   - Use exact keywords from job title and description
+   - Position candidate as solution to employer's needs
+   - Reference desired_position: "{profile_data.get('desired_position', '')}"
+
+4. **INTELLIGENT EXPERIENCE PRIORITIZATION**:
+   - Rank work experiences by relevance to THIS job (not chronology)
+   - Expand most relevant role with 3 detailed achievements
+   - Condense less relevant roles to 1-2 bullets or omit if space-constrained
+   - Reframe achievements using job description's language
+   - Emphasize technologies/methodologies mentioned in job posting
+
+5. **SURGICAL SKILLS ALIGNMENT**:
+   - Place matching skills from job requirements at the TOP
+   - Use EXACT terminology from job posting (e.g., if they say "React.js", don't say "React")
+   - Include skill proficiency levels if relevant to requirements
+   - Add soft skills explicitly mentioned in job description
+   - Reference soft_skills: "{profile_data.get('soft_skills', '')}"
+
+6. **KEYWORD DENSITY OPTIMIZATION**:
+   - Naturally integrate 8-12 key terms from job description
+   - Use keywords in: summary (3x), experience bullets (5x), skills (4x)
+   - Mirror job's language style (technical vs business-focused)
+   - Include industry certifications/tools mentioned in requirements
+
+7. **ACHIEVEMENT QUANTIFICATION FOR THIS ROLE**:
+   - Every bullet must show HOW candidate solved problems LIKE those in job description
+   - Use metrics that matter to THIS industry/role (% improvements, $ impact, time saved, team size, scale)
+   - Show progression and growth in areas relevant to target position
+
+8. **EDUCATION & CERTIFICATION RELEVANCE**:
+   - Highlight degrees/certifications that match job requirements
+   - Include relevant coursework if changing fields
+   - Show continuous learning in job-relevant areas
+   - Reference education_level: "{profile_data.get('education_level', '')}"
+
+9. **ADDITIONAL PROFILE UTILIZATION**:
+   - Availability: {profile_data.get('availability', 'Immediate')}
+   - Job Type Preference: {profile_data.get('job_type_preference', 'Any')}
+   - Salary Expectations: {profile_data.get('salary_expectation_min', '')} - {profile_data.get('salary_expectation_max', '')}
+   - Location Preferences: {profile_data.get('preferred_locations', 'Flexible')}
+   - Remote Work: {profile_data.get('remote_work_preference', 'Open')}
+   - Languages: {profile_data.get('languages', 'English')}
+   - Career Goals: {profile_data.get('career_goals', '')}
+
+10. **ATS OPTIMIZATION FOR THIS COMPANY**:
+    - Use standard headers that ATS can parse
+    - Repeat job title from posting in professional title
+    - Include company name context if candidate has industry experience
+    - Add LinkedIn/Portfolio URLs: LinkedIn: {profile_data.get('linkedin_url', '')}, Portfolio: {profile_data.get('portfolio_url', '')}, GitHub: {profile_data.get('github_url', '')}, Website: {profile_data.get('website_url', '')}
+
+⚠️ CRITICAL SUCCESS FACTORS:
+- This CV must make candidate appear as the PERFECT match for THIS specific role
+- Use job description language, not generic CV language
+- Every section must answer: "Why is this person ideal for OUR position?"
+- If candidate lacks a requirement, emphasize transferable skills and learning ability
+- Create narrative connecting candidate's journey to this opportunity
 """
         else:
-            job_context = """
+            job_context = f"""
 
-NO SPECIFIC JOB TARGET:
-Create a versatile, comprehensive CV that showcases the candidate's full profile.
-Use ALL available profile information to create the most complete picture.
-Focus on creating a strong general impression with broad appeal across multiple opportunities.
+📋 GENERAL CV CREATION (NO SPECIFIC JOB TARGET):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a versatile, comprehensive CV showcasing the candidate's complete professional profile.
+
+USE EVERY AVAILABLE DATA POINT FROM PROFILE:
+- Professional Title: {profile_data.get('professional_title', '')}
+- Desired Position: {profile_data.get('desired_position', '')}
+- Years of Experience: {profile_data.get('years_of_experience', 0)}
+- Education Level: {profile_data.get('education_level', '')}
+- Career Goals: {profile_data.get('career_goals', '')}
+- Skills: {profile_data.get('skills', '')}
+- Soft Skills: {profile_data.get('soft_skills', '')}
+- Languages: {profile_data.get('languages', '')}
+- Job Type Preference: {profile_data.get('job_type_preference', '')}
+- Remote Work: {profile_data.get('remote_work_preference', '')}
+- Availability: {profile_data.get('availability', '')}
+- LinkedIn: {profile_data.get('linkedin_url', '')}
+- GitHub: {profile_data.get('github_url', '')}
+- Portfolio: {profile_data.get('portfolio_url', '')}
+- Website: {profile_data.get('website_url', '')}
+
+STRATEGY: Create strong general-purpose CV with broad appeal across opportunities in candidate's field.
+Focus on versatility, comprehensive skill showcase, and professional brand building.
 """
         
         # Build section-specific instructions
@@ -809,45 +961,238 @@ URL: {proj.get('url', 'Not provided')}
     
     def _validate_and_fill_sections(self, cv_data: Dict, include_sections: List[str]) -> Dict:
         """
-        Validate that all selected sections are present in CV data.
-        Fill missing sections with empty arrays or default content.
+        ENHANCED: Comprehensive validation ensuring all selected sections are present.
+        Intelligently fills missing sections with contextual content.
         
         Args:
             cv_data: Parsed CV data from AI
             include_sections: List of sections user selected
             
         Returns:
-            CV data with all required sections present
+            CV data with all required sections present and validated
         """
         section_mapping = {
             'summary': 'professional_summary',
             'experience': 'professional_experience',
+            'work': 'professional_experience',  # Alias
             'education': 'education',
-            'skills': ['technical_skills', 'core_competencies'],  # Multiple possible keys
+            'skills': ['technical_skills', 'core_competencies', 'skills'],  # Multiple possible keys
             'certifications': 'certifications',
             'projects': 'projects',
-            'awards': 'awards'
+            'awards': 'awards',
+            'references': 'references'
         }
+        
+        print(f"[CV Builder] Validating {len(include_sections)} selected sections: {include_sections}")
+        missing_sections = []
+        empty_sections = []
         
         for section in include_sections:
             if section not in section_mapping:
+                print(f"[CV Builder] Warning: Unknown section '{section}' requested")
                 continue
                 
             mapping = section_mapping[section]
             
             # Handle sections that can have multiple keys
             if isinstance(mapping, list):
-                has_any = any(key in cv_data for key in mapping)
+                has_any = any(key in cv_data and cv_data[key] for key in mapping)
                 if not has_any:
-                    # Add the first key as default
-                    cv_data[mapping[0]] = self._get_default_section_content(section)
-                    print(f"[CV Builder] Added missing section: {mapping[0]}")
+                    # Check if any key exists but is empty
+                    exists_but_empty = any(key in cv_data for key in mapping)
+                    
+                    if exists_but_empty:
+                        empty_sections.append(section)
+                    else:
+                        missing_sections.append(section)
+                    
+                    # Add the first key with intelligent content
+                    cv_data[mapping[0]] = self._generate_intelligent_content(section, cv_data)
+                    print(f"[CV Builder] ⚠️  Added missing/empty section: {mapping[0]}")
             else:
                 # Single key mapping
                 if mapping not in cv_data:
-                    cv_data[mapping] = self._get_default_section_content(section)
-                    print(f"[CV Builder] Added missing section: {mapping}")
+                    missing_sections.append(section)
+                    cv_data[mapping] = self._generate_intelligent_content(section, cv_data)
+                    print(f"[CV Builder] ⚠️  Added missing section: {mapping}")
+                elif not cv_data[mapping]:  # Exists but empty
+                    empty_sections.append(section)
+                    cv_data[mapping] = self._generate_intelligent_content(section, cv_data)
+                    print(f"[CV Builder] ⚠️  Filled empty section: {mapping}")
         
+        # Validate content quality
+        cv_data = self._validate_content_quality(cv_data, include_sections)
+        
+        # Log validation results
+        if missing_sections:
+            print(f"[CV Builder] ⚠️  Originally missing sections: {', '.join(missing_sections)}")
+        if empty_sections:
+            print(f"[CV Builder] ⚠️  Originally empty sections: {', '.join(empty_sections)}")
+        
+        print(f"[CV Builder] ✅ All {len(include_sections)} sections validated and present")
+        
+        return cv_data
+    
+    def _generate_intelligent_content(self, section: str, cv_data: Dict):
+        """
+        ENHANCED: Generate intelligent default content based on existing CV data.
+        Creates contextual, personalized content instead of generic defaults.
+        
+        Args:
+            section: Section name that needs content
+            cv_data: Existing CV data for context
+            
+        Returns:
+            Contextually appropriate content for the section
+        """
+        # Extract context from existing data
+        contact = cv_data.get('contact_information', {})
+        name = contact.get('full_name', 'Professional')
+        title = contact.get('professional_title', 'Professional')
+        
+        # Intelligent defaults based on section and context
+        if section == 'summary':
+            # Generate contextual summary from available data
+            years = self._estimate_years_of_experience(cv_data)
+            skills_summary = self._extract_key_skills_summary(cv_data)
+            
+            if years > 0 and skills_summary:
+                return f"{title} with {years}+ years of experience. Expertise in {skills_summary}. Proven track record of delivering results and driving innovation. Seeking opportunities to contribute skills and expertise to dynamic organizations."
+            elif skills_summary:
+                return f"Motivated {title} with strong expertise in {skills_summary}. Quick learner with passion for excellence and commitment to continuous improvement. Ready to contribute to organizational success."
+            else:
+                return f"Dedicated {title} with proven ability to deliver results. Strong analytical and problem-solving skills. Committed to professional excellence and continuous learning."
+        
+        elif section == 'experience':
+            return []  # Empty array for work experience
+        
+        elif section == 'education':
+            return []  # Empty array for education
+        
+        elif section in ['skills', 'technical_skills', 'core_competencies']:
+            # Try to extract skills from other sections
+            extracted_skills = self._extract_skills_from_context(cv_data)
+            if extracted_skills:
+                return {
+                    'technical_skills': extracted_skills.get('technical', []),
+                    'soft_skills': extracted_skills.get('soft', ['Communication', 'Teamwork', 'Problem Solving', 'Time Management']),
+                    'tools': extracted_skills.get('tools', [])
+                }
+            return {
+                'technical_skills': [],
+                'soft_skills': ['Communication', 'Teamwork', 'Problem Solving', 'Adaptability', 'Critical Thinking'],
+                'tools': []
+            }
+        
+        elif section == 'certifications':
+            return []  # Empty array
+        
+        elif section == 'projects':
+            return []  # Empty array
+        
+        elif section == 'awards':
+            return []  # Empty array
+        
+        elif section == 'references':
+            return "References available upon request."
+        
+        return []  # Default empty array
+    
+    def _estimate_years_of_experience(self, cv_data: Dict) -> int:
+        """Estimate years of experience from work history"""
+        experiences = cv_data.get('professional_experience', [])
+        if not experiences:
+            return 0
+        
+        # Simple estimation: count number of positions
+        return len(experiences)
+    
+    def _extract_key_skills_summary(self, cv_data: Dict) -> str:
+        """Extract key skills for summary generation"""
+        skills_data = cv_data.get('technical_skills', {}) or cv_data.get('core_competencies', []) or cv_data.get('skills', {})
+        
+        skills_list = []
+        if isinstance(skills_data, dict):
+            for category, skills in skills_data.items():
+                if isinstance(skills, list):
+                    skills_list.extend(skills[:3])  # Take top 3 from each category
+        elif isinstance(skills_data, list):
+            skills_list = skills_data[:5]  # Take top 5
+        
+        if skills_list:
+            return ', '.join(skills_list[:3])  # Return top 3 skills
+        return ''
+    
+    def _extract_skills_from_context(self, cv_data: Dict) -> Dict[str, List[str]]:
+        """Extract skills mentioned in other sections"""
+        skills = {'technical': [], 'soft': [], 'tools': []}
+        
+        # Common technical keywords
+        tech_keywords = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'docker', 'kubernetes', 
+                        'machine learning', 'data analysis', 'api', 'backend', 'frontend', 'database']
+        
+        # Look in professional experience
+        for exp in cv_data.get('professional_experience', []):
+            description = str(exp.get('description', '')).lower()
+            achievements = ' '.join(str(a) for a in exp.get('achievements', []))
+            text = description + ' ' + achievements
+            
+            # Find technical skills
+            for keyword in tech_keywords:
+                if keyword in text and keyword.title() not in skills['technical']:
+                    skills['technical'].append(keyword.title())
+        
+        return skills if any(skills.values()) else None
+    
+    def _validate_content_quality(self, cv_data: Dict, include_sections: List[str]) -> Dict:
+        """
+        ENHANCED: Validate the quality and completeness of CV content.
+        Ensures content meets minimum standards for professional CVs.
+        
+        Args:
+            cv_data: CV data to validate
+            include_sections: Sections that should be present
+            
+        Returns:
+            Enhanced CV data with quality improvements
+        """
+        # Validate professional summary length
+        if 'professional_summary' in cv_data:
+            summary = cv_data['professional_summary']
+            if isinstance(summary, str):
+                word_count = len(summary.split())
+                if word_count < 15:
+                    print(f"[CV Builder] ⚠️  Summary too short ({word_count} words), should be 30-80 words")
+                elif word_count > 100:
+                    print(f"[CV Builder] ⚠️  Summary too long ({word_count} words), consider condensing")
+        
+        # Validate work experience has achievements
+        if 'professional_experience' in cv_data:
+            for i, exp in enumerate(cv_data['professional_experience']):
+                if not exp.get('achievements'):
+                    print(f"[CV Builder] ⚠️  Work experience {i+1} missing achievements")
+                    # Add placeholder
+                    exp['achievements'] = ["Contributed to team success and organizational goals"]
+        
+        # Validate contact information completeness
+        if 'contact_information' in cv_data:
+            contact = cv_data['contact_information']
+            required_fields = ['full_name', 'email', 'phone']
+            for field in required_fields:
+                if not contact.get(field):
+                    print(f"[CV Builder] ⚠️  Contact info missing: {field}")
+        
+        # Ensure skills are properly categorized
+        if 'technical_skills' in cv_data:
+            skills = cv_data['technical_skills']
+            if isinstance(skills, list):  # Convert flat list to categorized
+                cv_data['technical_skills'] = {
+                    'core_skills': skills[:8],
+                    'additional_skills': skills[8:] if len(skills) > 8 else []
+                }
+                print(f"[CV Builder] ✓ Categorized {len(skills)} skills")
+        
+        print(f"[CV Builder] ✓ Content quality validation complete")
         return cv_data
     
     def _get_default_section_content(self, section: str):
@@ -867,6 +1212,86 @@ URL: {proj.get('url', 'Not provided')}
             'awards': []
         }
         return defaults.get(section, [])
+    
+    def _extract_job_keywords(self, job_data: Dict) -> List[str]:
+        """Extract important keywords from job posting for matching"""
+        keywords = []
+        
+        # Extract from title
+        if job_data.get('title'):
+            keywords.extend(job_data['title'].lower().split())
+        
+        # Extract from requirements
+        if job_data.get('requirements'):
+            req_text = job_data['requirements'].lower()
+            # Common skill indicators
+            skill_patterns = [
+                r'experience with ([a-z0-9\+\#\.]+)',
+                r'proficient in ([a-z0-9\+\#\.]+)',
+                r'knowledge of ([a-z0-9\+\#\.]+)',
+                r'skilled in ([a-z0-9\+\#\.]+)',
+                r'([a-z0-9\+\#\.]+) experience',
+            ]
+            import re
+            for pattern in skill_patterns:
+                matches = re.findall(pattern, req_text)
+                keywords.extend(matches)
+        
+        # Extract from description
+        if job_data.get('description'):
+            desc_text = job_data['description'].lower()
+            # Technical terms and tools
+            tech_words = [w for w in desc_text.split() if len(w) > 3 and not w in ['the', 'and', 'for', 'with', 'that', 'this', 'will', 'from', 'have']]
+            keywords.extend(tech_words[:20])
+        
+        return list(set(keywords))[:30]  # Return unique keywords, max 30
+    
+    def _extract_profile_keywords(self, user_data: Dict, profile_data: Dict) -> List[str]:
+        """Extract keywords from candidate profile"""
+        keywords = []
+        
+        # From skills
+        if profile_data.get('skills'):
+            keywords.extend([s.lower() for s in str(profile_data['skills']).split(',')])
+        
+        # From professional title
+        if profile_data.get('professional_title'):
+            keywords.extend(profile_data['professional_title'].lower().split())
+        
+        # From work experience
+        for exp in user_data.get('work_experiences', []):
+            if exp.get('job_title'):
+                keywords.extend(exp['job_title'].lower().split())
+            if exp.get('description'):
+                keywords.extend([w for w in exp['description'].lower().split() if len(w) > 4][:5])
+        
+        return list(set(keywords))
+    
+    def _analyze_skill_match(self, job_keywords: List[str], profile_keywords: List[str]) -> List[str]:
+        """Find matching skills between job and profile"""
+        return list(set(job_keywords) & set(profile_keywords))
+    
+    def _analyze_experience_match(self, work_experiences: List[Dict], job_data: Dict) -> str:
+        """Analyze how well work experience matches job requirements"""
+        if not work_experiences:
+            return "Entry level - emphasize education, projects, and transferable skills"
+        
+        total_years = len(work_experiences)
+        job_title = job_data.get('title', '').lower()
+        
+        # Check for title matches
+        title_match = False
+        for exp in work_experiences:
+            if exp.get('job_title', '').lower() in job_title or job_title in exp.get('job_title', '').lower():
+                title_match = True
+                break
+        
+        if title_match:
+            return f"Strong match - {total_years}+ roles with similar title/responsibilities"
+        elif total_years >= 3:
+            return f"Moderate match - {total_years} years experience, emphasize transferable skills"
+        else:
+            return "Career pivot - focus on transferable skills and adaptability"
     
     def _fix_json_formatting(self, json_str: str) -> str:
         """
@@ -989,15 +1414,167 @@ URL: {proj.get('url', 'Not provided')}
             {
                 'id': 'bold',
                 'name': 'Bold',
-                'description': 'High-impact design with strong contrasts',
+                'description': 'Confident and impactful with strong visual hierarchy',
                 'colorScheme': 'Red & Black',
-                'bestFor': ['Sales', 'Business Development', 'Leadership']
+                'bestFor': ['Sales', 'Business Development', 'Marketing', 'Consulting']
             },
             {
                 'id': 'elegant',
                 'name': 'Elegant',
-                'description': 'Sophisticated with serif typography',
-                'colorScheme': 'Rose Gold & Cream',
-                'bestFor': ['Luxury', 'Fashion', 'Hospitality']
+                'description': 'Refined and sophisticated with subtle design elements',
+                'colorScheme': 'Purple & Gray',
+                'bestFor': ['Luxury Brands', 'Fashion', 'High-end Services', 'Executive']
             }
         ]
+    
+    def _final_section_check(self, cv_data: Dict, include_sections: List[str]) -> List[str]:
+        """
+        Final verification that all selected sections are actually present.
+        Returns list of still-missing sections.
+        """
+        section_mapping = {
+            'summary': 'professional_summary',
+            'experience': 'professional_experience',
+            'work': 'professional_experience',
+            'education': 'education',
+            'skills': ['technical_skills', 'core_competencies', 'skills'],
+            'certifications': 'certifications',
+            'projects': 'projects',
+            'awards': 'awards',
+            'references': 'references'
+        }
+        
+        missing = []
+        for section in include_sections:
+            if section not in section_mapping:
+                continue
+            
+            mapping = section_mapping[section]
+            
+            if isinstance(mapping, list):
+                # Check if ANY of the possible keys exist and have content
+                has_content = False
+                for key in mapping:
+                    if key in cv_data and cv_data[key]:
+                        has_content = True
+                        break
+                if not has_content:
+                    missing.append(section)
+            else:
+                # Single key - check if exists and has content
+                if mapping not in cv_data or not cv_data[mapping]:
+                    missing.append(section)
+        
+        return missing
+    
+    def _force_add_section(self, cv_data: Dict, section: str) -> Dict:
+        """Force add a missing section with minimal content"""
+        section_mapping = {
+            'summary': 'professional_summary',
+            'experience': 'professional_experience',
+            'work': 'professional_experience',
+            'education': 'education',
+            'skills': 'technical_skills',
+            'certifications': 'certifications',
+            'projects': 'projects',
+            'awards': 'awards',
+            'references': 'references'
+        }
+        
+        if section in section_mapping:
+            key = section_mapping[section]
+            cv_data[key] = self._generate_intelligent_content(section, cv_data)
+            print(f"[CV Builder] ✅ Force-added section: {key}")
+        
+        return cv_data
+    
+    def _calculate_quality_score(self, cv_data: Dict, include_sections: List[str]) -> int:
+        """
+        Calculate overall quality score (0-100) for the generated CV.
+        Considers completeness, content quality, and ATS optimization.
+        """
+        score = 0
+        max_score = 100
+        
+        # Section completeness (30 points)
+        sections_present = 0
+        for section in include_sections:
+            if self._section_has_content(cv_data, section):
+                sections_present += 1
+        section_score = (sections_present / len(include_sections)) * 30 if include_sections else 0
+        score += section_score
+        
+        # Content quality (40 points)
+        # Professional summary quality (10 points)
+        if 'professional_summary' in cv_data:
+            summary = cv_data['professional_summary']
+            word_count = len(str(summary).split())
+            if 30 <= word_count <= 80:
+                score += 10
+            elif 20 <= word_count < 30 or 80 < word_count <= 100:
+                score += 7
+            elif word_count >= 15:
+                score += 4
+        
+        # Work experience quality (15 points)
+        experiences = cv_data.get('professional_experience', [])
+        if experiences:
+            has_achievements = sum(1 for exp in experiences if exp.get('achievements'))
+            score += min(15, has_achievements * 5)
+        
+        # Skills completeness (10 points)
+        skills = cv_data.get('technical_skills', {}) or cv_data.get('skills', {})
+        if skills:
+            if isinstance(skills, dict):
+                skill_count = sum(len(v) for v in skills.values() if isinstance(v, list))
+            elif isinstance(skills, list):
+                skill_count = len(skills)
+            else:
+                skill_count = 0
+            
+            if skill_count >= 10:
+                score += 10
+            elif skill_count >= 5:
+                score += 7
+            elif skill_count >= 1:
+                score += 4
+        
+        # Contact information (5 points)
+        contact = cv_data.get('contact_information', {})
+        if contact.get('email') and contact.get('phone'):
+            score += 5
+        
+        # ATS Score integration (30 points)
+        ats_score = cv_data.get('ats_score', {})
+        if ats_score and ats_score.get('estimated_score'):
+            # Scale ATS score (0-100) to 30 points
+            score += (ats_score['estimated_score'] / 100) * 30
+        
+        return min(int(score), max_score)
+    
+    def _section_has_content(self, cv_data: Dict, section: str) -> bool:
+        """Check if a section exists and has actual content"""
+        section_mapping = {
+            'summary': 'professional_summary',
+            'experience': 'professional_experience',
+            'work': 'professional_experience',
+            'education': 'education',
+            'skills': ['technical_skills', 'core_competencies', 'skills'],
+            'certifications': 'certifications',
+            'projects': 'projects',
+            'awards': 'awards',
+            'references': 'references'
+        }
+        
+        if section not in section_mapping:
+            return False
+        
+        mapping = section_mapping[section]
+        
+        if isinstance(mapping, list):
+            for key in mapping:
+                if key in cv_data and cv_data[key]:
+                    return True
+            return False
+        else:
+            return mapping in cv_data and bool(cv_data[mapping])

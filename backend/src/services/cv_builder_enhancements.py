@@ -1,400 +1,239 @@
 """
-CV Builder Enhancements Module
-Provides ATS scoring, optimization tips, and advanced data processing
+CV Builder Enhancements
+Provides utility methods for CV optimization, ATS scoring, and quality checks
 """
-from typing import Dict, List, Optional, Any
-import re
+from typing import Dict, List, Any, Optional
 
 
 class CVBuilderEnhancements:
-    """Enhanced features for CV Builder including ATS scoring and optimization"""
+    """Utility class for CV enhancement and optimization"""
     
     @staticmethod
-    def normalize_cv_data(cv_data: Dict) -> Dict:
+    def normalize_cv_data(cv_content: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Comprehensive data normalization for CV content
-        Handles various data formats (dict, list, string) for skills and other fields
-        """
-        # Normalize skills - can be dict, list, or string
-        if 'technical_skills' in cv_data:
-            skills = cv_data['technical_skills']
+        Normalize and clean CV data
+        
+        Args:
+            cv_content: Raw CV content dictionary
             
-            if isinstance(skills, str):
-                # Convert string to dict
-                cv_data['technical_skills'] = {
-                    'core_skills': [s.strip() for s in skills.split(',') if s.strip()]
-                }
-            elif isinstance(skills, list):
-                # Convert list to dict
-                cv_data['technical_skills'] = {
-                    'core_skills': skills
-                }
-            elif isinstance(skills, dict):
-                # Normalize dict values to ensure they're lists
-                for key, value in skills.items():
-                    if isinstance(value, str):
-                        skills[key] = [v.strip() for v in value.split(',') if v.strip()]
-                    elif not isinstance(value, list):
-                        skills[key] = [str(value)]
+        Returns:
+            Normalized CV content
+        """
+        # Ensure all required sections exist
+        if 'contact_information' not in cv_content:
+            cv_content['contact_information'] = {}
         
-        # Normalize core_competencies
-        if 'core_competencies' in cv_data:
-            competencies = cv_data['core_competencies']
-            if isinstance(competencies, str):
-                cv_data['core_competencies'] = [c.strip() for c in competencies.split(',') if c.strip()]
-            elif isinstance(competencies, dict):
-                # Flatten dict to list
-                all_comps = []
-                for value in competencies.values():
-                    if isinstance(value, list):
-                        all_comps.extend(value)
-                    elif isinstance(value, str):
-                        all_comps.extend([v.strip() for v in value.split(',') if v.strip()])
-                cv_data['core_competencies'] = all_comps
+        if 'professional_summary' not in cv_content:
+            cv_content['professional_summary'] = ''
         
-        # Ensure lists are actually lists
-        for key in ['professional_experience', 'education', 'certifications', 'projects', 'awards']:
-            if key in cv_data and not isinstance(cv_data[key], list):
-                cv_data[key] = [cv_data[key]] if cv_data[key] else []
+        if 'professional_experience' not in cv_content:
+            cv_content['professional_experience'] = []
         
-        # Normalize contact information
-        if 'contact_information' in cv_data:
-            contact = cv_data['contact_information']
-            if isinstance(contact, dict):
-                # Ensure all contact fields are strings
-                for field in ['email', 'phone', 'linkedin', 'portfolio', 'location']:
-                    if field in contact and contact[field] and not isinstance(contact[field], str):
-                        contact[field] = str(contact[field])
+        if 'education' not in cv_content:
+            cv_content['education'] = []
         
-        return cv_data
+        if 'technical_skills' not in cv_content:
+            cv_content['technical_skills'] = {}
+        
+        # Clean up empty values
+        if isinstance(cv_content.get('core_competencies'), list):
+            cv_content['core_competencies'] = [c for c in cv_content['core_competencies'] if c]
+        
+        return cv_content
     
     @staticmethod
-    def calculate_ats_score(cv_data: Dict, job_data: Optional[Dict] = None) -> Dict:
+    def calculate_ats_score(cv_content: Dict[str, Any], job_data: Optional[Dict] = None) -> Dict[str, Any]:
         """
-        Calculate comprehensive ATS (Applicant Tracking System) score
+        Calculate ATS (Applicant Tracking System) optimization score
         
-        Scoring breakdown (100 points total):
-        - Contact Information: 15 points
-        - Professional Summary: 15 points
-        - Work Experience: 25 points
-        - Education: 15 points
-        - Skills: 20 points
-        - Additional Sections: 10 points
-        
-        Returns dict with score, strengths, improvements, and analysis
+        Args:
+            cv_content: CV content dictionary
+            job_data: Optional job posting data for matching
+            
+        Returns:
+            Dictionary with score and breakdown
         """
         score = 0
         max_score = 100
-        strengths = []
-        improvements = []
+        breakdown = {}
         
-        # 1. Contact Information (15 points)
-        contact = cv_data.get('contact_information', {})
-        if contact.get('email'):
-            score += 5
-            strengths.append("Email address present")
-        else:
-            improvements.append("Add professional email address")
-        
-        if contact.get('phone'):
-            score += 5
-            strengths.append("Phone number present")
-        else:
-            improvements.append("Add contact phone number")
-        
-        if contact.get('linkedin') or contact.get('portfolio'):
-            score += 5
-            strengths.append("Professional profile links included")
-        else:
-            improvements.append("Add LinkedIn or portfolio URL")
-        
-        # 2. Professional Summary (15 points)
-        summary = cv_data.get('professional_summary', '')
-        if summary and len(summary) > 50:
-            score += 10
-            strengths.append("Comprehensive professional summary")
-        elif summary:
-            score += 5
-            improvements.append("Expand professional summary (aim for 2-3 sentences)")
-        else:
-            improvements.append("Add a compelling professional summary")
-        
-        if job_data and summary:
-            # Check for keyword matching
-            job_keywords = CVBuilderEnhancements._extract_keywords(
-                job_data.get('description', '') + ' ' + job_data.get('requirements', '')
-            )
-            summary_keywords = CVBuilderEnhancements._extract_keywords(summary)
-            matching = len(set(job_keywords) & set(summary_keywords))
-            if matching >= 3:
-                score += 5
-                strengths.append(f"Summary includes {matching} relevant keywords")
-            else:
-                improvements.append("Include more job-specific keywords in summary")
-        
-        # 3. Work Experience (25 points)
-        experience = cv_data.get('professional_experience', [])
-        if len(experience) >= 3:
-            score += 10
-            strengths.append(f"Comprehensive work history ({len(experience)} positions)")
-        elif len(experience) >= 1:
-            score += 5
-        else:
-            improvements.append("Add work experience details")
-        
-        # Check for quantifiable achievements
-        has_quantified = False
-        for exp in experience:
-            achievements = exp.get('achievements', [])
-            for achievement in achievements:
-                if any(char.isdigit() or char in ['%', '$'] for char in str(achievement)):
-                    has_quantified = True
-                    break
-            if has_quantified:
-                break
-        
-        if has_quantified:
-            score += 10
-            strengths.append("Quantifiable achievements included")
-        else:
-            improvements.append("Add numbers and metrics to achievements (e.g., 'Increased sales by 25%')")
-        
-        # Check for action verbs
-        action_verbs = ['led', 'developed', 'managed', 'created', 'improved', 'increased', 
-                       'decreased', 'achieved', 'implemented', 'designed', 'built', 'launched']
-        has_action_verbs = False
-        for exp in experience:
-            achievements = exp.get('achievements', [])
-            for achievement in achievements:
-                if any(verb in str(achievement).lower() for verb in action_verbs):
-                    has_action_verbs = True
-                    break
-        
-        if has_action_verbs:
-            score += 5
-            strengths.append("Strong action verbs used")
-        else:
-            improvements.append("Start bullet points with action verbs (Led, Developed, Managed, etc.)")
-        
-        # 4. Education (15 points)
-        education = cv_data.get('education', [])
-        if len(education) >= 1:
-            score += 10
-            strengths.append("Education history present")
-        else:
-            improvements.append("Add educational background")
-        
-        if education and any(edu.get('gpa') for edu in education):
-            score += 5
-            strengths.append("GPA information included")
-        
-        # 5. Skills (20 points)
-        skills = cv_data.get('technical_skills', {})
-        if skills:
-            if isinstance(skills, dict):
-                skill_count = sum(len(v) for v in skills.values() if isinstance(v, list))
-            else:
-                skill_count = len(skills) if isinstance(skills, list) else 0
-            
-            if skill_count >= 10:
-                score += 15
-                strengths.append(f"Comprehensive skills list ({skill_count} skills)")
-            elif skill_count >= 5:
+        # Check professional summary (20 points)
+        summary = cv_content.get('professional_summary', '')
+        if summary:
+            word_count = len(summary.split())
+            if 40 <= word_count <= 70:
+                score += 20
+                breakdown['summary'] = {'score': 20, 'status': 'optimal'}
+            elif word_count > 0:
                 score += 10
-            elif skill_count >= 1:
-                score += 5
-            else:
-                improvements.append("Add more relevant skills")
+                breakdown['summary'] = {'score': 10, 'status': 'needs_improvement'}
+        else:
+            breakdown['summary'] = {'score': 0, 'status': 'missing'}
+        
+        # Check experience section (25 points)
+        experiences = cv_content.get('professional_experience', [])
+        if experiences:
+            exp_score = min(25, len(experiences) * 6)
+            # Bonus for achievements with metrics
+            achievements_count = sum(1 for exp in experiences 
+                                   for ach in exp.get('achievements', []) 
+                                   if any(char.isdigit() for char in str(ach)))
+            exp_score = min(25, exp_score + achievements_count * 2)
+            score += exp_score
+            breakdown['experience'] = {'score': exp_score, 'status': 'good' if exp_score >= 20 else 'needs_improvement'}
+        else:
+            breakdown['experience'] = {'score': 0, 'status': 'missing'}
+        
+        # Check skills (20 points)
+        skills = cv_content.get('technical_skills', {})
+        if skills:
+            total_skills = sum(len(v) for v in skills.values() if isinstance(v, list))
+            skills_score = min(20, total_skills * 2)
+            score += skills_score
+            breakdown['skills'] = {'score': skills_score, 'status': 'good' if skills_score >= 15 else 'needs_improvement'}
+        else:
+            breakdown['skills'] = {'score': 0, 'status': 'missing'}
+        
+        # Check education (15 points)
+        education = cv_content.get('education', [])
+        if education:
+            score += 15
+            breakdown['education'] = {'score': 15, 'status': 'present'}
+        else:
+            breakdown['education'] = {'score': 0, 'status': 'missing'}
+        
+        # Check contact information (10 points)
+        contact = cv_content.get('contact_information', {})
+        contact_score = 0
+        if contact.get('email'):
+            contact_score += 3
+        if contact.get('phone'):
+            contact_score += 3
+        if contact.get('location'):
+            contact_score += 2
+        if contact.get('linkedin') or contact.get('github') or contact.get('portfolio'):
+            contact_score += 2
+        score += contact_score
+        breakdown['contact'] = {'score': contact_score, 'status': 'complete' if contact_score >= 8 else 'incomplete'}
+        
+        # Check competencies (10 points)
+        competencies = cv_content.get('core_competencies', [])
+        if competencies and len(competencies) >= 6:
+            score += 10
+            breakdown['competencies'] = {'score': 10, 'status': 'optimal'}
+        elif competencies:
+            score += 5
+            breakdown['competencies'] = {'score': 5, 'status': 'needs_more'}
+        else:
+            breakdown['competencies'] = {'score': 0, 'status': 'missing'}
+        
+        # Job match bonus if job_data provided (additional scoring)
+        if job_data:
+            job_title = str(job_data.get('title', '')).lower()
+            summary_lower = summary.lower()
             
-            # Job matching for skills
-            if job_data:
-                job_skills = CVBuilderEnhancements._extract_keywords(job_data.get('requirements', ''))
-                cv_skills_flat = []
-                if isinstance(skills, dict):
-                    for v in skills.values():
-                        if isinstance(v, list):
-                            cv_skills_flat.extend([s.lower() for s in v])
-                elif isinstance(skills, list):
-                    cv_skills_flat = [s.lower() for s in skills]
-                
-                matching_skills = len(set(job_skills) & set(cv_skills_flat))
-                if matching_skills >= 5:
-                    score += 5
-                    strengths.append(f"{matching_skills} skills match job requirements")
-                else:
-                    improvements.append("Add more skills from job requirements")
-        else:
-            improvements.append("Add technical and soft skills section")
-        
-        # 6. Additional Sections (10 points)
-        if cv_data.get('certifications'):
-            score += 3
-            strengths.append("Certifications listed")
-        else:
-            improvements.append("Add relevant certifications if available")
-        
-        if cv_data.get('projects'):
-            score += 4
-            strengths.append("Projects/portfolio included")
-        else:
-            improvements.append("Add notable projects to showcase work")
-        
-        if cv_data.get('awards'):
-            score += 3
-            strengths.append("Awards and recognition included")
+            # Check if job title appears in summary
+            if job_title and job_title in summary_lower:
+                score = min(100, score + 5)
+                breakdown['job_match'] = {'bonus': 5, 'reason': 'job_title_in_summary'}
         
         return {
-            'estimated_score': min(score, max_score),
+            'total_score': min(100, score),
             'max_score': max_score,
-            'strengths': strengths,
-            'improvements': improvements,
-            'readability': CVBuilderEnhancements._assess_readability(cv_data),
-            'keyword_density': CVBuilderEnhancements._assess_keyword_density(cv_data, job_data) if job_data else None
+            'percentage': min(100, (score / max_score) * 100),
+            'grade': CVBuilderEnhancements._get_grade(score),
+            'breakdown': breakdown
         }
     
     @staticmethod
-    def _extract_keywords(text: str) -> List[str]:
-        """Extract keywords from text for matching"""
-        if not text:
-            return []
-        
-        # Common stop words to filter out
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
-                     'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 
-                     'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 
-                     'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 
-                     'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
-        
-        # Extract words, convert to lowercase, filter stop words
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-        keywords = [w for w in words if w not in stop_words]
-        
-        return keywords[:50]  # Limit to top 50 keywords
-    
-    @staticmethod
-    def _assess_readability(cv_data: Dict) -> str:
-        """Assess overall CV readability"""
-        experience = cv_data.get('professional_experience', [])
-        if not experience:
-            return "Good"
-        
-        total_bullets = 0
-        long_bullets = 0
-        
-        for exp in experience:
-            achievements = exp.get('achievements', [])
-            total_bullets += len(achievements)
-            for achievement in achievements:
-                if len(str(achievement).split()) > 20:
-                    long_bullets += 1
-        
-        if total_bullets == 0:
-            return "Good"
-        
-        long_ratio = long_bullets / total_bullets
-        if long_ratio > 0.5:
-            return "Could be improved - use shorter, punchier bullet points"
-        elif long_ratio > 0.3:
-            return "Good - consider shortening some bullet points"
+    def _get_grade(score: int) -> str:
+        """Get letter grade from score"""
+        if score >= 90:
+            return 'A'
+        elif score >= 80:
+            return 'B'
+        elif score >= 70:
+            return 'C'
+        elif score >= 60:
+            return 'D'
         else:
-            return "Excellent - concise and scannable"
+            return 'F'
     
     @staticmethod
-    def _assess_keyword_density(cv_data: Dict, job_data: Optional[Dict]) -> Optional[str]:
-        """Assess keyword density for job matching"""
-        if not job_data:
-            return None
+    def generate_optimization_tips(cv_content: Dict[str, Any], job_data: Optional[Dict] = None) -> List[str]:
+        """
+        Generate actionable tips to improve CV
         
-        job_keywords = set(CVBuilderEnhancements._extract_keywords(
-            job_data.get('description', '') + ' ' + job_data.get('requirements', '')
-        ))
-        if not job_keywords:
-            return None
-        
-        # Extract all text from CV
-        cv_text_parts = [
-            cv_data.get('professional_summary', ''),
-        ]
-        
-        for exp in cv_data.get('professional_experience', []):
-            cv_text_parts.append(exp.get('description', ''))
-            cv_text_parts.extend(exp.get('achievements', []))
-        
-        cv_text = ' '.join(str(part) for part in cv_text_parts)
-        cv_keywords = set(CVBuilderEnhancements._extract_keywords(cv_text))
-        
-        matching = len(job_keywords & cv_keywords)
-        percentage = (matching / len(job_keywords)) * 100 if job_keywords else 0
-        
-        if percentage >= 60:
-            return f"Excellent - {matching}/{len(job_keywords)} key terms matched ({percentage:.0f}%)"
-        elif percentage >= 40:
-            return f"Good - {matching}/{len(job_keywords)} key terms matched ({percentage:.0f}%)"
-        else:
-            return f"Could improve - only {matching}/{len(job_keywords)} key terms matched ({percentage:.0f}%)"
-    
-    @staticmethod
-    def generate_optimization_tips(cv_data: Dict, job_data: Optional[Dict]) -> List[str]:
-        """Generate personalized optimization tips"""
+        Args:
+            cv_content: CV content dictionary
+            job_data: Optional job posting data
+            
+        Returns:
+            List of improvement suggestions
+        """
         tips = []
         
-        # Tip 1: Professional summary
-        summary = cv_data.get('professional_summary', '')
-        if not summary or len(summary) < 50:
-            tips.append("Add a compelling 2-3 sentence professional summary highlighting your unique value proposition")
-        
-        # Tip 2: Quantifiable achievements
-        experience = cv_data.get('professional_experience', [])
-        has_metrics = False
-        for exp in experience:
-            achievements = exp.get('achievements', [])
-            if any(any(char.isdigit() for char in str(ach)) for ach in achievements):
-                has_metrics = True
-                break
-        
-        if not has_metrics and experience:
-            tips.append("Quantify achievements with specific numbers, percentages, or dollar amounts (e.g., 'Increased revenue by 35%')")
-        
-        # Tip 3: Skills section
-        skills = cv_data.get('technical_skills', {})
-        if isinstance(skills, dict):
-            skill_count = sum(len(v) for v in skills.values() if isinstance(v, list))
+        # Check summary
+        summary = cv_content.get('professional_summary', '')
+        if not summary:
+            tips.append("Add a professional summary to introduce yourself and highlight key achievements")
         else:
-            skill_count = len(skills) if isinstance(skills, list) else 0
-        
-        if skill_count < 8:
-            tips.append("Add more relevant technical and soft skills (aim for 10-15 key skills)")
-        
-        # Tip 4: Certifications
-        if not cv_data.get('certifications'):
-            tips.append("Include professional certifications, licenses, or training programs to boost credibility")
-        
-        # Tip 5: Projects
-        if not cv_data.get('projects') and job_data and 'engineer' in job_data.get('title', '').lower():
-            tips.append("Add a projects section showcasing relevant work, especially for technical roles")
-        
-        # Tip 6: Job-specific keywords
-        if job_data:
-            job_keywords = set(CVBuilderEnhancements._extract_keywords(job_data.get('requirements', '')))
-            cv_text = ' '.join(str(v) for v in cv_data.values() if isinstance(v, (str, list)))
-            cv_keywords = set(CVBuilderEnhancements._extract_keywords(cv_text))
-            missing_keywords = job_keywords - cv_keywords
+            word_count = len(summary.split())
+            if word_count < 40:
+                tips.append(f"Expand your professional summary (currently {word_count} words, aim for 50-65 words)")
+            elif word_count > 70:
+                tips.append(f"Condense your professional summary (currently {word_count} words, aim for 50-65 words)")
             
-            if len(missing_keywords) > 10:
-                top_missing = list(missing_keywords)[:5]
-                tips.append(f"Consider incorporating these job-specific keywords: {', '.join(top_missing)}")
+            # Check for metrics in summary
+            if not any(char.isdigit() for char in summary):
+                tips.append("Add quantifiable metrics to your professional summary (e.g., percentages, dollar amounts, team sizes)")
         
-        # Tip 7: Contact information
-        contact = cv_data.get('contact_information', {})
-        if not contact.get('linkedin') and not contact.get('portfolio'):
-            tips.append("Add LinkedIn profile or portfolio URL to provide more context about your work")
+        # Check experience achievements
+        experiences = cv_content.get('professional_experience', [])
+        if not experiences:
+            tips.append("Add work experience to showcase your professional background")
+        else:
+            achievements_with_metrics = 0
+            total_achievements = 0
+            for exp in experiences:
+                achievements = exp.get('achievements', [])
+                total_achievements += len(achievements)
+                achievements_with_metrics += sum(1 for ach in achievements if any(char.isdigit() for char in str(ach)))
+            
+            if total_achievements == 0:
+                tips.append("Add achievement bullets to each work experience")
+            elif achievements_with_metrics < total_achievements * 0.5:
+                tips.append("Add more quantifiable metrics to your achievements (aim for at least 2 numbers per bullet)")
         
-        # Tip 8: Education details
-        education = cv_data.get('education', [])
-        if education:
-            has_details = any(edu.get('gpa') or edu.get('honors') or edu.get('relevant_coursework') 
-                            for edu in education)
-            if not has_details:
-                tips.append("Enhance education section with GPA (if 3.5+), honors, or relevant coursework")
+        # Check skills
+        skills = cv_content.get('technical_skills', {})
+        if not skills or sum(len(v) for v in skills.values() if isinstance(v, list)) < 10:
+            tips.append("Add more technical skills to demonstrate your expertise (aim for 15-20 skills)")
         
-        return tips[:8]  # Return top 8 most relevant tips
+        # Check competencies
+        competencies = cv_content.get('core_competencies', [])
+        if not competencies:
+            tips.append("Add core competencies section to highlight your key strengths")
+        elif len(competencies) < 8:
+            tips.append(f"Add more core competencies (currently {len(competencies)}, aim for 10-12)")
+        
+        # Check contact info
+        contact = cv_content.get('contact_information', {})
+        if not contact.get('linkedin') and not contact.get('github') and not contact.get('portfolio'):
+            tips.append("Add professional online profiles (LinkedIn, GitHub, or portfolio URL)")
+        
+        # Job-specific tips
+        if job_data:
+            job_title = str(job_data.get('title', ''))
+            if job_title and job_title.lower() not in summary.lower():
+                tips.append(f"Include the target job title '{job_title}' in your professional summary for better ATS matching")
+            
+            requirements = str(job_data.get('requirements', '')).lower()
+            if requirements:
+                # Check for common keywords
+                common_keywords = ['leadership', 'teamwork', 'agile', 'communication', 'problem-solving']
+                missing_keywords = [kw for kw in common_keywords if kw in requirements and kw.lower() not in summary.lower()]
+                if missing_keywords:
+                    tips.append(f"Consider adding these job-relevant keywords: {', '.join(missing_keywords)}")
+        
+        return tips if tips else ["Your CV looks great! Consider tailoring it further for specific job applications."]

@@ -1,0 +1,58 @@
+Error: Failed to parse CV response after multiple attempts. JSON error: Expecting ',' delimiter: line 41 column 23 (char 2058). Error near: ...nd responsible internet usage, enhancing digital safety in underserved populations.",
+        "Technologies": ["Smartphones", "Digital government platforms", "Internet applications"]
+      ]
+    },
+  ...
+
+================================================================================
+RAW RESPONSE:
+================================================================================
+```json
+{
+  "professional_summary": "Dedicated conservation specialist with 4 years of hands-on field experience in natural resource management, ecological data gathering, and community mobilization. Adept at driving digital inclusion through grassroots training and leveraging emerging Full Stack Software skills to enhance data visibility and system efficiency, meeting ambitious field implementation targets.",
+  
+  "contact_information": {
+    "full_name": "Desire Bikorimana",
+    "professional_title": "Conservation Specialist & Digital Transformation Trainer",
+    "email": "bikorimanadesire5@gmail.com",
+    "phone": "+250786123892",
+    "location": "Nyabihu/Mukamira, Rwanda",
+    "linkedin": "N/A",
+    "portfolio": "N/A",
+    "github": "N/A"
+  },
+  
+  "core_competencies": [
+    "Natural Resource Management",
+    "Community Mobilization & Training",
+    "Field Data Gathering & Reporting",
+    "Agroforestry & Restoration Support",
+    "Digital Literacy Training",
+    "Full Stack Software Development (Emerging)",
+    "Ecosystem Assessment",
+    "Stakeholder Engagement",
+    "Microsoft Excel & Office Suite",
+    "Public Speaking & Education",
+    "Adaptability (Rural Areas)",
+    "Conservation Biology"
+  ],
+  
+  "professional_experience": [
+    {
+      "job_title": "Digital Ambassador",
+      "company": "Rwanda Information Society Authority (RISA)",
+      "location": "Western Province, Rwanda",
+      "duration": "February 2025 - Present",
+      "description": "Delivering digital literacy training to citizens in rural communities to increase digital inclusion and access to e-government services.",
+      "achievements": [
+        "Trained large numbers of citizens in digital literacy skills, increasing community access to critical e-government services.",
+        "Mobilized and registered community members for training programs, contributing directly to national digital transformation goals.",
+        "Provided guidance on safe and responsible internet usage, enhancing digital safety in underserved populations.",
+        "Technologies": ["Smartphones", "Digital government platforms", "Internet applications"]
+      ]
+    },
+    {
+      "job_title": "Environmental Conservation Intern",
+      "company": "Nature Rwanda",
+      "location": "Musanze, Rwanda",
+      "duration": "

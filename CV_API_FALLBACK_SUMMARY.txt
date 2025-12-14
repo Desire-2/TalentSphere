@@ -1,0 +1,245 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║         🚀 CV BUILDER API FALLBACK SYSTEM - IMPLEMENTATION COMPLETE          ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The CV Builder now automatically switches from Google Gemini to OpenRouter API
+when usage limits are reached, ensuring uninterrupted CV generation service.
+
+✨ KEY FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ AUTOMATIC SWITCHING    - Seamless failover when Gemini quota exhausted
+  ✓ INTELLIGENT DETECTION  - Monitors multiple quota error indicators
+  ✓ TRANSPARENT LOGGING    - Full tracking of provider switches
+  ✓ METADATA TRACKING      - CV output includes API usage information
+  ✓ ZERO USER IMPACT       - No manual intervention required
+
+📦 MODIFIED FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. backend/src/services/cv_builder_service_v3.py
+     → Added OpenRouter client integration
+     → Implemented automatic failover logic
+     → Added API provider state management
+     → Enhanced error detection for quota limits
+     
+  2. backend/requirements.txt
+     → Added: requests==2.32.3
+     
+  3. backend/.env.template
+     → Added: GEMINI_API_KEY
+     → Added: OPENROUTER_API_KEY
+     → Added: SITE_URL
+     → Added: SITE_NAME
+
+📚 NEW DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • AI_CV_BUILDER_API_FALLBACK_GUIDE.md    (Comprehensive guide)
+  • CV_API_FALLBACK_QUICK_REF.md            (Quick reference)
+  • test_cv_api_fallback.py                 (Test suite)
+
+🔧 IMPLEMENTATION HIGHLIGHTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Class: CVBuilderServiceV3                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  🔹 _make_api_request_with_retry(prompt)                                    │
+│     → Main entry point with intelligent provider selection                 │
+│     → Tries Gemini first, falls back to OpenRouter on quota error          │
+│                                                                             │
+│  🔹 _call_gemini_api(prompt, max_retries=3)                                 │
+│     → Handles Gemini API calls with exponential backoff                    │
+│     → Rate limiting (2 seconds between requests)                           │
+│                                                                             │
+│  🔹 _call_openrouter_api(prompt, temperature=0.7, max_tokens=4096)         │
+│     → REST API integration with OpenRouter                                 │
+│     → Uses gpt-4o-mini model (cost-effective)                              │
+│                                                                             │
+│  🔹 API State Management                                                    │
+│     → _current_provider: 'gemini' or 'openrouter'                          │
+│     → _gemini_quota_exhausted: bool                                        │
+│     → _provider_switch_count: int                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+🎯 QUOTA ERROR DETECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Monitors for these error indicators:
+  
+    ▸ RESOURCE_EXHAUSTED
+    ▸ quota exceeded
+    ▸ rate limit
+    ▸ 429 (Too Many Requests)
+    ▸ too many requests
+    ▸ insufficient quota
+
+  When detected → Automatic switch to OpenRouter
+
+📊 API METADATA IN CV OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every generated CV includes comprehensive API metadata:
+
+{
+  "api_metadata": {
+    "primary_provider": "gemini",
+    "current_provider": "openrouter",
+    "gemini_quota_exhausted": true,
+    "provider_switches": 1,
+    "fallback_enabled": true
+  },
+  "todos": [
+    {
+      "section": "api_quota",
+      "issue": "Gemini quota exhausted - using OpenRouter",
+      "suggestion": "OpenRouter fallback activated. Switch count: 1"
+    }
+  ]
+}
+
+⚙️ CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Required Environment Variables (backend/.env):
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  # Primary AI API (required)                                                │
+│  GEMINI_API_KEY=your-google-gemini-api-key                                  │
+│                                                                             │
+│  # Fallback AI API (optional but recommended)                               │
+│  OPENROUTER_API_KEY=your-openrouter-api-key                                 │
+│                                                                             │
+│  # Site identification (optional)                                           │
+│  SITE_URL=https://jobs.afritechbridge.online                                │
+│  SITE_NAME=TalentSphere                                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+🔗 API KEY SOURCES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Google Gemini (FREE):
+    → https://aistudio.google.com/app/apikey
+    → 15 requests/min, 1,500 requests/day
+  
+  OpenRouter (PAID):
+    → https://openrouter.ai/
+    → ~$0.001 per CV generation
+    → Pay-as-you-go, no quotas
+
+🧪 TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run comprehensive test suite:
+
+  $ python test_cv_api_fallback.py
+
+Tests included:
+  
+  ✓ Test 1: API Configuration Check
+  ✓ Test 2: Service Initialization
+  ✓ Test 3: OpenRouter Fallback
+  ✓ Test 4: Automatic API Switch
+  ✓ Test 5: CV Generation with Metadata
+
+📈 CONSOLE OUTPUT EXAMPLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When fallback is triggered:
+
+  ════════════════════════════════════════════════════════════════
+  ⚠️  Gemini API quota exhausted: RESOURCE_EXHAUSTED
+  🔄 Automatically switching to OpenRouter API...
+  ════════════════════════════════════════════════════════════════
+
+  [CV Builder V3] Using OpenRouter API (fallback mode)
+  [CV Builder V3] Section 'summary': processing
+  [CV Builder V3] Section 'summary': completed - 52 words
+  
+  [CV Builder V3] ✅ Generation complete
+  [CV Builder V3] API Provider: OPENROUTER
+  [CV Builder V3] ⚠️  Gemini quota exhausted - OpenRouter fallback used
+  [CV Builder V3] Sections generated: 8
+  [CV Builder V3] Todos for follow-up: 1
+
+💰 COST ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌───────────────────────────────┬─────────────────┬─────────────────────────┐
+│ Scenario                      │ Gemini (Free)   │ OpenRouter (gpt-4o-mini)│
+├───────────────────────────────┼─────────────────┼─────────────────────────┤
+│ Cost per CV                   │ $0.00           │ ~$0.001                 │
+│ 100 CVs/day (all Gemini)      │ $0.00           │ -                       │
+│ 100 CVs/day (20% OpenRouter)  │ $0.00           │ ~$0.60/month            │
+│ Quality                       │ High            │ Very High               │
+│ Quota limits                  │ 1,500/day       │ None (pay-as-you-go)    │
+└───────────────────────────────┴─────────────────┴─────────────────────────┘
+
+💡 USAGE WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. User requests CV generation
+  2. System tries Gemini API first (free, fast)
+  3. If Gemini quota exhausted:
+     → Automatic detection
+     → Log warning message
+     → Switch to OpenRouter
+     → Continue seamlessly
+  4. CV generated with metadata showing which API was used
+  5. Todos created for awareness if fallback was used
+
+🎯 BENEFITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ 100% Uptime          - No service interruption from quota limits
+  ✅ Cost Efficient        - Use free tier first, paid only when needed
+  ✅ Zero Config           - Works automatically once API keys are set
+  ✅ Full Transparency     - Complete logging and metadata tracking
+  ✅ Flexible              - Easy to add more providers in future
+
+🚀 DEPLOYMENT CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  □ Set GEMINI_API_KEY in production environment
+  □ Set OPENROUTER_API_KEY for fallback
+  □ Install requests==2.32.3 dependency
+  □ Test with test_cv_api_fallback.py
+  □ Monitor API usage in OpenRouter dashboard
+  □ Set up billing alerts for cost management
+  □ Review monthly API costs
+
+📖 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  📘 AI_CV_BUILDER_API_FALLBACK_GUIDE.md - Complete implementation guide
+  📙 CV_API_FALLBACK_QUICK_REF.md - Quick reference and commands
+  📗 test_cv_api_fallback.py - Comprehensive test suite
+
+🔮 FUTURE ENHANCEMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Smart provider selection based on workload
+  • Cost optimization with model tiers
+  • Pre-flight API health checks
+  • Usage analytics dashboard
+  • Load balancing across multiple providers
+  • Azure OpenAI integration
+  • Anthropic Claude direct integration
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Version: 3.0
+Date: December 14, 2025
+Status: ✅ PRODUCTION READY
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

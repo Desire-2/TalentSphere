@@ -1,778 +1,530 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Checkbox } from '../../components/ui/checkbox';
-import { Alert, AlertDescription } from '../../components/ui/alert';
-import { 
-  Loader2, FileText, Download, Eye, Sparkles, CheckCircle2, 
-  Briefcase, GraduationCap, Award, Code, Star, TrendingUp,
-  Palette, Zap, Target, Users, ChevronRight, ArrowRight,
-  Layout, Layers
-} from 'lucide-react';
-import api from '../../services/api';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FileText, Download, Eye, Loader2, CheckCircle, AlertTriangle, Briefcase, ChevronDown } from 'lucide-react';
+import SectionProgressTracker from '../../components/cv/SectionProgressTracker';
 import CVRenderer from '../../components/cv/CVRenderer';
+import { generateCV, getUserCVData, getCVStyles } from '../../services/cvBuilderService';
 
 const CVBuilder = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const jobIdFromUrl = searchParams.get('job_id');
+  const cvRendererRef = useRef(null);
+
+  // State management
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [jobs, setJobs] = useState([]);
-  const [styles, setStyles] = useState([]);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const cvRendererRef = useRef(null);
-  
-  // CV Builder form state
-  const [selectedJobId, setSelectedJobId] = useState('none');
-  const [customJobTitle, setCustomJobTitle] = useState('');
-  const [customJobDescription, setCustomJobDescription] = useState('');
-  const [customJobRequirements, setCustomJobRequirements] = useState('');
+  const [cvStyles, setCVStyles] = useState([]);
   const [selectedStyle, setSelectedStyle] = useState('professional');
   const [selectedSections, setSelectedSections] = useState([
-    'work',
-    'education',
-    'skills',
-    'summary',
-    'projects',
-    'certifications'
+    'summary', 'work', 'education', 'skills', 'projects', 'certifications', 'awards', 'references'
   ]);
   
-  // CV output state
+  // Job selection state
+  const [jobMode, setJobMode] = useState(jobIdFromUrl ? 'selected' : 'none'); // 'none', 'selected', 'custom'
+  const [selectedJobId, setSelectedJobId] = useState(jobIdFromUrl || '');
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [customJob, setCustomJob] = useState({
+    title: '',
+    company: '',
+    description: '',
+    requirements: ''
+  });
+  const [showJobSection, setShowJobSection] = useState(true);
+  
+  // Generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState([]);
   const [cvContent, setCvContent] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [exportStatus, setExportStatus] = useState(null);
+  const [todos, setTodos] = useState([]);
+  const [error, setError] = useState(null);
 
-  // Available sections with icons
+  // Available sections
   const availableSections = [
-    { id: 'work', label: 'Work Experience', default: true, icon: Briefcase, color: 'text-blue-600' },
-    { id: 'education', label: 'Education', default: true, icon: GraduationCap, color: 'text-purple-600' },
-    { id: 'skills', label: 'Skills & Competencies', default: true, icon: Code, color: 'text-green-600' },
-    { id: 'summary', label: 'Professional Summary', default: true, icon: FileText, color: 'text-orange-600' },
-    { id: 'projects', label: 'Projects & Portfolio', default: true, icon: Layers, color: 'text-indigo-600' },
-    { id: 'certifications', label: 'Certifications & Licenses', default: true, icon: Award, color: 'text-yellow-600' },
-    { id: 'awards', label: 'Awards & Recognition', default: false, icon: Star, color: 'text-pink-600' },
+    { id: 'summary', label: 'Professional Summary', required: true },
+    { id: 'work', label: 'Work Experience', required: true },
+    { id: 'education', label: 'Education', required: true },
+    { id: 'skills', label: 'Skills & Competencies', required: true },
+    { id: 'projects', label: 'Projects', required: false },
+    { id: 'certifications', label: 'Certifications', required: false },
+    { id: 'awards', label: 'Awards & Achievements', required: false },
+    { id: 'references', label: 'Professional References', required: false }
   ];
 
+  // Load initial data
   useEffect(() => {
-    fetchInitialData();
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [userResponse, stylesResponse] = await Promise.all([
+          getUserCVData(),
+          getCVStyles()
+        ]);
+        
+        setUserData(userResponse.data);
+        if (stylesResponse.data) {
+          setCVStyles(stylesResponse.data);
+        }
+
+        // Fetch user's applied jobs for selection
+        try {
+          const token = localStorage.getItem('token');
+          const jobsResponse = await fetch('/api/my-applications', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (jobsResponse.ok) {
+            const jobsData = await jobsResponse.json();
+            // Extract unique jobs from applications
+            const jobs = jobsData.data?.map(app => app.job).filter(job => job) || [];
+            setAvailableJobs(jobs);
+          }
+        } catch (jobErr) {
+          console.log('Could not fetch applied jobs:', jobErr);
+          // Not critical, continue without jobs
+        }
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError('Failed to load CV builder data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const fetchInitialData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch user profile data
-      const userResponse = await api.get('/cv-builder/user-data');
-      if (userResponse.success) {
-        setUserData(userResponse.data);
-      }
-      
-      // Fetch available CV styles
-      try {
-        const stylesResponse = await api.get('/cv-builder/styles');
-        if (stylesResponse.success) {
-          setStyles(stylesResponse.data);
-        }
-      } catch (stylesError) {
-        console.warn('Failed to load styles, using defaults:', stylesError);
-        // Set default styles if API fails
-        setStyles([
-          { id: 'professional', name: 'Professional', description: 'Clean, traditional layout' },
-          { id: 'modern', name: 'Modern', description: 'Clean, minimalist design' },
-          { id: 'creative', name: 'Creative', description: 'Modern, visually engaging layout' }
-        ]);
-      }
-      
-      // Fetch user's saved/applied jobs for quick selection
-      try {
-        const jobsResponse = await api.get('/applications/my-applications?per_page=50');
-        if (jobsResponse.applications && jobsResponse.applications.length > 0) {
-          // Extract unique jobs from applications
-          const uniqueJobs = jobsResponse.applications
-            .map(app => app.job)
-            .filter((job, index, self) => 
-              index === self.findIndex(j => j.id === job.id)
-            );
-          setJobs(uniqueJobs);
-        }
-      } catch (jobsError) {
-        console.warn('Failed to load user jobs:', jobsError);
-        // Continue without jobs - user can still use custom job input
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch initial data:', err);
-      setError(err.message || 'Failed to load CV builder data. Please refresh the page.');
-      setLoading(false);
-    }
-  };
-
+  // Toggle section selection
   const toggleSection = (sectionId) => {
-    if (selectedSections.includes(sectionId)) {
-      setSelectedSections(selectedSections.filter(s => s !== sectionId));
-    } else {
-      setSelectedSections([...selectedSections, sectionId]);
-    }
+    const section = availableSections.find(s => s.id === sectionId);
+    if (section?.required) return; // Can't deselect required sections
+
+    setSelectedSections(prev =>
+      prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
   };
 
+  // Generate CV
   const handleGenerateCV = async () => {
+    setIsGenerating(true);
+    setGenerationProgress([]);
+    setTodos([]);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      
-      // Prepare payload
-      const payload = {
+      // Prepare job data based on mode
+      let jobData = null;
+      if (jobMode === 'selected' && selectedJobId) {
+        jobData = { job_id: parseInt(selectedJobId) };
+      } else if (jobMode === 'custom' && customJob.title) {
+        jobData = { custom_job: customJob };
+      }
+
+      const response = await generateCV({
+        ...jobData,
+        style: selectedStyle,
         sections: selectedSections,
-        style: selectedStyle
-      };
-      
-      // Add job data if selected or custom entered
-      if (selectedJobId && selectedJobId !== 'none') {
-        payload.job_id = parseInt(selectedJobId);
-      } else if (customJobTitle) {
-        payload.job_data = {
-          title: customJobTitle,
-          description: customJobDescription,
-          requirements: customJobRequirements
-        };
+        use_section_by_section: true
+      });
+
+      console.log('🎯 Generate CV response:', response);
+
+      if (response.success) {
+        console.log('✅ Setting CV content and progress...');
+        console.log('   - CV content length:', response.data.cv_content?.length || 0);
+        console.log('   - Progress items:', response.data.progress?.length || 0);
+        console.log('   - Todos items:', response.data.todos?.length || 0);
+        
+        setCvContent(response.data.cv_content);
+        setGenerationProgress(response.data.progress || []);
+        setTodos(response.data.todos || []);
+        
+        // Show success message
+        console.log('✅ CV generated successfully!', response.data);
+      } else {
+        console.error('❌ Response success=false:', response);
+        setError(response.message || 'Failed to generate CV');
       }
-      
-      console.log('Generating CV with payload:', payload);
-      
-      // Use incremental generation endpoint for better rate limit handling
-      const response = await api.post('/cv-builder/generate-incremental', payload);
-      
-      if (!response.success) {
-        setError(response.message || 'Failed to generate CV content');
-        setLoading(false);
-        return;
-      }
-      
-      const cvData = response.data.cv_content;
-      setCvContent(cvData);
-      setShowPreview(true);
-      
-      // Show success with generation stats
-      const genTime = response.data.generation_time || 0;
-      const sectionsCount = response.data.sections_generated?.length || selectedSections.length;
-      setSuccess(`✨ AI-powered CV generated successfully! ${sectionsCount} sections in ${genTime}s. Preview below.`);
-      setLoading(false);
     } catch (err) {
-      console.error('CV generation failed:', err);
-      setError(err.message || 'Failed to generate CV. Please try again.');
-      setLoading(false);
+      console.error('CV generation error:', err);
+      setError(err.message || 'An error occurred while generating CV');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const handleDownloadPDF = async () => {
+  // Download CV as PDF using client-side export
+  const handleDownload = async () => {
+    if (!cvContent || !cvRendererRef.current) {
+      setError('CV content not ready for export');
+      return;
+    }
+
     try {
-      if (!cvRendererRef.current) {
-        setError('CV renderer not ready. Please try again.');
-        return;
-      }
-
-      setExportStatus('loading');
-      setError(null);
-      
-      // Trigger PDF export from CVRenderer
-      const exportButton = cvRendererRef.current.querySelector('.export-pdf-button');
-      if (exportButton) {
-        exportButton.click();
-      }
-      
+      // Call the exportToPDF function from CVRenderer
+      await cvRendererRef.current.exportToPDF();
+      console.log('✅ PDF export initiated successfully');
     } catch (err) {
-      console.error('Download failed:', err);
-      setError(err.message || 'Failed to download PDF. Please try again.');
-      setExportStatus(null);
+      console.error('PDF download error:', err);
+      setError(err.message || 'Failed to export PDF. Please ensure popups are allowed.');
     }
   };
 
-  const handleExportCallback = (status, details) => {
-    setExportStatus(status);
-    
-    if (status === 'success') {
-      setSuccess(`✓ CV downloaded successfully as ${details}!`);
-      setTimeout(() => setExportStatus(null), 3000);
-    } else if (status === 'error') {
-      setError(`Failed to export PDF: ${details}`);
-      setExportStatus(null);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading CV Builder...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Compact Header */}
-        <div className="mb-6">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                <Sparkles className="h-7 w-7 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <FileText className="w-8 h-8 text-blue-600" />
                 AI CV Builder
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Create professional, ATS-optimized resumes with AI
+              <p className="mt-2 text-gray-600">
+                Generate a professional, job-tailored CV in seconds
               </p>
             </div>
-            
-            {/* Quick Stats */}
-            <div className="hidden md:flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-full border border-green-200">
-                <Target className="h-4 w-4 text-green-600" />
-                <span className="font-semibold text-green-700">ATS Ready</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full border border-blue-200">
-                <Palette className="h-4 w-4 text-blue-600" />
-                <span className="font-semibold text-blue-700">8+ Designs</span>
-              </div>
-            </div>
+            {cvContent && (
+              <button
+                onClick={handleDownload}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Download PDF
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Alerts */}
+        {/* Error Alert */}
         {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription className="text-sm">{error}</AlertDescription>
-          </Alert>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-900">Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
         )}
 
-        {success && (
-          <Alert className="mb-4 bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-sm text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Sidebar Configuration */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-sm border-gray-200">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Layout className="h-4 w-4 text-blue-600" />
-                  Configuration
-                </CardTitle>
-              <CardDescription>Customize your CV settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              {/* Target Job Selection - Compact */}
-              <div className="space-y-1.5">
-                <Label htmlFor="job-select" className="text-xs font-semibold">Target Job (Optional)</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                  <SelectTrigger id="job-select" className="h-9 text-sm">
-                    <SelectValue placeholder="Select a job" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">General CV</SelectItem>
-                    {jobs.map(job => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Sections to Include - Compact */}
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-blue-600" />
-                  Include Sections
-                </Label>
-                <div className="space-y-1.5">
-                  {availableSections.map(section => {
-                    const Icon = section.icon;
-                    const isSelected = selectedSections.includes(section.id);
-                    return (
-                      <div
-                        key={section.id}
-                        onClick={() => toggleSection(section.id)}
-                        className={`
-                          flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-all text-xs
-                          ${isSelected 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                          }
-                        `}
-                      >
-                        <Checkbox
-                          id={section.id}
-                          checked={isSelected}
-                          className="pointer-events-none h-3.5 w-3.5"
-                        />
-                        <Icon className={`h-3.5 w-3.5 ${section.color}`} />
-                        <label htmlFor={section.id} className="flex-1 cursor-pointer font-medium">
-                          {section.label}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Profile Summary - Compact */}
-              {userData && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-xs font-semibold text-blue-900 mb-2 flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5" />
-                    Profile Data
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5 text-blue-600" />
-                      <span className="font-bold">{userData.work_experiences?.length || 0}</span>
-                      <span className="text-gray-600">Jobs</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                      <span className="font-bold">{userData.educations?.length || 0}</span>
-                      <span className="text-gray-600">Education</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Award className="h-3.5 w-3.5 text-green-600" />
-                      <span className="font-bold">{userData.certifications?.length || 0}</span>
-                      <span className="text-gray-600">Certs</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Code className="h-3.5 w-3.5 text-orange-600" />
-                      <span className="font-bold">{userData.projects?.length || 0}</span>
-                      <span className="text-gray-600">Projects</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Generate Button - Compact */}
-              <Button
-                onClick={handleGenerateCV}
-                disabled={loading || selectedSections.length === 0}
-                className="w-full bg-blue-600 hover:bg-blue-700 h-10"
-                size="default"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Configuration Panel */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Job Selection/Details */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <button
+                onClick={() => setShowJobSection(!showJobSection)}
+                className="w-full flex items-center justify-between mb-4"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate CV Designs
-                  </>
-                )}
-              </Button>
-              
-              {!loading && (
-                <p className="text-[10px] text-center text-gray-500">
-                  Creates {styles.length || 8} different design options
-                </p>
-              )}
-              {/* Target Job Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="job-select">Target Job (Optional)</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                  <SelectTrigger id="job-select">
-                    <SelectValue placeholder="Select a job to tailor CV" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No specific job (General CV)</SelectItem>
-                    {jobs.map(job => (
-                      <SelectItem key={job.id} value={job.id.toString()}>
-                        {job.title} - {job.company_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-blue-600" />
+                  Target Job (Optional)
+                </h2>
+                <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${showJobSection ? 'rotate-180' : ''}`} />
+              </button>
 
-              {/* Custom Job Details */}
-              {(!selectedJobId || selectedJobId === 'none') && (
-                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700">Or enter custom job details:</p>
-                  
+              {showJobSection && (
+                <div className="space-y-4">
+                  {/* Job Mode Selection */}
                   <div className="space-y-2">
-                    <Label htmlFor="custom-title">Job Title</Label>
-                    <Input
-                      id="custom-title"
-                      placeholder="e.g., Senior Software Engineer"
-                      value={customJobTitle}
-                      onChange={(e) => setCustomJobTitle(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-desc">Job Description</Label>
-                    <textarea
-                      id="custom-desc"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows="3"
-                      placeholder="Paste job description here..."
-                      value={customJobDescription}
-                      onChange={(e) => setCustomJobDescription(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-req">Job Requirements</Label>
-                    <textarea
-                      id="custom-req"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows="3"
-                      placeholder="Paste requirements here..."
-                      value={customJobRequirements}
-                      onChange={(e) => setCustomJobRequirements(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="jobMode"
+                        value="none"
+                        checked={jobMode === 'none'}
+                        onChange={(e) => setJobMode(e.target.value)}
+                        className="w-4 h-4 text-blue-600"
+                        disabled={isGenerating}
+                      />
+                      <span className="text-sm text-gray-700">General CV (No specific job)</span>
+                    </label>
 
-              {/* Sections to Include */}
-              <div className="space-y-3">
-                <Label className="text-base font-semibold flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-purple-600" />
-                  Sections to Include
-                </Label>
-                <div className="grid grid-cols-1 gap-2">
-                  {availableSections.map(section => {
-                    const Icon = section.icon;
-                    const isSelected = selectedSections.includes(section.id);
-                    return (
-                      <div
-                        key={section.id}
-                        onClick={() => toggleSection(section.id)}
-                        className={`
-                          flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all
-                          ${isSelected 
-                            ? 'border-purple-500 bg-purple-50 shadow-sm' 
-                            : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
-                          }
-                        `}
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="jobMode"
+                        value="selected"
+                        checked={jobMode === 'selected'}
+                        onChange={(e) => setJobMode(e.target.value)}
+                        className="w-4 h-4 text-blue-600"
+                        disabled={isGenerating}
+                      />
+                      <span className="text-sm text-gray-700">Select from applied jobs</span>
+                    </label>
+
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="jobMode"
+                        value="custom"
+                        checked={jobMode === 'custom'}
+                        onChange={(e) => setJobMode(e.target.value)}
+                        className="w-4 h-4 text-blue-600"
+                        disabled={isGenerating}
+                      />
+                      <span className="text-sm text-gray-700">Enter custom job details</span>
+                    </label>
+                  </div>
+
+                  {/* Select from Jobs */}
+                  {jobMode === 'selected' && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Select Job
+                      </label>
+                      <select
+                        value={selectedJobId}
+                        onChange={(e) => setSelectedJobId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        disabled={isGenerating}
                       >
-                        <Checkbox
-                          id={section.id}
-                          checked={isSelected}
-                          className="pointer-events-none"
-                        />
-                        <Icon className={`h-5 w-5 ${section.color}`} />
-                        <label
-                          htmlFor={section.id}
-                          className="text-sm font-medium flex-1 cursor-pointer select-none"
-                        >
-                          {section.label}
-                        </label>
-                        {isSelected && (
-                          <CheckCircle2 className="h-5 w-5 text-purple-600 animate-in zoom-in duration-200" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Profile Data Summary */}
-              {userData && (
-                <div className="relative overflow-hidden p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full blur-3xl opacity-20"></div>
-                  <div className="relative">
-                    <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Your Profile Snapshot
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2 text-xs">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Briefcase className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-blue-900">{userData.work_experiences?.length || 0}</div>
-                          <div className="text-blue-600">Experience</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <GraduationCap className="h-4 w-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-purple-900">{userData.educations?.length || 0}</div>
-                          <div className="text-purple-600">Education</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <Award className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-green-900">{userData.certifications?.length || 0}</div>
-                          <div className="text-green-600">Certificates</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <Code className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-orange-900">{userData.projects?.length || 0}</div>
-                          <div className="text-orange-600">Projects</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Generate Button */}
-              <div className="space-y-3">
-                <Button
-                  onClick={handleGenerateCV}
-                  disabled={loading || selectedSections.length === 0}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Generating {styles.length} Designs...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
-                      Generate Multiple CV Designs
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
-                
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-600 bg-white/50 rounded-lg p-2">
-                  <Palette className="h-4 w-4 text-purple-600" />
-                  <span>
-                    We'll create <span className="font-bold text-purple-600">{styles.length || 8}+ stunning designs</span> for you
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="lg:col-span-3">
-          {!cvContent ? (
-            <Card className="h-[600px] flex items-center justify-center border-dashed border-2 border-gray-300 bg-white">
-              <CardContent className="text-center py-12">
-                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  Your CV Designs Will Appear Here
-                </h3>
-                <p className="text-sm text-gray-500 max-w-md mx-auto">
-                  Configure your preferences and click "Generate CV Designs" to create professional resumes
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {/* Compact Action Bar */}
-              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-semibold text-gray-700">
-                    {generatedDesigns.length} designs generated
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setShowPreview(!showPreview)}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                  >
-                    <Eye className="mr-1.5 h-3.5 w-3.5" />
-                    {showPreview ? 'Hide' : 'Preview'}
-                  </Button>
-                  <Button
-                    onClick={handleDownloadPDF}
-                    disabled={loading || !selectedDesign}
-                    size="sm"
-                    className="h-8 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-                    title={selectedDesign 
-                      ? `Download ${generatedDesigns.find(d => d.id === selectedDesign)?.name || 'selected'} design as PDF` 
-                      : 'Select a design to download'}
-                  >
-                    {loading ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Download className="mr-1.5 h-3.5 w-3.5" />
-                    )}
-                    {selectedDesign 
-                      ? `Download ${generatedDesigns.find(d => d.id === selectedDesign)?.name || 'PDF'}` 
-                      : 'Download PDF'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Design Selection Grid - Compact */}
-              {generatedDesigns.length > 0 && (
-                <Card className="border-gray-200">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Palette className="h-4 w-4 text-blue-600" />
-                          Choose Your Design
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          Select from {generatedDesigns.length} professionally crafted designs
-                        </CardDescription>
-                      </div>
-                      {selectedDesign && (
-                        <div className="text-right">
-                          <div className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                            <Download className="h-3 w-3" />
-                            Ready to download
-                          </div>
-                          <div className="text-[10px] text-gray-500">
-                            {generatedDesigns.find(d => d.id === selectedDesign)?.name}
-                          </div>
-                        </div>
+                        <option value="">Choose a job...</option>
+                        {availableJobs.map((job) => (
+                          <option key={job.id} value={job.id}>
+                            {job.title} - {job.company_name}
+                          </option>
+                        ))}
+                      </select>
+                      {availableJobs.length === 0 && (
+                        <p className="text-xs text-gray-500 italic">
+                          No applied jobs found. Apply to jobs first or use custom job details.
+                        </p>
                       )}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-4 gap-3">
-                      {generatedDesigns.map((design, index) => {
-                        const isSelected = selectedDesign === design.id;
-                        return (
-                          <button
-                            key={design.id}
-                            onClick={() => setSelectedDesign(design.id)}
-                            className={`
-                              relative p-3 border-2 rounded-lg text-left transition-all
-                              ${isSelected
-                                ? 'border-blue-500 bg-blue-50 shadow-md'
-                                : 'border-gray-200 hover:border-blue-300 bg-white'
-                              }
-                            `}
-                          >
-                            {/* Badge Number */}
-                            <div className={`
-                              absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
-                              ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}
-                            `}>
-                              {index + 1}
-                            </div>
-                            
-                            <div className="mb-1.5">
-                              <h4 className={`text-xs font-bold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
-                                {design.name}
-                              </h4>
-                            </div>
-                            <p className="text-[10px] text-gray-500 line-clamp-2 mb-2">
-                              {design.description}
-                            </p>
-                            
-                            {isSelected && (
-                              <div className="flex items-center gap-1 text-blue-600">
-                                <CheckCircle2 className="h-3 w-3" />
-                                <span className="text-[10px] font-semibold">Selected</span>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Compact Preview */}
-                    {showPreview && selectedDesign && (
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Eye className="h-4 w-4 text-blue-600" />
-                            {generatedDesigns.find(d => d.id === selectedDesign)?.name}
-                          </h4>
-                        </div>
-                        <div
-                          className="border rounded-lg p-4 bg-white shadow-sm overflow-auto max-h-[600px]"
-                          dangerouslySetInnerHTML={{ 
-                            __html: generatedDesigns.find(d => d.id === selectedDesign)?.html 
-                          }}
+                  )}
+
+                  {/* Custom Job Details */}
+                  {jobMode === 'custom' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Job Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={customJob.title}
+                          onChange={(e) => setCustomJob({ ...customJob, title: e.target.value })}
+                          placeholder="e.g., Senior Software Engineer"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          disabled={isGenerating}
                         />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Compact ATS Score */}
-              {cvContent.ats_score && (
-                <Card className="border-gray-200">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Target className="h-4 w-4 text-green-600" />
-                      ATS Score
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700">Compatibility</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {cvContent.ats_score.estimated_score}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                      <div
-                        className="bg-green-600 h-2 rounded-full transition-all"
-                        style={{ width: `${cvContent.ats_score.estimated_score}%` }}
-                      />
-                    </div>
-                    
-                    {cvContent.ats_score.strengths?.length > 0 && (
-                      <div className="space-y-1">
-                        <h5 className="text-xs font-semibold text-gray-700">Strengths:</h5>
-                        <ul className="text-xs text-gray-600 space-y-0.5">
-                          {cvContent.ats_score.strengths.slice(0, 3).map((strength, idx) => (
-                            <li key={idx} className="flex items-start gap-1.5">
-                              <CheckCircle2 className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
-                              <span>{strength}</span>
-                            </li>
-                          ))}
-                        </ul>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          value={customJob.company}
+                          onChange={(e) => setCustomJob({ ...customJob, company: e.target.value })}
+                          placeholder="e.g., Tech Corp"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          disabled={isGenerating}
+                        />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Optimization Tips - Compact */}
-              {cvContent.optimization_tips?.length > 0 && cvContent.optimization_tips.length <= 5 && (
-                <Card className="border-gray-200">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-blue-600" />
-                      AI Tips
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {cvContent.optimization_tips.slice(0, 3).map((tip, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-gray-700">
-                          <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-[10px] font-bold text-blue-600">{idx + 1}</span>
-                          </div>
-                          <span>{tip}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Job Description
+                        </label>
+                        <textarea
+                          value={customJob.description}
+                          onChange={(e) => setCustomJob({ ...customJob, description: e.target.value })}
+                          placeholder="Brief description of the role..."
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                          disabled={isGenerating}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Requirements/Skills
+                        </label>
+                        <textarea
+                          value={customJob.requirements}
+                          onChange={(e) => setCustomJob({ ...customJob, requirements: e.target.value })}
+                          placeholder="Key requirements, skills, qualifications..."
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                          disabled={isGenerating}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Job Mode Info */}
+                  {jobMode !== 'none' && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs text-blue-700">
+                        <span className="font-semibold">💡 Tip:</span> Your CV will be tailored to match the job requirements and keywords.
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
+
+            {/* Style Selection */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">CV Style</h2>
+              <select
+                value={selectedStyle}
+                onChange={(e) => setSelectedStyle(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={isGenerating}
+              >
+                <option value="professional">Professional</option>
+                <option value="modern">Modern</option>
+                <option value="creative">Creative</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </div>
+
+            {/* Section Selection */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Sections to Include</h2>
+              <div className="space-y-3">
+                {availableSections.map((section) => (
+                  <label
+                    key={section.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      section.required
+                        ? 'bg-blue-50 border-blue-200 cursor-not-allowed'
+                        : 'bg-gray-50 border-gray-200 cursor-pointer hover:bg-gray-100'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSections.includes(section.id)}
+                      onChange={() => toggleSection(section.id)}
+                      disabled={section.required || isGenerating}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">
+                          {section.label}
+                        </span>
+                        {section.required && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerateCV}
+              disabled={isGenerating || selectedSections.length === 0 || (jobMode === 'custom' && !customJob.title)}
+              className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5" />
+                  Generate CV
+                </>
+              )}
+            </button>
+
+            {(jobMode === 'selected' && selectedJobId) || (jobMode === 'custom' && customJob.title) ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 text-green-900">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-medium">Job-Tailored CV</span>
+                </div>
+                <p className="text-xs text-green-700 mt-2">
+                  CV will be optimized for: {jobMode === 'custom' ? customJob.title : 'selected job'}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Preview & Progress Panel */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Progress Tracker */}
+            {(isGenerating || generationProgress.length > 0) && (
+              <SectionProgressTracker
+                generationProgress={generationProgress}
+                todos={todos}
+                isGenerating={isGenerating}
+                sectionsRequested={selectedSections}
+              />
+            )}
+
+            {/* CV Preview */}
+            {cvContent && !isGenerating && (
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    CV Preview
+                  </h2>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span>ATS Score:</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                      {cvContent.ats_score?.total_score || 0}/100
+                    </span>
+                  </div>
+                </div>
+                <CVRenderer 
+                  ref={cvRendererRef}
+                  cvData={cvContent} 
+                  selectedTemplate={selectedStyle}
+                  onExport={(status, message) => {
+                    if (status === 'error') {
+                      setError(message);
+                    } else if (status === 'success') {
+                      console.log('✅ PDF exported:', message);
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!cvContent && !isGenerating && (
+              <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No CV Generated Yet
+                </h3>
+                <p className="text-gray-600">
+                  Select your preferred style and sections, then click "Generate CV" to create your professional CV
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  </div>
   );
 };
 

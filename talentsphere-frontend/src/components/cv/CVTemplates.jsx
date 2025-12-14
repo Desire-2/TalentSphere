@@ -102,7 +102,11 @@ export const ProfessionalTemplate = ({ cvData }) => {
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd"/></svg>
                       {exp.company} <span className="text-gray-500">•</span> {exp.location}
                     </p>
-                    {exp.description && <p className="text-gray-700 mb-3 italic">{exp.description}</p>}
+                    {exp.description && (() => {
+                      const desc = exp.description.trim();
+                      const isComplete = desc.endsWith('.') || desc.endsWith('!') || desc.endsWith('?') || desc.endsWith('"') || desc.endsWith("'") || desc.endsWith(')');
+                      return isComplete && <p className="text-gray-700 mb-3 italic whitespace-pre-wrap break-words">{desc}</p>;
+                    })()}
                     {exp.achievements && exp.achievements.length > 0 && (
                       <ul className="space-y-2">
                         {exp.achievements.map((achievement, aIdx) => (
@@ -157,7 +161,7 @@ export const ProfessionalTemplate = ({ cvData }) => {
             <div className="grid grid-cols-2 gap-4">
               {Object.entries(technical_skills).map(([category, skills], idx) => (
                 skills && skills.length > 0 && (
-                  <div key={idx} className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200 hover:shadow-lg transition-shadow">
+                  <div key={idx} className="relative bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border-2 border-blue-200 hover:shadow-lg transition-shadow">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-bl-full"></div>
                     <h4 className="font-bold text-blue-900 text-sm uppercase tracking-wider mb-2 relative">
                       {category.replace(/_/g, ' ')}
@@ -206,7 +210,7 @@ export const ProfessionalTemplate = ({ cvData }) => {
                   <h3 className="text-lg font-bold text-gray-900 mb-2">
                     {proj.name} <span className="text-indigo-600">•</span> <span className="text-indigo-700 font-semibold">{proj.role}</span>
                   </h3>
-                  <p className="text-gray-700 mb-2">{proj.description}</p>
+                  <p className="text-gray-700 mb-2 whitespace-pre-wrap break-words">{proj.description}</p>
                   {proj.impact && (
                     <p className="text-gray-700 mb-2 flex items-start gap-2">
                       <svg className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/></svg>
@@ -249,7 +253,7 @@ export const ProfessionalTemplate = ({ cvData }) => {
         )}
 
         {/* References */}
-        {references && references.length > 0 && (
+        {references && Array.isArray(references) && references.length > 0 && (
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <span className="w-1.5 h-8 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></span>
@@ -413,7 +417,11 @@ export const CreativeTemplate = ({ cvData }) => {
                       <p className="text-purple-700 font-bold mb-3 text-lg">
                         {exp.company} • {exp.location}
                       </p>
-                      {exp.description && <p className="text-gray-700 mb-3 italic">{exp.description}</p>}
+                      {exp.description && (() => {
+                        const desc = exp.description.trim();
+                        const isComplete = desc.endsWith('.') || desc.endsWith('!') || desc.endsWith('?') || desc.endsWith('"') || desc.endsWith("'") || desc.endsWith(')');
+                        return isComplete && <p className="text-gray-700 mb-3 italic whitespace-pre-wrap break-words">{desc}</p>;
+                      })()}
                       {exp.achievements && exp.achievements.length > 0 && (
                         <ul className="space-y-2">
                           {exp.achievements.map((achievement, aIdx) => (
@@ -481,7 +489,7 @@ export const CreativeTemplate = ({ cvData }) => {
                 ];
                 const gradient = gradients[idx % gradients.length];
                 return skills && skills.length > 0 && (
-                  <div key={idx} className={`relative overflow-hidden bg-gradient-to-br ${gradient} p-5 rounded-xl shadow-lg hover:shadow-2xl transition-all`}>
+                  <div key={idx} className={`relative bg-gradient-to-br ${gradient} p-5 rounded-xl shadow-lg hover:shadow-2xl transition-all`}>
                     <h4 className="font-black text-white text-sm uppercase tracking-wider mb-2">
                       {category.replace(/_/g, ' ')}
                     </h4>
@@ -534,7 +542,7 @@ export const CreativeTemplate = ({ cvData }) => {
                 {projects.map((proj, idx) => (
                   <div key={idx} className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
                     <strong className="text-gray-900 font-bold block">{proj.name}</strong>
-                    <p className="text-gray-700 text-sm mt-1">{proj.description}</p>
+                    <p className="text-gray-700 text-sm mt-1 whitespace-pre-wrap break-words">{proj.description}</p>
                     {proj.technologies && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {(Array.isArray(proj.technologies) ? proj.technologies : proj.technologies.split(', ')).slice(0, 4).map((tech, tIdx) => (
@@ -551,14 +559,14 @@ export const CreativeTemplate = ({ cvData }) => {
           )}
 
           {/* References */}
-          {references && references.length > 0 && (
+          {references && Array.isArray(references) && references.length > 0 && (
             <section className="mb-10">
               <h2 className="text-3xl font-black mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                 ✦ References
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {references.map((ref, idx) => (
-                  <div key={idx} className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 p-5 rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition-all hover:shadow-lg">
+                  <div key={idx} className="relative bg-gradient-to-br from-purple-50 to-pink-50 p-5 rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition-all hover:shadow-lg">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-400 opacity-10 rounded-bl-full"></div>
                     <h3 className="text-lg font-black text-gray-900 mb-1">{ref.name}</h3>
                     <p className="text-purple-700 font-bold mb-2">{ref.position}</p>
@@ -652,7 +660,11 @@ export const ModernTemplate = ({ cvData }) => {
                   <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-semibold">{exp.duration}</span>
                 </div>
                 <p className="text-teal-600 font-semibold mb-2">{exp.company} • {exp.location}</p>
-                {exp.description && <p className="text-gray-700 text-sm mb-2 italic">{exp.description}</p>}
+                {exp.description && (() => {
+                  const desc = exp.description.trim();
+                  const isComplete = desc.endsWith('.') || desc.endsWith('!') || desc.endsWith('?') || desc.endsWith('"') || desc.endsWith("'") || desc.endsWith(')');
+                  return isComplete && <p className="text-gray-700 text-sm mb-2 italic whitespace-pre-wrap break-words">{desc}</p>;
+                })()}
                 {exp.achievements && exp.achievements.length > 0 && (
                   <ul className="space-y-1 mt-2">
                     {exp.achievements.map((achievement, aIdx) => (
@@ -739,7 +751,7 @@ export const ModernTemplate = ({ cvData }) => {
             {projects.map((proj, idx) => (
               <div key={idx} className="mb-4 p-4 bg-white rounded-lg shadow-sm border-l-4 border-cyan-600 hover:shadow-md transition-shadow">
                 <h3 className="text-lg font-bold text-gray-900">{proj.name} - {proj.role}</h3>
-                <p className="text-gray-700 mt-1">{proj.description}</p>
+                <p className="text-gray-700 mt-1 whitespace-pre-wrap break-words">{proj.description}</p>
                 {proj.impact && <p className="text-gray-700 mt-1"><strong>Impact:</strong> {proj.impact}</p>}
                 {proj.technologies && (
                   <p className="text-sm text-gray-600 mt-1">
@@ -752,7 +764,7 @@ export const ModernTemplate = ({ cvData }) => {
         )}
 
         {/* References */}
-        {references && references.length > 0 && (
+        {references && Array.isArray(references) && references.length > 0 && (
           <section className="mb-6">
             <h2 className="text-xl font-bold text-teal-700 mb-4 border-b-2 border-teal-600 pb-2">References</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -61,7 +61,6 @@ import EnhancedJobSeekerProfile from './pages/jobseeker/EnhancedProfile';
 import ProfileSettings from './pages/jobseeker/ProfileSettings';
 import ApplicationsDashboard from './pages/jobseeker/ApplicationsDashboard';
 import CVBuilder from './pages/jobseeker/CVBuilder';
-import CVBuilderNew from './pages/jobseeker/CVBuilderNew';
 
 // Company Pages
 import CompanyProfileManagement from './pages/company/CompanyProfileManagement';
@@ -152,12 +151,12 @@ function App() {
             <Route path="jobseeker/profile" element={<EnhancedJobSeekerProfile />} />
             <Route path="jobseeker/settings" element={<ProfileSettings />} />
             <Route path="jobseeker/applications" element={<ApplicationsDashboard />} />
-            <Route path="jobseeker/cv-builder" element={<CVBuilderNew />} />
-            <Route path="jobseeker/cv-builder-old" element={<CVBuilder />} />
+            <Route path="jobseeker/cv-builder" element={<CVBuilder />} />
             
             {/* Company/Employer Routes */}
             <Route path="company/profile" element={<CompanyProfileManagement />} />
             <Route path="company/settings" element={<CompanySettings />} />
+            
             <Route path="jobs/post" element={<PostJob />} />
             <Route path="employer/jobs/create" element={<PostJob />} />
             <Route path="featured-ads" element={

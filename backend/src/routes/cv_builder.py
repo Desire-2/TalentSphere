@@ -13,14 +13,12 @@ import json
 from src.models.user import db, User
 from src.models.profile_extensions import WorkExperience, Education, Certification, Project, Award
 from src.services.cv_builder_service import CVBuilderService
-from src.services.cv_builder_service_v2 import CVBuilderServiceV2
 from src.utils.db_utils import safe_db_operation
 
 cv_builder_bp = Blueprint('cv_builder', __name__, url_prefix='/api/cv-builder')
 
 # Initialize CV Builder Services
 cv_service = CVBuilderService()  # Legacy service (full generation)
-cv_service_v2 = CVBuilderServiceV2()  # New incremental service
 
 # Token verification decorator
 def token_required(f):
@@ -141,7 +139,7 @@ def generate_cv(current_user):
         if use_incremental:
             print(f"[CV Builder] Using V2 incremental generation")
             # Generate CV content using V2 incremental AI (better for rate limits)
-            cv_content = cv_service_v2.generate_cv_content(
+            cv_content = cv_service.generate_cv_content(
                 user_data=user_data,
                 job_data=job_data,
                 cv_style=cv_style,
@@ -212,7 +210,7 @@ def get_available_styles():
     Frontend uses this to offer template options to users
     """
     try:
-        styles = cv_service_v2.get_style_metadata()  # Use V2 for consistent metadata
+        styles = cv_service.get_style_metadata()  # Use V2 for consistent metadata
         
         return jsonify({
             'success': True,
@@ -286,7 +284,7 @@ def generate_cv_incremental(current_user):
         print(f"[CV Builder] Incremental generation: {len(sections)} sections")
         
         # Generate CV using V2 service (incremental)
-        cv_content = cv_service_v2.generate_cv_content(
+        cv_content = cv_service.generate_cv_content(
             user_data=user_data,
             job_data=job_data,
             cv_style=cv_style,
@@ -313,6 +311,211 @@ def generate_cv_incremental(current_user):
         
     except Exception as e:
         print(f"Incremental CV generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'CV generation failed: {str(e)}'
+        }), 500
+
+
+@cv_builder_bp.route('/quick-generate', methods=['POST'])
+@token_required
+@role_required('job_seeker', 'admin')
+def quick_generate_cv(current_user):
+    """
+    Quick CV generation endpoint (section-by-section method)
+    Optimized for frontend with progress tracking and todos
+    
+    Request body:
+    {
+        "job_id": 123,                  // Optional
+        "custom_job": {...},            // Optional custom job data
+        "style": "professional",
+        "sections": ["summary", "work", "education", "skills"],
+        "use_section_by_section": true
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "CV generated successfully",
+        "data": {
+            "cv_content": {...},
+            "progress": [...],
+            "todos": [...]
+        }
+    }
+    """
+    try:
+        import time as time_module
+        start_time = time_module.time()
+        
+        data = request.get_json()
+        
+        # Gather user profile data
+        user_data = _get_user_profile_data(current_user)
+        
+        # Handle job targeting
+        job_data = None
+        if data.get('job_id'):
+            from src.models.job import Job
+            job = Job.query.get(data['job_id'])
+            if job:
+                job_data = {
+                    'id': job.id,
+                    'title': job.title,
+                    'company_name': job.company_name,
+                    'description': job.description,
+                    'requirements': job.requirements,
+                    'location': job.location,
+                    'experience_level': job.experience_level,
+                    'category': job.category.name if job.category else None
+                }
+        elif data.get('custom_job'):
+            job_data = data['custom_job']
+        
+        # Get preferences
+        cv_style = data.get('style', 'professional')
+        sections = data.get('sections', ['summary', 'work', 'education', 'skills', 'projects', 'certifications'])
+        use_section_by_section = data.get('use_section_by_section', True)
+        
+        print(f"[CV Builder] Quick generate: {len(sections)} sections, section-by-section={use_section_by_section}")
+        
+        # Generate CV content
+        if use_section_by_section:
+            # Use section-by-section generation for better control
+            cv_content = cv_service.generate_cv_content(
+                user_data=user_data,
+                job_data=job_data,
+                cv_style=cv_style,
+                include_sections=sections
+            )
+        else:
+            # Use full generation
+            cv_content = cv_service.generate_cv_content(
+                user_data=user_data,
+                job_data=job_data,
+                cv_style=cv_style,
+                include_sections=sections
+            )
+        
+        generation_time = time_module.time() - start_time
+        
+        return jsonify({
+            'success': True,
+            'message': 'CV generated successfully',
+            'data': {
+                'cv_content': cv_content,
+                'progress': cv_content.get('generation_progress', []),
+                'todos': cv_content.get('todos', []),
+                'user_data': {
+                    'name': f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+                    'email': user_data.get('email'),
+                    'phone': user_data.get('phone'),
+                    'location': user_data.get('location')
+                },
+                'generation_time': round(generation_time, 2)
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Quick CV generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'CV generation failed: {str(e)}'
+        }), 500
+
+
+@cv_builder_bp.route('/generate-targeted', methods=['POST'])
+@token_required
+@role_required('job_seeker', 'admin')
+def generate_cv_targeted(current_user):
+    """
+    Generate CV with V3 targeted section-by-section processing
+    Each section receives only relevant profile data and job requirements
+    Includes progress tracking and todo items for follow-up
+    
+    Request body:
+    {
+        "job_id": 123,
+        "job_data": {...},
+        "style": "professional",
+        "sections": ["summary", "experience", "education", "skills"]
+    }
+    
+    Response includes:
+    - cv_content: Complete CV data
+    - generation_progress: Array of progress updates per section
+    - todos: Array of follow-up items for incomplete sections
+    - generation_time: Total time taken
+    """
+    try:
+        import time as time_module
+        start_time = time_module.time()
+        
+        data = request.get_json()
+        
+        # Gather user profile data
+        user_data = _get_user_profile_data(current_user)
+        
+        # Handle job targeting
+        job_data = None
+        if data.get('job_id'):
+            from src.models.job import Job
+            job = Job.query.get(data['job_id'])
+            if job:
+                job_data = {
+                    'id': job.id,
+                    'title': job.title,
+                    'company_name': job.company_name,
+                    'description': job.description,
+                    'requirements': job.requirements,
+                    'location': job.location
+                }
+        elif data.get('job_data'):
+            job_data = data['job_data']
+        
+        # Get preferences
+        cv_style = data.get('style', 'professional')
+        sections = data.get('sections', ['summary', 'experience', 'education', 'skills', 'projects', 'certifications'])
+        
+        print(f"[CV Builder V3] Targeted generation: {len(sections)} sections")
+        print(f"[CV Builder V3] Job targeting: {job_data.get('title') if job_data else 'General CV'}")
+        
+        # Generate CV using V3 service (targeted section-by-section)
+        cv_content = cv_service.generate_cv_section_by_section(
+            user_data=user_data,
+            job_data=job_data,
+            cv_style=cv_style,
+            include_sections=sections
+        )
+        
+        generation_time = time_module.time() - start_time
+        
+        return jsonify({
+            'success': True,
+            'message': f'CV generated with targeted section processing ({len(sections)} sections)',
+            'data': {
+                'cv_content': cv_content,
+                'user_data': {
+                    'name': f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+                    'email': user_data.get('email'),
+                    'phone': user_data.get('phone'),
+                    'location': user_data.get('location')
+                },
+                'sections_generated': sections,
+                'generation_progress': cv_content.get('generation_progress', []),
+                'todos': cv_content.get('todos', []),
+                'generation_time': round(generation_time, 2),
+                'version': '3.0-targeted'
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Targeted CV generation error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -348,18 +551,30 @@ def _get_user_profile_data(user: User) -> dict:
             'soft_skills': getattr(profile, 'soft_skills', None),
             'years_of_experience': getattr(profile, 'years_of_experience', 0),
             'education_level': getattr(profile, 'education_level', None),
+            'career_level': getattr(profile, 'career_level', None),
             'desired_salary_min': getattr(profile, 'desired_salary_min', None),
             'desired_salary_max': getattr(profile, 'desired_salary_max', None),
             'salary_currency': getattr(profile, 'salary_currency', 'USD'),
             'preferred_location': getattr(profile, 'preferred_location', None),
+            'preferred_locations': getattr(profile, 'preferred_locations', None),
             'job_type_preference': getattr(profile, 'job_type_preference', None),
+            'job_types': getattr(profile, 'job_types', None),
             'availability': getattr(profile, 'availability', None),
             'willing_to_relocate': getattr(profile, 'willing_to_relocate', False),
+            'willing_to_travel': getattr(profile, 'willing_to_travel', None),
+            'work_authorization': getattr(profile, 'work_authorization', None),
+            'visa_sponsorship_required': getattr(profile, 'visa_sponsorship_required', False),
+            'notice_period': getattr(profile, 'notice_period', None),
+            'preferred_industries': getattr(profile, 'preferred_industries', None),
+            'preferred_company_size': getattr(profile, 'preferred_company_size', None),
+            'preferred_work_environment': getattr(profile, 'preferred_work_environment', None),
             'linkedin_url': getattr(profile, 'linkedin_url', None),
             'github_url': getattr(profile, 'github_url', None),
             'portfolio_url': getattr(profile, 'portfolio_url', None),
             'website_url': getattr(profile, 'website_url', None),
-            'resume_url': getattr(profile, 'resume_url', None)
+            'resume_url': getattr(profile, 'resume_url', None),
+            'languages': getattr(profile, 'languages', None),
+            'certifications': getattr(profile, 'certifications', None)
         }
     else:
         # Create minimal profile data if no profile exists
@@ -367,7 +582,11 @@ def _get_user_profile_data(user: User) -> dict:
             'professional_title': None,
             'professional_summary': None,
             'skills': None,
-            'years_of_experience': 0
+            'soft_skills': None,
+            'years_of_experience': 0,
+            'education_level': None,
+            'career_level': None,
+            'languages': None
         }
     
     # Work experiences

@@ -5,7 +5,7 @@ import CV_TEMPLATES from './CVTemplates';
  * CVRenderer Component
  * Renders CV content with selected template and provides PDF export
  */
-const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => {
+const CVRenderer = React.forwardRef(({ cvData, selectedTemplate = 'professional', onExport }, ref) => {
   const cvRef = useRef(null);
   
   // Debug logging
@@ -427,10 +427,17 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
                 white-space: nowrap !important;
               }
               
-              /* Overflow handling for cards */
-              .overflow-hidden {
-                overflow: hidden !important;
+              .whitespace-pre-wrap {
+                white-space: pre-wrap !important;
               }
+              
+              .break-words {
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+              }
+              
+              /* Overflow handling - only for decorative elements */
+              /* Removed global overflow-hidden to prevent content cutoff */
               
               .relative {
                 position: relative !important;
@@ -490,6 +497,18 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
               
               .tracking-wide {
                 letter-spacing: 0.025em !important;
+              }
+              
+              /* Ensure all text content is fully visible */
+              p, li, span:not(.absolute):not([class*="bg-"]) {
+                overflow: visible !important;
+                text-overflow: clip !important;
+              }
+              
+              /* Ensure content containers can expand */
+              .space-y-2 > *, .space-y-3 > *, .space-y-4 > *, .space-y-6 > * {
+                min-height: auto !important;
+                height: auto !important;
               }
               
               .tracking-wider {
@@ -626,7 +645,12 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
     }
   };
 
-  // Expose export function to parent via hidden button
+  // Expose export function to parent component via ref
+  React.useImperativeHandle(ref, () => ({
+    exportToPDF
+  }), [cvData, selectedTemplate]);
+
+  // Also expose via hidden button for backward compatibility
   React.useEffect(() => {
     const button = document.querySelector('.export-pdf-button');
     if (button) {
@@ -652,6 +676,8 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
       </button>
     </div>
   );
-};
+});
+
+CVRenderer.displayName = 'CVRenderer';
 
 export default CVRenderer;

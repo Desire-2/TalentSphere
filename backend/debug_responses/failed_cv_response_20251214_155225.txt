@@ -1,0 +1,60 @@
+Error: 'estimated_score'
+
+================================================================================
+RAW RESPONSE:
+================================================================================
+```json
+{
+  "professional_summary": "Dedicated Conservation Specialist and Field Trainer with 4+ years of experience in biodiversity protection, community mobilization, and ecological assessment. Proven ability to deliver training and manage field data, driving community adoption of sustainable practices and enhancing climate resilience in rural communities.",
+  
+  "contact_information": {
+    "full_name": "Desire Bikorimana",
+    "professional_title": "Conservation Specialist & Community Field Trainer",
+    "email": "bikorimanadesire5@gmail.com",
+    "phone": "+250786123892",
+    "location": "Nyabihu/Mukamira, Rwanda",
+    "linkedin": null,
+    "portfolio": null,
+    "github": null
+  },
+  
+  "core_competencies": [
+    "Community Mobilization & Recruitment",
+    "Agroforestry Implementation Support",
+    "Farmer Training & Capacity Building",
+    "Field Data Collection & MIS Management",
+    "Natural Resource Management",
+    "Environmental Conservation Planning",
+    "Stakeholder Coordination",
+    "Climate Resilience Strategies"
+  ],
+  
+  "professional_experience": [
+    {
+      "job_title": "Environmental Conservation Intern",
+      "company": "Nature Rwanda",
+      "location": "Musanze, Rwanda",
+      "duration": "April 2023 - December 2023",
+      "description": "Supported biodiversity research and ecosystem restoration initiatives focused on evidence-based conservation planning.",
+      "achievements": [
+        "Executed rigorous field surveys to document bird species presence and population trends at Lake Karago.",
+        "Collected and analyzed environmental data, identifying key human activities contributing to wetland degradation.",
+        "Engaged local communities and contributed to practical restoration efforts improving Mpenge River ecosystems."
+      ],
+      "technologies": ["GPS devices", "Data Collection Forms", "Microsoft Excel", "Field Observation Tools"]
+    },
+    {
+      "job_title": "Digital Ambassador (Community Trainer)",
+      "company": "Rwanda Information Society Authority (RISA)",
+      "location": "Western Provence, Rwanda",
+      "duration": "February 2025 - Present",
+      "description": "Delivering digital literacy training to citizens, focusing on increasing digital inclusion and access to e-government services.",
+      "achievements": [
+        "Successfully mobilized and registered large numbers of rural citizens for comprehensive digital skills training programs.",
+        "Conducted community-based training sessions, enhancing digital inclusion among underserved populations.",
+        "Supported citizens in utilizing digital government platforms, contributing to national digital transformation efforts."
+      ],
+      "technologies": ["Smartphones", "Digital Government Platforms", "Microsoft Office"]
+    },
+    {
+      "job_title": "Volunteer – Environmental Education (Green

@@ -162,7 +162,7 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
                 -webkit-print-color-adjust: exact !important;
               }
               
-              /* Fix grid layouts for print */
+              /* Fix grid layouts for print - comprehensive grid support */
               .grid {
                 display: grid !important;
               }
@@ -173,6 +173,28 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
               
               .grid-cols-2 {
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              }
+              
+              .grid-cols-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+              }
+              
+              /* Handle responsive grids - default to 2 columns in print */
+              .md\\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              }
+              
+              .md\\:grid-cols-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+              }
+              
+              /* Gap utilities */
+              .gap-1 {
+                gap: 0.25rem !important;
+              }
+              
+              .gap-1\.5 {
+                gap: 0.375rem !important;
               }
               
               .gap-2 {
@@ -187,13 +209,33 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
                 gap: 1rem !important;
               }
               
-              /* Fix flex layouts */
+              .gap-5 {
+                gap: 1.25rem !important;
+              }
+              
+              .gap-6 {
+                gap: 1.5rem !important;
+              }
+              
+              .gap-8 {
+                gap: 2rem !important;
+              }
+              
+              /* Fix flex layouts - comprehensive flex support */
               .flex {
                 display: flex !important;
               }
               
               .flex-wrap {
                 flex-wrap: wrap !important;
+              }
+              
+              .flex-col {
+                flex-direction: column !important;
+              }
+              
+              .flex-row {
+                flex-direction: row !important;
               }
               
               .items-start {
@@ -204,36 +246,295 @@ const CVRenderer = ({ cvData, selectedTemplate = 'professional', onExport }) => 
                 align-items: center !important;
               }
               
+              .items-baseline {
+                align-items: baseline !important;
+              }
+              
+              .justify-start {
+                justify-content: flex-start !important;
+              }
+              
+              .justify-center {
+                justify-content: center !important;
+              }
+              
               .justify-between {
                 justify-content: space-between !important;
               }
               
-              /* Ensure backgrounds and borders render */
+              .justify-end {
+                justify-content: flex-end !important;
+              }
+              
+              /* Fix spacing utilities */
+              .space-x-1 > * + * {
+                margin-left: 0.25rem !important;
+              }
+              
+              .space-x-2 > * + * {
+                margin-left: 0.5rem !important;
+              }
+              
+              .space-x-3 > * + * {
+                margin-left: 0.75rem !important;
+              }
+              
+              .space-x-4 > * + * {
+                margin-left: 1rem !important;
+              }
+              
+              .space-y-1 > * + * {
+                margin-top: 0.25rem !important;
+              }
+              
+              .space-y-2 > * + * {
+                margin-top: 0.5rem !important;
+              }
+              
+              .space-y-3 > * + * {
+                margin-top: 0.75rem !important;
+              }
+              
+              .space-y-4 > * + * {
+                margin-top: 1rem !important;
+              }
+              
+              .space-y-5 > * + * {
+                margin-top: 1.25rem !important;
+              }
+              
+              .space-y-6 > * + * {
+                margin-top: 1.5rem !important;
+              }
+              
+              /* Ensure backgrounds and borders render with exact colors */
               .bg-gradient-to-r,
+              .bg-gradient-to-l,
+              .bg-gradient-to-t,
+              .bg-gradient-to-b,
               .bg-gradient-to-br,
+              .bg-gradient-to-bl,
+              .bg-gradient-to-tr,
+              .bg-gradient-to-tl,
               .border-l-4,
+              .border-t-2,
               .border-2,
+              .border,
               .rounded-lg,
-              .rounded-full {
+              .rounded-xl,
+              .rounded-2xl,
+              .rounded-full,
+              [class*="bg-"],
+              [class*="border-"],
+              [class*="shadow-"] {
                 print-color-adjust: exact !important;
                 -webkit-print-color-adjust: exact !important;
               }
               
-              /* Prevent content from breaking */
+              /* Prevent awkward content breaks */
               h1, h2, h3, h4, h5, h6 {
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
+                break-after: avoid !important;
+                break-inside: avoid !important;
               }
               
+              /* Allow sections to break naturally but keep section headings with content */
               section {
-                page-break-inside: avoid !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
               }
               
-              /* Prevent skill cards and reference cards from breaking */
+              /* Keep section heading with at least first item */
+              section > h2 {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+              }
+              
+              /* Prevent individual cards, items, and entries from breaking */
+              .space-y-6 > div,
+              .space-y-5 > div,
+              .space-y-4 > div,
+              .space-y-3 > div,
+              .grid > *,
               .grid > div,
-              section > div > div {
+              [class*="rounded-"],
+              [class*="shadow-"],
+              ul > li,
+              ol > li {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+              }
+              
+              /* Fix for experience timeline - remove bottom padding/borders that cause gaps */
+              .relative.pl-8.pb-6,
+              .relative.pl-10 {
+                padding-bottom: 0 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
+              }
+              
+              /* Add margin between experience items instead of padding */
+              .space-y-6 > .relative {
+                margin-bottom: 1.5rem !important;
+              }
+              
+              .space-y-6 > .relative:last-child {
+                margin-bottom: 0 !important;
+              }
+              
+              /* Remove borders that extend across pages */
+              .border-l-2 {
+                border-left: none !important;
+              }
+              
+              /* Keep the inner card border */
+              .border-l-4 {
+                border-left: 4px solid !important;
+              }
+              
+              /* Keep experience cards together */
+              .relative > div {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              
+              /* Fix width constraints for print */
+              .max-w-4xl {
+                max-width: 100% !important;
+              }
+              
+              /* Ensure proper text rendering */
+              .text-transparent {
+                -webkit-background-clip: text !important;
+                background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+              }
+              
+              /* Fix flex-shrink for icons and small elements */
+              .flex-shrink-0 {
+                flex-shrink: 0 !important;
+              }
+              
+              .flex-1 {
+                flex: 1 1 0% !important;
+              }
+              
+              /* Whitespace handling */
+              .whitespace-nowrap {
+                white-space: nowrap !important;
+              }
+              
+              /* Overflow handling for cards */
+              .overflow-hidden {
+                overflow: hidden !important;
+              }
+              
+              .relative {
+                position: relative !important;
+              }
+              
+              .absolute {
+                position: absolute !important;
+              }
+              
+              /* Opacity utilities */
+              .opacity-0 {
+                opacity: 0 !important;
+              }
+              
+              .opacity-10 {
+                opacity: 0.1 !important;
+              }
+              
+              .opacity-20 {
+                opacity: 0.2 !important;
+              }
+              
+              .opacity-30 {
+                opacity: 0.3 !important;
+              }
+              
+              .opacity-90 {
+                opacity: 0.9 !important;
+              }
+              
+              .opacity-95 {
+                opacity: 0.95 !important;
+              }
+              
+              /* Transform utilities for decorative elements */
+              .-translate-x-1\/2 {
+                transform: translateX(-50%) !important;
+              }
+              
+              .-translate-y-1\/2 {
+                transform: translateY(-50%) !important;
+              }
+              
+              /* Fix leading (line-height) */
+              .leading-relaxed {
+                line-height: 1.625 !important;
+              }
+              
+              .leading-tight {
+                line-height: 1.25 !important;
+              }
+              
+              /* Tracking (letter-spacing) */
+              .tracking-tight {
+                letter-spacing: -0.025em !important;
+              }
+              
+              .tracking-wide {
+                letter-spacing: 0.025em !important;
+              }
+              
+              .tracking-wider {
+                letter-spacing: 0.05em !important;
+              }
+              
+              /* Text transformations */
+              .uppercase {
+                text-transform: uppercase !important;
+              }
+              
+              .italic {
+                font-style: italic !important;
+              }
+              
+              /* Font weights */
+              .font-light {
+                font-weight: 300 !important;
+              }
+              
+              .font-medium {
+                font-weight: 500 !important;
+              }
+              
+              .font-semibold {
+                font-weight: 600 !important;
+              }
+              
+              .font-bold {
+                font-weight: 700 !important;
+              }
+              
+              .font-black {
+                font-weight: 900 !important;
+              }
+              
+              /* Drop shadow for text */
+              .drop-shadow-lg {
+                filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1)) !important;
+              }
+              
+              /* Backdrop blur for glassmorphism effects */
+              .backdrop-blur-sm {
+                backdrop-filter: blur(4px) !important;
+                -webkit-backdrop-filter: blur(4px) !important;
               }
             }
             

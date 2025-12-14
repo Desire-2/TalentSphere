@@ -153,6 +153,13 @@ class CVBuilderServiceV2:
             )
             time.sleep(1)  # Small delay between sections
         
+        # Step 2.5: Generate core competencies (highlight badges)
+        print("[CV Builder V2] Step 2.5/8: Generating core competencies with job matching...")
+        cv_content['core_competencies'] = self._generate_core_competencies(
+            user_data, profile_data, job_data
+        )
+        time.sleep(1)
+        
         # Step 3: Generate work experience (if requested and data available)
         if 'experience' in include_sections or 'work' in include_sections:
             print("[CV Builder V2] Step 3/8: Generating work experience with AI...")
@@ -261,6 +268,92 @@ REQUIREMENTS:
             title = profile_data.get('professional_title', 'Professional')
             return f"{title} with {years}+ years of experience. Strong track record in delivering results and driving innovation. Seeking opportunities to contribute expertise and leadership to dynamic organizations."
     
+    def _generate_core_competencies(
+        self, user_data: Dict, profile_data: Dict, job_data: Optional[Dict]
+    ) -> List[str]:
+        """Generate 6-10 core competencies/key skills that match job requirements"""
+        
+        skills_raw = profile_data.get('skills', '')
+        soft_skills = profile_data.get('soft_skills', '')
+        
+        if job_data:
+            job_title = job_data.get('title', '')
+            job_requirements = job_data.get('requirements', '')
+            job_description = job_data.get('description', '')
+            
+            prompt = f"""Extract 8-10 most relevant core competencies for this candidate based on job requirements.
+
+CANDIDATE SKILLS:
+- Technical: {skills_raw}
+- Soft Skills: {soft_skills}
+- Current Title: {profile_data.get('professional_title', '')}
+
+TARGET JOB:
+Title: {job_title}
+Requirements: {job_requirements[:400]}
+Description: {job_description[:400]}
+
+TASK:
+1. Identify 8-10 key competencies that:
+   - Match job requirements (highest priority)
+   - Are clearly stated in candidate's profile
+   - Mix technical and soft skills
+   - Use keywords from job posting
+2. Format as short phrases (2-4 words each)
+3. Examples: "Full-Stack Development", "Agile Leadership", "Cloud Architecture", "Data Analytics"
+4. Return as JSON array: ["competency1", "competency2", ...]
+
+Return ONLY the JSON array, no explanations."""
+
+        else:
+            prompt = f"""Extract 8-10 core competencies from this candidate's profile.
+
+CANDIDATE PROFILE:
+- Technical Skills: {skills_raw}
+- Soft Skills: {soft_skills}
+- Professional Title: {profile_data.get('professional_title', '')}
+- Years of Experience: {profile_data.get('years_of_experience', 0)}
+
+TASK:
+1. Identify 8-10 most impressive competencies
+2. Mix technical and soft skills
+3. Use professional terminology
+4. Format as short phrases (2-4 words each)
+5. Return as JSON array: ["competency1", "competency2", ...]
+
+Return ONLY the JSON array."""
+
+        try:
+            response_text = self._make_api_request_with_retry(prompt)
+            cleaned = response_text.strip()
+            if cleaned.startswith('```'):
+                cleaned = cleaned.split('```')[1]
+                if cleaned.startswith('json'):
+                    cleaned = cleaned[4:]
+                cleaned = cleaned.strip()
+            
+            competencies = json.loads(cleaned)
+            if isinstance(competencies, list) and len(competencies) >= 6:
+                return competencies[:10]
+            else:
+                raise ValueError("Invalid competencies format")
+                
+        except Exception as e:
+            print(f"[CV Builder V2] Core competencies generation failed: {e}, using fallback")
+            # Intelligent fallback
+            fallback = []
+            if skills_raw:
+                skills_list = [s.strip() for s in skills_raw.replace(';', ',').split(',')[:6]]
+                fallback.extend(skills_list)
+            if soft_skills:
+                soft_list = [s.strip() for s in soft_skills.replace(';', ',').split(',')[:4]]
+                fallback.extend(soft_list)
+            
+            if not fallback:
+                fallback = ['Problem Solving', 'Team Collaboration', 'Technical Expertise', 'Project Management']
+            
+            return fallback[:10]
+    
     def _generate_experience_section(
         self, user_data: Dict, profile_data: Dict, job_data: Optional[Dict], cv_style: str
     ) -> List[Dict]:
@@ -365,7 +458,7 @@ REQUIREMENTS:
     def _generate_skills_section(
         self, user_data: Dict, profile_data: Dict, job_data: Optional[Dict]
     ) -> Dict:
-        """Generate skills section with AI categorization"""
+        """Generate skills section with AI-powered matching and prioritization"""
         
         skills_raw = profile_data.get('skills', '')
         soft_skills_raw = profile_data.get('soft_skills', '')
@@ -375,36 +468,163 @@ REQUIREMENTS:
         for exp in user_data.get('work_experiences', []):
             tech_from_work.extend(exp.get('technologies_used', []) if isinstance(exp.get('technologies_used'), list) else [])
         
-        prompt = f"""Categorize and organize these skills for a CV. Return as JSON.
+        # Build comprehensive skill analysis prompt
+        if job_data:
+            # Job-tailored skills with intelligent matching
+            job_title = job_data.get('title', '')
+            job_requirements = job_data.get('requirements', '')
+            job_description = job_data.get('description', '')
+            
+            prompt = f"""Analyze candidate skills and match them with job requirements. Return optimized skills as JSON.
+
+CANDIDATE SKILLS INVENTORY:
+- Technical Skills: {skills_raw}
+- Soft Skills: {soft_skills_raw}
+- Technologies from Work History: {', '.join(tech_from_work[:30])}
+
+TARGET JOB:
+Title: {job_title}
+Requirements: {job_requirements[:500]}
+Description: {job_description[:500]}
+
+INTELLIGENT SKILL MATCHING TASK:
+1. **Analyze job requirements** and identify key technical skills, tools, platforms, and competencies mentioned
+2. **Match candidate skills** to job requirements:
+   - MUST INCLUDE: Skills/tools that directly match job requirements (highest priority)
+   - SHOULD INCLUDE: Related/transferable skills and tools relevant to the role
+   - OPTIONAL: Strong general skills that add value
+3. **Categorize matched skills** into:
+   - technical_skills: ONLY specific programming languages, frameworks, and technical methodologies (e.g., "Python", "React", "Django", "Machine Learning", "Data Analysis", "Statistical Modeling", "Research Design") - Include both tech and scientific/analytical skills (top 12 most relevant)
+   - soft_skills: Leadership, communication, problem-solving, interpersonal skills aligned with job (top 8 most relevant)
+   - tools_platforms: Development tools, software, cloud platforms, databases, CI/CD tools, scientific software (e.g., SPSS, R Studio, MATLAB) mentioned in job or candidate profile (top 12 most relevant)
+   - languages: Human languages (keep all, max 4)
+4. **Prioritization rules for ALL categories**:
+   - Skills/tools matching job keywords come first in each category
+   - Use skill synonyms (e.g., "JS" = "JavaScript", "React.js" = "React", "AWS" = "Amazon Web Services")
+   - For technical_skills: Include specific programming languages, frameworks, AND scientific/research methodologies (e.g., "Statistical Analysis", "Qualitative Research", "Data Visualization", "GIS Mapping")
+   - For tools_platforms: Include dev tools AND scientific/research tools (e.g., Docker, AWS, SPSS, R Studio, MATLAB, ArcGIS, Tableau)
+   - Remove duplicate or redundant entries
+   - Examples of GOOD technical skills: "React", "Python", "Machine Learning", "Statistical Analysis", "Research Design", "Data Science"
+   - Examples of BAD technical skills: "General Programming", "Computer Skills", "Technical Knowledge"
+5. **Quality control**:
+   - Only include skills/tools the candidate actually has
+   - Use professional terminology matching the job posting
+   - Tools should be industry-standard names (e.g., "Git" not "version control")
+   - Skills/tools should be concise (1-3 words each)
+6. **Tools/Platforms special attention**:
+   - Extract tools from job requirements (e.g., "Experience with Docker" → include "Docker")
+   - Match development tools (IDEs, version control, project management)
+   - Match cloud platforms (AWS, Azure, GCP)
+   - Match databases (PostgreSQL, MongoDB, MySQL)
+   - Match DevOps tools (Jenkins, GitLab CI, Terraform)
+
+Return ONLY valid JSON in this exact format:
+{{
+  "technical_skills": ["skill1", "skill2", ...],
+  "soft_skills": ["skill1", "skill2", ...],
+  "tools_platforms": ["tool1", "tool2", ...],
+  "languages": ["language1", "language2", ...]
+}}
+
+No explanations, no additional text, just the JSON object."""
+
+        else:
+            # General skills organization (no job targeting)
+            prompt = f"""Organize and categorize candidate skills professionally. Return as JSON.
 
 CANDIDATE SKILLS:
 - Technical Skills: {skills_raw}
 - Soft Skills: {soft_skills_raw}
-- Technologies from Experience: {', '.join(tech_from_work[:20])}
-
-{'TARGET JOB REQUIREMENTS: ' + job_data.get('requirements', '')[:200] if job_data else ''}
+- Technologies from Experience: {', '.join(tech_from_work[:25])}
 
 TASK:
-1. Categorize into: technical_skills, soft_skills, tools_platforms, languages
-2. {"Prioritize skills matching job requirements" if job_data else "Organize logically"}
-3. Maximum 12 skills per category
-4. Return as JSON: {{"technical_skills": [], "soft_skills": [], "tools_platforms": [], "languages": []}}
-5. No additional text"""
+1. Categorize comprehensively into:
+   - technical_skills: Programming, frameworks, scientific methodologies, research skills, analytical techniques (max 15 best skills)
+   - soft_skills: Leadership, communication, interpersonal (max 10 best skills)
+   - tools_platforms: Development tools, cloud platforms, databases, DevOps tools, scientific software (SPSS, R Studio, MATLAB, ArcGIS, Tableau) (max 15 best)
+   - languages: Human languages (all, max 4)
+2. Remove duplicates and redundancies
+3. Use professional terminology (industry-standard names)
+4. Prioritize most impressive/in-demand skills and tools first
+5. For tools_platforms: Include dev tools (Git, Docker, Jenkins), cloud (AWS, Azure), databases (PostgreSQL, MongoDB), scientific tools (SPSS, MATLAB, ArcGIS)
+6. For technical_skills: Include both tech skills AND scientific/analytical skills (Machine Learning, Statistical Analysis, Research Design, Data Visualization)
+7. Skills/tools should be concise (1-4 words each)
+
+Return ONLY valid JSON in this exact format:
+{{
+  "technical_skills": ["skill1", "skill2", ...],
+  "soft_skills": ["skill1", "skill2", ...],
+  "tools_platforms": ["tool1", "tool2", ...],
+  "languages": ["language1", "language2", ...]
+}}
+
+No explanations, just JSON."""
 
         try:
             response_text = self._make_api_request_with_retry(prompt)
-            skills_data = json.loads(response_text.strip())
+            
+            # Clean response and parse JSON
+            cleaned_response = response_text.strip()
+            if cleaned_response.startswith('```'):
+                # Remove markdown code blocks
+                cleaned_response = cleaned_response.split('```')[1]
+                if cleaned_response.startswith('json'):
+                    cleaned_response = cleaned_response[4:]
+                cleaned_response = cleaned_response.strip()
+            
+            skills_data = json.loads(cleaned_response)
+            
+            # Validate structure
+            required_keys = ['technical_skills', 'soft_skills', 'tools_platforms', 'languages']
+            for key in required_keys:
+                if key not in skills_data or not isinstance(skills_data[key], list):
+                    skills_data[key] = []
+            
+            # Ensure we have some skills (quality check)
+            if not any(skills_data.values()):
+                raise ValueError("AI returned empty skills data")
+            
+            print(f"[CV Builder V2] Skills matched: {sum(len(v) for v in skills_data.values())} total skills")
+            
         except Exception as e:
-            print(f"[CV Builder V2] Skills generation failed: {e}, using defaults")
-            # Fallback
-            skills_list = skills_raw.split(',') if isinstance(skills_raw, str) else []
-            soft_skills_list = soft_skills_raw.split(',') if isinstance(soft_skills_raw, str) else []
+            print(f"[CV Builder V2] Skills generation failed: {e}, using intelligent fallback")
+            
+            # Enhanced fallback with basic matching
+            skills_list = []
+            if isinstance(skills_raw, str):
+                skills_list = [s.strip() for s in skills_raw.replace(';', ',').split(',') if s.strip()]
+            
+            soft_skills_list = []
+            if isinstance(soft_skills_raw, str):
+                soft_skills_list = [s.strip() for s in soft_skills_raw.replace(';', ',').split(',') if s.strip()]
+            
+            # Enhanced tools extraction from work experience
+            tools_list = list(set(tech_from_work)) if tech_from_work else []
+            
+            # Basic job matching in fallback
+            if job_data:
+                job_text = f"{job_data.get('title', '')} {job_data.get('requirements', '')} {job_data.get('description', '')}".lower()
+                
+                # Prioritize skills that appear in job posting
+                if skills_list:
+                    matched_skills = [s for s in skills_list if s.lower() in job_text]
+                    unmatched_skills = [s for s in skills_list if s.lower() not in job_text]
+                    skills_list = (matched_skills + unmatched_skills)[:15]
+                
+                # Prioritize tools that appear in job posting
+                if tools_list:
+                    matched_tools = [t for t in tools_list if t.lower() in job_text]
+                    unmatched_tools = [t for t in tools_list if t.lower() not in job_text]
+                    tools_list = (matched_tools + unmatched_tools)[:15]
+            else:
+                skills_list = skills_list[:15]
+                tools_list = tools_list[:15]
             
             skills_data = {
-                'technical_skills': [s.strip() for s in skills_list[:12]],
-                'soft_skills': [s.strip() for s in soft_skills_list[:8]] or ['Communication', 'Teamwork', 'Problem Solving'],
-                'tools_platforms': list(set(tech_from_work[:12])),
-                'languages': profile_data.get('languages', 'English').split(',')[:4]
+                'technical_skills': skills_list[:12] if skills_list else ['Python', 'JavaScript', 'SQL'],
+                'soft_skills': soft_skills_list[:8] if soft_skills_list else ['Communication', 'Teamwork', 'Problem Solving', 'Leadership'],
+                'tools_platforms': tools_list[:12] if tools_list else ['Git', 'Docker', 'Linux', 'VS Code'],
+                'languages': [l.strip() for l in profile_data.get('languages', 'English').split(',')[:4]]
             }
         
         return skills_data

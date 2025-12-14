@@ -38,6 +38,8 @@ const CVBuilder = () => {
   const [cvContent, setCvContent] = useState(null);
   const [todos, setTodos] = useState([]);
   const [error, setError] = useState(null);
+  const [isFromCache, setIsFromCache] = useState(false);
+  const [cacheTimestamp, setCacheTimestamp] = useState(null);
 
   // Available sections
   const availableSections = [
@@ -51,11 +53,34 @@ const CVBuilder = () => {
     { id: 'references', label: 'Professional References', required: false }
   ];
 
-  // Load initial data
+  // Load initial data and cached CV
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
+        // Load cached CV first (immediate display)
+        const cachedCV = localStorage.getItem('lastGeneratedCV');
+        const cachedTimestamp = localStorage.getItem('lastCVTimestamp');
+        const cachedStyle = localStorage.getItem('lastCVStyle');
+        
+        if (cachedCV) {
+          try {
+            const parsedCV = JSON.parse(cachedCV);
+            setCvContent(parsedCV);
+            setIsFromCache(true);
+            setCacheTimestamp(cachedTimestamp);
+            if (cachedStyle) {
+              setSelectedStyle(cachedStyle);
+            }
+            console.log('✅ Loaded CV from cache:', new Date(cachedTimestamp));
+          } catch (parseErr) {
+            console.warn('Failed to parse cached CV:', parseErr);
+            localStorage.removeItem('lastGeneratedCV');
+            localStorage.removeItem('lastCVTimestamp');
+            localStorage.removeItem('lastCVStyle');
+          }
+        }
+
         const [userResponse, stylesResponse] = await Promise.all([
           getUserCVData(),
           getCVStyles()
@@ -138,9 +163,23 @@ const CVBuilder = () => {
         console.log('   - Progress items:', response.data.progress?.length || 0);
         console.log('   - Todos items:', response.data.todos?.length || 0);
         
+        // Save to localStorage for persistence
+        const timestamp = new Date().toISOString();
+        try {
+          localStorage.setItem('lastGeneratedCV', JSON.stringify(response.data.cv_content));
+          localStorage.setItem('lastCVTimestamp', timestamp);
+          localStorage.setItem('lastCVStyle', selectedStyle);
+          console.log('💾 CV saved to localStorage');
+        } catch (storageErr) {
+          console.warn('Failed to save CV to localStorage:', storageErr);
+          // Not critical, continue
+        }
+        
         setCvContent(response.data.cv_content);
         setGenerationProgress(response.data.progress || []);
         setTodos(response.data.todos || []);
+        setIsFromCache(false);
+        setCacheTimestamp(null);
         
         // Show success message
         console.log('✅ CV generated successfully!', response.data);
@@ -198,6 +237,14 @@ const CVBuilder = () => {
               <p className="mt-2 text-gray-600">
                 Generate a professional, job-tailored CV in seconds
               </p>
+              {isFromCache && cacheTimestamp && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-amber-600">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>
+                    Showing cached CV from {new Date(cacheTimestamp).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
             {cvContent && (
               <button

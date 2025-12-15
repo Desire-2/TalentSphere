@@ -21,6 +21,15 @@ export default defineConfig(({ command, mode }) => {
     server: {
       port: 5173,
       host: true,
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+        port: 5173,
+        clientPort: 5173,
+      },
+      watch: {
+        usePolling: true,
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:5001',

@@ -1044,123 +1044,7 @@ def send_basic_welcome_email(user):
         print(f"Error sending welcome email: {str(e)}")
         return False
 
-def send_reset_email(user_email, reset_token, user_name):
-    """Send password reset email using environment configuration"""
-    try:
-        # Get email configuration from environment variables
-        smtp_server = os.getenv('SMTP_SERVER', 'smtp.mail.yahoo.com')
-        smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        sender_email = os.getenv('SENDER_EMAIL', 'afritechbridge@yahoo.com')
-        sender_password = os.getenv('SENDER_PASSWORD')
-        sender_name = os.getenv('SENDER_NAME', 'AfriTech Bridge')
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-        
-        # Check if email configuration is complete
-        if not sender_password:
-            print("⚠️  EMAIL CONFIG MISSING: SENDER_PASSWORD not set in environment variables")
-            print(f"📧 Would send password reset email to: {user_email}")
-            print(f"🔗 Reset link would be: {frontend_url}/reset-password?token={reset_token}")
-            return True  # Return True for development, but log the issue
-        
-        # Create message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "Reset Your TalentSphere Password"
-        message["From"] = f"{sender_name} <{sender_email}>"
-        message["To"] = user_email
-        
-        # Reset URL using environment variable
-        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
-        
-        # HTML email template
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Reset Your Password</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-            <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #2563eb; margin: 0; font-size: 28px;">TalentSphere</h1>
-                    <p style="color: #6b7280; margin: 5px 0 0 0;">Password Reset Request</p>
-                </div>
-                
-                <div style="margin-bottom: 30px;">
-                    <h2 style="color: #374151; margin-bottom: 20px;">Hello {user_name},</h2>
-                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
-                        We received a request to reset your password for your TalentSphere account. If you didn't make this request, you can safely ignore this email.
-                    </p>
-                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 30px;">
-                        To reset your password, click the button below. This link will expire in 1 hour for security reasons.
-                    </p>
-                </div>
-                
-                <div style="text-align: center; margin: 40px 0;">
-                    <a href="{reset_url}" 
-                       style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
-                        Reset My Password
-                    </a>
-                </div>
-                
-                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #9ca3af; font-size: 14px; margin-bottom: 10px;">
-                        If the button above doesn't work, copy and paste this link into your browser:
-                    </p>
-                    <p style="color: #2563eb; word-break: break-all; font-size: 14px; margin-bottom: 20px;">
-                        {reset_url}
-                    </p>
-                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        This link will expire in 1 hour. If you need help, contact our support team.
-                    </p>
-                </div>
-                
-                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        © 2024 TalentSphere. All rights reserved.
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Create HTML part
-        html_part = MIMEText(html, "html")
-        message.attach(html_part)
-        
-        # Send email using SMTP
-        print(f"📧 Sending password reset email to: {user_email}")
-        print(f"🔗 Reset URL: {reset_url}")
-        
-        try:
-            # Connect to SMTP server
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()  # Enable TLS encryption
-            server.login(sender_email, sender_password)
-            
-            # Send email
-            server.sendmail(sender_email, user_email, message.as_string())
-            server.quit()
-            
-            print(f"✅ Password reset email sent successfully to {user_email}")
-            return True
-            
-        except smtplib.SMTPAuthenticationError:
-            print(f"❌ SMTP Authentication failed. Check email credentials for {sender_email}")
-            print("💡 For Yahoo Mail, make sure to use an App Password, not your regular password")
-            return False
-        except smtplib.SMTPException as e:
-            print(f"❌ SMTP error: {str(e)}")
-            return False
-        except Exception as e:
-            print(f"❌ Error sending email: {str(e)}")
-            return False
-        
-    except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        return False
+# Password reset email is now handled by email_service.send_password_reset_email()
 
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
@@ -1190,34 +1074,42 @@ def forgot_password():
         
         # Always return success to prevent email enumeration attacks
         if user:
-            # Generate reset token and persist it. Protect against DB errors.
+            # Generate reset token and persist it
             try:
                 reset_token = user.generate_reset_token()
                 db.session.commit()
+                current_app.logger.info(f'✅ Reset token generated for user: {user.email}')
             except Exception as db_err:
                 db.session.rollback()
-                current_app.logger.error(f"Error saving reset token for {user.email}: {str(db_err)}")
+                current_app.logger.error(f"❌ Database error saving reset token for {user.email}: {str(db_err)}")
                 # Continue and still attempt to return success (avoid revealing failure)
                 reset_token = getattr(user, 'reset_token', None) or ''
             
-            # Send reset email. Do not propagate email send failures as 500 to the client
+            # Send reset email using the centralized email service
             try:
-                email_sent = send_reset_email(user.email, reset_token, user.get_full_name())
+                email_sent = email_service.send_password_reset_email(
+                    user_email=user.email,
+                    user_name=user.get_full_name(),
+                    reset_token=reset_token
+                )
+                
+                if email_sent:
+                    current_app.logger.info(f'✅ Password reset email sent successfully to {user.email}')
+                else:
+                    current_app.logger.warning(f'⚠️  Password reset email could not be sent to {user.email}. Check SMTP configuration.')
+                    
             except Exception as send_err:
                 email_sent = False
-                current_app.logger.error(f"Error while sending reset email to {user.email}: {str(send_err)}")
+                current_app.logger.error(f"❌ Error sending reset email to {user.email}: {str(send_err)}")
 
-            if not email_sent:
-                # Log a warning but return a generic success response to avoid email enumeration
-                current_app.logger.warning(f"Password reset email could not be sent to {user.email}. Check SMTP settings or credentials.")
-
-            # Always return success to the client so callers can't enumerate emails and to avoid 500s
+            # Always return success to the client to prevent email enumeration
             return jsonify({
                 'success': True,
                 'email_sent': bool(email_sent),
                 'message': 'If an account with this email exists, a password reset link has been sent.'
             }), 200
         else:
+            current_app.logger.info(f'ℹ️  Password reset requested for non-existent email: {email}')
             # Still return success to prevent email enumeration
             return jsonify({
                 'success': True,
@@ -1225,7 +1117,7 @@ def forgot_password():
             }), 200
             
     except Exception as e:
-        print(f"Forgot password error: {str(e)}")
+        current_app.logger.error(f"❌ Forgot password error: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
 
 @auth_bp.route('/reset-password', methods=['POST'])

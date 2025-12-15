@@ -69,13 +69,21 @@ class EmailService:
     def __init__(self):
         self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.mail.yahoo.com')
         self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.sender_email = os.getenv('SENDER_EMAIL', os.getenv('SMTP_USERNAME', 'biodiversitynexus@yahoo.com'))
-        self.sender_password = os.getenv('SENDER_PASSWORD', os.getenv('SMTP_PASSWORD', 'vnjpjjdkdlmncrya'))
-        self.sender_name = os.getenv('SENDER_NAME', os.getenv('FROM_NAME', 'TalentSphere'))
+        self.sender_email = os.getenv('SENDER_EMAIL')
+        self.sender_password = os.getenv('SENDER_PASSWORD')
+        self.sender_name = os.getenv('SENDER_NAME', 'TalentSphere')
         self.frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
+        
+        # Debug: Log email configuration (mask password)
+        self.logger.info(f"📧 Email Service Configuration:")
+        self.logger.info(f"   SMTP Server: {self.smtp_server}:{self.smtp_port}")
+        self.logger.info(f"   Sender Email: {self.sender_email}")
+        self.logger.info(f"   Password Set: {'Yes' if self.sender_password else 'No'}")
+        if self.sender_password:
+            self.logger.info(f"   Password Length: {len(self.sender_password)} chars")
         
         # Email templates
         self.templates = self._load_templates()
@@ -143,6 +151,12 @@ class EmailService:
                 html_body=self._load_html_template('email_job_alert.html'),  # Reuse job alert template
                 text_body=self._get_promotion_text(),
                 variables=['job_title', 'company_name', 'job_url', 'user_name', 'location', 'employment_type', 'salary_range', 'unsubscribe_url', 'preferences_url']
+            ),
+            'password_reset': EmailTemplate(
+                subject="Reset Your TalentSphere Password",
+                html_body=self._get_password_reset_html(),
+                text_body=self._get_password_reset_text(),
+                variables=['user_name', 'reset_url']
             )
         }
     
@@ -883,6 +897,104 @@ class EmailService:
         Best regards,
         The TalentSphere Team
         """
+    
+    def _get_password_reset_html(self) -> str:
+        """Password reset email HTML template"""
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Your Password</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+            <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #2563eb; margin: 0; font-size: 28px;">TalentSphere</h1>
+                    <p style="color: #6b7280; margin: 5px 0 0 0;">Password Reset Request</p>
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <h2 style="color: #374151; margin-bottom: 20px;">Hello {user_name},</h2>
+                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+                        We received a request to reset your password for your TalentSphere account. If you didn't make this request, you can safely ignore this email.
+                    </p>
+                    <p style="color: #6b7280; line-height: 1.6; margin-bottom: 30px;">
+                        To reset your password, click the button below. This link will expire in 1 hour for security reasons.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 40px 0;">
+                    <a href="{reset_url}" 
+                       style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                        Reset My Password
+                    </a>
+                </div>
+                
+                <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; font-size: 14px; margin-bottom: 10px;">
+                        If the button above doesn't work, copy and paste this link into your browser:
+                    </p>
+                    <p style="color: #2563eb; word-break: break-all; font-size: 14px; margin-bottom: 20px;">
+                        {reset_url}
+                    </p>
+                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        This link will expire in 1 hour. If you need help, contact our support team.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        © 2024 TalentSphere. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def _get_password_reset_text(self) -> str:
+        """Password reset email text template"""
+        return """
+        Password Reset Request - TalentSphere
+        
+        Hello {user_name},
+        
+        We received a request to reset your password for your TalentSphere account. If you didn't make this request, you can safely ignore this email.
+        
+        To reset your password, visit this link (expires in 1 hour):
+        {reset_url}
+        
+        If you need help, contact our support team.
+        
+        Best regards,
+        The TalentSphere Team
+        """
+    
+    def send_password_reset_email(self, user_email: str, user_name: str, reset_token: str) -> bool:
+        """Send password reset email using the enhanced email service"""
+        try:
+            reset_url = f"{self.frontend_url}/reset-password?token={reset_token}"
+            
+            notification = EmailNotification(
+                recipient_email=user_email,
+                recipient_name=user_name,
+                template_name='password_reset',
+                subject="Reset Your TalentSphere Password",
+                variables={
+                    'user_name': user_name,
+                    'reset_url': reset_url
+                },
+                priority=EmailPriority.HIGH,
+                send_immediately=True
+            )
+            
+            return self.send_notification_email(notification)
+            
+        except Exception as e:
+            self.logger.error(f"Error sending password reset email: {str(e)}")
+            return False
 
 
 # Global email service instance

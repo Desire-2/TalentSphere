@@ -24,6 +24,8 @@ class NotificationPreference(db.Model):
     company_updates_email = db.Column(db.Boolean, default=False)
     system_notifications_email = db.Column(db.Boolean, default=True)
     promotions_email = db.Column(db.Boolean, default=False)
+    new_features_email = db.Column(db.Boolean, default=True)  # New feature announcements
+    platform_updates_email = db.Column(db.Boolean, default=True)  # Platform updates
     
     # In-App Preferences
     push_enabled = db.Column(db.Boolean, default=True)
@@ -35,6 +37,8 @@ class NotificationPreference(db.Model):
     company_updates_push = db.Column(db.Boolean, default=True)
     system_notifications_push = db.Column(db.Boolean, default=True)
     promotions_push = db.Column(db.Boolean, default=False)
+    new_features_push = db.Column(db.Boolean, default=True)  # New feature announcements
+    platform_updates_push = db.Column(db.Boolean, default=True)  # Platform updates
     
     # SMS Preferences (for future implementation)
     sms_enabled = db.Column(db.Boolean, default=False)
@@ -78,7 +82,9 @@ class NotificationPreference(db.Model):
             'deadline_reminder': self.deadline_reminders_email,
             'company_update': self.company_updates_email,
             'system': self.system_notifications_email,
-            'promotion': self.promotions_email
+            'promotion': self.promotions_email,
+            'new_feature': self.new_features_email,
+            'platform_update': self.platform_updates_email
         }
         
         return preference_map.get(notification_type, False)
@@ -96,7 +102,9 @@ class NotificationPreference(db.Model):
             'deadline_reminder': self.deadline_reminders_push,
             'company_update': self.company_updates_push,
             'system': self.system_notifications_push,
-            'promotion': self.promotions_push
+            'promotion': self.promotions_push,
+            'new_feature': self.new_features_push,
+            'platform_update': self.platform_updates_push
         }
         
         return preference_map.get(notification_type, True)

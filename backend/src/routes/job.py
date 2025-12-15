@@ -11,6 +11,7 @@ from src.models.company import Company
 from src.routes.auth import token_required, role_required
 from src.utils.cache import cached, get_cached_featured_jobs, get_cached_job_categories, invalidate_job_caches
 from src.utils.db_utils import db_transaction, safe_db_operation
+from src.services.job_notification_service import job_notification_service
 
 job_bp = Blueprint('job', __name__)
 
@@ -612,6 +613,18 @@ def create_job(current_user):
             if company and hasattr(company, 'total_jobs_posted'):
                 company.total_jobs_posted += 1
         
+        # Commit the transaction first (handled by decorator)
+        db.session.commit()
+        
+        # Send notifications if job is published
+        if job.status == 'published':
+            try:
+                notification_result = job_notification_service.notify_new_job_posted(job.id)
+                current_app.logger.info(f"📧 Job notifications sent: {notification_result}")
+            except Exception as notify_error:
+                # Log error but don't fail the job creation
+                current_app.logger.error(f"⚠️ Failed to send job notifications: {notify_error}")
+        
         # Transaction will be committed by the decorator
         job_type = "external" if current_user.role == 'external_admin' else "internal"
         return jsonify({
@@ -680,8 +693,8 @@ def update_job(current_user, job_id):
             job.is_remote = data['location_type'] == 'remote'
         
         # Handle status change
+        old_status = job.status
         if 'status' in data:
-            old_status = job.status
             job.status = data['status']
             
             # Set published_at when publishing
@@ -722,6 +735,15 @@ def update_job(current_user, job_id):
         
         job.updated_at = datetime.utcnow()
         db.session.commit()
+        
+        # Send notifications if job was just published
+        if old_status != 'published' and job.status == 'published':
+            try:
+                notification_result = job_notification_service.notify_new_job_posted(job.id)
+                current_app.logger.info(f"📧 Job notifications sent after status change: {notification_result}")
+            except Exception as notify_error:
+                # Log error but don't fail the job update
+                current_app.logger.error(f"⚠️ Failed to send job notifications after update: {notify_error}")
         
         return jsonify({
             'message': 'Job updated successfully',
@@ -798,6 +820,7 @@ def bulk_job_action(current_user):
         
         # Perform bulk action
         updated_count = 0
+        published_job_ids = []  # Track jobs that were just published
         
         for job in jobs:
             if action == 'publish':
@@ -807,6 +830,7 @@ def bulk_job_action(current_user):
                     if not job.expires_at:
                         job.expires_at = datetime.utcnow() + timedelta(days=30)
                     updated_count += 1
+                    published_job_ids.append(job.id)
             
             elif action == 'pause':
                 if job.status == 'published':
@@ -826,6 +850,16 @@ def bulk_job_action(current_user):
             job.updated_at = datetime.utcnow()
         
         db.session.commit()
+        
+        # Send notifications for newly published jobs
+        if published_job_ids:
+            for job_id in published_job_ids:
+                try:
+                    notification_result = job_notification_service.notify_new_job_posted(job_id)
+                    current_app.logger.info(f"📧 Bulk action notifications sent for job {job_id}: {notification_result}")
+                except Exception as notify_error:
+                    # Log error but don't fail the bulk action
+                    current_app.logger.error(f"⚠️ Failed to send notification for job {job_id}: {notify_error}")
         
         return jsonify({
             'message': f'Successfully {action}d {updated_count} jobs',

@@ -10,6 +10,7 @@ from src.models.application import Application
 from src.models.featured_ad import FeaturedAd, Payment
 from src.models.notification import Review
 from src.routes.auth import token_required, role_required
+from src.services.job_scheduler import job_scheduler
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1602,4 +1603,210 @@ def get_detailed_system_health(current_user):
         return jsonify(health_data), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get system health', 'details': str(e)}), 500
+
+
+# ============================================================================
+# Job Scheduler Management Routes
+# ============================================================================
+
+@admin_bp.route('/admin/jobs/expiration-stats', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_job_expiration_stats(current_user):
+    """Get statistics about job expirations"""
+    try:
+        current_time = datetime.utcnow()
+        
+        # Count expired jobs
+        expired_jobs = Job.query.filter(
+            Job.expires_at <= current_time,
+            Job.status == 'expired'
+        ).count()
+        
+        # Count jobs expiring soon (next 7 days)
+        expiring_soon = Job.query.filter(
+            Job.expires_at <= current_time + timedelta(days=7),
+            Job.expires_at > current_time,
+            Job.status == 'published'
+        ).count()
+        
+        # Count jobs expiring this week
+        expiring_this_week = Job.query.filter(
+            Job.expires_at <= current_time + timedelta(days=7),
+            Job.expires_at > current_time,
+            Job.status == 'published',
+            Job.is_active == True
+        ).all()
+        
+        # Count jobs expiring this month
+        expiring_this_month = Job.query.filter(
+            Job.expires_at <= current_time + timedelta(days=30),
+            Job.expires_at > current_time,
+            Job.status == 'published',
+            Job.is_active == True
+        ).count()
+        
+        # Count jobs that need marking as expired
+        needs_expiry_update = Job.query.filter(
+            Job.expires_at <= current_time,
+            Job.status == 'published',
+            Job.is_active == True
+        ).count()
+        
+        # Count old expired jobs (beyond grace period)
+        grace_period_date = current_time - timedelta(days=job_scheduler.grace_period_days)
+        old_expired_jobs = Job.query.filter(
+            Job.expires_at <= grace_period_date,
+            Job.status == 'expired'
+        ).all()
+        
+        old_expired_no_apps = sum(1 for job in old_expired_jobs 
+                                  if Application.query.filter_by(job_id=job.id).count() == 0)
+        
+        # Build detailed list of expiring jobs
+        expiring_details = []
+        for job in expiring_this_week[:10]:  # Limit to 10 for performance
+            days_left = (job.expires_at - current_time).days
+            expiring_details.append({
+                'id': job.id,
+                'title': job.title,
+                'company': job.company.name if job.company else job.external_company_name,
+                'expires_at': job.expires_at.isoformat(),
+                'days_left': days_left,
+                'application_count': Application.query.filter_by(job_id=job.id).count()
+            })
+        
+        # Calculate count for response
+        expiring_this_week_count = len(expiring_this_week)
+        
+        stats = {
+            'expired_jobs': expired_jobs,
+            'expiring_soon': expiring_soon,
+            'expiring_this_week': expiring_this_week_count,
+            'expiring_this_month': expiring_this_month,
+            'needs_expiry_update': needs_expiry_update,
+            'old_expired_jobs': len(old_expired_jobs),
+            'old_expired_deletable': old_expired_no_apps,
+            'scheduler_config': {
+                'auto_delete_enabled': job_scheduler.auto_delete_enabled,
+                'check_interval_hours': job_scheduler.check_interval / 3600,
+                'grace_period_days': job_scheduler.grace_period_days,
+                'notify_before_expiry_days': job_scheduler.notify_before_expiry_days,
+                'is_running': job_scheduler.is_running
+            },
+            'expiring_jobs_details': expiring_details
+        }
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get job expiration stats', 'details': str(e)}), 500
+
+
+@admin_bp.route('/admin/jobs/cleanup', methods=['POST'])
+@token_required
+@role_required('admin')
+def manual_job_cleanup(current_user):
+    """Manually trigger job cleanup process"""
+    try:
+        success = job_scheduler.run_manual_cleanup()
+        
+        if success:
+            return jsonify({
+                'message': 'Job cleanup completed successfully',
+                'timestamp': datetime.utcnow().isoformat()
+            }), 200
+        else:
+            return jsonify({
+                'error': 'Job cleanup failed',
+                'message': 'Check server logs for details'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'error': 'Failed to run job cleanup', 'details': str(e)}), 500
+
+
+@admin_bp.route('/admin/jobs/scheduler/config', methods=['GET', 'PUT'])
+@token_required
+@role_required('admin')
+def manage_scheduler_config(current_user):
+    """Get or update job scheduler configuration"""
+    try:
+        if request.method == 'GET':
+            config = {
+                'auto_delete_enabled': job_scheduler.auto_delete_enabled,
+                'check_interval_hours': job_scheduler.check_interval / 3600,
+                'grace_period_days': job_scheduler.grace_period_days,
+                'notify_before_expiry_days': job_scheduler.notify_before_expiry_days,
+                'is_running': job_scheduler.is_running
+            }
+            return jsonify(config), 200
+        
+        elif request.method == 'PUT':
+            data = request.get_json()
+            
+            # Update configuration
+            job_scheduler.configure(
+                check_interval_hours=data.get('check_interval_hours'),
+                auto_delete_enabled=data.get('auto_delete_enabled'),
+                grace_period_days=data.get('grace_period_days'),
+                notify_before_expiry_days=data.get('notify_before_expiry_days')
+            )
+            
+            return jsonify({
+                'message': 'Scheduler configuration updated',
+                'config': {
+                    'auto_delete_enabled': job_scheduler.auto_delete_enabled,
+                    'check_interval_hours': job_scheduler.check_interval / 3600,
+                    'grace_period_days': job_scheduler.grace_period_days,
+                    'notify_before_expiry_days': job_scheduler.notify_before_expiry_days,
+                    'is_running': job_scheduler.is_running
+                }
+            }), 200
+            
+    except Exception as e:
+        return jsonify({'error': 'Failed to manage scheduler config', 'details': str(e)}), 500
+
+
+@admin_bp.route('/admin/jobs/<int:job_id>/extend-expiry', methods=['POST'])
+@token_required
+@role_required('admin')
+def extend_job_expiry(current_user, job_id):
+    """Extend the expiry date of a specific job"""
+    try:
+        job = Job.query.get(job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        data = request.get_json()
+        days = data.get('days', 30)  # Default to 30 days
+        
+        # Calculate new expiry date
+        if job.expires_at:
+            # Extend from current expiry
+            new_expiry = job.expires_at + timedelta(days=days)
+        else:
+            # Set new expiry from now
+            new_expiry = datetime.utcnow() + timedelta(days=days)
+        
+        job.expires_at = new_expiry
+        
+        # If job was expired, reactivate it
+        if job.status == 'expired':
+            job.status = 'published'
+            job.is_active = True
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Job expiry extended by {days} days',
+            'job_id': job.id,
+            'new_expiry': new_expiry.isoformat(),
+            'status': job.status
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to extend job expiry', 'details': str(e)}), 500
+
 

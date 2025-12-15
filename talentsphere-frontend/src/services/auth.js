@@ -135,10 +135,11 @@ export const authService = {
   },
 
   // Reset password with token
-  resetPassword: async (token, newPassword) => {
+  resetPassword: async (token, newPassword, confirmPassword) => {
     const response = await api.post('/auth/reset-password', { 
       token, 
-      new_password: newPassword 
+      password: newPassword,
+      confirm_password: confirmPassword
     });
     return response;
   },

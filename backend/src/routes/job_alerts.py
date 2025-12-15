@@ -19,7 +19,90 @@ job_alerts_bp = Blueprint('job_alerts', __name__)
 enhanced_notification_service = EnhancedNotificationService(email_service)
 
 
-@job_alerts_bp.route('/job-alerts/send', methods=['POST'])
+@job_alerts_bp.route('', methods=['GET', 'POST', 'DELETE'])
+@token_required
+def manage_job_alerts(current_user):
+    """
+    Manage job alerts for the current user
+    GET - Get all job alerts for user
+    POST - Create new job alert
+    DELETE - Delete job alert (requires alert_id in params)
+    """
+    try:
+        if request.method == 'GET':
+            # Get all job alerts for user
+            alerts = JobAlert.query.filter_by(user_id=current_user.id).all()
+            return jsonify({
+                'success': True,
+                'alerts': [alert.to_dict() for alert in alerts]
+            }), 200
+        
+        elif request.method == 'POST':
+            # Create new job alert
+            data = request.get_json()
+            
+            # Validate required fields
+            name = data.get('name', '').strip()
+            keywords = data.get('keywords', '').strip()
+            
+            if not name:
+                return jsonify({'error': 'Alert name is required'}), 400
+            
+            # Create job alert
+            job_alert = JobAlert(
+                user_id=current_user.id,
+                name=name,
+                keywords=keywords,
+                location=data.get('location', ''),
+                employment_type=data.get('employment_type', ''),
+                category_id=data.get('category_id'),
+                experience_level=data.get('experience_level', ''),
+                salary_min=data.get('salary_min'),
+                is_remote=data.get('is_remote', False),
+                is_active=True,
+                frequency=data.get('frequency', 'daily')
+            )
+            
+            db.session.add(job_alert)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Job alert created successfully',
+                'alert': job_alert.to_dict()
+            }), 201
+        
+        elif request.method == 'DELETE':
+            # Delete job alert
+            alert_id = request.args.get('alert_id')
+            if not alert_id:
+                return jsonify({'error': 'alert_id is required'}), 400
+            
+            alert = JobAlert.query.filter_by(
+                id=alert_id,
+                user_id=current_user.id
+            ).first()
+            
+            if not alert:
+                return jsonify({'error': 'Job alert not found'}), 404
+            
+            db.session.delete(alert)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Job alert deleted successfully'
+            }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': 'Failed to manage job alert',
+            'details': str(e)
+        }), 500
+
+
+@job_alerts_bp.route('/send', methods=['POST'])
 @token_required
 @role_required(['admin', 'employer'])
 def send_job_alert(current_user):

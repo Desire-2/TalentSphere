@@ -1169,16 +1169,21 @@ def forgot_password():
         data = request.get_json()
         
         if not data:
+            current_app.logger.warning('Forgot password: No data provided')
             return jsonify({'error': 'No data provided'}), 400
         
         email = data.get('email', '').strip().lower()
         
         # Validate email
         if not email:
+            current_app.logger.warning('Forgot password: No email provided')
             return jsonify({'error': 'Email is required'}), 400
             
         if not validate_email(email):
+            current_app.logger.warning(f'Forgot password: Invalid email format: {email}')
             return jsonify({'error': 'Invalid email format'}), 400
+        
+        current_app.logger.info(f'📧 Password reset requested for email: {email}')
         
         # Find user by email
         user = User.query.filter_by(email=email, is_active=True).first()
@@ -1230,35 +1235,43 @@ def reset_password():
         data = request.get_json()
         
         if not data:
+            current_app.logger.error('Reset password: No data provided')
             return jsonify({'error': 'No data provided'}), 400
         
         token = data.get('token', '').strip()
-        new_password = data.get('password', '').strip()
+        # Support both 'password' and 'new_password' field names
+        new_password = data.get('password', data.get('new_password', '')).strip()
         confirm_password = data.get('confirm_password', '').strip()
         
         # Validate input
         if not token:
+            current_app.logger.warning('Reset password: No token provided')
             return jsonify({'error': 'Reset token is required'}), 400
             
         if not new_password:
+            current_app.logger.warning('Reset password: No password provided')
             return jsonify({'error': 'New password is required'}), 400
             
         if new_password != confirm_password:
+            current_app.logger.warning('Reset password: Passwords do not match')
             return jsonify({'error': 'Passwords do not match'}), 400
         
         # Validate password strength
         is_valid, message = validate_password(new_password)
         if not is_valid:
+            current_app.logger.warning(f'Reset password: Weak password - {message}')
             return jsonify({'error': message}), 400
         
         # Find user with valid reset token
         user = User.query.filter_by(reset_token=token, is_active=True).first()
         
         if not user:
+            current_app.logger.warning(f'Reset password: Invalid token {token[:10]}...')
             return jsonify({'error': 'Invalid or expired reset token'}), 400
         
         # Verify token is not expired
         if not user.verify_reset_token(token):
+            current_app.logger.warning(f'Reset password: Expired token for user {user.email}')
             return jsonify({'error': 'Reset token has expired'}), 400
         
         # Update password
@@ -1269,6 +1282,8 @@ def reset_password():
         # Save changes
         db.session.commit()
         
+        current_app.logger.info(f'✅ Password reset successful for user: {user.email}')
+        
         return jsonify({
             'success': True,
             'message': 'Password has been successfully reset. You can now log in with your new password.'
@@ -1276,7 +1291,7 @@ def reset_password():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Reset password error: {str(e)}")
+        current_app.logger.error(f'Reset password error: {str(e)}', exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
 
 @auth_bp.route('/verify-reset-token', methods=['POST'])

@@ -43,6 +43,8 @@ from src.routes.optimized_api import optimized_api_bp
 from src.utils.performance import performance_metrics
 from src.utils.cache_middleware import ResponseCacheMiddleware, advanced_cache, CACHE_WARMING_FUNCTIONS
 from src.services.notification_scheduler import notification_scheduler
+from src.services.job_scheduler import job_scheduler
+from src.services.job_digest_scheduler import job_digest_scheduler
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -288,6 +290,30 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"⚠️  Notification scheduler failed to start: {e}")
     
+    # Start job scheduler
+    try:
+        # Configure job scheduler from environment
+        check_interval = int(os.getenv('JOB_CLEANUP_INTERVAL_HOURS', '6'))
+        auto_delete = os.getenv('JOB_AUTO_DELETE_ENABLED', 'true').lower() == 'true'
+        grace_period = int(os.getenv('JOB_GRACE_PERIOD_DAYS', '7'))
+        notify_before = int(os.getenv('JOB_NOTIFY_BEFORE_EXPIRY_DAYS', '3'))
+        
+        job_scheduler.configure(
+            check_interval_hours=check_interval,
+            auto_delete_enabled=auto_delete,
+            grace_period_days=grace_period,
+            notify_before_expiry_days=notify_before
+        )
+        job_scheduler.start()
+        print("✅ Job scheduler started")
+    except Exception as e:
+        print(f"⚠️  Job scheduler failed to start: {e}")    
+    # Start job digest scheduler
+    try:
+        job_digest_scheduler.start()
+        print("✅ Job digest scheduler started (daily & weekly digests)")
+    except Exception as e:
+        print(f"⚠️  Job digest scheduler failed to start: {e}")    
     # Warm cache if requested
     if args.warm_cache:
         warm_cache_on_startup()

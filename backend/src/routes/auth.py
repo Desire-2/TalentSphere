@@ -878,19 +878,21 @@ def deactivate_account(current_user):
 def send_basic_welcome_email(user):
     """Send welcome email to new users"""
     try:
-        # Get email configuration from environment variables
+        # Get email configuration from environment variables (no fallbacks to prevent using wrong credentials)
         smtp_server = os.getenv('SMTP_SERVER', 'smtp.mail.yahoo.com')
         smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        sender_email = os.getenv('SENDER_EMAIL', 'afritechbridge@yahoo.com')
+        sender_email = os.getenv('SENDER_EMAIL')
         sender_password = os.getenv('SENDER_PASSWORD')
         sender_name = os.getenv('SENDER_NAME', 'TalentSphere Team')
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         
         # Check if email configuration is complete
-        if not sender_password:
-            print("⚠️  EMAIL CONFIG MISSING: SENDER_PASSWORD not set in environment variables")
+        if not sender_email or not sender_password:
+            print("⚠️  EMAIL CONFIG MISSING: SENDER_EMAIL or SENDER_PASSWORD not set in environment variables")
             print(f"📧 Would send welcome email to: {user.email}")
             return False  # Return False if email can't be sent
+        
+        print(f"📧 Sending welcome email using: {sender_email}")
         
         # Create message
         message = MIMEMultipart("alternative")

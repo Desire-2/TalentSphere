@@ -158,12 +158,17 @@ const ExternalAdminLayout = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <Building2 className="h-8 w-8 text-blue-600" />
+              <div className="flex-shrink-0 relative group">
+                <img 
+                  src="/logo-192.png" 
+                  alt="AfriTech Opportunities Logo" 
+                  className="w-10 h-10 rounded-lg object-contain shadow-md group-hover:scale-110 transition-transform duration-300 group-hover:shadow-lg"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">TalentSphere</h1>
-                <Badge variant="secondary" className="mt-1">External Admin</Badge>
+                <h1 className="text-lg font-bold bg-clip-text bg-gradient-to-r from-gray-900 to-blue-900">AfriTech Opp.</h1>
+                <Badge variant="secondary" className="mt-0.5 text-xs">External Admin</Badge>
               </div>
             </div>
             <Button

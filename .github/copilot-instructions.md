@@ -1,13 +1,13 @@
-# TalentSphere AI Coding Agent Instructions
+# AfriTech Opportunities AI Coding Agent Instructions
 
 ## Project Architecture & Context
 
-**TalentSphere** is a full-stack job portal with AI-powered features, built with Flask (backend) and React/Vite (frontend). The system supports multiple user roles (job_seeker, employer, admin, external_admin) with sophisticated features including AI-powered job/scholarship parsing, analytics, notifications, and payment processing.
+**AfriTech Opportunities** is a full-stack job and scholarship portal with AI-powered features, built with Flask (backend) and React/Vite (frontend). The system supports multiple user roles (job_seeker, employer, admin, external_admin) with sophisticated features including AI-powered job/scholarship parsing, analytics, notifications, and payment processing. Powered by AfriTech Bridge.
 
 ### Core Directory Structure
 
 ```
-TalentSphere/
+AfriTechOpportunities/
 ├── backend/                    # Flask API server
 │   ├── src/
 │   │   ├── models/            # SQLAlchemy models with relationships
@@ -16,7 +16,7 @@ TalentSphere/
 │   │   └── utils/             # Utilities (DB optimization, caching)
 │   ├── requirements.txt       # Python dependencies
 │   └── docker-compose.yml     # Container orchestration
-└── talentsphere-frontend/     # React SPA
+└── afritech-opportunities-frontend/     # React SPA
     ├── src/
     │   ├── pages/             # Route components (nested by feature)
     │   ├── components/        # Reusable UI components
@@ -34,7 +34,7 @@ TalentSphere/
 - **Performance monitoring**: `./start_monitoring.sh` launches dashboard at localhost:5002
 
 ### Frontend Development
-- **Start dev server**: `cd talentsphere-frontend && npm run dev` (Vite dev server on port 5173)
+- **Start dev server**: `cd afritech-opportunities-frontend && npm run dev` (Vite dev server on port 5173)
 - **API proxy**: Vite proxies `/api/*` to `http://localhost:5001` (backend)
 - **Environment**: Copy `.env.example` → `.env` and configure `VITE_GEMINI_API_KEY` for AI features
 - **Build**: `npm run build` or `./build-production.sh` for enhanced production builds

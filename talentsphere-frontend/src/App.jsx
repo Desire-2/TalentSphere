@@ -80,6 +80,7 @@ import TestEmployerComponents from './pages/TestEmployerComponents';
 // Analytics
 import GoogleAnalytics from './components/analytics/GoogleAnalytics';
 import { useAdTracking } from './utils/adTracking';
+import FloatingWhatsAppButton from './components/common/FloatingWhatsAppButton';
 
 function App() {
   // Validate environment configuration on app startup
@@ -250,6 +251,7 @@ function App() {
             </Layout>
           } />
         </Routes>
+        <FloatingWhatsAppButton />
       </Router>
       <Toaster />
     </AuthInitializer>

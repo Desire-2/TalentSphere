@@ -82,11 +82,16 @@ const AdminLayout = () => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">TS</span>
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0 relative group">
+                <img 
+                  src="/logo-192.png" 
+                  alt="AfriTech Opportunities Logo" 
+                  className="w-10 h-10 rounded-lg object-contain shadow-md group-hover:scale-110 transition-transform duration-300 group-hover:shadow-lg"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
               </div>
-              <span className="text-xl font-bold text-gray-900">TalentSphere</span>
+              <span className="text-lg font-bold bg-clip-text bg-gradient-to-r from-gray-900 to-blue-900">AfriTech Opp.</span>
             </div>
             <Button
               variant="ghost"

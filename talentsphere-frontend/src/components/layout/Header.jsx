@@ -117,54 +117,56 @@ const Header = () => {
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-transparent to-purple-50/50 opacity-60 pointer-events-none"></div>
 
-      <div className="max-w-7xl mx-auto px-1 sm:px-4 md:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-center h-auto min-h-[56px] md:min-h-[64px] gap-2 sm:gap-0">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 lg:px-8 relative z-10">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-center h-auto min-h-[56px] md:min-h-[64px] gap-2 sm:gap-4">
           {/* Enhanced Logo */}
-          <div className="flex items-center min-w-[100px] py-2 sm:py-0">
-            <Link to="/" className="flex items-center space-x-1 sm:space-x-3 group">
-              <div className="relative">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:shadow-xl">
-                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity duration-300"></div>
+          <div className="flex items-center py-2 sm:py-0">
+            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">
+              <div className="relative flex-shrink-0">
+                <img 
+                  src="/logo-192.png" 
+                  alt="AfriTech Opportunities Logo" 
+                  className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg object-contain shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:shadow-xl group-hover:drop-shadow-xl"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
               </div>
               <div className="flex flex-col">
-                <span className="text-base sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 group-hover:from-blue-600 group-hover:to-purple-600 transition-colors duration-300">
-                  TalentSphere
+                <span className="text-sm sm:text-base md:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 group-hover:from-blue-600 group-hover:to-purple-600 transition-colors duration-300 leading-tight">
+                  AfriTech Opp.
                 </span>
-                <span className="text-[9px] sm:text-xs text-gray-500 font-medium -mt-1">Find Your Dream Job</span>
+                <span className="text-[8px] sm:text-[9px] md:text-xs text-gray-500 font-medium -mt-0.5 leading-tight">Jobs & Scholarships</span>
               </div>
             </Link>
           </div>
 
           {/* Enhanced Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 xl:space-x-3">
+          <nav className="hidden md:flex items-center space-x-0.5 lg:space-x-1 xl:space-x-2">
             <Link 
               to="/jobs" 
-              className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
             >
               <span className="relative z-10 flex items-center space-x-1">
-                <Search className="w-4 h-4" />
+                <Search className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Find Jobs</span>
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
             </Link>
             <Link 
               to="/companies" 
-              className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
             >
               <span className="relative z-10 flex items-center space-x-1">
-                <Briefcase className="w-4 h-4" />
+                <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Companies</span>
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
             </Link>
             <Link 
               to="/scholarships" 
-              className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
             >
               <span className="relative z-10 flex items-center space-x-1">
-                <GraduationCap className="w-4 h-4" />
+                <GraduationCap className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Scholarships</span>
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-indigo-500/0 group-hover:from-purple-500/10 group-hover:to-indigo-500/10 rounded-xl transition-all duration-300"></div>
@@ -172,10 +174,10 @@ const Header = () => {
             {isAuthenticated && user?.role === 'employer' && (
               <Link 
                 to="/post-job" 
-                className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/50"
+                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/50"
               >
                 <span className="relative z-10 flex items-center space-x-1">
-                  <Star className="w-4 h-4" />
+                  <Star className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   <span>Post Job</span>
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 to-teal-500/0 group-hover:from-emerald-500/10 group-hover:to-teal-500/10 rounded-xl transition-all duration-300"></div>
@@ -184,10 +186,10 @@ const Header = () => {
             {isAuthenticated && user?.role === 'admin' && (
               <Link 
                 to="/admin" 
-                className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
+                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
               >
                 <span className="relative z-10 flex items-center space-x-1">
-                  <Shield className="w-4 h-4" />
+                  <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   <span>Admin</span>
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-pink-500/0 group-hover:from-purple-500/10 group-hover:to-pink-500/10 rounded-xl transition-all duration-300"></div>
@@ -409,40 +411,40 @@ const Header = () => {
 
         {/* Enhanced Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gradient-to-r from-transparent via-gray-200 to-transparent">
-            <div className="py-2 px-1 bg-gradient-to-br from-white/90 to-blue-50/60 backdrop-blur-sm rounded-b-2xl border border-white/20 shadow-xl">
+          <div className="md:hidden border-t border-gradient-to-r from-transparent via-gray-200 to-transparent animate-slideDown">
+            <div className="py-3 px-2 bg-gradient-to-br from-white/95 to-blue-50/70 backdrop-blur-md rounded-b-2xl border border-white/20 shadow-xl">
               <nav className="flex flex-col space-y-1">
                 <Link 
                   to="/jobs" 
-                  className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-4 h-4 flex-shrink-0" />
                   <span>Find Jobs</span>
                 </Link>
                 <Link 
                   to="/companies" 
-                  className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/70 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <Briefcase className="w-4 h-4" />
+                  <Briefcase className="w-4 h-4 flex-shrink-0" />
                   <span>Companies</span>
                 </Link>
                 <Link 
                   to="/scholarships" 
-                  className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/80 text-sm"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <GraduationCap className="w-4 h-4" />
+                  <GraduationCap className="w-4 h-4 flex-shrink-0" />
                   <span>Scholarships</span>
                 </Link>
                 {isAuthenticated && user?.role === 'employer' && (
                   <Link 
                     to="/post-job" 
-                    className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/70 text-sm"
+                    className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/80 text-sm"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    <Star className="w-4 h-4" />
+                    <Star className="w-4 h-4 flex-shrink-0" />
                     <span>Post Job</span>
                   </Link>
                 )}

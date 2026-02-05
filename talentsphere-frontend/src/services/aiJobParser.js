@@ -59,12 +59,18 @@ ${categoryInfo}
 ANALYSIS REQUIREMENTS:
 Perform a comprehensive analysis and extract the following information. Use your expertise to infer missing details and enhance the content for maximum appeal to job seekers.
 
+PARAPHRASE REQUIREMENT (CRITICAL):
+- All narrative text you generate (summary, description, benefits, remote_policy, application_instructions) must be paraphrased and ORIGINAL.
+- Do NOT copy sentences or long phrases from the source. Avoid verbatim wording and rewrite in fresh language.
+- Preserve meaning and factual details, but change phrasing, structure, and wording.
+- If the source text is short or boilerplate, still rewrite it into a unique, professional version.
+
 Return ONLY a valid JSON object with these enhanced fields:
 
 {
   "title": "📝 Optimized job title - professional, compelling, and search-friendly (string, required)",
-  "summary": "🎯 Engaging one-line summary highlighting key value proposition (string, 120-150 chars, focus on benefits to candidate)",
-  "description": "📋 Professionally structured job description in markdown format with clear sections: Overview, Responsibilities, Requirements, Benefits, Company Culture. Use headers (##), bullet points, and emphasis for readability (string, required)",
+  "summary": "🎯 Engaging one-line summary highlighting key value proposition (string, 120-150 chars). MUST be paraphrased/original, not copied from source",
+  "description": "📋 Professionally structured job description in markdown format with clear sections: Overview, Responsibilities, Requirements, Benefits, Company Culture. Use headers (##), bullet points, and emphasis for readability (string, required). MUST be paraphrased/original, not copied from source",
   "external_company_name": "🏢 Company name exactly as it appears officially (string, required)",
   "external_company_website": "🌐 Official company website URL (string, must start with http:// or https://)",
   "external_company_logo": "🖼️ Company logo URL if mentioned (string, must start with http:// or https://)",
@@ -89,10 +95,10 @@ Return ONLY a valid JSON object with these enhanced fields:
   "application_type": "📬 How to apply: external (website), email (direct email) - analyze application process (string, required, default: external)",
   "application_url": "🔗 Direct application URL if provided (string, must start with http:// or https://)",
   "application_email": "📧 Application email address if email application (string)",
-  "application_instructions": "📝 Detailed application instructions in structured markdown format with steps, requirements, and tips (string)",
+  "application_instructions": "📝 Detailed application instructions in structured markdown format with steps, requirements, and tips (string). MUST be paraphrased/original, not copied from source",
   "source_url": "🔗 Original job posting URL if mentioned (string)",
-  "benefits": "🎁 Company benefits and perks - extract from job posting (string)",
-  "remote_policy": "🏠 Remote work policy details if mentioned (string)",
+  "benefits": "🎁 Company benefits and perks - extract from job posting (string). MUST be paraphrased/original, not copied from source",
+  "remote_policy": "🏠 Remote work policy details if mentioned (string). MUST be paraphrased/original, not copied from source",
   "visa_sponsorship": "🛂 Visa sponsorship availability - look for visa, H1B, work permit mentions (boolean, default: false)",
   "urgency_level": "⚡ Hiring urgency: low, medium, high, urgent - infer from language like 'immediate', 'ASAP', 'soon' (string, default: medium)",
   "company_size": "👥 Company size category: startup, small, medium, large, enterprise - infer from context (string)",
@@ -105,8 +111,9 @@ Return ONLY a valid JSON object with these enhanced fields:
 
 1. **JSON OUTPUT**: Return ONLY valid, parseable JSON - no markdown, explanations, or additional text
 2. **CONTENT ENHANCEMENT**: Don't just extract - improve and optimize the content for maximum job seeker appeal
-3. **INTELLIGENT INFERENCE**: Use your expertise to fill gaps and enhance incomplete information
-4. **PROFESSIONAL FORMATTING**: Transform casual language into professional, compelling copy
+3. **PARAPHRASE ONLY**: All narrative text must be rewritten in original language. Never reuse exact sentences from the source.
+4. **INTELLIGENT INFERENCE**: Use your expertise to fill gaps and enhance incomplete information
+5. **PROFESSIONAL FORMATTING**: Transform casual language into professional, compelling copy
 
 📋 FIELD-SPECIFIC INSTRUCTIONS:
 

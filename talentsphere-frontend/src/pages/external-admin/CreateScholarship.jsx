@@ -47,6 +47,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import MarkdownEditor from '../../components/ui/MarkdownEditor';
 import ShareScholarship from '../../components/scholarships/ShareScholarship';
 import { scholarshipService } from '../../services/scholarship';
+import { parseScholarshipWithAI, analyzeFilledFields } from '../../services/aiScholarshipParser';
 import { toast } from 'sonner';
 
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
@@ -171,6 +172,11 @@ const CreateScholarship = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
+
+  // AI Parser State
+  const [showAiParser, setShowAiParser] = useState(false);
+  const [aiParserText, setAiParserText] = useState('');
+  const [aiParsing, setAiParsing] = useState(false);
   
   // JSON Import State
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -570,6 +576,183 @@ const CreateScholarship = () => {
     setJsonError('');
   }, []);
 
+  const normalizeSelectValue = useCallback((value, options, fallback) => {
+    if (value === undefined || value === null || value === '') return fallback;
+    const normalized = String(value).toLowerCase().trim();
+    const optionValues = options.map(option => option.value);
+
+    if (optionValues.includes(normalized)) return normalized;
+
+    // Handle comma-separated values
+    const candidates = normalized.split(',').map(item => item.trim()).filter(Boolean);
+    const match = candidates.find(candidate => optionValues.includes(candidate));
+    if (match) return match;
+
+    return fallback;
+  }, []);
+
+  const normalizeScholarshipType = useCallback((value, fallback) => {
+    if (value === undefined || value === null || value === '') return fallback;
+    const normalized = String(value).toLowerCase().trim();
+
+    const fallbackMap = {
+      stem: 'academic',
+      international: 'merit-based',
+      diversity: 'merit-based',
+      community: 'merit-based',
+      athletic: 'sports',
+      art: 'academic'
+    };
+
+    return fallbackMap[normalized] || normalized || fallback;
+  }, []);
+
+  // AI Scholarship Parser Handler
+  const handleAiParse = useCallback(async () => {
+    if (!aiParserText.trim()) {
+      toast.error('Please paste scholarship content to parse');
+      return;
+    }
+
+    if (aiParserText.trim().length < 50) {
+      toast.error('Please provide more content for accurate parsing');
+      return;
+    }
+
+    setAiParsing(true);
+
+    try {
+      const loadingToast = toast.loading('🤖 AI is analyzing the scholarship...', {
+        description: 'This may take a few seconds'
+      });
+
+      const parsedData = await parseScholarshipWithAI(aiParserText, categories);
+
+      toast.dismiss(loadingToast);
+
+      const normalizedScholarshipType = normalizeSelectValue(
+        normalizeScholarshipType(parsedData.scholarship_type, formData.scholarship_type),
+        scholarshipService.getScholarshipTypes(),
+        formData.scholarship_type || ''
+      );
+
+      const normalizedStudyLevel = normalizeSelectValue(
+        parsedData.study_level,
+        scholarshipService.getStudyLevels(),
+        formData.study_level || ''
+      );
+
+      const normalizedFundingType = normalizeSelectValue(
+        parsedData.funding_type,
+        scholarshipService.getFundingTypes(),
+        formData.funding_type || 'full'
+      );
+
+      const normalizedLocationType = normalizeSelectValue(
+        parsedData.location_type,
+        scholarshipService.getLocationTypes(),
+        formData.location_type || 'any'
+      );
+
+      const normalizedGenderRequirement = normalizeSelectValue(
+        parsedData.gender_requirements,
+        scholarshipService.getGenderRequirements(),
+        formData.gender_requirements || 'any'
+      );
+
+      const normalizedApplicationType = normalizeSelectValue(
+        parsedData.application_type,
+        scholarshipService.getApplicationTypes(),
+        formData.application_type || 'external'
+      );
+
+      const mergedData = {
+        ...formData,
+        title: parsedData.title ?? formData.title ?? '',
+        summary: parsedData.summary ?? formData.summary ?? '',
+        description: parsedData.description ?? formData.description ?? '',
+        scholarship_type: normalizedScholarshipType,
+        category_id: parsedData.category_id !== undefined && parsedData.category_id !== null
+          ? String(parsedData.category_id)
+          : (formData.category_id || ''),
+
+        external_organization_name: parsedData.external_organization_name ?? formData.external_organization_name ?? '',
+        external_organization_website: parsedData.external_organization_website ?? formData.external_organization_website ?? '',
+        external_organization_logo: parsedData.external_organization_logo ?? formData.external_organization_logo ?? '',
+        source_url: parsedData.source_url ?? formData.source_url ?? '',
+
+        study_level: normalizedStudyLevel,
+        field_of_study: parsedData.field_of_study ?? formData.field_of_study ?? '',
+
+        location_type: normalizedLocationType,
+        country: parsedData.country ?? formData.country ?? '',
+        city: parsedData.city ?? formData.city ?? '',
+        state: parsedData.state ?? formData.state ?? '',
+
+        amount_min: parsedData.amount_min !== undefined && parsedData.amount_min !== null
+          ? String(parsedData.amount_min)
+          : (formData.amount_min || ''),
+        amount_max: parsedData.amount_max !== undefined && parsedData.amount_max !== null
+          ? String(parsedData.amount_max)
+          : (formData.amount_max || ''),
+        currency: parsedData.currency ?? formData.currency ?? 'USD',
+        funding_type: normalizedFundingType,
+        renewable: parsedData.renewable ?? formData.renewable ?? false,
+        duration_years: parsedData.duration_years !== undefined && parsedData.duration_years !== null
+          ? String(parsedData.duration_years)
+          : (formData.duration_years || '1'),
+
+        min_gpa: parsedData.min_gpa !== undefined && parsedData.min_gpa !== null
+          ? String(parsedData.min_gpa)
+          : (formData.min_gpa || ''),
+        max_age: parsedData.max_age !== undefined && parsedData.max_age !== null
+          ? String(parsedData.max_age)
+          : (formData.max_age || ''),
+        nationality_requirements: parsedData.nationality_requirements ?? formData.nationality_requirements ?? '',
+        gender_requirements: normalizedGenderRequirement,
+        other_requirements: parsedData.other_requirements ?? formData.other_requirements ?? '',
+
+        application_type: normalizedApplicationType,
+        application_deadline: parsedData.application_deadline ?? formData.application_deadline ?? '',
+        application_email: parsedData.application_email ?? formData.application_email ?? '',
+        application_url: parsedData.application_url ?? formData.application_url ?? '',
+        application_instructions: parsedData.application_instructions ?? formData.application_instructions ?? '',
+        required_documents: parsedData.required_documents ?? formData.required_documents ?? '',
+
+        requires_transcript: parsedData.requires_transcript ?? formData.requires_transcript ?? true,
+        requires_recommendation_letters: parsedData.requires_recommendation_letters ?? formData.requires_recommendation_letters ?? true,
+        num_recommendation_letters: parsedData.num_recommendation_letters !== undefined && parsedData.num_recommendation_letters !== null
+          ? String(parsedData.num_recommendation_letters)
+          : (formData.num_recommendation_letters || '2'),
+        requires_essay: parsedData.requires_essay ?? formData.requires_essay ?? true,
+        essay_topics: parsedData.essay_topics ?? formData.essay_topics ?? '',
+        requires_portfolio: parsedData.requires_portfolio ?? formData.requires_portfolio ?? false
+      };
+
+      setFormData(mergedData);
+      setErrors({});
+      setAiParserText('');
+      setShowAiParser(false);
+
+      const analysis = analyzeFilledFields(parsedData);
+      const filledCount = analysis?.filledFields || 0;
+      const totalCount = analysis?.totalFields || Object.keys(parsedData || {}).length;
+
+      toast.success('✨ AI successfully parsed the scholarship!', {
+        description: `Auto-filled ${filledCount} of ${totalCount} fields. Please review before publishing.`,
+        duration: 6000
+      });
+    } catch (error) {
+      console.error('AI parsing error:', error);
+      toast.error('❌ Failed to parse scholarship', {
+        description: error.message || 'Please check the content and try again',
+        duration: 6000
+      });
+    } finally {
+      setAiParsing(false);
+    }
+  }, [aiParserText, categories, formData]);
+
   // Cleanup timeout ref on unmount
   useEffect(() => {
     return () => {
@@ -667,6 +850,17 @@ const CreateScholarship = () => {
           
           <div className="flex items-center gap-3">
             <Button
+              variant="outline"
+              onClick={() => setShowAiParser(!showAiParser)}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-200"
+              disabled={loading || aiParsing}
+            >
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span className="font-medium">AI Auto-Fill</span>
+              <Badge className="bg-purple-600 text-white border-0">Beta</Badge>
+              {showAiParser ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+            <Button
               type="button"
               variant="outline"
               onClick={() => setShowJsonImport(true)}
@@ -694,6 +888,78 @@ const CreateScholarship = () => {
             <Progress value={formProgress} className="h-2" />
           </CardContent>
         </Card>
+
+        {/* AI Scholarship Parser */}
+        {showAiParser && (
+          <Card className="enhanced-card border-0 shadow-2xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 ring-1 ring-purple-200/50">
+            <CardHeader className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                AI Scholarship Auto-Fill
+              </CardTitle>
+              <CardDescription className="text-purple-100">
+                Paste a scholarship posting and let AI fill 40+ fields instantly.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-scholarship-input" className="text-sm font-semibold text-gray-700">
+                  Scholarship Content
+                </Label>
+                <Textarea
+                  id="ai-scholarship-input"
+                  value={aiParserText}
+                  onChange={(e) => setAiParserText(e.target.value)}
+                  placeholder="Paste the complete scholarship posting here..."
+                  rows={10}
+                  className="min-h-[260px] font-mono text-sm resize-y border-2 border-purple-200 focus:border-purple-400 focus:ring-purple-400 bg-white/90"
+                  disabled={aiParsing}
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  type="button"
+                  onClick={handleAiParse}
+                  disabled={aiParsing || !aiParserText.trim()}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  {aiParsing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Parsing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Parse with AI & Auto-Fill Form
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAiParser(false)}
+                  disabled={aiParsing}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-purple-200">
+                <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                  <HelpCircle className="h-4 w-4 mr-1" />
+                  Tips for Best Results
+                </h4>
+                <ul className="space-y-1 text-sm text-purple-700">
+                  <li>Include the full scholarship posting with eligibility, amount, deadline, and instructions.</li>
+                  <li>Use clear headings like “Eligibility”, “Deadline”, “How to Apply”.</li>
+                  <li>Review the auto-filled fields before publishing.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

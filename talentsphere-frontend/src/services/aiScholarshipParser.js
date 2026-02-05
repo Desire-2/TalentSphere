@@ -139,18 +139,36 @@ Return ONLY a valid JSON object with this exact structure (no additional text, n
     
     console.log('📥 Received response from Gemini AI');
     
-    // Extract JSON from response (handle potential markdown wrapping)
+    // Extract JSON from response (handle potential markdown wrapping or extra text)
     let jsonText = text.trim();
-    
+
     // Remove markdown code blocks if present
     if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```\n/, '').replace(/\n```$/, '');
+      jsonText = jsonText.replace(/```\n?/g, '');
+    }
+
+    // Try to extract JSON if there's extra text
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[0];
     }
     
-    // Parse JSON
-    const parsedData = JSON.parse(jsonText);
+    // Parse JSON (with repair fallback for minor formatting issues)
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonText);
+    } catch (parseError) {
+      const repaired = jsonText
+        .replace(/[“”]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/\u00A0/g, ' ')
+        .replace(/,\s*}/g, '}')
+        .replace(/,\s*]/g, ']')
+        .trim();
+      parsedData = JSON.parse(repaired);
+    }
     
     // Validate and clean the parsed data
     const cleanedData = validateAndCleanScholarshipData(parsedData);

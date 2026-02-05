@@ -540,6 +540,24 @@ class CVBuilderService:
                     'timestamp': datetime.utcnow().isoformat()
                 })
                 
+                # Proactive improvement tasks per section
+                default_tasks = {
+                    'summary': ['Include target job title', 'Add 2 quantifiable achievements', 'Keep between 50-65 words'],
+                    'work': ['Ensure only relevant roles included', 'Add metrics to each bullet', 'Use job keywords prominently'],
+                    'education': ['Include relevant coursework', 'Add honors/GPA if strong'],
+                    'skills': ['Prioritize skills matching job requirements', 'Group by categories (languages, frameworks, tools)'],
+                    'certifications': ['Prioritize certifications relevant to job', 'Add credential ID/URL if available'],
+                    'projects': ['Highlight impact and technologies', 'Limit to top 2-3 relevant projects'],
+                    'awards': ['Include date and issuer', 'Explain significance briefly'],
+                    'references': ['Prefer 2-3 professional references', 'Ensure contact info is present']
+                }
+                if section in default_tasks:
+                    self.section_todos.append({
+                        'section': section,
+                        'reason': 'review_refinement',
+                        'suggestions': default_tasks[section]
+                    })
+
                 # Add todo if section is incomplete or empty
                 if not section_content:
                     self.section_todos.append({
@@ -883,8 +901,8 @@ Years of Experience: {profile.get('years_of_experience', 0)}
 Career Level: {profile.get('career_level', 'Not specified')}
 Skills: {profile.get('technical_skills', profile.get('skills', 'Various skills'))}
 
-💼 WORK HISTORY (Use this data to generate enhanced achievements):
-{self._format_work_experience(user_data.get('work_experiences', []))}
+💼 WORK HISTORY (Use ONLY these most relevant roles to the target job; ignore unrelated roles):
+{self._format_work_experience(self._filter_relevant_experiences(user_data.get('work_experiences', []), job_data))}
 
 {job_context}
 
@@ -2145,6 +2163,59 @@ Relationship: {ref.get('relationship', 'Professional contact')}
             return f"Moderate match - {total_years} years experience, emphasize transferable skills"
         else:
             return "Career pivot - focus on transferable skills and adaptability"
+
+    def _filter_relevant_experiences(self, work_experiences: List[Dict], job_data: Optional[Dict], max_results: int = 4) -> List[Dict]:
+        """Filter and rank work experiences that best match the target job.
+
+        Scoring heuristics:
+        - Title similarity with job title
+        - Keyword overlap between job requirements/description and experience description/technologies
+        - Recency (current or latest roles favored)
+        - Presence of achievements/metrics
+
+        Returns top N experiences sorted by relevance.
+        """
+        if not job_data or not work_experiences:
+            return work_experiences or []
+
+        job_title = str(job_data.get('title', '')).lower()
+        job_keywords = set([kw.lower() for kw in self._extract_job_keywords(job_data)])
+
+        def exp_score(exp: Dict) -> float:
+            score = 0.0
+            title = str(exp.get('job_title', '')).lower()
+            desc = str(exp.get('description', '')).lower()
+            techs = set([str(t).lower() for t in exp.get('technologies_used', [])])
+            ach = exp.get('achievements', []) or []
+
+            # Title similarity
+            if job_title and (job_title in title or title in job_title):
+                score += 20
+
+            # Keyword overlap in description and technologies
+            if job_keywords:
+                overlap_desc = len(job_keywords & set(desc.split()))
+                overlap_tech = len(job_keywords & techs)
+                score += overlap_desc * 1.5 + overlap_tech * 3
+
+            # Achievements present, bonus
+            if ach:
+                score += min(10, len(ach) * 2)
+
+            # Recency bonus: current role or latest
+            try:
+                if exp.get('is_current'):
+                    score += 8
+                # Prefer roles with later end_date or current
+                if (not exp.get('end_date')) or exp.get('is_current'):
+                    score += 4
+            except Exception:
+                pass
+
+            return score
+
+        ranked = sorted(work_experiences, key=exp_score, reverse=True)
+        return ranked[:max_results]
     
     def _quick_json_fixes(self, json_str: str) -> str:
         """

@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import ExternalAdminLayout from './components/layout/ExternalAdminLayout';
 import JobSeekerLayout from './components/layout/JobSeekerLayout';
+import EmployerLayout from './components/layout/EmployerLayout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
@@ -144,14 +145,26 @@ function App() {
             </ProtectedRoute>
           }>
             <Route path="profile" element={<Profile />} />
-            <Route path="company-profile" element={<CompanyProfile />} />
             <Route path="applications" element={<MyApplications />} />
             <Route path="my-applications" element={<MyApplications />} />
-            
-            {/* Company/Employer Routes */}
+            <Route path="recommendations" element={
+              <div className="container mx-auto px-4 py-20 text-center">
+                <h1 className="text-4xl font-bold mb-4">Recommendations</h1>
+                <p className="text-muted-foreground">Coming soon in the next phase!</p>
+              </div>
+            } />
+          </Route>
+
+          {/* Employer Routes with EmployerLayout */}
+          <Route path="/" element={
+            <ProtectedRoute requiredRole="employer">
+              <EmployerLayout />
+            </ProtectedRoute>
+          }>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="company-profile" element={<CompanyProfile />} />
             <Route path="company/profile" element={<CompanyProfileManagement />} />
             <Route path="company/settings" element={<CompanySettings />} />
-            
             <Route path="jobs/post" element={<PostJob />} />
             <Route path="employer/jobs/create" element={<PostJob />} />
             <Route path="featured-ads" element={
@@ -164,12 +177,6 @@ function App() {
               <div className="container mx-auto px-4 py-20 text-center">
                 <h1 className="text-4xl font-bold mb-4">Payment</h1>
                 <p className="text-muted-foreground">Payment integration coming soon!</p>
-              </div>
-            } />
-            <Route path="recommendations" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Recommendations</h1>
-                <p className="text-muted-foreground">Coming soon in the next phase!</p>
               </div>
             } />
           </Route>

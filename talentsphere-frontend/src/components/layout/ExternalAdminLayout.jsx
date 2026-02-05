@@ -58,24 +58,14 @@ const ExternalAdminLayout = () => {
       
       // Clear auth state and localStorage
       await logout();
-      
-      // Additional cleanup - ensure localStorage is cleared
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Force navigation with replace to prevent back button issues
-      navigate('/login', { replace: true });
+      // Logout function will handle redirect to home page
       
       console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout failed:', error);
       
-      // Even if logout fails on server, force local cleanup
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Force navigation to login
-      navigate('/login', { replace: true });
+      // Even if logout fails on server, ensure redirect to home
+      navigate('/', { replace: true });
     } finally {
       setIsLoggingOut(false);
     }

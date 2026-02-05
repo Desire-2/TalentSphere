@@ -100,8 +100,14 @@ const Header = () => {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      // Logout function will handle redirect to home page
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Ensure redirect to home even on error
+      navigate('/', { replace: true });
+    }
   };
 
   const toggleMobileMenu = () => {

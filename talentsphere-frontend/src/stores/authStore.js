@@ -154,6 +154,10 @@ export const useAuthStore = create((set, get) => ({
         isLoading: false,
         error: null
       });
+      // Redirect to home page after successful logout
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.warn('Logout request failed, clearing client state anyway:', error);
       // Even if logout fails on server, clear local state
@@ -164,6 +168,10 @@ export const useAuthStore = create((set, get) => ({
         isLoading: false,
         error: null
       });
+      // Redirect to home page even if logout fails
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     }
   },
 

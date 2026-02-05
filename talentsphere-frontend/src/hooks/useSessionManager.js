@@ -51,11 +51,11 @@ export const useSessionManager = (options = {}) => {
           onSessionExpired();
         }
         
-        // Redirect to login with return path
-        navigate('/login', { 
-          state: { from: location.pathname },
-          replace: true 
-        });
+        // Redirect to home page after session expiration
+        // Logout function will handle the redirect, but ensure it happens
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/')) {
+          window.location.href = '/';
+        }
       }
     } catch (error) {
       console.error('❌ Session validation error:', error);
@@ -63,13 +63,10 @@ export const useSessionManager = (options = {}) => {
       // If validation fails due to network error, don't logout immediately
       if (!error.message?.includes('network') && !error.message?.includes('connect')) {
         await logout();
-        navigate('/login', { 
-          state: { from: location.pathname },
-          replace: true 
-        });
+        // Logout function will handle redirect to home page
       }
     }
-  }, [isAuthenticated, validateSession, logout, navigate, location.pathname, onSessionExpired]);
+  }, [isAuthenticated, validateSession, logout, location.pathname, onSessionExpired]);
 
   // Attempt to refresh token
   const attemptTokenRefresh = useCallback(async () => {

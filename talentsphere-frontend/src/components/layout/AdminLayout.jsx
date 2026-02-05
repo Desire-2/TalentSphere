@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -34,6 +34,7 @@ import { useSessionManager } from '../../hooks/useSessionManager';
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
   // Initialize session manager for admin panel
@@ -61,8 +62,11 @@ const AdminLayout = () => {
   const handleLogout = async () => {
     try {
       await logout();
+      // Logout function will handle redirect to home page
     } catch (error) {
       console.error('Logout error:', error);
+      // Ensure redirect to home even on error
+      navigate('/', { replace: true });
     }
   };
 

@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Users, 
-  Briefcase, 
-  Building, 
-  BarChart3, 
-  Activity, 
+  User, 
+  FileText, 
+  BookOpen, 
   Settings,
   Menu,
   X,
   Search,
   ChevronDown,
   LogOut,
+  Briefcase,
+  Bookmark,
+  Bell,
   TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,31 +31,65 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useSessionManager } from '../../hooks/useSessionManager';
 
-const AdminLayout = () => {
+const JobSeekerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
-  // Initialize session manager for admin panel
+  // Initialize session manager for job seeker panel
   useSessionManager({
     onSessionExpired: () => {
-      console.log('🔒 Admin session expired');
+      console.log('🔒 Job seeker session expired');
     },
     onSessionRefreshed: () => {
-      console.log('🔄 Admin session refreshed');
+      console.log('🔄 Job seeker session refreshed');
     },
-    validateInterval: 3 * 60 * 1000, // Check every 3 minutes for admin
+    validateInterval: 5 * 60 * 1000, // Check every 5 minutes for job seekers
   });
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, current: location.pathname === '/admin' },
-    { name: 'Users', href: '/admin/users', icon: Users, current: location.pathname === '/admin/users' },
-    { name: 'Jobs', href: '/admin/jobs-enhanced', icon: Briefcase, current: location.pathname === '/admin/jobs' },
-    { name: 'Companies', href: '/admin/companies', icon: Building, current: location.pathname === '/admin/companies' },
-    { name: 'Revenue Analytics', href: '/admin/analytics', icon: BarChart3, current: location.pathname === '/admin/analytics' },
-    { name: 'User Analytics', href: '/admin/user-analytics', icon: TrendingUp, current: location.pathname === '/admin/user-analytics' },
-    { name: 'System Health', href: '/admin/system-health', icon: Activity, current: location.pathname === '/admin/system-health' },
-    { name: 'Settings', href: '/admin/settings', icon: Settings, current: location.pathname === '/admin/settings' },
+    { 
+      name: 'Dashboard', 
+      href: '/dashboard', 
+      icon: LayoutDashboard, 
+      current: location.pathname === '/dashboard' 
+    },
+    { 
+      name: 'My Profile', 
+      href: '/jobseeker/profile', 
+      icon: User, 
+      current: location.pathname === '/jobseeker/profile' 
+    },
+    { 
+      name: 'Applications', 
+      href: '/jobseeker/applications', 
+      icon: FileText, 
+      current: location.pathname === '/jobseeker/applications' 
+    },
+    { 
+      name: 'CV Builder', 
+      href: '/jobseeker/cv-builder', 
+      icon: BookOpen, 
+      current: location.pathname === '/jobseeker/cv-builder' 
+    },
+    { 
+      name: 'Saved Jobs', 
+      href: '/my-applications', 
+      icon: Bookmark, 
+      current: location.pathname === '/my-applications' 
+    },
+    { 
+      name: 'Browse Jobs', 
+      href: '/jobs', 
+      icon: Briefcase, 
+      current: location.pathname === '/jobs' 
+    },
+    { 
+      name: 'Settings', 
+      href: '/jobseeker/settings', 
+      icon: Settings, 
+      current: location.pathname === '/jobseeker/settings' 
+    },
   ];
 
   const handleLogout = async () => {
@@ -81,7 +116,7 @@ const AdminLayout = () => {
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo - Enhanced */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200/70 bg-gradient-to-r from-[#1e3a5f] via-[#2d5a8f] to-[#1e3a5f]">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200/70 bg-gradient-to-r from-[#1e3a5f] via-[#00A19D] to-[#1e3a5f]">
             <div className="flex items-center space-x-3">
               <div className="flex-shrink-0 relative group">
                 <div className="absolute inset-0 bg-white rounded-xl blur-md opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
@@ -103,11 +138,11 @@ const AdminLayout = () => {
             </Button>
           </div>
 
-          {/* Admin Badge - Enhanced */}
-          <div className="px-4 py-4 border-b border-gray-200/70 bg-gradient-to-r from-orange-50 to-orange-100">
-            <Badge variant="destructive" className="w-full justify-center py-2 text-xs font-bold shadow-md bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] hover:from-[#FF5722] hover:to-[#FF7033]">
-              <Shield className="w-3.5 h-3.5 mr-1.5" />
-              Administrator Panel
+          {/* Job Seeker Badge - Enhanced */}
+          <div className="px-4 py-4 border-b border-gray-200/70 bg-gradient-to-r from-orange-50 to-teal-50">
+            <Badge variant="default" className="w-full justify-center py-2 text-xs font-bold shadow-md bg-gradient-to-r from-[#FF6B35] to-[#00A19D] hover:from-[#FF5722] hover:to-[#008B8B]">
+              <Briefcase className="w-3.5 h-3.5 mr-1.5" />
+              Job Seeker Dashboard
             </Badge>
           </div>
 
@@ -185,7 +220,7 @@ const AdminLayout = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     type="search"
-                    placeholder="Search dashboard..."
+                    placeholder="Search jobs, companies..."
                     className="pl-10 w-72 border-gray-200 focus:ring-2 focus:ring-[#FF6B35] rounded-xl"
                   />
                 </div>
@@ -193,6 +228,12 @@ const AdminLayout = () => {
             </div>
 
             <div className="flex items-center space-x-3">
+              {/* Notifications */}
+              <Button variant="ghost" size="sm" className="relative hover:bg-orange-50 rounded-xl">
+                <Bell className="h-5 w-5 text-gray-600" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </Button>
+
               {/* User menu - Enhanced */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -215,10 +256,10 @@ const AdminLayout = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/profile">Admin Profile</Link>
+                    <Link to="/jobseeker/profile">My Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/settings">Admin Settings</Link>
+                    <Link to="/jobseeker/settings">Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -246,4 +287,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default JobSeekerLayout;

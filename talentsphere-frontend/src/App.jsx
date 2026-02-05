@@ -5,6 +5,7 @@ import config from './config/environment.js';
 import Layout from './components/layout/Layout';
 import AdminLayout from './components/layout/AdminLayout';
 import ExternalAdminLayout from './components/layout/ExternalAdminLayout';
+import JobSeekerLayout from './components/layout/JobSeekerLayout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
@@ -142,17 +143,10 @@ function App() {
               <Layout />
             </ProtectedRoute>
           }>
-            <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
             <Route path="company-profile" element={<CompanyProfile />} />
             <Route path="applications" element={<MyApplications />} />
             <Route path="my-applications" element={<MyApplications />} />
-            
-            {/* Job Seeker Routes */}
-            <Route path="jobseeker/profile" element={<EnhancedJobSeekerProfile />} />
-            <Route path="jobseeker/settings" element={<ProfileSettings />} />
-            <Route path="jobseeker/applications" element={<ApplicationsDashboard />} />
-            <Route path="jobseeker/cv-builder" element={<CVBuilder />} />
             
             {/* Company/Employer Routes */}
             <Route path="company/profile" element={<CompanyProfileManagement />} />
@@ -169,7 +163,7 @@ function App() {
             <Route path="payment" element={
               <div className="container mx-auto px-4 py-20 text-center">
                 <h1 className="text-4xl font-bold mb-4">Payment</h1>
-                <p className="text-muted-foreground">Coming soon in the next phase!</p>
+                <p className="text-muted-foreground">Payment integration coming soon!</p>
               </div>
             } />
             <Route path="recommendations" element={
@@ -178,6 +172,19 @@ function App() {
                 <p className="text-muted-foreground">Coming soon in the next phase!</p>
               </div>
             } />
+          </Route>
+
+          {/* Job Seeker Routes with JobSeekerLayout */}
+          <Route path="/" element={
+            <ProtectedRoute requiredRole="job_seeker">
+              <JobSeekerLayout />
+            </ProtectedRoute>
+          }>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="jobseeker/profile" element={<EnhancedJobSeekerProfile />} />
+            <Route path="jobseeker/settings" element={<ProfileSettings />} />
+            <Route path="jobseeker/applications" element={<ApplicationsDashboard />} />
+            <Route path="jobseeker/cv-builder" element={<CVBuilder />} />
           </Route>
 
           {/* Admin routes with admin layout */}

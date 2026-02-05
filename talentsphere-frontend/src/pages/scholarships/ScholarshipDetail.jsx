@@ -246,9 +246,9 @@ const ScholarshipDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading scholarship details...</p>
         </div>
       </div>
@@ -257,7 +257,7 @@ const ScholarshipDetail = () => {
 
   if (error || !scholarship) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Scholarship Not Found</h2>
@@ -295,7 +295,7 @@ const ScholarshipDetail = () => {
   const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       {/* SEO Meta Tags */}
       <SEOHelmet
         title={seoTitle}
@@ -327,7 +327,7 @@ const ScholarshipDetail = () => {
               {isAuthenticated && (
                 <Button onClick={handleBookmark} variant="outline" size="sm">
                   {isBookmarked ? (
-                    <BookmarkCheck className="w-4 h-4 mr-2" />
+                    <BookmarkCheck className="w-4 h-4 mr-2 text-[#17a2b8]" />
                   ) : (
                     <Bookmark className="w-4 h-4 mr-2" />
                   )}
@@ -347,7 +347,7 @@ const ScholarshipDetail = () => {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <div className="flex justify-between items-start mb-4">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  <Badge variant="secondary" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20">
                     {scholarship.category?.name || 'General'}
                   </Badge>
                   <div className={`text-sm font-medium ${getDeadlineColor(scholarship.application_deadline)}`}>

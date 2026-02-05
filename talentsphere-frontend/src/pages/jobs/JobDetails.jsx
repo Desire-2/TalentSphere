@@ -436,7 +436,7 @@ ${user.name || user.email}`);
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-[#17a2b8]/10 rounded-lg flex items-center justify-center flex-shrink-0 border-2 border-[#17a2b8]/20">
                 {(job.company?.logo_url || job.external_company_logo) ? (
                   <img 
                     src={job.company?.logo_url || job.external_company_logo} 
@@ -451,12 +451,12 @@ ${user.name || user.email}`);
                 ) : null}
                 <div className={`fallback-icon w-12 h-12 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
                   {(job.job_source === 'external' || job.external_company_name) ? (
-                    <div className="flex flex-col items-center text-blue-600">
+                    <div className="flex flex-col items-center text-[#FF6B35]">
                       <ExternalLink className="w-5 h-5 mb-1" />
                       <Building className="w-4 h-4" />
                     </div>
                   ) : (
-                    <Building className="w-8 h-8 text-blue-600" />
+                    <Building className="w-8 h-8 text-[#003366]" />
                   )}
                 </div>
               </div>
@@ -464,19 +464,19 @@ ${user.name || user.email}`);
                 <div className="flex items-center space-x-2 mb-2">
                   <CardTitle className="text-2xl">{job.title}</CardTitle>
                   {job.is_featured && (
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                    <Badge variant="secondary" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20">
                       <Star className="w-3 h-3 mr-1" />
                       Featured
                     </Badge>
                   )}
                   {job.is_urgent && (
-                    <Badge variant="destructive" className="bg-red-100 text-red-800">
+                    <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
                       <Timer className="w-3 h-3 mr-1" />
                       Urgent
                     </Badge>
                   )}
                 </div>
-                <CardDescription className="text-lg font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+                <CardDescription className="text-lg font-semibold text-[#003366] hover:text-[#17a2b8] transition-colors">
                   {getCompanyName(job)}
                 </CardDescription>
                 <p className="text-sm text-gray-600 mt-1">{job.company?.description || ''}</p>
@@ -490,7 +490,7 @@ ${user.name || user.email}`);
             <div className="flex space-x-2">
               <Button variant="outline" size="sm" onClick={toggleBookmark}>
                 {isBookmarked ? (
-                  <BookmarkCheck className="w-4 h-4 text-blue-600" />
+                  <BookmarkCheck className="w-4 h-4 text-[#17a2b8]" />
                 ) : (
                   <Bookmark className="w-4 h-4" />
                 )}

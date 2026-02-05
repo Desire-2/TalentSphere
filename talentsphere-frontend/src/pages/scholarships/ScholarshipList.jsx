@@ -324,9 +324,9 @@ const ScholarshipList = () => {
 
   if (loading && scholarships.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading scholarships...</p>
         </div>
       </div>
@@ -354,7 +354,7 @@ const ScholarshipList = () => {
   const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
       {/* SEO Meta Tags */}
       <SEOHelmet
         title={seoTitle}
@@ -366,7 +366,7 @@ const ScholarshipList = () => {
         structuredData={breadcrumbStructuredData}
       />
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white">
+      <div className="bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#FF6B35] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <div className="flex justify-center mb-6">
@@ -377,8 +377,8 @@ const ScholarshipList = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Scholarship Opportunities
             </h1>
-            <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              Discover funding opportunities for your education. Browse through {totalScholarships} scholarships 
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+              Discover funding opportunities for your education across Africa and beyond. Browse through {totalScholarships} scholarships 
               from universities, organizations, and foundations worldwide.
             </p>
             
@@ -395,7 +395,7 @@ const ScholarshipList = () => {
                     className="pl-10 h-12 bg-white/95 border-white/20 text-gray-900 placeholder:text-gray-500"
                   />
                 </div>
-                <Button type="submit" size="lg" className="bg-white text-blue-600 hover:bg-blue-50 px-8">
+                <Button type="submit" size="lg" className="bg-white text-[#FF6B35] hover:bg-orange-50 px-8 font-bold">
                   Search
                 </Button>
               </div>
@@ -422,7 +422,7 @@ const ScholarshipList = () => {
 
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Filter className="w-5 h-5 mr-2 text-blue-600" />
+                <Filter className="w-5 h-5 mr-2 text-[#FF6B35]" />
                 Filter by Category
               </h3>
               
@@ -431,7 +431,7 @@ const ScholarshipList = () => {
                   onClick={() => handleCategoryFilter('')}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedCategory === '' 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                      ? 'bg-[#FF6B35]/10 text-[#FF6B35] border border-[#FF6B35]/20' 
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
@@ -443,7 +443,7 @@ const ScholarshipList = () => {
                     onClick={() => handleCategoryFilter(category.slug)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       selectedCategory === category.slug 
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                        ? 'bg-[#FF6B35]/10 text-[#FF6B35] border border-[#FF6B35]/20' 
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -514,7 +514,7 @@ const ScholarshipList = () => {
                     <CardHeader className="pb-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                          <Badge variant="secondary" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20">
                             {scholarship.category?.name || 'General'}
                           </Badge>
                           {scholarship.external_application_url && (
@@ -529,7 +529,7 @@ const ScholarshipList = () => {
                           {formatDeadline(scholarship.application_deadline)}
                         </div>
                       </div>
-                      <CardTitle className="text-lg group-hover:text-blue-600 transition-colors line-clamp-2">
+                      <CardTitle className="text-lg group-hover:text-[#FF6B35] transition-colors line-clamp-2">
                         {scholarship.title}
                       </CardTitle>
                       <CardDescription className="flex items-center text-gray-600">

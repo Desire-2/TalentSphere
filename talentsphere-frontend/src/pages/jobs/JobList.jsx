@@ -299,7 +299,7 @@ const JobList = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 relative overflow-hidden">
         {/* SEO Meta Tags */}
         <SEOHelmet
           title={seoTitle}
@@ -312,8 +312,8 @@ const JobList = () => {
         />
         {/* Background Decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl animate-float" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#003366]/10 to-[#17a2b8]/10 rounded-full blur-3xl animate-float" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#17a2b8]/10 to-[#FF6B35]/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         </div>
 
   <div className="relative max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
@@ -325,7 +325,7 @@ const JobList = () => {
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4 sm:mb-6">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#003366] bg-clip-text text-transparent mb-2">
                   Find Your Dream Job
                 </h1>
                 <p className="text-lg text-gray-600 flex items-center gap-2">
@@ -335,17 +335,17 @@ const JobList = () => {
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-4 lg:mt-0">
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
-                  <Briefcase className="w-4 h-4 text-blue-500" />
+                  <Briefcase className="w-4 h-4 text-[#003366]" />
                   <span className="text-sm font-medium">{pagination.total || 0} Jobs</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
-                  <Building className="w-4 h-4 text-green-500" />
+                  <Building className="w-4 h-4 text-[#17a2b8]" />
                   <span className="text-sm font-medium">
                     {new Set(jobs.map(job => getCompanyName(job))).size} Companies
                   </span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border">
-                  <ExternalLink className="w-4 h-4 text-purple-500" />
+                  <ExternalLink className="w-4 h-4 text-[#FF6B35]" />
                   <span className="text-sm font-medium">
                     {jobs.filter(job => job.job_source === 'external').length} External Jobs
                   </span>
@@ -365,13 +365,13 @@ const JobList = () => {
               {/* Main Search Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2 sm:gap-4">
                 <div className="sm:col-span-2 md:col-span-5 relative group">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#17a2b8] transition-colors" />
                   <Input
                     type="text"
                     placeholder="Job title, keywords, company name, or skills..."
                     value={filters.search}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-blue-300 rounded-xl bg-white/50 backdrop-blur-sm transition-all"
+                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-[#17a2b8] rounded-xl bg-white/50 backdrop-blur-sm transition-all"
                   />
                   {/* Recent Searches Dropdown */}
                   {recentSearches.length > 0 && filters.search === '' && (
@@ -392,17 +392,17 @@ const JobList = () => {
                   )}
                 </div>
                 <div className="sm:col-span-2 md:col-span-4 relative group">
-                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#17a2b8] transition-colors" />
                   <Input
                     type="text"
                     placeholder="City, state, or remote work..."
                     value={filters.location}
                     onChange={(e) => handleFilterChange('location', e.target.value)}
-                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-blue-300 rounded-xl bg-white/50 backdrop-blur-sm transition-all"
+                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-[#17a2b8] rounded-xl bg-white/50 backdrop-blur-sm transition-all"
                   />
                 </div>
                 <div className="sm:col-span-2 md:col-span-3">
-                  <Button type="submit" size="lg" className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all btn-primary-hover">
+                  <Button type="submit" size="lg" className="w-full h-12 bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#002244] hover:to-[#138496] rounded-xl shadow-lg hover:shadow-xl transition-all btn-primary-hover">
                     <Search className="w-5 h-5 mr-2" />
                     Search Jobs
                   </Button>
@@ -415,12 +415,12 @@ const JobList = () => {
                   type="button"
                   variant="ghost"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                  className="text-gray-600 hover:text-[#17a2b8] transition-colors"
                 >
                   <SlidersHorizontal className="w-4 h-4 mr-2" />
                   Advanced Filters
                   {appliedFiltersCount > 0 && (
-                    <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
+                    <Badge variant="secondary" className="ml-2 bg-[#17a2b8]/10 text-[#17a2b8] border-[#17a2b8]/20">
                       {appliedFiltersCount}
                     </Badge>
                   )}
@@ -478,7 +478,7 @@ const JobList = () => {
                     <Separator className="mb-6" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                       <Select value={filters.category_id || "all"} onValueChange={(value) => handleFilterChange('category_id', value === "all" ? "" : value)}>
-                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg">
+                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -490,7 +490,7 @@ const JobList = () => {
                       </Select>
 
                       <Select value={filters.employment_type || "all"} onValueChange={(value) => handleFilterChange('employment_type', value === "all" ? "" : value)}>
-                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg">
+                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg">
                           <SelectValue placeholder="Job Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -502,7 +502,7 @@ const JobList = () => {
                       </Select>
 
                       <Select value={filters.experience_level || "all"} onValueChange={(value) => handleFilterChange('experience_level', value === "all" ? "" : value)}>
-                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg">
+                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg">
                           <SelectValue placeholder="Experience" />
                         </SelectTrigger>
                         <SelectContent>
@@ -530,7 +530,7 @@ const JobList = () => {
                             placeholder="Min salary"
                             value={filters.salary_min}
                             onChange={(e) => handleFilterChange('salary_min', e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg"
+                            className="pl-10 h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg"
                           />
                         </div>
                         <div className="relative">
@@ -540,7 +540,7 @@ const JobList = () => {
                             placeholder="Max salary"
                             value={filters.salary_max}
                             onChange={(e) => handleFilterChange('salary_max', e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-100 focus:border-blue-300 rounded-lg"
+                            className="pl-10 h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg"
                           />
                         </div>
                       </div>
@@ -569,9 +569,9 @@ const JobList = () => {
                 className="text-center py-16"
               >
                 <div className="relative">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#17a2b8]/20 border-t-[#17a2b8] mx-auto mb-4"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Briefcase className="w-8 h-8 text-blue-600 animate-pulse" />
+                    <Briefcase className="w-8 h-8 text-[#003366] animate-pulse" />
                   </div>
                 </div>
                 <p className="text-lg text-gray-600 font-medium">Finding amazing opportunities...</p>
@@ -657,7 +657,7 @@ const JobList = () => {
                   size="lg"
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                   disabled={loading}
-                  className="rounded-full px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all"
+                  className="rounded-full px-8 py-3 bg-gradient-to-r from-[#003366] to-[#17a2b8] text-white hover:from-[#002244] hover:to-[#138496] transition-all"
                 >
                   {loading ? (
                     <>
@@ -772,7 +772,7 @@ const JobCard = ({
                         }
                       }}
                     />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                    <AvatarFallback className="bg-gradient-to-br from-[#003366] to-[#17a2b8] text-white font-bold text-lg">
                       {job.job_source === 'external' ? (
                         <div className="flex items-center justify-center">
                           <ExternalLink className="w-6 h-6" />
@@ -783,7 +783,7 @@ const JobCard = ({
                     </AvatarFallback>
                   </Avatar>
                   {job.job_source === 'external' && (
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-[#FF6B35] to-orange-600 rounded-full flex items-center justify-center shadow-md">
                       <ExternalLink className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -795,11 +795,11 @@ const JobCard = ({
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                      <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#003366] transition-colors">
                         {job.title}
                       </h3>
                       {job.job_source === 'external' && (
-                        <Badge className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                        <Badge className="bg-gradient-to-r from-[#FF6B35] to-orange-600 text-white">
                           <ExternalLink className="w-3 h-3 mr-1" />
                           External
                         </Badge>

@@ -230,7 +230,7 @@ const Home = () => {
   const websiteStructuredData = generateWebsiteStructuredData();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 relative overflow-hidden">
       {/* SEO Meta Tags */}
       <SEOHelmet
         title="TalentSphere - Connect Talent with Opportunities"
@@ -243,9 +243,9 @@ const Home = () => {
       />
       {/* Floating Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute top-1/3 -left-32 w-64 h-64 bg-gradient-to-br from-cyan-400/20 to-blue-400/20 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-orange-400/20 rounded-full blur-3xl animate-float" style={{animationDelay: '4s'}}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#003366]/10 to-[#17a2b8]/10 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute top-1/3 -left-32 w-64 h-64 bg-gradient-to-br from-[#17a2b8]/10 to-[#FF6B35]/10 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
+        <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-br from-[#FF6B35]/10 to-[#003366]/10 rounded-full blur-3xl animate-float" style={{animationDelay: '4s'}}></div>
       </div>
 
       {/* Featured Advertisements Carousel */}
@@ -255,7 +255,7 @@ const Home = () => {
 
       {/* Hero Section - Enhanced for Jobs & Scholarships */}
       <section className="relative py-20 px-4 mb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-indigo-600/90 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#003366]/95 via-[#17a2b8]/90 to-[#FF6B35]/85 backdrop-blur-sm"></div>
         
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -266,16 +266,16 @@ const Home = () => {
 
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="mb-8">
-            <h1 className="text-5xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-cyan-100 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-black mb-4 text-white leading-tight drop-shadow-lg">
               Discover Your Future
             </h1>
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-300 to-purple-300 leading-tight">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B35] via-orange-300 to-yellow-300 leading-tight">
               Jobs & Scholarships
             </h2>
           </div>
           
-          <p className="text-lg md:text-xl mb-10 text-blue-100 max-w-3xl mx-auto leading-relaxed">
-            Your gateway to career opportunities and educational funding. Find the perfect job or scholarship that matches your goals.
+          <p className="text-lg md:text-xl mb-10 text-white/90 max-w-3xl mx-auto leading-relaxed">
+            Your gateway to career opportunities and educational funding across Africa and beyond. Find the perfect job or scholarship that matches your goals.
           </p>
 
           {/* Enhanced Search Form with Toggle */}
@@ -288,7 +288,7 @@ const Home = () => {
                   onClick={() => setSearchType('jobs')}
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
                     searchType === 'jobs' 
-                      ? 'bg-white text-blue-600 shadow-lg' 
+                      ? 'bg-white text-[#003366] shadow-lg' 
                       : 'text-white/80 hover:text-white'
                   }`}
                 >
@@ -300,7 +300,7 @@ const Home = () => {
                   onClick={() => setSearchType('scholarships')}
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
                     searchType === 'scholarships' 
-                      ? 'bg-white text-purple-600 shadow-lg' 
+                      ? 'bg-white text-[#FF6B35] shadow-lg' 
                       : 'text-white/80 hover:text-white'
                   }`}
                 >
@@ -334,7 +334,7 @@ const Home = () => {
               <Button 
                 type="submit" 
                 size="lg" 
-                className="h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-yellow-400 to-orange-400 text-gray-900 shadow-xl hover:shadow-2xl transition-all duration-300"
+                className="h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-[#FF6B35] to-orange-500 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:from-[#ff7d4d] hover:to-orange-600"
               >
                 <Search className="w-5 h-5 mr-2" />
                 Search {searchType === 'jobs' ? 'Jobs' : 'Scholarships'}
@@ -343,17 +343,17 @@ const Home = () => {
           </form>
 
           {/* Trust Indicators */}
-          <div className="mt-8 flex flex-wrap justify-center items-center gap-6 text-white/80">
+          <div className="mt-8 flex flex-wrap justify-center items-center gap-6 text-white/90">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-[#17a2b8] rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">{stats.activeJobs} Active Jobs</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-[#FF6B35] rounded-full animate-pulse"></div>
               <span className="text-sm font-medium">{stats.scholarships} Scholarships</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Shield className="w-4 h-4 text-blue-300" />
+              <Shield className="w-4 h-4 text-white" />
               <span className="text-sm font-medium">{stats.successRate} Success Rate</span>
             </div>
           </div>
@@ -371,11 +371,11 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 mb-20">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-4"></div>
-            <Briefcase className="w-8 h-8 text-blue-600" />
-            <div className="w-12 h-1 bg-gradient-to-r from-purple-500 to-blue-400 rounded-full ml-4"></div>
+            <div className="w-12 h-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] rounded-full mr-4"></div>
+            <Briefcase className="w-8 h-8 text-[#003366]" />
+            <div className="w-12 h-1 bg-gradient-to-r from-[#17a2b8] to-[#003366] rounded-full ml-4"></div>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#003366] to-[#17a2b8]">
             Latest Jobs
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -472,7 +472,7 @@ const Home = () => {
                       </Badge>
                     </div>
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
+                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-[#003366] transition-colors line-clamp-2 mb-2">
                     {safeRenderText(job.title)}
                   </CardTitle>
                   <CardDescription className="text-gray-600 font-medium mb-1">
@@ -501,7 +501,7 @@ const Home = () => {
                 <CardContent className="pt-0">
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center text-gray-600">
-                      <MapPin className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
+                      <MapPin className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">
                         {(() => {
                           // Check if job has explicit location_type set to 'remote'
@@ -542,11 +542,11 @@ const Home = () => {
                       </span>
                     </div>
                     <div className="flex items-center text-gray-600">
-                      <Briefcase className="w-4 h-4 mr-2 text-purple-500 flex-shrink-0" />
+                      <Briefcase className="w-4 h-4 mr-2 text-[#003366] flex-shrink-0" />
                       <span className="text-sm">{snakeToTitle(job.employment_type || job.job_type || 'full_time')}</span>
                     </div>
                     <div className="flex items-center text-gray-600">
-                      <Users className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
+                      <Users className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">{job.statistics?.application_count || job.applications_count || 0} applicants</span>
                     </div>
                     {/* Enhanced external job source display */}
@@ -633,7 +633,7 @@ const Home = () => {
                     <div className="flex items-center space-x-4">
                       <Link 
                         to={`/jobs/${job.id}`}
-                        className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-800 transition-colors group-hover:scale-105 transform duration-300"
+                        className="inline-flex items-center text-[#003366] font-semibold hover:text-[#17a2b8] transition-colors group-hover:scale-105 transform duration-300"
                       >
                         View Details
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
@@ -675,7 +675,7 @@ const Home = () => {
 
         <div className="text-center mt-12">
           <Link to="/jobs">
-            <Button size="lg" className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <Button size="lg" className="group bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#002244] hover:to-[#138496] text-white px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
               <Eye className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
               Browse More Jobs
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
@@ -730,7 +730,7 @@ const Home = () => {
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#FF6B35] to-orange-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                       {scholarship.external_organization_name?.charAt(0) || scholarship.university_name?.charAt(0) || scholarship.provider?.charAt(0) || scholarship.title?.charAt(0) || 'S'}
                     </div>
                     <div className="flex flex-col items-end space-y-2">
@@ -753,7 +753,7 @@ const Home = () => {
                       </Badge>
                     </div>
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors line-clamp-2 mb-2">
+                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-[#FF6B35] transition-colors line-clamp-2 mb-2">
                     {safeRenderText(scholarship.title)}
                   </CardTitle>
                   <CardDescription className="text-gray-600 font-medium mb-1">
@@ -777,21 +777,21 @@ const Home = () => {
                       </span>
                     </div>
                     <div className="flex items-center text-gray-600">
-                      <BookOpen className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
+                      <BookOpen className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">
                         {safeRenderText(scholarship.eligible_programs || scholarship.field_of_study || 'All Fields')}
                       </span>
                     </div>
                     {scholarship.study_level && (
                       <div className="flex items-center text-gray-600">
-                        <GraduationCap className="w-4 h-4 mr-2 text-purple-500 flex-shrink-0" />
+                        <GraduationCap className="w-4 h-4 mr-2 text-[#FF6B35] flex-shrink-0" />
                         <span className="text-sm capitalize">
                           {scholarship.study_level.replace('_', ' ')}
                         </span>
                       </div>
                     )}
                     <div className="flex items-center text-gray-600">
-                      <Globe className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
+                      <Globe className="w-4 h-4 mr-2 text-[#003366] flex-shrink-0" />
                       <span className="text-sm">
                         {safeRenderLocation(scholarship.location) || 'Global'}
                       </span>
@@ -849,7 +849,7 @@ const Home = () => {
                     <div className="flex items-center space-x-4">
                       <Link 
                         to={`/scholarships/${scholarship.id}`}
-                        className="inline-flex items-center text-purple-600 font-semibold hover:text-purple-800 transition-colors group-hover:scale-105 transform duration-300"
+                        className="inline-flex items-center text-[#FF6B35] font-semibold hover:text-orange-600 transition-colors group-hover:scale-105 transform duration-300"
                       >
                         View Details
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
@@ -896,7 +896,7 @@ const Home = () => {
 
         <div className="text-center mt-12">
           <Link to="/scholarships">
-            <Button size="lg" className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+            <Button size="lg" className="group bg-gradient-to-r from-[#FF6B35] to-orange-600 hover:from-[#ff7d4d] hover:to-orange-700 text-white px-8 py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
               <GraduationCap className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
               View All Scholarships
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
@@ -909,62 +909,62 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 mb-20">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#003366] to-[#17a2b8] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
             <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#003366] to-[#17a2b8] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Briefcase className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#003366] to-[#17a2b8] bg-clip-text text-transparent">
                 {stats.activeJobs}
               </div>
               <div className="text-gray-600 font-semibold text-lg mb-2">Active Jobs</div>
               <div className="text-sm text-gray-500">Updated daily</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 mx-auto mt-4 rounded-full"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35] to-orange-600 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
             <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#FF6B35] to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <GraduationCap className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#FF6B35] to-orange-600 bg-clip-text text-transparent">
                 {stats.scholarships}
               </div>
               <div className="text-gray-600 font-semibold text-lg mb-2">Scholarships</div>
               <div className="text-sm text-gray-500">Available now</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mt-4 rounded-full"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#FF6B35] to-orange-600 mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#17a2b8] to-[#138496] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
             <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#17a2b8] to-[#138496] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Users className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#17a2b8] to-[#138496] bg-clip-text text-transparent">
                 {stats.totalUsers}
               </div>
               <div className="text-gray-600 font-semibold text-lg mb-2">Active Users</div>
               <div className="text-sm text-gray-500">Growing community</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-green-500 to-emerald-500 mx-auto mt-4 rounded-full"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#17a2b8] to-[#138496] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#003366] to-[#FF6B35] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
             <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#003366] to-[#FF6B35] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <TrendingUp className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#003366] to-[#FF6B35] bg-clip-text text-transparent">
                 {stats.successRate}
               </div>
               <div className="text-gray-600 font-semibold text-lg mb-2">Success Rate</div>
               <div className="text-sm text-gray-500">Proven results</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-yellow-500 to-orange-500 mx-auto mt-4 rounded-full"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#003366] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
         </div>
@@ -972,25 +972,25 @@ const Home = () => {
 
       {/* Call to Action Section */}
       <section className="max-w-7xl mx-auto px-4 mb-20">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-12 text-center">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#FF6B35] p-12 text-center">
           <div className="absolute inset-0 bg-black/20"></div>
           <div className="relative z-10">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Ready to Start Your Journey?
             </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              Whether you're seeking the perfect career opportunity or educational funding, 
+            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+              Whether you're seeking the perfect career opportunity or educational funding across Africa, 
               we're here to help you achieve your dreams.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/jobs">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                <Button size="lg" className="bg-white text-[#003366] hover:bg-blue-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                   <Briefcase className="w-5 h-5 mr-2" />
                   Explore Jobs
                 </Button>
               </Link>
               <Link to="/scholarships">
-                <Button size="lg" className="bg-white text-purple-600 hover:bg-purple-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                <Button size="lg" className="bg-white text-[#FF6B35] hover:bg-orange-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                   <GraduationCap className="w-5 h-5 mr-2" />
                   Find Scholarships
                 </Button>

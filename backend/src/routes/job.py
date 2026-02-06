@@ -765,22 +765,31 @@ def delete_job(current_user, job_id):
             return jsonify({'error': 'Job not found'}), 404
         
         # Check permission
-        if (current_user.role == 'employer' and 
+        # Admins can delete any job
+        if current_user.role == 'admin':
+            pass  # Admin has full permissions
+        elif (current_user.role == 'employer' and 
             job.posted_by != current_user.id):
             return jsonify({'error': 'You can only delete your own job postings'}), 403
-        
         # External admins can delete external jobs (jobs where job_source='external') 
         # and their own jobs, but not internal company jobs posted by employers
-        if (current_user.role == 'external_admin' and 
+        elif (current_user.role == 'external_admin' and 
             job.posted_by != current_user.id and 
             job.job_source != 'external'):
             return jsonify({'error': 'You can only delete external jobs or your own job postings'}), 403
         
-        # Soft delete by setting is_active to False
-        job.is_active = False
-        job.status = 'closed'
-        job.updated_at = datetime.utcnow()
+        # Log deletion before removing
+        deletion_log = {
+            'user_id': current_user.id,
+            'user_role': current_user.role,
+            'job_id': job_id,
+            'job_title': job.title,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        print(f"🗑️ JOB DELETION: {deletion_log}")
         
+        # Hard delete: remove from database (cascades handle related records)
+        db.session.delete(job)
         db.session.commit()
         
         return jsonify({'message': 'Job deleted successfully'}), 200

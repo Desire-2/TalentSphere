@@ -816,7 +816,7 @@ def verify_email():
 
 @auth_bp.route('/verify-token', methods=['POST'])
 def verify_token():
-    """Verify if a token is valid"""
+    """Verify if a token is valid - optimized version"""
     try:
         data = request.get_json()
         token = data.get('token')
@@ -826,9 +826,19 @@ def verify_token():
         
         user = User.verify_token(token)
         if user and user.is_active:
+            # Return minimal user data to avoid slow to_dict() calls
+            user_data = {
+                'id': user.id,
+                'email': user.email,
+                'role': user.role,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_active': user.is_active,
+                'is_verified': user.is_verified
+            }
             return jsonify({
                 'valid': True,
-                'user': user.to_dict()
+                'user': user_data
             }), 200
         else:
             return jsonify({'valid': False, 'error': 'Invalid or expired token'}), 401

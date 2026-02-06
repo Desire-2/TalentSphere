@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import config from '../../config/environment.js';
 import { 
   Briefcase, 
@@ -115,12 +116,12 @@ const EnhancedJobManagement = () => {
   const [authError, setAuthError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [bulkActionDialog, setBulkActionDialog] = useState({ open: false, action: '', reason: '' });
+  const [bulkActionDialog, setBulkActionDialog] = useState({ open: false, action: '', reason: '', loading: false });
   const [jobAnalytics, setJobAnalytics] = useState({});
   const [showAnalytics, setShowAnalytics] = useState({});
   const [jobStats, setJobStats] = useState(null);
   const [currentView, setCurrentView] = useState('table'); // table, cards, analytics
-  const [moderationDialog, setModerationDialog] = useState({ open: false, jobId: null, action: '', reason: '', notes: '' });
+  const [moderationDialog, setModerationDialog] = useState({ open: false, jobId: null, action: '', reason: '', notes: '', loading: false });
 
   // Authentication refresh function
   const refreshAuthentication = async () => {
@@ -267,6 +268,8 @@ const EnhancedJobManagement = () => {
   // Enhanced job moderation with reason and notes
   const handleJobModeration = async (jobId, action, reason = '', notes = '') => {
     setActionLoading(prev => ({ ...prev, [jobId]: action }));
+    setModerationDialog(prev => ({ ...prev, loading: true }));
+    
     try {
       const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/moderate`, {
         method: 'POST',
@@ -280,33 +283,55 @@ const EnhancedJobManagement = () => {
       const data = await response.json();
       if (response.ok) {
         console.log(`✅ Job ${action}d successfully:`, data);
+        
+        // Show success message
+        toast.success(`Job ${action === 'delete' ? 'deleted' : action + 'd'} successfully!`, {
+          description: data.message || `The job has been ${action === 'delete' ? 'removed from the system' : action + 'd'}.`,
+          duration: 4000
+        });
+        
+        // Refresh jobs list
         await fetchJobsWithAuth(filters);
-        setModerationDialog({ open: false, jobId: null, action: '', reason: '', notes: '' });
-        alert(`Job ${action}d successfully!`);
+        
+        // Close dialog
+        setModerationDialog({ open: false, jobId: null, action: '', reason: '', notes: '', loading: false });
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Failed to moderate job');
       }
     } catch (error) {
       console.error('❌ Failed to moderate job:', error);
+      
       if (error.message?.includes('401') || error.message?.includes('unauthorized') || 
           error.message?.includes('expired') || error.message?.includes('token')) {
         setAuthError(true);
-        alert(`Authentication expired. Please click "Refresh Authentication" and try again.`);
+        toast.error('Authentication expired', {
+          description: 'Please click "Refresh Authentication" and try again.',
+          duration: 5000
+        });
       } else {
-        alert(`Failed to ${action} job: ${error.message}`);
+        toast.error(`Failed to ${action} job`, {
+          description: error.message || 'An unexpected error occurred.',
+          duration: 5000
+        });
       }
     } finally {
       setActionLoading(prev => ({ ...prev, [jobId]: null }));
+      setModerationDialog(prev => ({ ...prev, loading: false }));
     }
   };
 
   // Bulk actions
   const handleBulkAction = async () => {
     if (selectedJobs.length === 0) {
-      alert('Please select jobs to perform bulk action');
+      toast.warning('No jobs selected', {
+        description: 'Please select jobs to perform bulk action.',
+        duration: 3000
+      });
       return;
     }
 
+    setBulkActionDialog(prev => ({ ...prev, loading: true }));
+    
     try {
       const response = await fetch(`${config.API.API_URL}/api/admin/jobs/bulk-action`, {
         method: 'POST',
@@ -323,17 +348,26 @@ const EnhancedJobManagement = () => {
 
       const data = await response.json();
       if (response.ok) {
-        alert(`Bulk ${bulkActionDialog.action} completed successfully for ${data.affected_jobs} jobs`);
-        setBulkActionDialog({ open: false, action: '', reason: '' });
+        toast.success(`Bulk ${bulkActionDialog.action} completed!`, {
+          description: `Successfully ${bulkActionDialog.action === 'delete' ? 'deleted' : bulkActionDialog.action + 'd'} ${data.affected_jobs} job(s).`,
+          duration: 4000
+        });
+        
+        setBulkActionDialog({ open: false, action: '', reason: '', loading: false });
         setSelectedJobs([]);
         setSelectAll(false);
         await fetchJobsWithAuth(filters);
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Failed to perform bulk action');
       }
     } catch (error) {
       console.error('Bulk action failed:', error);
-      alert(`Failed to perform bulk action: ${error.message}`);
+      toast.error('Bulk action failed', {
+        description: error.message || 'An unexpected error occurred.',
+        duration: 5000
+      });
+    } finally {
+      setBulkActionDialog(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -678,33 +712,77 @@ const EnhancedJobManagement = () => {
             </Button>
 
             {selectedJobs.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Bulk Actions ({selectedJobs.length})
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setBulkActionDialog({ open: true, action: 'approve', reason: '' })}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Bulk Approve
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setBulkActionDialog({ open: true, action: 'reject', reason: '' })}>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Bulk Reject
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setBulkActionDialog({ open: true, action: 'feature', reason: '' })}>
-                    <Star className="h-4 w-4 mr-2" />
-                    Bulk Feature
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setBulkActionDialog({ open: true, action: 'suspend', reason: '' })}>
-                    <Pause className="h-4 w-4 mr-2" />
-                    Bulk Suspend
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <>
+                <Badge variant="secondary" className="px-3 py-1.5 bg-blue-100 text-blue-700 border-blue-300">
+                  {selectedJobs.length} {selectedJobs.length === 1 ? 'job' : 'jobs'} selected
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedJobs([]);
+                    setSelectAll(false);
+                  }}
+                  className="hover:bg-red-50 hover:text-red-600"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear selection
+                </Button>
+              </>
             )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant={selectedJobs.length > 0 ? "default" : "outline"} 
+                  size="sm"
+                  disabled={selectedJobs.length === 0}
+                  className={selectedJobs.length > 0 ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Bulk Actions {selectedJobs.length > 0 ? `(${selectedJobs.length})` : ''}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => setBulkActionDialog({ open: true, action: 'approve', reason: '' })}
+                  disabled={selectedJobs.length === 0}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Bulk Approve
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setBulkActionDialog({ open: true, action: 'reject', reason: '' })}
+                  disabled={selectedJobs.length === 0}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Bulk Reject
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setBulkActionDialog({ open: true, action: 'feature', reason: '' })}
+                  disabled={selectedJobs.length === 0}
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Bulk Feature
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setBulkActionDialog({ open: true, action: 'suspend', reason: '' })}
+                  disabled={selectedJobs.length === 0}
+                >
+                  <Pause className="h-4 w-4 mr-2" />
+                  Bulk Suspend
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setBulkActionDialog({ open: true, action: 'delete', reason: '' })}
+                  className="text-red-600"
+                  disabled={selectedJobs.length === 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Bulk Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       )}
@@ -719,6 +797,9 @@ const EnhancedJobManagement = () => {
             <CardTitle>Jobs Management ({pagination?.total || 0})</CardTitle>
             <CardDescription>
               Showing {jobs.length} of {pagination?.total || 0} jobs
+              {selectedJobs.length === 0 && jobs.length > 0 && (
+                <span className="ml-2 text-blue-600">• Select jobs using checkboxes for bulk actions</span>
+              )}
             </CardDescription>
           </div>
           
@@ -787,10 +868,16 @@ const EnhancedJobManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectAll}
-                      onCheckedChange={handleSelectAll}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectAll}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all jobs"
+                      />
+                      {selectAll && (
+                        <span className="text-xs text-blue-600 font-medium">All</span>
+                      )}
+                    </div>
                   </TableHead>
                   <TableHead>Job Details</TableHead>
                   <TableHead>Company</TableHead>
@@ -806,12 +893,18 @@ const EnhancedJobManagement = () => {
                   const status = getStatusBadge(job.status);
                   const employmentType = getEmploymentTypeBadge(job.employment_type);
                   const experienceLevel = getExperienceLevelBadge(job.experience_level);
+                  const isSelected = selectedJobs.includes(job.id);
                   
                   return (
-                    <TableRow key={job.id} className="hover:bg-gray-50">
+                    <TableRow 
+                      key={job.id} 
+                      className={`hover:bg-gray-50 transition-colors ${
+                        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                    >
                       <TableCell>
                         <Checkbox
-                          checked={selectedJobs.includes(job.id)}
+                          checked={isSelected}
                           onCheckedChange={(checked) => handleSelectJob(job.id, checked)}
                         />
                       </TableCell>
@@ -1066,14 +1159,14 @@ const EnhancedJobManagement = () => {
         {/* Enhanced Pagination */}
         {pagination && pagination.pages > 1 && (
           <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
               <span>
                 Showing {((pagination.page - 1) * pagination.per_page) + 1} to{' '}
                 {Math.min(pagination.page * pagination.per_page, pagination.total)} of{' '}
                 {pagination.total} results
               </span>
               {selectedJobs.length > 0 && (
-                <Badge variant="secondary">
+                <Badge variant="default" className="bg-blue-600">
                   {selectedJobs.length} selected
                 </Badge>
               )}
@@ -1305,7 +1398,8 @@ const EnhancedJobManagement = () => {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setModerationDialog({ open: false, jobId: null, action: '', reason: '', notes: '' })}
+              onClick={() => setModerationDialog({ open: false, jobId: null, action: '', reason: '', notes: '', loading: false })}
+              disabled={moderationDialog.loading}
             >
               Cancel
             </Button>
@@ -1316,9 +1410,17 @@ const EnhancedJobManagement = () => {
                 moderationDialog.reason, 
                 moderationDialog.notes
               )}
-              disabled={!moderationDialog.reason.trim()}
+              disabled={!moderationDialog.reason.trim() || moderationDialog.loading}
+              className={moderationDialog.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : ''}
             >
-              Confirm {moderationDialog.action}
+              {moderationDialog.loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </>
+              ) : (
+                `Confirm ${moderationDialog.action}`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1348,15 +1450,24 @@ const EnhancedJobManagement = () => {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setBulkActionDialog({ open: false, action: '', reason: '' })}
+              onClick={() => setBulkActionDialog({ open: false, action: '', reason: '', loading: false })}
+              disabled={bulkActionDialog.loading}
             >
               Cancel
             </Button>
             <Button 
               onClick={handleBulkAction}
-              disabled={!bulkActionDialog.reason.trim()}
+              disabled={!bulkActionDialog.reason.trim() || bulkActionDialog.loading}
+              className={bulkActionDialog.action === 'delete' ? 'bg-red-600 hover:bg-red-700' : ''}
             >
-              Confirm Bulk {bulkActionDialog.action}
+              {bulkActionDialog.loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing {selectedJobs.length} job(s)...
+                </>
+              ) : (
+                `Confirm Bulk ${bulkActionDialog.action}`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

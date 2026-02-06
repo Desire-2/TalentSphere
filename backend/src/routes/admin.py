@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, asc, and_, or_
+from sqlalchemy.orm import joinedload, selectinload
 from decimal import Decimal
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
@@ -354,8 +355,12 @@ def get_jobs_admin(current_user):
         sort_by = request.args.get('sort_by', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
         
-        # Build query
-        query = Job.query
+        # Build query with eager loading to avoid N+1 queries
+        query = Job.query.options(
+            joinedload(Job.company),
+            joinedload(Job.category),
+            joinedload(Job.poster)
+        )
         
         if status:
             query = query.filter_by(status=status)
@@ -391,12 +396,17 @@ def get_jobs_admin(current_user):
         # Paginate
         jobs = query.paginate(page=page, per_page=per_page, error_out=False)
         
+        # Build lightweight response without redundant nested calls
         job_list = []
         for job in jobs.items:
             job_data = job.to_dict(include_details=True, include_stats=True)
-            job_data['company'] = job.company.to_dict() if job.company else None
-            job_data['category'] = job.category.to_dict() if job.category else None
-            job_data['poster'] = job.poster.to_dict() if job.poster else None
+            # Use pre-loaded relationships (already loaded via joinedload)
+            if job.company:
+                job_data['company'] = {'id': job.company.id, 'name': job.company.name, 'is_verified': job.company.is_verified}
+            if job.category:
+                job_data['category'] = {'id': job.category.id, 'name': job.category.name}
+            if job.poster:
+                job_data['poster'] = {'id': job.poster.id, 'email': job.poster.email, 'role': job.poster.role}
             job_list.append(job_data)
         
         return jsonify({
@@ -425,7 +435,7 @@ def moderate_job(current_user, job_id):
             return jsonify({'error': 'Job not found'}), 404
         
         data = request.get_json()
-        action = data.get('action')  # approve, reject, feature, unfeature, suspend, reactivate
+        action = data.get('action')  # approve, reject, feature, unfeature, suspend, reactivate, delete
         reason = data.get('reason', '')
         notes = data.get('notes', '')
         
@@ -454,6 +464,26 @@ def moderate_job(current_user, job_id):
             job.is_urgent = True
         elif action == 'remove_urgent':
             job.is_urgent = False
+        elif action == 'delete':
+            # Hard delete: remove from database
+            deletion_log = {
+                'admin_id': current_user.id,
+                'admin_email': current_user.email,
+                'job_id': job_id,
+                'job_title': job.title,
+                'action': 'delete',
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            print(f"🗑️ JOB DELETION (via moderate): {deletion_log}")
+            
+            # Delete the job (cascades will handle related records)
+            db.session.delete(job)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Job deleted successfully',
+                'deletion_log': deletion_log
+            }), 200
         else:
             return jsonify({'error': 'Invalid action'}), 400
         
@@ -490,6 +520,44 @@ def moderate_job(current_user, job_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to moderate job', 'details': str(e)}), 500
 
+@admin_bp.route('/admin/jobs/<int:job_id>', methods=['DELETE'])
+@token_required
+@role_required('admin')
+def delete_job_admin(current_user, job_id):
+    """Delete a job posting (admin) - Hard delete from database"""
+    try:
+        job = Job.query.get(job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        # Log the deletion before removing
+        deletion_log = {
+            'admin_id': current_user.id,
+            'admin_email': current_user.email,
+            'job_id': job_id,
+            'job_title': job.title,
+            'company_id': job.company_id,
+            'posted_by': job.posted_by,
+            'action': 'delete',
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        print(f"🗑️ JOB DELETION LOG (DELETE endpoint): {deletion_log}")
+        
+        # Hard delete: remove from database (cascades handle related records)
+        db.session.delete(job)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Job deleted successfully',
+            'deletion_log': deletion_log
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ JOB DELETION ERROR: {str(e)}")
+        return jsonify({'error': 'Failed to delete job', 'details': str(e)}), 500
+
 @admin_bp.route('/admin/jobs/bulk-action', methods=['POST'])
 @token_required
 @role_required('admin')
@@ -508,6 +576,7 @@ def bulk_job_action(current_user):
             return jsonify({'error': 'Some jobs not found'}), 404
         
         updated_jobs = []
+        deleted_job_ids = []  # Track deleted jobs separately
         
         for job in jobs:
             old_status = job.status
@@ -552,15 +621,18 @@ def bulk_job_action(current_user):
                 updated_jobs.append(job)
             
             elif action == 'delete':
-                # Soft delete (set inactive and closed)
-                job.is_active = False
-                job.status = 'deleted'
-                updated_jobs.append(job)
+                # Hard delete (remove from database)
+                deleted_job_ids.append(job.id)
+                db.session.delete(job)
+                # Don't append to updated_jobs since it's deleted
             
+            # Only update timestamp for jobs that weren't deleted
             if job in updated_jobs:
                 job.updated_at = datetime.utcnow()
         
-        if not updated_jobs:
+        # Check if any jobs were affected
+        total_affected = len(updated_jobs) + len(deleted_job_ids)
+        if total_affected == 0:
             return jsonify({'error': f'No jobs were updated with action: {action}'}), 400
         
         # Log bulk action
@@ -570,7 +642,9 @@ def bulk_job_action(current_user):
             'action': action,
             'reason': reason,
             'job_ids': job_ids,
-            'affected_count': len(updated_jobs),
+            'affected_count': total_affected,
+            'deleted_count': len(deleted_job_ids),
+            'updated_count': len(updated_jobs),
             'timestamp': datetime.utcnow().isoformat()
         }
         
@@ -578,12 +652,20 @@ def bulk_job_action(current_user):
         
         db.session.commit()
         
-        return jsonify({
+        # Build response based on action type
+        response_data = {
             'message': f'Bulk {action} completed successfully',
-            'affected_jobs': len(updated_jobs),
-            'jobs': [job.to_dict(include_details=True) for job in updated_jobs],
+            'affected_jobs': total_affected,
             'bulk_log': bulk_log
-        }), 200
+        }
+        
+        # Only include job data for non-delete actions
+        if action != 'delete':
+            response_data['jobs'] = [job.to_dict(include_details=True) for job in updated_jobs]
+        else:
+            response_data['deleted_job_ids'] = deleted_job_ids
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         db.session.rollback()
@@ -658,26 +740,27 @@ def get_job_analytics(current_user, job_id):
 @token_required
 @role_required('admin')
 def get_jobs_stats(current_user):
-    """Get comprehensive job statistics"""
+    """Get comprehensive job statistics - optimized with aggregation"""
     try:
         # Get time range
         days = request.args.get('days', 30, type=int)
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
         
+        # Use subqueries and optimized aggregations
         # Job status distribution
         status_distribution = db.session.query(
             Job.status,
             func.count(Job.id).label('count')
         ).group_by(Job.status).all()
         
-        # Jobs by category
+        # Jobs by category - optimized
         jobs_by_category = db.session.query(
             JobCategory.name,
             func.count(Job.id).label('count')
-        ).join(Job).group_by(JobCategory.id, JobCategory.name).all()
+        ).join(Job).group_by(JobCategory.id, JobCategory.name).limit(20).all()
         
-        # Jobs over time
+        # Jobs over time - limited to requested period
         daily_job_posts = db.session.query(
             func.date(Job.created_at).label('date'),
             func.count(Job.id).label('count')
@@ -685,49 +768,34 @@ def get_jobs_stats(current_user):
             Job.created_at >= start_date
         ).group_by(func.date(Job.created_at)).all()
         
-        # Top performing jobs (by applications)
+        # Top performing jobs - limited to 5 for faster response
         top_jobs = db.session.query(
             Job.id,
             Job.title,
             Company.name.label('company_name'),
             func.count(Application.id).label('application_count')
-        ).join(Company).outerjoin(Application).group_by(
+        ).select_from(Job).join(Company).outerjoin(Application).group_by(
             Job.id, Job.title, Company.name
-        ).order_by(desc(func.count(Application.id))).limit(10).all()
+        ).order_by(desc(func.count(Application.id))).limit(5).all()
         
-        # Employment type distribution
-        employment_type_dist = db.session.query(
-            Job.employment_type,
-            func.count(Job.id).label('count')
-        ).group_by(Job.employment_type).all()
-        
-        # Experience level distribution
-        experience_level_dist = db.session.query(
-            Job.experience_level,
-            func.count(Job.id).label('count')
-        ).group_by(Job.experience_level).all()
-        
-        # Featured vs regular jobs performance
-        featured_stats = db.session.query(
-            Job.is_featured,
-            func.count(Job.id).label('job_count'),
-            func.avg(Job.view_count).label('avg_views'),
-            func.avg(Job.application_count).label('avg_applications')
-        ).group_by(Job.is_featured).all()
+        # Quick counts without additional joins
+        total_jobs = db.session.query(func.count(Job.id)).scalar() or 0
+        active_jobs = db.session.query(func.count(Job.id)).filter(Job.is_active == True).scalar() or 0
+        featured_jobs = db.session.query(func.count(Job.id)).filter(Job.is_featured == True).scalar() or 0
+        pending_jobs = db.session.query(func.count(Job.id)).filter(Job.status == 'pending').scalar() or 0
+        new_jobs_period = db.session.query(func.count(Job.id)).filter(Job.created_at >= start_date).scalar() or 0
         
         stats = {
             'overview': {
-                'total_jobs': Job.query.count(),
-                'active_jobs': Job.query.filter_by(is_active=True).count(),
-                'featured_jobs': Job.query.filter_by(is_featured=True).count(),
-                'pending_jobs': Job.query.filter_by(status='pending').count(),
-                'new_jobs_period': Job.query.filter(Job.created_at >= start_date).count()
+                'total_jobs': total_jobs,
+                'active_jobs': active_jobs,
+                'featured_jobs': featured_jobs,
+                'pending_jobs': pending_jobs,
+                'new_jobs_period': new_jobs_period
             },
             'distributions': {
                 'status': [{'status': status, 'count': count} for status, count in status_distribution],
-                'category': [{'category': name, 'count': count} for name, count in jobs_by_category],
-                'employment_type': [{'type': emp_type or 'Not specified', 'count': count} for emp_type, count in employment_type_dist],
-                'experience_level': [{'level': level or 'Not specified', 'count': count} for level, count in experience_level_dist]
+                'category': [{'category': name, 'count': count} for name, count in jobs_by_category]
             },
             'trends': {
                 'daily_posts': [{'date': str(date), 'count': count} for date, count in daily_job_posts]
@@ -741,15 +809,6 @@ def get_jobs_stats(current_user):
                         'applications': application_count
                     }
                     for job_id, title, company_name, application_count in top_jobs
-                ],
-                'featured_vs_regular': [
-                    {
-                        'is_featured': is_featured,
-                        'job_count': job_count,
-                        'avg_views': float(avg_views or 0),
-                        'avg_applications': float(avg_applications or 0)
-                    }
-                    for is_featured, job_count, avg_views, avg_applications in featured_stats
                 ]
             }
         }

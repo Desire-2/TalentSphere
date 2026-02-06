@@ -51,6 +51,8 @@ const ScholarshipsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('updated_at');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [pagination, setPagination] = useState({
     page: 1,
     per_page: 20,
@@ -79,6 +81,8 @@ const ScholarshipsManagement = () => {
       const params = {
         page,
         per_page: pagination.per_page,
+        sort_by: sortBy,
+        sort_order: sortOrder,
         ...(searchTerm && { search: searchTerm }),
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(typeFilter !== 'all' && { scholarship_type: typeFilter })
@@ -148,7 +152,7 @@ const ScholarshipsManagement = () => {
   useEffect(() => {
     fetchScholarships();
     fetchStats();
-  }, [searchTerm, statusFilter, typeFilter]);
+  }, [searchTerm, statusFilter, typeFilter, sortBy, sortOrder]);
 
   // Handle pagination
   const handlePageChange = (newPage) => {
@@ -333,7 +337,7 @@ const ScholarshipsManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
@@ -366,6 +370,25 @@ const ScholarshipsManagement = () => {
                 <SelectItem value="sports">Sports</SelectItem>
                 <SelectItem value="academic">Academic</SelectItem>
                 <SelectItem value="research">Research</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(value) => {
+              setSortBy(value);
+              if (value === 'updated_at' || value === 'created_at') {
+                setSortOrder('desc');
+              } else if (value === 'deadline') {
+                setSortOrder('asc');
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_at">Recently Updated</SelectItem>
+                <SelectItem value="created_at">Newly Added</SelectItem>
+                <SelectItem value="deadline">Deadline</SelectItem>
+                <SelectItem value="title">Title</SelectItem>
+                <SelectItem value="organization">Organization</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2">

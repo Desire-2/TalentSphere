@@ -14,7 +14,9 @@ import {
   Star,
   Bookmark,
   BookmarkCheck,
-  ArrowRight
+  ArrowRight,
+  ArrowUpDown,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,6 +159,8 @@ const ScholarshipList = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [sortBy, setSortBy] = useState('updated_at');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalScholarships, setTotalScholarships] = useState(0);
@@ -193,7 +197,7 @@ const ScholarshipList = () => {
   useEffect(() => {
     fetchScholarships();
     fetchCategories();
-  }, [currentPage, searchTerm, selectedCategory]);
+  }, [currentPage, searchTerm, selectedCategory, sortBy, sortOrder]);
 
     const fetchScholarships = async () => {
     try {
@@ -209,6 +213,8 @@ const ScholarshipList = () => {
         study_level: filters.studyLevel,
         funding_type: filters.fundingType,
         location: filters.location,
+        sort_by: sortBy,
+        sort_order: sortOrder,
         status: 'published' // Only show published scholarships
       };
 
@@ -320,6 +326,41 @@ const ScholarshipList = () => {
     if (diffDays <= 7) return 'text-orange-600';
     if (diffDays <= 30) return 'text-yellow-600';
     return 'text-green-600';
+  };
+
+  const formatLastUpdated = (updatedAt) => {
+    if (!updatedAt) return 'Recently';
+    const date = new Date(updatedAt);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleSortChange = (newSortBy) => {
+    if (sortBy === newSortBy) {
+      // Toggle sort order if same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      // Set default order based on sort type
+      if (newSortBy === 'updated_at' || newSortBy === 'created_at') {
+        setSortOrder('desc'); // Most recent first
+      } else if (newSortBy === 'deadline') {
+        setSortOrder('asc'); // Nearest deadline first
+      } else {
+        setSortOrder('asc');
+      }
+    }
+    setCurrentPage(1);
   };
 
   if (loading && scholarships.length === 0) {
@@ -457,7 +498,7 @@ const ScholarshipList = () => {
           {/* Main Content */}
           <div className="lg:w-3/4">
             {/* Results Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
                   {selectedCategory ? 
@@ -469,6 +510,29 @@ const ScholarshipList = () => {
                   {totalScholarships} scholarships found
                   {searchTerm && ` for "${searchTerm}"`}
                 </p>
+              </div>
+              
+              {/* Sort Options */}
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => handleSortChange(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20"
+                >
+                  <option value="updated_at">Recently Updated</option>
+                  <option value="created_at">Newly Added</option>
+                  <option value="deadline">Deadline</option>
+                  <option value="title">Title (A-Z)</option>
+                  <option value="amount">Amount</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
               </div>
             </div>
 
@@ -536,6 +600,12 @@ const ScholarshipList = () => {
                         <Building2 className="w-4 h-4 mr-1" />
                         {scholarship.external_organization_name || scholarship.university_name || 'TalentSphere'}
                       </CardDescription>
+                      {scholarship.updated_at && (
+                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Updated {formatLastUpdated(scholarship.updated_at)}
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="pt-0">
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3">

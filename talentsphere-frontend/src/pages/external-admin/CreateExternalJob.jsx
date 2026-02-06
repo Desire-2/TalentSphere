@@ -499,6 +499,8 @@ Please share:
     application_url: '',
     application_email: '',
     application_instructions: '',
+    application_deadline: '', // Deadline for applications (required for auto-cleanup)
+    expires_at: '', // Job expiration date (optional fallback)
     
     // Publishing
     status: 'published'
@@ -552,7 +554,7 @@ Please share:
       title: 'Application Process',
       icon: FileText,
       description: 'How candidates can apply',
-      fields: ['application_type', 'application_url', 'application_email', 'application_instructions']
+      fields: ['application_type', 'application_url', 'application_email', 'application_instructions', 'application_deadline', 'expires_at']
     }
   ]), []);
 
@@ -1220,6 +1222,8 @@ Tools: Git, Jest, Cypress
         application_url: coerceToString(parsedData.application_url ?? parsedData.apply_url ?? parsedData.url ?? salarySource.url, ''),
         application_email: coerceToString(parsedData.application_email ?? parsedData.apply_email ?? parsedData.email, ''),
         application_instructions: coerceToString(parsedData.application_instructions ?? parsedData.apply_instructions, ''),
+        application_deadline: coerceToString(parsedData.application_deadline ?? parsedData.deadline ?? parsedData.apply_by, ''),
+        expires_at: coerceToString(parsedData.expires_at ?? parsedData.expiration_date ?? parsedData.end_date, ''),
         
         // Company (if provided)
         external_company_name: coerceToString(parsedData.company_name ?? companySource?.name ?? parsedData.employer, formData.external_company_name || ''),
@@ -1548,6 +1552,28 @@ Tools: Git, Jest, Cypress
     if (formData.application_type === 'email' && !formData.application_email?.trim()) {
       fieldErrors.application_email = 'Application email is required';
     }
+
+    // Validate application deadline (required for external jobs)
+    if (!formData.application_deadline?.trim()) {
+      fieldErrors.application_deadline = 'Application deadline is required for external jobs';
+    } else {
+      const deadlineDate = new Date(formData.application_deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (deadlineDate < today) {
+        fieldErrors.application_deadline = 'Application deadline must be a future date';
+      }
+    }
+
+    // Validate expires_at if provided
+    if (formData.expires_at?.trim()) {
+      const expirationDate = new Date(formData.expires_at);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (expirationDate < today) {
+        fieldErrors.expires_at = 'Expiration date must be a future date';
+      }
+    }
     
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
@@ -1586,6 +1612,9 @@ Tools: Git, Jest, Cypress
         years_experience_max: formData.years_experience_max ? parseInt(formData.years_experience_max) : null,
         // Ensure category_id is properly set (backend will use default if null/undefined)
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
+        // Include deadline fields for auto-cleanup system
+        application_deadline: formData.application_deadline ? formData.application_deadline : null,
+        expires_at: formData.expires_at ? formData.expires_at : null,
       };
 
       delete jobData.location_city;
@@ -3218,6 +3247,46 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                       height={400}
                       className="mb-4"
                     />
+                  </div>
+
+                  {/* Application Deadline Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Application Deadline" field="application_deadline" required>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <Input
+                          type="date"
+                          id="application_deadline"
+                          value={formData.application_deadline}
+                          onChange={(e) => stableInputChange('application_deadline', e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="enhanced-input pl-10"
+                          required
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        <Info className="inline h-3 w-3 mr-1" />
+                        External jobs are auto-deleted 1 day after this deadline
+                      </p>
+                    </FormField>
+
+                    <FormField label="Job Expiration Date" field="expires_at">
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <Input
+                          type="date"
+                          id="expires_at"
+                          value={formData.expires_at}
+                          onChange={(e) => stableInputChange('expires_at', e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="enhanced-input pl-10"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        <Info className="inline h-3 w-3 mr-1" />
+                        Optional: When the job posting should expire (fallback if no deadline)
+                      </p>
+                    </FormField>
                   </div>
                 </CardContent>
               </Card>

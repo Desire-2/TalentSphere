@@ -14,7 +14,9 @@ import {
   ChevronDown,
   LogOut,
   TrendingUp,
-  Shield
+  Shield,
+  GraduationCap,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +54,9 @@ const AdminLayout = () => {
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, current: location.pathname === '/admin' },
     { name: 'Users', href: '/admin/users', icon: Users, current: location.pathname === '/admin/users' },
     { name: 'Jobs', href: '/admin/jobs-enhanced', icon: Briefcase, current: location.pathname === '/admin/jobs' },
+    { name: 'Scholarships', href: '/admin/scholarships', icon: GraduationCap, current: location.pathname.startsWith('/admin/scholarships') },
     { name: 'Companies', href: '/admin/companies', icon: Building, current: location.pathname === '/admin/companies' },
+    { name: 'Cleanup', href: '/admin/cleanup', icon: Trash2, current: location.pathname === '/admin/cleanup' },
     { name: 'Revenue Analytics', href: '/admin/analytics', icon: BarChart3, current: location.pathname === '/admin/analytics' },
     { name: 'User Analytics', href: '/admin/user-analytics', icon: TrendingUp, current: location.pathname === '/admin/user-analytics' },
     { name: 'System Health', href: '/admin/system-health', icon: Activity, current: location.pathname === '/admin/system-health' },

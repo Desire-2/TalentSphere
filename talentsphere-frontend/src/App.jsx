@@ -24,6 +24,8 @@ import UserManagement from './pages/admin/UserManagement';
 import JobManagement from './pages/admin/JobManagement';
 import EnhancedJobManagement from './pages/admin/EnhancedJobManagement';
 import CompanyManagement from './pages/admin/CompanyManagement';
+import AdminScholarshipManagement from './pages/admin/AdminScholarshipManagement';
+import AdminCleanupManagement from './pages/admin/AdminCleanupManagement';
 import RevenueAnalytics from './pages/admin/RevenueAnalytics';
 import UserAnalytics from './pages/admin/UserAnalytics';
 import SystemHealth from './pages/admin/SystemHealth';
@@ -204,7 +206,11 @@ function App() {
             <Route path="users" element={<UserManagement />} />
             <Route path="jobs" element={<JobManagement />} />
             <Route path="jobs-enhanced" element={<EnhancedJobManagement />} />
+            <Route path="scholarships" element={<AdminScholarshipManagement />} />
+            <Route path="scholarships/create" element={<CreateScholarship />} />
+            <Route path="scholarships/:id/edit" element={<EditScholarship />} />
             <Route path="companies" element={<CompanyManagement />} />
+            <Route path="cleanup" element={<AdminCleanupManagement />} />
             <Route path="analytics" element={<RevenueAnalytics />} />
             <Route path="user-analytics" element={<UserAnalytics />} />
             <Route path="system-health" element={<SystemHealth />} />

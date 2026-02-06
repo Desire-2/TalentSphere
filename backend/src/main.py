@@ -37,6 +37,7 @@ from src.routes.employer import employer_bp
 from src.routes.share_routes import share_bp
 from src.routes.scholarship import scholarship_bp
 from src.routes.cv_builder import cv_builder_bp
+from src.routes.cleanup_routes import cleanup_bp
 
 # Import optimized components
 from src.routes.optimized_api import optimized_api_bp
@@ -45,6 +46,7 @@ from src.utils.cache_middleware import ResponseCacheMiddleware, advanced_cache, 
 from src.services.notification_scheduler import notification_scheduler
 from src.services.job_scheduler import job_scheduler
 from src.services.job_digest_scheduler import job_digest_scheduler
+from src.services.cleanup_service import start_cleanup_service, stop_cleanup_service
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -165,6 +167,7 @@ app.register_blueprint(employer_bp, url_prefix='/api')
 app.register_blueprint(share_bp, url_prefix='/api')
 app.register_blueprint(scholarship_bp, url_prefix='/api')
 app.register_blueprint(cv_builder_bp)  # Already has /api/cv-builder prefix
+app.register_blueprint(cleanup_bp, url_prefix='/api')
 
 # Register optimized API endpoints
 app.register_blueprint(optimized_api_bp, url_prefix='/api')
@@ -313,7 +316,20 @@ if __name__ == '__main__':
         job_digest_scheduler.start()
         print("✅ Job digest scheduler started (daily & weekly digests)")
     except Exception as e:
-        print(f"⚠️  Job digest scheduler failed to start: {e}")    
+        print(f"⚠️  Job digest scheduler failed to start: {e}")
+    
+    # Start cleanup service
+    try:
+        cleanup_service = start_cleanup_service()
+        if cleanup_service and cleanup_service.is_running:
+            print("✅ Cleanup service started (external jobs & scholarships auto-delete)")
+        else:
+            print("⚠️  Cleanup service initialized but may not be running in all workers")
+    except Exception as e:
+        print(f"⚠️  Cleanup service failed to start: {e}")
+        import traceback
+        traceback.print_exc()
+    
     # Warm cache if requested
     if args.warm_cache:
         warm_cache_on_startup()

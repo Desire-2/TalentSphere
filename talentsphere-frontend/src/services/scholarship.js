@@ -111,6 +111,54 @@ export const scholarshipService = {
     }
   },
 
+  // Admin scholarship management
+  getAdminScholarships: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+          queryParams.append(key, params[key]);
+        }
+      });
+      
+      const response = await api.get(`/scholarships?${queryParams.toString()}`);
+      return response.data || response;
+    } catch (error) {
+      console.error('Error in getAdminScholarships:', error);
+      throw error;
+    }
+  },
+
+  getAdminScholarshipStats: async () => {
+    try {
+      const response = await api.get('/scholarships/admin/stats');
+      return response.data || response;
+    } catch (error) {
+      console.error('Error in getAdminScholarshipStats:', error);
+      // Return default stats on error
+      return {
+        total_scholarships: 0,
+        published_scholarships: 0,
+        draft_scholarships: 0,
+        external_scholarships: 0,
+        internal_scholarships: 0,
+        applications_count: 0,
+        views_count: 0
+      };
+    }
+  },
+
+  toggleFeatureScholarship: async (id) => {
+    const response = await api.post(`/scholarships/${id}/toggle-feature`);
+    return response.data;
+  },
+
+  updateScholarshipStatus: async (id, status) => {
+    const response = await api.patch(`/scholarships/${id}/status`, { status });
+    return response.data;
+  },
+
   getExternalScholarshipById: async (id) => {
     try {
       const response = await api.get(`/scholarships/${id}`);

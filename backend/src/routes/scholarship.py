@@ -42,8 +42,8 @@ def get_scholarships():
         max_amount = request.args.get('max_amount', type=int)
         deadline_within_days = request.args.get('deadline_within_days', type=int)
         search = request.args.get('search')
-        sort_by = request.args.get('sort_by', 'deadline')
-        sort_order = request.args.get('sort_order', 'asc')
+        sort_by = request.args.get('sort_by', 'updated_at')
+        sort_order = request.args.get('sort_order', 'desc')
         
         # Build query for published scholarships only
         query = Scholarship.query.filter(
@@ -101,8 +101,10 @@ def get_scholarships():
             order_col = Scholarship.application_deadline
         elif sort_by == 'created_at':
             order_col = Scholarship.created_at
+        elif sort_by == 'updated_at':
+            order_col = Scholarship.updated_at
         else:
-            order_col = Scholarship.application_deadline
+            order_col = Scholarship.updated_at
         
         if sort_order == 'desc' and sort_by != 'amount':
             query = query.order_by(desc(order_col))
@@ -200,7 +202,7 @@ def get_external_scholarships(current_user):
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         status = request.args.get('status')
         search = request.args.get('search')
-        sort_by = request.args.get('sort_by', 'created_at')
+        sort_by = request.args.get('sort_by', 'updated_at')
         sort_order = request.args.get('sort_order', 'desc')
         
         query = Scholarship.query.filter_by(scholarship_source='external')
@@ -228,8 +230,10 @@ def get_external_scholarships(current_user):
             order_col = Scholarship.application_deadline
         elif sort_by == 'created_at':
             order_col = Scholarship.created_at
+        elif sort_by == 'updated_at':
+            order_col = Scholarship.updated_at
         else:
-            order_col = Scholarship.created_at
+            order_col = Scholarship.updated_at
         
         if sort_order == 'desc':
             query = query.order_by(desc(order_col))
@@ -878,6 +882,90 @@ def track_application_click(scholarship_id, current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to track application', 'details': str(e)}), 500
+
+
+# Admin-specific scholarship endpoints
+@scholarship_bp.route('/scholarships/admin/stats', methods=['GET'])
+@token_required
+@role_required('admin')
+def get_admin_scholarship_stats(current_user):
+    """Get comprehensive scholarship statistics for admin"""
+    try:
+        total_scholarships = Scholarship.query.count()
+        published_scholarships = Scholarship.query.filter_by(status='published').count()
+        draft_scholarships = Scholarship.query.filter_by(status='draft').count()
+        external_scholarships = Scholarship.query.filter_by(scholarship_source='external').count()
+        internal_scholarships = Scholarship.query.filter_by(scholarship_source='internal').count()
+        
+        # Get total applications and views
+        applications_count = db.session.query(db.func.sum(Scholarship.application_count)).scalar() or 0
+        views_count = db.session.query(db.func.sum(Scholarship.view_count)).scalar() or 0
+        
+        return jsonify({
+            'total_scholarships': total_scholarships,
+            'published_scholarships': published_scholarships,
+            'draft_scholarships': draft_scholarships,
+            'external_scholarships': external_scholarships,
+            'internal_scholarships': internal_scholarships,
+            'applications_count': applications_count,
+            'views_count': views_count
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get scholarship statistics', 'details': str(e)}), 500
+
+
+@scholarship_bp.route('/scholarships/<int:scholarship_id>/toggle-feature', methods=['POST'])
+@token_required
+@role_required('admin')
+def toggle_feature_scholarship(scholarship_id, current_user):
+    """Toggle featured status of a scholarship"""
+    try:
+        scholarship = Scholarship.query.get_or_404(scholarship_id)
+        
+        scholarship.is_featured = not scholarship.is_featured
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Scholarship {"featured" if scholarship.is_featured else "unfeatured"} successfully',
+            'is_featured': scholarship.is_featured
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to toggle featured status', 'details': str(e)}), 500
+
+
+@scholarship_bp.route('/scholarships/<int:scholarship_id>/status', methods=['PATCH'])
+@token_required
+@role_required('admin')
+def update_scholarship_status(scholarship_id, current_user):
+    """Update scholarship status (admin only)"""
+    try:
+        scholarship = Scholarship.query.get_or_404(scholarship_id)
+        data = request.get_json()
+        
+        new_status = data.get('status')
+        if new_status not in ['draft', 'published', 'paused', 'closed']:
+            return jsonify({'error': 'Invalid status. Must be one of: draft, published, paused, closed'}), 400
+        
+        old_status = scholarship.status
+        scholarship.status = new_status
+        
+        # Update published_at timestamp when publishing
+        if new_status == 'published' and old_status != 'published':
+            scholarship.published_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Scholarship status updated to {new_status}',
+            'scholarship': scholarship.to_dict(include_details=True)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update scholarship status', 'details': str(e)}), 500
 
 
 # Error handlers

@@ -64,6 +64,23 @@ def pre_fork(server, worker):
 def post_fork(server, worker):
     """Called just after a worker has been forked."""
     server.log.info(f"Worker {worker.pid} booted")
+    
+    # Only start cleanup service in worker 1 (age 0) to avoid duplicate schedulers
+    if worker.age == 0:
+        try:
+            from src.services.cleanup_service import start_cleanup_service
+            service = start_cleanup_service()
+            if service and service.is_running:
+                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (primary worker)")
+            else:
+                server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
+        except Exception as e:
+            server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        # Other workers just acknowledge the service is running elsewhere
+        server.log.info(f"Worker {worker.pid} - cleanup service runs in primary worker")
 
 def worker_abort(worker):
     """Called when a worker received the SIGABRT signal."""

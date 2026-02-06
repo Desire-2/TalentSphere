@@ -2,6 +2,8 @@ export { default as AdminDashboard } from './AdminDashboard';
 export { default as UserManagement } from './UserManagement';
 export { default as JobManagement } from './JobManagement';
 export { default as CompanyManagement } from './CompanyManagement';
+export { default as AdminScholarshipManagement } from './AdminScholarshipManagement';
+export { default as AdminCleanupManagement } from './AdminCleanupManagement';
 export { default as RevenueAnalytics } from './RevenueAnalytics';
 export { default as SystemHealth } from './SystemHealth';
 export { default as AdminProfile } from './AdminProfile';

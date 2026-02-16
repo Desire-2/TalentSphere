@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import api from '../../services/api';
 
@@ -18,7 +18,8 @@ export const NotificationProvider = ({ children }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
-  const [lastFetch, setLastFetch] = useState(null);
+  const lastFetchRef = useRef(null);
+  const pollingIntervalRef = useRef(null);
 
   // Real-time polling interval (30 seconds)
   const POLL_INTERVAL = 30000;
@@ -54,36 +55,38 @@ export const NotificationProvider = ({ children }) => {
       const newNotifications = data.notifications || [];
       const newUnreadCount = data.unread_count || 0;
       
-      // Check for new notifications if not the first load
-      if (lastFetch && !silent) {
-        const previousIds = new Set(notifications.map(n => n.id));
-        const reallyNewNotifications = newNotifications.filter(n => !previousIds.has(n.id));
-        
-        if (reallyNewNotifications.length > 0) {
-          // Show toast for new notifications
-          reallyNewNotifications.forEach(notification => {
-            if (!notification.is_read) {
-              toast.info(notification.title, {
-                description: notification.message,
-                action: {
-                  label: 'View',
-                  onClick: () => markAsRead(notification.id)
-                },
-                duration: 5000
-              });
-            }
-          });
+      // Check for new notifications using functional setState
+      setNotifications(prevNotifications => {
+        if (lastFetchRef.current && !silent) {
+          const previousIds = new Set(prevNotifications.map(n => n.id));
+          const reallyNewNotifications = newNotifications.filter(n => !previousIds.has(n.id));
           
-          // Play notification sound for unread notifications
-          if (reallyNewNotifications.some(n => !n.is_read)) {
-            playNotificationSound();
+          if (reallyNewNotifications.length > 0) {
+            // Show toast for new notifications
+            reallyNewNotifications.forEach(notification => {
+              if (!notification.is_read) {
+                toast.info(notification.title, {
+                  description: notification.message,
+                  action: {
+                    label: 'View',
+                    onClick: () => markAsRead(notification.id)
+                  },
+                  duration: 5000
+                });
+              }
+            });
+            
+            // Play notification sound for unread notifications
+            if (reallyNewNotifications.some(n => !n.is_read)) {
+              playNotificationSound();
+            }
           }
         }
-      }
+        return newNotifications;
+      });
       
-      setNotifications(newNotifications);
       setUnreadCount(newUnreadCount);
-      setLastFetch(Date.now());
+      lastFetchRef.current = Date.now();
       
       return data;
     } catch (error) {
@@ -95,7 +98,7 @@ export const NotificationProvider = ({ children }) => {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [lastFetch, notifications, playNotificationSound]);
+  }, [playNotificationSound]);
 
   // Fetch notification stats
   const fetchStats = useCallback(async () => {
@@ -164,17 +167,17 @@ export const NotificationProvider = ({ children }) => {
     try {
       await api.delete(`/enhanced-notifications/notifications/${notificationId}`);
       
-      // Optimistically update local state
-      const deletedNotification = notifications.find(n => n.id === notificationId);
-      const wasUnread = deletedNotification && !deletedNotification.is_read;
-      
-      setNotifications(prev => 
-        prev.filter(notif => notif.id !== notificationId)
-      );
-      
-      if (wasUnread) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
+      // Optimistically update local state using functional setState
+      setNotifications(prev => {
+        const deletedNotification = prev.find(n => n.id === notificationId);
+        const wasUnread = deletedNotification && !deletedNotification.is_read;
+        
+        if (wasUnread) {
+          setUnreadCount(count => Math.max(0, count - 1));
+        }
+        
+        return prev.filter(notif => notif.id !== notificationId);
+      });
       
       // Refresh stats
       fetchStats();
@@ -186,7 +189,7 @@ export const NotificationProvider = ({ children }) => {
       toast.error('Failed to delete notification');
       throw error;
     }
-  }, [notifications, fetchStats]);
+  }, [fetchStats]);
 
   // Create new notification
   const createNotification = useCallback(async (notificationData) => {
@@ -214,36 +217,50 @@ export const NotificationProvider = ({ children }) => {
 
   // Start real-time polling
   const startPolling = useCallback(() => {
-    if (isPolling) return;
+    if (pollingIntervalRef.current || isPolling) return;
     
     setIsPolling(true);
     
-    const interval = setInterval(() => {
+    pollingIntervalRef.current = setInterval(() => {
       fetchNotifications({ silent: true });
     }, POLL_INTERVAL);
-    
-    // Store interval ID to clear it later
-    return () => {
-      clearInterval(interval);
-      setIsPolling(false);
-    };
   }, [isPolling, fetchNotifications]);
 
   // Stop polling
   const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
     setIsPolling(false);
   }, []);
 
   // Initialize on mount
   useEffect(() => {
-    fetchNotifications();
-    fetchStats();
+    // Run initial fetch
+    const initialize = async () => {
+      try {
+        await fetchNotifications();
+        await fetchStats();
+      } catch (error) {
+        console.error('Failed to initialize notifications:', error);
+      }
+    };
+    
+    initialize();
     
     // Start polling
-    const stopPollingFn = startPolling();
+    startPolling();
     
-    return stopPollingFn;
-  }, []);
+    return () => {
+      // Cleanup on unmount
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Browser visibility change handling
   useEffect(() => {

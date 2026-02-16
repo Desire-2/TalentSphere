@@ -51,9 +51,9 @@ const EmployerLayout = () => {
   const navigation = [
     { 
       name: 'Dashboard', 
-      href: '/dashboard', 
+      href: '/employer/dashboard', 
       icon: LayoutDashboard, 
-      current: location.pathname === '/dashboard' 
+      current: location.pathname === '/employer/dashboard' || location.pathname === '/dashboard'
     },
     { 
       name: 'My Jobs', 
@@ -75,9 +75,9 @@ const EmployerLayout = () => {
     },
     { 
       name: 'Company Profile', 
-      href: '/company/profile', 
+      href: '/employer/company/profile', 
       icon: Building2, 
-      current: location.pathname === '/company/profile' 
+      current: location.pathname === '/employer/company/profile' 
     },
     { 
       name: 'Analytics', 
@@ -87,9 +87,9 @@ const EmployerLayout = () => {
     },
     { 
       name: 'Settings', 
-      href: '/company/settings', 
+      href: '/employer/company/settings', 
       icon: Settings, 
-      current: location.pathname === '/company/settings' 
+      current: location.pathname === '/employer/company/settings' 
     },
   ];
 
@@ -270,10 +270,10 @@ const EmployerLayout = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/company/profile">Company Profile</Link>
+                    <Link to="/employer/company/profile">Company Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/company/settings">Settings</Link>
+                    <Link to="/employer/company/settings">Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>

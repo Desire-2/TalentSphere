@@ -90,7 +90,7 @@ const ShareScholarship = ({
     : 'Open';
 
   // Default sharing message
-  const defaultMessage = `🎓 Great scholarship opportunity: ${scholarshipTitle} at ${organizationName}. Award: ${amount}. Apply by ${deadline}!`;
+  const defaultMessage = `🎓 Great scholarship opportunity: ${scholarshipTitle} at ${organizationName}. Award: ${amount}. Apply by ${deadline}!\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl`;
 
   // Load data when dialog opens
   useEffect(() => {
@@ -300,32 +300,34 @@ const ShareScholarship = ({
         )}
       </DialogTrigger>
       
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-            <Share2 className="w-6 h-6 text-blue-600" />
-            Share Scholarship Opportunity
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg">
+              <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Share Scholarship Opportunity</span>
           </DialogTitle>
-          <DialogDescription>
-            Help students discover this amazing scholarship opportunity
+          <DialogDescription className="text-sm sm:text-base">
+            🎓 Help students discover this amazing scholarship opportunity and make education accessible! ✨
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mt-4 sm:mt-6">
           {/* Scholarship Preview */}
-          <div className="lg:col-span-1">
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-              <CardHeader className="pb-3">
+          <div className="lg:col-span-2">
+            <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-300 lg:sticky lg:top-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader className="pb-3 bg-gradient-to-r from-blue-100 to-indigo-100 border-b-2 border-blue-300">
                 <div className="flex items-center gap-3">
                   {scholarship.external_organization_logo ? (
-                    <Avatar className="h-12 w-12 border-2 border-blue-200">
+                    <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-blue-300 shadow-md">
                       <AvatarImage src={scholarship.external_organization_logo} alt={organizationName} />
-                      <AvatarFallback className="bg-blue-600 text-white">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base">
                         {organizationName.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-md">
                       {organizationName.charAt(0)}
                     </div>
                   )}
@@ -337,22 +339,22 @@ const ShareScholarship = ({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 p-4 sm:p-6">
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base leading-tight mb-2">
+                  <h4 className="font-bold text-gray-900 text-sm sm:text-base leading-tight mb-2">
                     {scholarshipTitle}
                   </h4>
                   {scholarship.summary && (
-                    <p className="text-xs text-gray-600 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
                       {scholarship.summary}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 text-xs sm:text-sm">
                   {scholarship.amount_max && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="w-4 h-4 text-green-600" />
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600 flex-shrink-0" />
                       <span className="font-semibold text-green-700">
                         {amount}
                       </span>
@@ -360,25 +362,25 @@ const ShareScholarship = ({
                   )}
                   
                   {scholarship.application_deadline && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-orange-600" />
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-orange-600 flex-shrink-0" />
                       <span className="text-gray-700">Deadline: {deadline}</span>
                     </div>
                   )}
 
                   {scholarship.study_level && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <GraduationCap className="w-4 h-4 text-blue-600" />
-                      <span className="text-gray-700 capitalize">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-gray-700 capitalize text-xs sm:text-sm">
                         {scholarship.study_level?.replace('_', ' ') || scholarship.study_level}
                       </span>
                     </div>
                   )}
 
                   {(scholarship.country || scholarship.location_type !== 'any') && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4 text-purple-600" />
-                      <span className="text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                      <span className="text-gray-700 text-xs sm:text-sm">
                         {scholarship.country || scholarship.location_type?.replace('_', ' ') || 'Any Location'}
                       </span>
                     </div>
@@ -397,7 +399,7 @@ const ShareScholarship = ({
 
             {/* Share Stats */}
             {scholarshipShareStats && scholarshipShareStats.totalShares > 0 && (
-              <Card className="mt-4 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+              <Card className="mt-4 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 shadow-md">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -417,68 +419,76 @@ const ShareScholarship = ({
           </div>
 
           {/* Sharing Options */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             {/* Quick Share Bar */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <Button size="sm" variant="outline" onClick={() => copyToClipboard(scholarshipUrl)} className="gap-1">
-                <LinkIcon className="w-4 h-4" /> Copy Link
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('linkedin')} className="gap-1">
-                <Linkedin className="w-4 h-4 text-blue-600" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('twitter')} className="gap-1">
-                <Twitter className="w-4 h-4 text-sky-500" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('whatsapp')} className="gap-1">
-                <MessageSquare className="w-4 h-4 text-green-600" />
-              </Button>
-              {supportsNativeShare && (
-                <Button size="sm" variant="outline" onClick={handleNativeShare} className="gap-1">
-                  <Share2 className="w-4 h-4" /> Share
+            <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-3 sm:p-4 rounded-xl border-2 border-blue-200 mb-4 shadow-sm">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-3">🚀 Quick Share</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => copyToClipboard(scholarshipUrl)} className="gap-1 hover:bg-blue-100 transition-colors">
+                  <LinkIcon className="w-4 h-4" /> <span className="hidden sm:inline">Copy</span>
                 </Button>
-              )}
-              {scholarshipShareStats?.totalShares > 0 && (
-                <div className="ml-auto text-xs text-gray-500 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  {scholarshipShareStats.totalShares} total shares
-                </div>
-              )}
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('linkedin')} className="gap-1 hover:bg-blue-50 transition-colors">
+                  <Linkedin className="w-4 h-4 text-blue-600" />
+                  <span className="hidden sm:inline">LinkedIn</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('twitter')} className="gap-1 hover:bg-sky-50 transition-colors">
+                  <Twitter className="w-4 h-4 text-sky-500" />
+                  <span className="hidden sm:inline">Twitter</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('whatsapp')} className="gap-1 hover:bg-green-50 transition-colors">
+                  <MessageSquare className="w-4 h-4 text-green-600" />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </Button>
+                {supportsNativeShare && (
+                  <Button size="sm" variant="outline" onClick={handleNativeShare} className="gap-1 hover:bg-purple-50 transition-colors">
+                    <Share2 className="w-4 h-4" /> <span className="hidden sm:inline">Share</span>
+                  </Button>
+                )}
+                {scholarshipShareStats?.totalShares > 0 && (
+                  <div className="ml-auto text-xs text-gray-600 flex items-center gap-1 bg-white px-2 py-1 rounded-full border border-green-200">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    {scholarshipShareStats.totalShares} shares
+                  </div>
+                )}
+              </div>
             </div>
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="link" className="flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4" />
-                  Link
+              <TabsList className="grid w-full grid-cols-5 h-auto bg-gradient-to-r from-gray-100 to-gray-200 p-1.5 gap-1.5">
+                <TabsTrigger value="link" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <LinkIcon className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Link</span>
                 </TabsTrigger>
-                <TabsTrigger value="social" className="flex items-center gap-2">
-                  <Globe className="w-4 h-4" />
-                  Social
+                <TabsTrigger value="social" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Globe className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Social</span>
                 </TabsTrigger>
-                <TabsTrigger value="templates" className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Templates
+                <TabsTrigger value="templates" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <MessageSquare className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email
+                <TabsTrigger value="email" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Mail className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="qr" className="flex items-center gap-2">
-                  <QrCode className="w-4 h-4" />
-                  QR Code
+                <TabsTrigger value="qr" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <QrCode className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">QR</span>
                 </TabsTrigger>
               </TabsList>
 
               {/* Link Sharing */}
-              <TabsContent value="link" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5" />
+              <TabsContent value="link" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-blue-500 rounded-md">
+                        <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Share Link
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     <div>
                       <Label htmlFor="scholarship-url">Scholarship URL</Label>
                       <div className="flex gap-2 mt-1">
@@ -558,16 +568,18 @@ const ShareScholarship = ({
               </TabsContent>
 
               {/* Social Media Sharing */}
-              <TabsContent value="social" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Globe className="w-5 h-5" />
+              <TabsContent value="social" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-purple-500 rounded-md">
+                        <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Social Media
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-3">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {/* LinkedIn */}
                       <Button
                         variant="outline"
@@ -629,15 +641,17 @@ const ShareScholarship = ({
               </TabsContent>
 
               {/* Templates */}
-              <TabsContent value="templates" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
+              <TabsContent value="templates" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-green-500 rounded-md">
+                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Pre-written Templates
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     <div>
                       <Label className="text-sm font-medium mb-3 block">Choose a template</Label>
                       <div className="space-y-2">
@@ -750,15 +764,17 @@ const ShareScholarship = ({
               </TabsContent>
 
               {/* Email Sharing */}
-              <TabsContent value="email" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Mail className="w-5 h-5" />
+              <TabsContent value="email" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-orange-500 rounded-md">
+                        <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Share via Email
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                       <div className="flex items-start gap-2">
                         <UserPlus className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -834,35 +850,37 @@ const ShareScholarship = ({
               </TabsContent>
 
               {/* QR Code */}
-              <TabsContent value="qr" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <QrCode className="w-5 h-5" />
+              <TabsContent value="qr" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-indigo-500 rounded-md">
+                        <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       QR Code
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     {qrCodeUrl ? (
                       <div className="space-y-4">
                         <div className="flex flex-col items-center">
-                          <div className="bg-white p-4 rounded-lg border-2 border-blue-200 shadow-lg">
+                          <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 sm:p-8 rounded-2xl border-4 border-blue-300 shadow-xl">
                             <img 
                               src={qrCodeUrl} 
                               alt="Scholarship QR Code" 
-                              className="w-64 h-64"
+                              className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64"
                             />
                           </div>
-                          <p className="text-sm text-gray-600 mt-3 text-center max-w-sm">
-                            Scan this QR code to access the scholarship page instantly
+                          <p className="text-sm sm:text-base text-gray-700 font-medium mt-4 text-center max-w-sm">
+                            📱 Scan this QR code to access the scholarship page instantly!
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             onClick={downloadQRCode}
                             variant="outline"
-                            className="flex-1 flex items-center gap-2"
+                            className="flex-1 flex items-center gap-2 hover:bg-blue-50"
                           >
                             <Download className="w-4 h-4" />
                             Download QR Code
@@ -870,17 +888,17 @@ const ShareScholarship = ({
                           <Button
                             onClick={() => copyToClipboard(scholarshipUrl)}
                             variant="outline"
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 hover:bg-purple-50"
                           >
                             <Copy className="w-4 h-4" />
                             Copy Link
                           </Button>
                         </div>
 
-                        <div className="w-full bg-gray-50 rounded-lg p-3">
-                          <p className="text-xs text-gray-600 text-center">
-                            <strong>Perfect for:</strong> Print materials, posters, flyers, 
-                            or anywhere you need offline access to the scholarship
+                        <div className="w-full bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-xl p-4 border-2 border-blue-200">
+                          <p className="text-xs sm:text-sm text-gray-700 text-center">
+                            <strong className="text-blue-700">💡 Perfect for:</strong> Print materials, posters, flyers, 
+                            campus boards, or anywhere you need offline access to the scholarship!
                           </p>
                         </div>
                       </div>

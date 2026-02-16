@@ -119,7 +119,7 @@ const ApplicationSuccess = () => {
               </Button>
               
               <Button
-                onClick={() => navigate('/jobseeker/dashboard')}
+                onClick={() => navigate('/dashboard')}
                 variant="ghost"
                 className="w-full"
               >

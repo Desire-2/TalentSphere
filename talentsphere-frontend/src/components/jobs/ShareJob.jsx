@@ -91,7 +91,7 @@ const ShareJob = ({
   const salaryDisplay = getSalaryDisplay(job);
 
   // Default share message
-  const defaultMessage = `Check out this exciting ${job.title} position at ${companyName}! ${jobLocation ? `Located in ${jobLocation}. ` : ''}${salaryDisplay !== 'Salary not specified' ? `Salary: ${salaryDisplay}. ` : ''}Apply now!`;
+  const defaultMessage = `Check out this exciting ${job.title} position at ${companyName}! ${jobLocation ? `Located in ${jobLocation}. ` : ''}${salaryDisplay !== 'Salary not specified' ? `Salary: ${salaryDisplay}. ` : ''}Apply now!\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl`;
 
   // Initialize analytics and suggestions
   const initializeShareData = () => {
@@ -325,36 +325,38 @@ const ShareJob = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            <Share2 className="w-6 h-6 text-blue-600" />
-            Share Job Opportunity
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+              <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-bold">Share Job Opportunity</span>
           </DialogTitle>
-          <DialogDescription>
-            Share this job with your network and help someone find their next opportunity.
+          <DialogDescription className="text-sm sm:text-base">
+            Share this job with your network and help someone find their next opportunity. 💼✨
           </DialogDescription>
         </DialogHeader>
 
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mt-4 sm:mt-6">
           {/* Job Preview */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-0">
-              <CardHeader>
-                <CardTitle className="text-lg">Job Preview</CardTitle>
+          <div className="lg:col-span-2">
+            <Card className="lg:sticky lg:top-0 border-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-b">
+                <CardTitle className="text-base sm:text-lg font-bold text-gray-800">📋 Job Preview</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
                 {/* Company Info */}
                 <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12 border-2 border-gray-200">
+                  <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-blue-300 shadow-md">
                     <AvatarImage src={getCompanyLogo(job)} alt={companyName} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white font-bold text-sm sm:text-base">
                       {companyName.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900">{job.title}</h3>
-                    <p className="text-gray-600">{companyName}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 line-clamp-2">{job.title}</h3>
+                    <p className="text-sm sm:text-base text-gray-600 truncate">{companyName}</p>
                   </div>
                 </div>
 
@@ -434,67 +436,75 @@ const ShareJob = ({
           </div>
 
           {/* Sharing Options */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             {/* Quick Share Bar */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <Button size="sm" variant="outline" onClick={() => copyToClipboard(jobUrl)} className="gap-1">
-                <LinkIcon className="w-4 h-4" /> Copy Link
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('linkedin')} className="gap-1">
-                <Linkedin className="w-4 h-4 text-blue-600" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('twitter')} className="gap-1">
-                <Twitter className="w-4 h-4 text-sky-500" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleSocialShare('whatsapp')} className="gap-1">
-                <MessageSquare className="w-4 h-4 text-green-600" />
-              </Button>
-              {supportsNativeShare && (
-                <Button size="sm" variant="outline" onClick={handleNativeShare} className="gap-1">
-                  <Share2 className="w-4 h-4" /> Native
+            <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-3 sm:p-4 rounded-xl border-2 border-blue-200 mb-4 shadow-sm">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 mb-3">🚀 Quick Share</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => copyToClipboard(jobUrl)} className="gap-1 hover:bg-blue-100 transition-colors">
+                  <LinkIcon className="w-4 h-4" /> <span className="hidden sm:inline">Copy</span>
                 </Button>
-              )}
-              {jobShareStats?.totalShares > 0 && (
-                <div className="ml-auto text-xs text-gray-500 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  {jobShareStats.totalShares} total shares
-                </div>
-              )}
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('linkedin')} className="gap-1 hover:bg-blue-50 transition-colors">
+                  <Linkedin className="w-4 h-4 text-blue-600" />
+                  <span className="hidden sm:inline">LinkedIn</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('twitter')} className="gap-1 hover:bg-sky-50 transition-colors">
+                  <Twitter className="w-4 h-4 text-sky-500" />
+                  <span className="hidden sm:inline">Twitter</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleSocialShare('whatsapp')} className="gap-1 hover:bg-green-50 transition-colors">
+                  <MessageSquare className="w-4 h-4 text-green-600" />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </Button>
+                {supportsNativeShare && (
+                  <Button size="sm" variant="outline" onClick={handleNativeShare} className="gap-1 hover:bg-purple-50 transition-colors">
+                    <Share2 className="w-4 h-4" /> <span className="hidden sm:inline">Share</span>
+                  </Button>
+                )}
+                {jobShareStats?.totalShares > 0 && (
+                  <div className="ml-auto text-xs text-gray-600 flex items-center gap-1 bg-white px-2 py-1 rounded-full border border-green-200">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    {jobShareStats.totalShares} shares
+                  </div>
+                )}
+              </div>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="link" className="flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4" />
-                  Link
+              <TabsList className="grid w-full grid-cols-5 h-auto bg-gradient-to-r from-gray-100 to-gray-200 p-1.5 gap-1.5">
+                <TabsTrigger value="link" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <LinkIcon className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Link</span>
                 </TabsTrigger>
-                <TabsTrigger value="social" className="flex items-center gap-2">
-                  <Globe className="w-4 h-4" />
-                  Social
+                <TabsTrigger value="social" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Globe className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Social</span>
                 </TabsTrigger>
-                <TabsTrigger value="templates" className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Templates
+                <TabsTrigger value="templates" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <MessageSquare className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email
+                <TabsTrigger value="email" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Mail className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="qr" className="flex items-center gap-2">
-                  <QrCode className="w-4 h-4" />
-                  QR Code
+                <TabsTrigger value="qr" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
+                  <QrCode className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
+                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">QR</span>
                 </TabsTrigger>
               </TabsList>
 
               {/* Link Sharing */}
-              <TabsContent value="link" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5" />
+              <TabsContent value="link" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-blue-500 rounded-md">
+                        <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Share Link
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     <div>
                       <Label htmlFor="job-url">Job URL</Label>
                       <div className="flex gap-2 mt-1">
@@ -574,16 +584,18 @@ const ShareJob = ({
               </TabsContent>
 
               {/* Social Media Sharing */}
-              <TabsContent value="social" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Globe className="w-5 h-5" />
+              <TabsContent value="social" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-purple-500 rounded-md">
+                        <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Social Media
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-3">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {/* LinkedIn */}
                       <Button
                         variant="outline"
@@ -658,18 +670,20 @@ const ShareJob = ({
               </TabsContent>
 
               {/* Share Templates */}
-              <TabsContent value="templates" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
+              <TabsContent value="templates" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-green-500 rounded-md">
+                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Share Templates
                     </CardTitle>
-                    <p className="text-sm text-gray-600">
-                      Choose from pre-written templates or get personalized suggestions
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                      ✨ Choose from pre-written templates or get personalized suggestions
                     </p>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     {/* Share Suggestions */}
                     {shareSuggestions.length > 0 && (
                       <div className="bg-blue-50 rounded-lg p-4">
@@ -841,15 +855,17 @@ const ShareJob = ({
               </TabsContent>
 
               {/* Email Sharing */}
-              <TabsContent value="email" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Mail className="w-5 h-5" />
+              <TabsContent value="email" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-orange-500 rounded-md">
+                        <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       Email Sharing
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     {/* Quick Email */}
                     <div>
                       <Button
@@ -962,34 +978,36 @@ const ShareJob = ({
               </TabsContent>
 
               {/* QR Code */}
-              <TabsContent value="qr" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <QrCode className="w-5 h-5" />
+              <TabsContent value="qr" className="space-y-4 mt-4">
+                <Card className="border-2 shadow-md max-w-3xl mx-auto">
+                  <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800">
+                      <div className="p-1.5 bg-indigo-500 rounded-md">
+                        <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
                       QR Code
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-4 sm:p-6">
                     {qrCodeUrl ? (
                       <div className="flex flex-col items-center space-y-4">
-                        <div className="bg-white p-4 rounded-lg border-2 border-gray-200 shadow-sm">
+                        <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 sm:p-8 rounded-2xl border-4 border-blue-300 shadow-xl">
                           <img 
                             src={qrCodeUrl} 
                             alt="Job QR Code"
-                            className="w-48 h-48"
+                            className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64"
                           />
                         </div>
                         
-                        <div className="text-center space-y-2">
-                          <p className="text-sm text-gray-600">
-                            Scan this QR code to view the job details
+                        <div className="text-center space-y-3">
+                          <p className="text-sm sm:text-base text-gray-700 font-medium">
+                            📱 Scan this QR code to view the job details instantly!
                           </p>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 justify-center">
                             <Button
                               onClick={downloadQRCode}
                               variant="outline"
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 hover:bg-blue-50"
                             >
                               <Download className="w-4 h-4" />
                               Download QR Code
@@ -997,7 +1015,7 @@ const ShareJob = ({
                             <Button
                               onClick={() => copyToClipboard(jobUrl)}
                               variant="outline"
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 hover:bg-purple-50"
                             >
                               <Copy className="w-4 h-4" />
                               Copy Link
@@ -1005,10 +1023,10 @@ const ShareJob = ({
                           </div>
                         </div>
 
-                        <div className="w-full bg-gray-50 rounded-lg p-3">
-                          <p className="text-xs text-gray-600 text-center">
-                            <strong>Perfect for:</strong> Print materials, business cards, 
-                            flyers, or anywhere you need offline access to the job posting
+                        <div className="w-full bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-xl p-4 border-2 border-blue-200">
+                          <p className="text-xs sm:text-sm text-gray-700 text-center">
+                            <strong className="text-blue-700">💡 Perfect for:</strong> Print materials, business cards, 
+                            flyers, posters, or anywhere you need offline access to the job posting!
                           </p>
                         </div>
                       </div>

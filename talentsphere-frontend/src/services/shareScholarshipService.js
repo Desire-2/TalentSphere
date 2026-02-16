@@ -151,31 +151,37 @@ class ShareScholarshipService {
     const deadline = scholarship.application_deadline 
       ? new Date(scholarship.application_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : 'soon';
+    
+    const communityLink = '\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
 
     const templates = [
       {
-        name: 'Professional',
-        template: `🎓 Exciting scholarship opportunity! ${organizationName} is offering ${amount} for ${title}. Application deadline: ${deadline}. This could be a great fit for students in your network! #Scholarship #Education #Opportunity`
+        name: '💼 Professional',
+        template: `🎓 Exciting scholarship opportunity! ${organizationName} is offering ${amount} for ${title}. Application deadline: ${deadline}. This could be a great fit for students in your network!${communityLink} #Scholarship #Education #Opportunity`
       },
       {
-        name: 'Casual',
-        template: `Hey! 👋 Just found an amazing scholarship - ${title} from ${organizationName}. Award: ${amount}. Know anyone who should apply? Deadline is ${deadline}! 📚✨`
+        name: '👋 Casual',
+        template: `Hey! 👋 Just found an amazing scholarship - ${title} from ${organizationName}. Award: ${amount}. Know anyone who should apply? Deadline is ${deadline}! 📚✨${communityLink}`
       },
       {
-        name: 'Urgent',
-        template: `⚡ DEADLINE ALERT: ${organizationName} scholarship (${amount}) closes ${deadline}! If you or someone you know fits ${title}, apply NOW! Don't miss this opportunity! 🎯`
+        name: '⚡ Urgent',
+        template: `⚡ DEADLINE ALERT: ${organizationName} scholarship (${amount}) closes ${deadline}! If you or someone you know fits ${title}, apply NOW! Don't miss this opportunity! 🎯${communityLink}`
       },
       {
-        name: 'Inspirational',
-        template: `💫 Education changes lives! ${organizationName} believes in investing in students through their ${title} scholarship (${amount}). Help spread the word - someone's future could start here! Apply by ${deadline}. #EducationMatters`
+        name: '💫 Inspirational',
+        template: `💫 Education changes lives! ${organizationName} believes in investing in students through their ${title} scholarship (${amount}). Help spread the word - someone's future could start here! Apply by ${deadline}.${communityLink} #EducationMatters`
       },
       {
-        name: 'Detailed',
-        template: `📢 Scholarship Alert:\n🏆 ${title}\n🏢 ${organizationName}\n💰 ${amount}\n⏰ Deadline: ${deadline}\n\nPerfect opportunity for eligible students! Share with your network to help someone achieve their educational dreams!`
+        name: '📋 Detailed',
+        template: `📢 Scholarship Alert:\n🏆 ${title}\n🏢 ${organizationName}\n💰 ${amount}\n⏰ Deadline: ${deadline}\n\nPerfect opportunity for eligible students! Share with your network to help someone achieve their educational dreams!${communityLink}`
       },
       {
-        name: 'Student-Focused',
-        template: `🌟 Students! Check out this scholarship from ${organizationName} - ${amount} available! ${title}. Applications close ${deadline}. Take this chance to invest in your future! #StudentLife #ScholarshipOpportunity`
+        name: '🌟 Student-Focused',
+        template: `🌟 Students! Check out this scholarship from ${organizationName} - ${amount} available! ${title}. Applications close ${deadline}. Take this chance to invest in your future!${communityLink} #StudentLife #ScholarshipOpportunity`
+      },
+      {
+        name: '🎯 Call-to-Action',
+        template: `📣 Don't let this pass you by! ${organizationName} is offering ${title} with awards up to ${amount}. Deadline: ${deadline}. Tag a student who needs to see this!${communityLink} #EducationOpportunity #ApplyNow`
       }
     ];
 
@@ -241,6 +247,9 @@ ${scholarshipUrl}
 ${scholarship.study_level ? `Study Level: ${scholarship.study_level.replace('_', ' ')}\n` : ''}${scholarship.field_of_study ? `Field of Study: ${scholarship.field_of_study}\n` : ''}${scholarship.country ? `Location: ${scholarship.country}\n` : ''}
 
 Don't miss this opportunity to invest in your education! If you have any questions, feel free to reach out.
+
+🌟 Join our community for more opportunities like this:
+http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl
 
 Best of luck with your application!
 

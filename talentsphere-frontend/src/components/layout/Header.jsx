@@ -341,7 +341,7 @@ const Header = () => {
                     {user?.role === 'employer' && (
                       <>
                         <DropdownMenuItem asChild className="rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 cursor-pointer">
-                          <Link to="/company/profile" className="flex items-center px-3 py-2">
+                          <Link to="/employer/company/profile" className="flex items-center px-3 py-2">
                             <Building2 className="mr-3 h-4 w-4" />
                             <span className="font-medium">Company Profile</span>
                           </Link>

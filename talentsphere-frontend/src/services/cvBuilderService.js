@@ -329,3 +329,29 @@ export const previewCVHTML = async (cvContent, style = 'professional') => {
   const data = await response.json();
   return data.data.html;
 };
+
+/**
+ * Parse a raw job posting text using AI and return structured fields
+ * @param {string} rawText - The full job posting text to parse
+ * @returns {Promise<Object>} Parsed job fields
+ */
+export const parseJobPosting = async (rawText) => {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE}/parse-job-posting`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ raw_text: rawText })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to parse job posting');
+  }
+
+  return data.data;
+};

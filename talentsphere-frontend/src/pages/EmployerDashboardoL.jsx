@@ -627,7 +627,7 @@ const EmployerDashboard = () => {
   };
 
   const createJob = () => {
-    navigate('/jobs/post');
+    navigate('/employer/jobs/post');
   };
 
   const editJob = (jobId) => {
@@ -1160,7 +1160,7 @@ const EmployerDashboard = () => {
         type: 'info',
         title: 'No Active Jobs',
         message: 'You don\'t have any active job postings. Post a job to start receiving applications.',
-        action: () => navigate('/jobs/post')
+        action: () => navigate('/employer/jobs/post')
       });
     }
     
@@ -1169,7 +1169,7 @@ const EmployerDashboard = () => {
         type: 'warning',
         title: 'Incomplete Profile',
         message: 'Complete your company profile to attract better candidates and improve visibility.',
-        action: () => navigate('/company/profile')
+        action: () => navigate('/employer/company/profile')
       });
     }
     
@@ -1438,7 +1438,7 @@ const EmployerDashboard = () => {
 
   // Event Handlers
   const handlePostNewJob = () => {
-    navigate('/jobs/post');
+    navigate('/employer/jobs/post');
   };
 
   const handleViewJob = (jobId) => {
@@ -1458,7 +1458,7 @@ const EmployerDashboard = () => {
   };
 
   const handleCompanyProfile = () => {
-    navigate('/company/profile');
+    navigate('/employer/company/profile');
   };
 
   const handleJobSelection = (jobId, checked) => {
@@ -1719,7 +1719,7 @@ const EmployerDashboard = () => {
             <Button 
               variant="outline" 
               className="h-20 flex-col gap-2 hover:bg-blue-50"
-              onClick={() => navigate('/jobs/post')}
+              onClick={() => navigate('/employer/jobs/post')}
             >
               <Plus className="w-6 h-6 text-blue-600" />
               <span className="text-sm">Post Job</span>
@@ -1755,7 +1755,7 @@ const EmployerDashboard = () => {
             <Button 
               variant="outline" 
               className="h-20 flex-col gap-2 hover:bg-indigo-50"
-              onClick={() => navigate('/company/profile')}
+              onClick={() => navigate('/employer/company/profile')}
             >
               <Settings className="w-6 h-6 text-indigo-600" />
               <span className="text-sm">Profile</span>

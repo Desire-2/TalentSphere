@@ -14,7 +14,9 @@ import {
   Briefcase,
   Bookmark,
   Bell,
-  TrendingUp
+  TrendingUp,
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,9 +53,9 @@ const JobSeekerLayout = () => {
   const navigation = [
     { 
       name: 'Dashboard', 
-      href: '/dashboard', 
+      href: '/jobseeker/dashboard', 
       icon: LayoutDashboard, 
-      current: location.pathname === '/dashboard' 
+      current: location.pathname === '/jobseeker/dashboard' || location.pathname === '/dashboard'
     },
     { 
       name: 'My Profile', 
@@ -62,7 +64,7 @@ const JobSeekerLayout = () => {
       current: location.pathname === '/jobseeker/profile' 
     },
     { 
-      name: 'Applications', 
+      name: 'My Applications', 
       href: '/jobseeker/applications', 
       icon: FileText, 
       current: location.pathname === '/jobseeker/applications' 
@@ -74,16 +76,16 @@ const JobSeekerLayout = () => {
       current: location.pathname === '/jobseeker/cv-builder' 
     },
     { 
-      name: 'Saved Jobs', 
-      href: '/my-applications', 
-      icon: Bookmark, 
-      current: location.pathname === '/my-applications' 
-    },
-    { 
       name: 'Browse Jobs', 
       href: '/jobs', 
       icon: Briefcase, 
-      current: location.pathname === '/jobs' 
+      current: location.pathname === '/jobs' || location.pathname.startsWith('/jobs/') 
+    },
+    { 
+      name: 'Scholarships', 
+      href: '/scholarships', 
+      icon: TrendingUp, 
+      current: location.pathname === '/scholarships' || location.pathname.startsWith('/scholarships/') 
     },
     { 
       name: 'Settings', 
@@ -182,6 +184,25 @@ const JobSeekerLayout = () => {
               );
             })}
           </nav>
+
+          {/* Quick Actions - Enhanced */}
+          <div className="px-4 py-3 border-t border-gray-200/70 bg-gradient-to-r from-orange-50/50 to-teal-50/50 space-y-2">
+            <Link to="/jobs">
+              <Button className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] hover:from-[#FF5722] hover:to-[#FF7033] text-white shadow-md hover:shadow-lg transition-all duration-200">
+                <Search className="w-4 h-4 mr-2" />
+                Find Jobs
+              </Button>
+            </Link>
+            <Link to="/jobseeker/cv-builder">
+              <Button 
+                variant="outline" 
+                className="w-full border-2 border-[#00A19D] text-[#00A19D] hover:bg-[#00A19D] hover:text-white transition-all duration-200"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Build My CV
+              </Button>
+            </Link>
+          </div>
 
           {/* User section - Enhanced */}
           <div className="border-t border-gray-200/70 p-4 bg-gradient-to-r from-gray-50 to-orange-50/50">

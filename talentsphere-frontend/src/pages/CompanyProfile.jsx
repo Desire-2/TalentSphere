@@ -191,7 +191,7 @@ const CompanyProfile = () => {
         if (from === 'postjob') {
           toast.success('Company profile complete! You can now post jobs.');
           setTimeout(() => {
-            navigate('/jobs/post');
+            navigate('/employer/jobs/post');
           }, 2000);
         }
       }

@@ -1,19 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { storeIntendedDestination, buildFullPath } from '../../utils/redirectUtils';
 
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
   if (!isAuthenticated) {
-    // Store the current location as intended destination
-    storeIntendedDestination(location.pathname, {
-      search: location.search,
-      state: location.state
-    });
-    
-    // Redirect to login page with return url
+    // Redirect to login page with return url in state
+    // Don't store in localStorage here to avoid re-render loops
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

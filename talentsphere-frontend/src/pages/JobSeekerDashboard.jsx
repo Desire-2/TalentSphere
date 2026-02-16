@@ -119,7 +119,21 @@ const JobSeekerDashboard = () => {
 
       // Process profile data
       if (profileResponse.status === 'fulfilled') {
-        const profile = profileResponse.value;
+        const profile = profileResponse.value || {};
+        
+        // Safely parse skills
+        let skillsList = [];
+        if (profile.job_seeker_profile?.skills) {
+          try {
+            skillsList = typeof profile.job_seeker_profile.skills === 'string' ? 
+              JSON.parse(profile.job_seeker_profile.skills) : 
+              profile.job_seeker_profile.skills;
+          } catch (e) {
+            console.warn('Failed to parse skills:', e);
+            skillsList = [];
+          }
+        }
+
         setDashboardData(prev => ({
           ...prev,
           profile: {
@@ -129,38 +143,51 @@ const JobSeekerDashboard = () => {
             avatar: profile.profile_image || '/api/placeholder/80/80',
             profile_completion: calculateProfileCompletion(profile),
             open_to_opportunities: profile.job_seeker_profile?.open_to_opportunities ?? true,
-            skills: profile.job_seeker_profile?.skills ? 
-              (typeof profile.job_seeker_profile.skills === 'string' ? 
-                JSON.parse(profile.job_seeker_profile.skills) : 
-                profile.job_seeker_profile.skills) : []
+            skills: Array.isArray(skillsList) ? skillsList : []
           }
         }));
+      } else {
+        console.warn('Failed to load profile:', profileResponse.reason);
       }
 
       // Process applications data
       if (applicationsResponse.status === 'fulfilled') {
-        const applicationsData = applicationsResponse.value;
+        const applicationsData = applicationsResponse.value || {};
         const applications = applicationsData.applications || [];
         
         setDashboardData(prev => ({
           ...prev,
-          recentApplications: applications.slice(0, 5).map(app => ({
-            id: app.id,
-            job: {
-              title: app.job?.title || 'Unknown Job',
-              company: app.company?.name || 'Unknown Company'
-            },
-            status: app.status,
-            applied_date: app.created_at,
-            last_update: app.updated_at,
-            stage: app.stage || getStageFromStatus(app.status)
-          }))
+          recentApplications: applications.slice(0, 5).map(app => {
+            // Safely extract company name from various possible structures
+            let companyName = 'Unknown Company';
+            if (app.company?.name) {
+              companyName = app.company.name;
+            } else if (app.job?.company?.name) {
+              companyName = app.job.company.name;
+            } else if (typeof app.company === 'string') {
+              companyName = app.company;
+            }
+
+            return {
+              id: app.id,
+              job: {
+                title: app.job?.title || 'Unknown Job',
+                company: companyName
+              },
+              status: app.status || 'submitted',
+              applied_date: app.created_at || new Date().toISOString(),
+              last_update: app.updated_at || app.created_at || new Date().toISOString(),
+              stage: app.stage || getStageFromStatus(app.status)
+            };
+          })
         }));
+      } else {
+        console.warn('Failed to load applications:', applicationsResponse.reason);
       }
 
       // Process stats data
       if (statsResponse.status === 'fulfilled') {
-        const stats = statsResponse.value;
+        const stats = statsResponse.value || {};
         setDashboardData(prev => ({
           ...prev,
           stats: {
@@ -168,53 +195,99 @@ const JobSeekerDashboard = () => {
             pendingApplications: stats.pending_applications || 0,
             interviewsScheduled: stats.interviews_scheduled || 0,
             offersReceived: stats.offers_received || 0,
-            profileViews: prev.stats.profileViews, // Keep existing or set from another source
-            bookmarkedJobs: prev.stats.bookmarkedJobs // Keep existing or set from bookmarks
+            profileViews: stats.profile_views || prev.stats.profileViews || 0,
+            bookmarkedJobs: prev.stats.bookmarkedJobs || 0
           }
         }));
+      } else {
+        console.warn('Failed to load application stats:', statsResponse.reason);
       }
 
       // Process bookmarks data
       if (bookmarksResponse.status === 'fulfilled') {
         const bookmarks = bookmarksResponse.value;
+        const bookmarkList = bookmarks.bookmarks || [];
         setDashboardData(prev => ({
           ...prev,
+          bookmarkedJobs: bookmarkList.map(bookmark => ({
+            id: bookmark.id || bookmark.job_id,
+            job: bookmark.job ? {
+              id: bookmark.job.id,
+              title: bookmark.job.title,
+              company: {
+                name: bookmark.job.company?.name || bookmark.company?.name || 'Unknown Company',
+                logo: bookmark.job.company?.logo_url || bookmark.company?.logo_url || '/api/placeholder/50/50'
+              },
+              location: bookmark.job.location || bookmark.job.city || 'Remote',
+              salary_range: bookmark.job.salary_min && bookmark.job.salary_max ? 
+                `$${formatSalary(bookmark.job.salary_min)} - $${formatSalary(bookmark.job.salary_max)}` : 
+                'Salary not disclosed',
+              posted_days_ago: calculateDaysAgo(bookmark.job.created_at)
+            } : null
+          })).filter(b => b.job !== null),
           stats: {
             ...prev.stats,
-            bookmarkedJobs: bookmarks.bookmarks?.length || 0
+            bookmarkedJobs: bookmarkList.length
           }
         }));
       }
 
       // Process job recommendations
       if (recommendationsResponse.status === 'fulfilled') {
-        const recommendations = recommendationsResponse.value;
+        const recommendations = recommendationsResponse.value || {};
         const jobs = recommendations.recommendations || [];
         
         setDashboardData(prev => ({
           ...prev,
-          recommendedJobs: jobs.map(job => ({
-            id: job.id,
-            title: job.title,
-            company: {
-              name: job.company?.name || 'Unknown Company',
-              logo: job.company?.logo_url || '/api/placeholder/50/50'
-            },
-            location: job.location || `${job.city || ''}, ${job.state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote',
-            employment_type: job.employment_type || 'full-time',
-            salary_range: job.salary_min && job.salary_max ? 
-              `$${formatSalary(job.salary_min)} - $${formatSalary(job.salary_max)}` : 
-              'Salary not disclosed',
-            match_score: job.match_score || 0,
-            is_remote: job.is_remote,
-            posted_days_ago: calculateDaysAgo(job.created_at || job.posted_at),
-            skills: job.required_skills ? 
-              (typeof job.required_skills === 'string' ? 
-                job.required_skills.split(',').map(s => s.trim()).slice(0, 3) : 
-                job.required_skills.slice(0, 3)) : [],
-            match_reasons: job.match_reasons || [`${job.match_score || 0}% compatibility based on your profile`]
-          }))
+          recommendedJobs: jobs.map(job => {
+            // Safely construct location string
+            let locationStr = 'Remote';
+            if (job.location) {
+              locationStr = job.location;
+            } else if (job.city || job.state) {
+              locationStr = `${job.city || ''}, ${job.state || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Remote';
+            } else if (job.is_remote) {
+              locationStr = 'Remote';
+            }
+
+            // Process skills array
+            let skillsList = [];
+            if (job.required_skills) {
+              if (typeof job.required_skills === 'string') {
+                try {
+                  // Try to parse if it's JSON string
+                  skillsList = JSON.parse(job.required_skills);
+                } catch {
+                  // Otherwise split by comma
+                  skillsList = job.required_skills.split(',').map(s => s.trim());
+                }
+              } else if (Array.isArray(job.required_skills)) {
+                skillsList = job.required_skills;
+              }
+            }
+
+            return {
+              id: job.id,
+              title: job.title || 'Job Position',
+              company: {
+                name: job.company?.name || 'Unknown Company',
+                logo: job.company?.logo_url || '/api/placeholder/50/50'
+              },
+              location: locationStr,
+              employment_type: job.employment_type || 'full-time',
+              salary_range: job.salary_min && job.salary_max ? 
+                `$${formatSalary(job.salary_min)} - $${formatSalary(job.salary_max)}` : 
+                'Salary not disclosed',
+              match_score: job.match_score || 0,
+              is_remote: job.is_remote || false,
+              posted_days_ago: calculateDaysAgo(job.created_at || job.posted_at),
+              skills: skillsList.slice(0, 3),
+              match_reasons: job.match_reasons || [`${job.match_score || 0}% compatibility based on your profile`]
+            };
+          })
         }));
+      } else {
+        console.warn('Failed to load job recommendations:', recommendationsResponse.reason);
       }
 
       // Process featured ads (relevant opportunities)
@@ -228,7 +301,7 @@ const JobSeekerDashboard = () => {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      setError('Failed to load dashboard data. Please try again.');
+      setError(error.message || 'Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -325,14 +398,18 @@ const JobSeekerDashboard = () => {
         stats: {
           ...prev.stats,
           bookmarkedJobs: isCurrentlyBookmarked ? 
-            prev.stats.bookmarkedJobs - 1 : 
+            Math.max(0, prev.stats.bookmarkedJobs - 1) : 
             prev.stats.bookmarkedJobs + 1
         }
       }));
       
+      // Refresh bookmarks data
+      await refreshData();
+      
     } catch (error) {
       console.error('Error bookmarking job:', error);
-      // You might want to show a toast notification here
+      setError('Failed to bookmark job. Please try again.');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -349,45 +426,73 @@ const JobSeekerDashboard = () => {
     try {
       let ads = featuredAds;
       
-      if (!ads) {
-        const response = await apiService.getPublicFeaturedAds(3);
-        ads = response.featured_ads || [];
+      if (!ads || ads.length === 0) {
+        try {
+          const response = await apiService.getPublicFeaturedAds(3);
+          ads = response.featured_ads || [];
+        } catch (fetchError) {
+          console.warn('Could not fetch featured ads:', fetchError);
+          ads = [];
+        }
+      }
+
+      if (!ads || ads.length === 0) {
+        setRelevantAds([]);
+        return;
       }
 
       // Transform backend featured ads into relevant ads format
-      const transformedAds = ads.map((ad, index) => ({
-        id: ad.id || index + 1,
-        type: 'job_promotion',
-        title: ad.title || 'Featured Opportunity',
-        description: ad.summary || ad.description || 'Exciting opportunity in a growing company.',
-        image: ad.image_url || '/api/placeholder/400/200',
-        company: {
-          name: ad.company_name || ad.company?.name || 'Tech Company',
-          logo: ad.company_logo || ad.company?.logo_url || '/api/placeholder/60/60',
-          rating: 4.5 + (Math.random() * 0.5), // Generate rating between 4.5-5.0
-          size: `${Math.floor(Math.random() * 500) + 50}-${Math.floor(Math.random() * 500) + 500} employees`
-        },
-        matchScore: Math.floor(Math.random() * 15) + 85, // 85-100% match
-        callToAction: 'Apply Now',
-        link: `/jobs/${ad.id}`,
-        status: 'active',
-        relevanceReason: 'Matches your skills and experience level',
-        tags: ad.required_skills ? 
-          (typeof ad.required_skills === 'string' ? 
-            ad.required_skills.split(',').map(s => s.trim()).slice(0, 5) : 
-            ad.required_skills.slice(0, 5)) : 
-          ['React', 'JavaScript', 'Remote', 'Full-time'],
-        salary: ad.salary_min && ad.salary_max ? 
-          `$${formatSalary(ad.salary_min)} - $${formatSalary(ad.salary_max)}` : 
-          '$80k - $120k',
-        location: ad.location || `${ad.city || 'San Francisco'}, ${ad.state || 'CA'}` || 'Remote',
-        benefits: ['Health', 'Dental', 'Stock Options', 'Remote Work'],
-        stats: {
-          views: Math.floor(Math.random() * 2000) + 500,
-          applications: Math.floor(Math.random() * 100) + 20,
-          responseRate: `${Math.floor(Math.random() * 20) + 75}%`
+      const transformedAds = ads.map((ad, index) => {
+        // Process skills
+        let skillsList = [];
+        if (ad.required_skills) {
+          if (typeof ad.required_skills === 'string') {
+            try {
+              skillsList = JSON.parse(ad.required_skills);
+            } catch {
+              skillsList = ad.required_skills.split(',').map(s => s.trim());
+            }
+          } else if (Array.isArray(ad.required_skills)) {
+            skillsList = ad.required_skills;
+          }
         }
-      }));
+        
+        // Default tags if no skills
+        if (skillsList.length === 0) {
+          skillsList = ['React', 'JavaScript', 'Remote', 'Full-time'];
+        }
+
+        return {
+          id: ad.id || index + 1,
+          type: 'job_promotion',
+          title: ad.title || 'Featured Opportunity',
+          description: ad.summary || ad.description || 'Exciting opportunity in a growing company.',
+          image: ad.image_url || '/api/placeholder/400/200',
+          company: {
+            name: ad.company_name || ad.company?.name || 'Tech Company',
+            logo: ad.company_logo || ad.company?.logo_url || '/api/placeholder/60/60',
+            rating: 4.5 + (Math.random() * 0.5), // Generate rating between 4.5-5.0
+            size: `${Math.floor(Math.random() * 500) + 50}-${Math.floor(Math.random() * 500) + 500} employees`
+          },
+          matchScore: Math.floor(Math.random() * 15) + 85, // 85-100% match
+          callToAction: 'Apply Now',
+          link: `/jobs/${ad.id}`,
+          status: 'active',
+          relevanceReason: 'Matches your skills and experience level',
+          tags: skillsList.slice(0, 5),
+          salary: ad.salary_min && ad.salary_max ? 
+            `$${formatSalary(ad.salary_min)} - $${formatSalary(ad.salary_max)}` : 
+            '$80k - $120k',
+          location: ad.location || (ad.city ? `${ad.city}, ${ad.state || ''}` : 'Remote'),
+          benefits: ['Health', 'Dental', 'Stock Options', 'Remote Work'],
+          stats: {
+            views: Math.floor(Math.random() * 2000) + 500,
+            applications: Math.floor(Math.random() * 100) + 20,
+            interactions: Math.floor(Math.random() * 100) + 20,
+            responseRate: `${Math.floor(Math.random() * 20) + 75}%`
+          }
+        };
+      });
 
       // Add some variety with different ad types
       if (transformedAds.length >= 2) {
@@ -415,7 +520,7 @@ const JobSeekerDashboard = () => {
       setRelevantAds(transformedAds);
     } catch (error) {
       console.error('Error loading relevant ads:', error);
-      // Fallback to empty array if error
+      // Set empty array on error to prevent undefined issues
       setRelevantAds([]);
     }
   };
@@ -654,40 +759,33 @@ const JobSeekerDashboard = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 md:space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center space-x-4">
-          <Avatar className="w-16 h-16 border-4 border-white shadow-lg">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 lg:gap-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-4 border-white shadow-lg flex-shrink-0">
             <AvatarImage src={dashboardData.profile.avatar} alt={dashboardData.profile.name} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-sm sm:text-base">
               {dashboardData.profile.name.split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
               Welcome back, {dashboardData.profile.name.split(' ')[0]}!
             </h1>
-            <p className="text-gray-600">
-              {dashboardData.profile.title} • {
-                typeof dashboardData.profile.location === 'string' 
-                  ? dashboardData.profile.location 
-                  : dashboardData.profile.location?.display || 
-                    (dashboardData.profile.location?.city && dashboardData.profile.location?.state 
-                      ? `${dashboardData.profile.location.city}, ${dashboardData.profile.location.state}`
-                      : 'Location not specified'
-                    )
-              }
+            <p className="text-sm sm:text-base text-gray-600 truncate">
+              {dashboardData.profile.title} • {dashboardData.profile.location || 'Location not specified'}
             </p>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
               <div className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${dashboardData.profile.open_to_opportunities ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                <span className="text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600">
                   {dashboardData.profile.open_to_opportunities ? 'Open to opportunities' : 'Not looking'}
                 </span>
               </div>
               {dashboardData.profile.skills && dashboardData.profile.skills.length > 0 && (
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
                   {dashboardData.profile.skills.slice(0, 3).map((skill, index) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       {skill}
@@ -703,37 +801,44 @@ const JobSeekerDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full lg:w-auto">
           <Button 
             onClick={refreshData}
             variant="outline"
+            size="sm"
             disabled={refreshing}
-            className="border-blue-200 hover:bg-blue-50"
+            className="border-blue-200 hover:bg-blue-50 flex-1 sm:flex-none"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button 
             onClick={() => navigate('/jobseeker/cv-builder')}
             variant="outline"
-            className="border-purple-200 hover:bg-purple-50 text-purple-700"
+            size="sm"
+            className="border-purple-200 hover:bg-purple-50 text-purple-700 flex-1 sm:flex-none"
           >
-            <FileText className="w-4 h-4 mr-2" />
-            AI CV Builder
+            <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">AI CV Builder</span>
+            <span className="sm:hidden">CV</span>
           </Button>
           <Button 
             onClick={() => navigate('/jobs')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+            size="sm"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 flex-1 sm:flex-none"
           >
-            <Search className="w-4 h-4 mr-2" />
-            Browse Jobs
+            <Search className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Browse Jobs</span>
+            <span className="sm:hidden">Jobs</span>
           </Button>
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => navigate('/jobseeker/profile')}
-            className="border-purple-200 hover:bg-purple-50"
+            className="border-purple-200 hover:bg-purple-50 w-full lg:w-auto"
           >
-            Complete Profile ({dashboardData.profile.profile_completion}%)
+            <span className="hidden sm:inline">Complete Profile ({dashboardData.profile.profile_completion}%)</span>
+            <span className="sm:hidden">Profile {dashboardData.profile.profile_completion}%</span>
           </Button>
         </div>
       </div>
@@ -741,19 +846,19 @@ const JobSeekerDashboard = () => {
       {/* Profile Completion Banner */}
       {dashboardData.profile.profile_completion < 100 && (
         <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="flex items-center justify-between p-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl">
-                <Target className="w-6 h-6 text-blue-600" />
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 gap-4">
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl flex-shrink-0">
+                <Target className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-1">Boost Your Profile Visibility</h3>
-                <p className="text-blue-700 text-sm mb-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-blue-900 mb-1 text-sm sm:text-base">Boost Your Profile Visibility</h3>
+                <p className="text-blue-700 text-xs sm:text-sm mb-3">
                   Complete your profile to get 3x more job recommendations and increase your visibility to employers
                 </p>
-                <div className="flex items-center gap-3">
-                  <Progress value={dashboardData.profile.profile_completion} className="w-48 h-3" />
-                  <span className="text-sm font-medium text-blue-700">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                  <Progress value={dashboardData.profile.profile_completion} className="w-full sm:w-48 h-2 sm:h-3" />
+                  <span className="text-xs sm:text-sm font-medium text-blue-700 whitespace-nowrap">
                     {dashboardData.profile.profile_completion}% complete
                   </span>
                 </div>
@@ -761,10 +866,11 @@ const JobSeekerDashboard = () => {
             </div>
             <Button 
               variant="outline" 
+              size="sm"
               onClick={() => navigate('/jobseeker/profile')}
-              className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
+              className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm w-full sm:w-auto flex-shrink-0"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
               Complete Now
             </Button>
           </CardContent>
@@ -868,14 +974,7 @@ const JobSeekerDashboard = () => {
                     {ad.location && (
                       <div className="flex items-center gap-1 mb-3 text-xs text-gray-600">
                         <MapPin className="w-3 h-3" />
-                        {typeof ad.location === 'string' 
-                          ? ad.location 
-                          : ad.location?.display || 
-                            (ad.location?.city && ad.location?.state 
-                              ? `${ad.location.city}, ${ad.location.state}`
-                              : ad.location?.is_remote ? 'Remote' : 'Location not specified'
-                            )
-                        }
+                        {ad.location}
                       </div>
                     )}
 
@@ -959,16 +1058,16 @@ const JobSeekerDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-          <CardContent className="p-6">
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg sm:shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <CardContent className="p-3 sm:p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm font-medium">Job Offers</p>
-                <p className="text-3xl font-bold">{dashboardData.stats.offersReceived}</p>
-                <p className="text-orange-100 text-xs">received</p>
+                <p className="text-orange-100 text-xs sm:text-sm font-medium">Job Offers</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold">{dashboardData.stats.offersReceived}</p>
+                <p className="text-orange-100 text-[10px] sm:text-xs">received</p>
               </div>
-              <div className="p-3 bg-orange-600/50 rounded-lg backdrop-blur">
-                <Award className="w-6 h-6" />
+              <div className="p-2 sm:p-3 bg-orange-600/50 rounded-lg backdrop-blur">
+                <Award className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               </div>
             </div>
           </CardContent>
@@ -982,77 +1081,80 @@ const JobSeekerDashboard = () => {
         </div>
       </section>
 
-      <Tabs defaultValue="recommendations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 bg-white shadow-lg rounded-xl p-1">
+      <Tabs defaultValue="recommendations" className="space-y-4 sm:space-y-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 bg-white shadow-lg rounded-xl p-1 gap-1">
           <TabsTrigger 
             value="recommendations"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white rounded-lg transition-all duration-300"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
           >
-            <Zap className="w-4 h-4 mr-2" />
-            For You
+            <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">For You</span>
+            <span className="sm:hidden">Jobs</span>
           </TabsTrigger>
           <TabsTrigger 
             value="applications"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white rounded-lg transition-all duration-300"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
           >
-            <FileText className="w-4 h-4 mr-2" />
-            Applications
+            <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Applications</span>
+            <span className="sm:hidden">Apps</span>
           </TabsTrigger>
           <TabsTrigger 
             value="interviews"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white rounded-lg transition-all duration-300"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
           >
-            <Calendar className="w-4 h-4 mr-2" />
-            Interviews
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden lg:inline">Interviews</span>
+            <span className="lg:hidden">Calls</span>
           </TabsTrigger>
           <TabsTrigger 
             value="skills"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white rounded-lg transition-all duration-300"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm"
           >
-            <TrendingUp className="w-4 h-4 mr-2" />
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Skills
           </TabsTrigger>
           <TabsTrigger 
             value="insights"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg transition-all duration-300"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg transition-all duration-300 text-xs sm:text-sm col-span-2 sm:col-span-1"
           >
-            <BarChart3 className="w-4 h-4 mr-2" />
+            <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Insights
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="recommendations" className="space-y-6">
+        <TabsContent value="recommendations" className="space-y-4 sm:space-y-6">
           <Card className="shadow-xl border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-              <div className="flex items-center justify-between">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-blue-600" />
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                     Recommended Jobs for You
                   </CardTitle>
-                  <CardDescription>AI-powered job matches based on your profile and preferences</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm mt-1">AI-powered job matches based on your profile and preferences</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="border-blue-200 hover:bg-blue-50"
+                    className="border-blue-200 hover:bg-blue-50 text-xs sm:text-sm"
                   >
-                    <Filter className="w-4 h-4 mr-2" />
+                    <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Filters
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => navigate('/jobs')}
-                    className="border-purple-200 hover:bg-purple-50"
+                    className="border-purple-200 hover:bg-purple-50 text-xs sm:text-sm"
                   >
                     See All Jobs
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 md:p-6">
               {dashboardData.recommendedJobs.length === 0 ? (
                 <div className="text-center py-12">
                   <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -1072,39 +1174,32 @@ const JobSeekerDashboard = () => {
                 <div className="space-y-4">
                   {dashboardData.recommendedJobs.map((job) => (
                     <Card key={job.id} className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <Avatar className="w-12 h-12 border-2 border-gray-100">
+                      <CardContent className="p-3 sm:p-4 md:p-6">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0">
+                          <div className="flex-1 w-full min-w-0">
+                            <div className="flex items-start gap-2 sm:gap-3 mb-3">
+                              <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-gray-100 flex-shrink-0">
                                 <AvatarImage src={job.company.logo} alt={job.company.name} />
-                                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold">
+                                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold text-xs sm:text-sm">
                                   {job.company.name[0]}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm sm:text-base md:text-lg hover:text-blue-600 cursor-pointer transition-colors truncate">
                                   {job.title}
                                 </h3>
-                                <p className="text-gray-600 font-medium">{job.company.name}</p>
-                                <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                <p className="text-gray-600 font-medium text-xs sm:text-sm truncate">{job.company.name}</p>
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mt-1">
                                   <span className="flex items-center gap-1">
                                     <MapPin className="w-3 h-3" />
-                                    {typeof job.location === 'string' 
-                                      ? job.location 
-                                      : job.location?.display || 
-                                        (job.location?.city && job.location?.state 
-                                          ? `${job.location.city}, ${job.location.state}`
-                                          : job.location?.is_remote ? 'Remote' : 'Location not specified'
-                                        )
-                                    }
+                                    <span className="truncate max-w-[120px] sm:max-w-none">{job.location}</span>
                                   </span>
                                   {job.is_remote && (
-                                    <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                                    <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 text-xs">
                                       Remote
                                     </Badge>
                                   )}
-                                  <span className="capitalize">{job.employment_type}</span>
+                                  <span className="capitalize hidden sm:inline">{job.employment_type}</span>
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {job.posted_days_ago}d ago
@@ -1113,8 +1208,8 @@ const JobSeekerDashboard = () => {
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-4 mb-3">
-                              <span className="font-semibold text-green-600 text-lg">{job.salary_range}</span>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+                              <span className="font-semibold text-green-600 text-sm sm:text-base md:text-lg">{job.salary_range}</span>
                               <Badge className={`px-3 py-1 ${getMatchScoreColor(job.match_score)} font-semibold`}>
                                 <Star className="w-3 h-3 mr-1" />
                                 {job.match_score}% match
@@ -1183,8 +1278,25 @@ const JobSeekerDashboard = () => {
               <CardDescription>Track the status of your job applications</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {dashboardData.recentApplications.map((application) => (
+              {dashboardData.recentApplications.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No Applications Yet</h3>
+                  <p className="text-gray-500 mb-6">
+                    Start applying to jobs that match your profile
+                  </p>
+                  <Button 
+                    onClick={() => navigate('/jobs')}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Browse Jobs
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {dashboardData.recentApplications.map((application) => (
                   <div key={application.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -1211,11 +1323,13 @@ const JobSeekerDashboard = () => {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/applications')}>
-                View All Applications
-              </Button>
+                    ))}
+                  </div>
+                  <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/jobseeker/applications')}>
+                    View All Applications
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1230,38 +1344,55 @@ const JobSeekerDashboard = () => {
               <CardDescription>Your scheduled interviews and meetings</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {dashboardData.interviewSchedule.map((interview) => (
-                  <Card key={interview.id} className="border-l-4 border-l-green-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-semibold">{interview.job_title}</h4>
-                          <p className="text-gray-600">
-                            {typeof interview.company === 'string' 
-                              ? interview.company 
-                              : interview.company?.name || 'Unknown Company'
-                            }
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
-                            <span>{formatDate(interview.date)}</span>
-                            <span className="capitalize">{interview.type} interview</span>
-                            <span>with {interview.interviewer}</span>
+              {dashboardData.interviewSchedule.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No Interviews Scheduled</h3>
+                  <p className="text-gray-500 mb-6">
+                    Keep applying and you'll start getting interview invitations
+                  </p>
+                  <Button 
+                    onClick={() => navigate('/jobs')}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Find Opportunities
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {dashboardData.interviewSchedule.map((interview) => (
+                    <Card key={interview.id} className="border-l-4 border-l-green-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold">{interview.job_title}</h4>
+                            <p className="text-gray-600">
+                              {typeof interview.company === 'string' 
+                                ? interview.company 
+                                : interview.company?.name || 'Unknown Company'
+                              }
+                            </p>
+                            <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+                              <span>{formatDate(interview.date)}</span>
+                              <span className="capitalize">{interview.type} interview</span>
+                              <span>with {interview.interviewer}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={interview.status === 'confirmed' ? 'default' : 'secondary'}
+                            >
+                              {interview.status}
+                            </Badge>
+                            <Button size="sm">View Details</Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={interview.status === 'confirmed' ? 'default' : 'secondary'}
-                          >
-                            {interview.status}
-                          </Badge>
-                          <Button size="sm">View Details</Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1276,33 +1407,50 @@ const JobSeekerDashboard = () => {
               <CardDescription>Bridge skill gaps to unlock better opportunities</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {dashboardData.skillGaps.map((skill, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium">{skill.skill}</h4>
-                      <Badge variant="outline">
-                        {skill.demand}% market demand
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Your Level</span>
-                        <span>{skill.your_level}%</span>
+              {dashboardData.skillGaps.length === 0 ? (
+                <div className="text-center py-12">
+                  <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No Skill Gap Analysis Yet</h3>
+                  <p className="text-gray-500 mb-6">
+                    Complete your profile to get personalized skill recommendations
+                  </p>
+                  <Button 
+                    onClick={() => navigate('/jobseeker/profile')}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    Update Profile
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {dashboardData.skillGaps.map((skill, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium">{skill.skill}</h4>
+                        <Badge variant="outline">
+                          {skill.demand}% market demand
+                        </Badge>
                       </div>
-                      <Progress value={skill.your_level} className="h-2" />
-                      <div className="flex justify-between text-sm text-gray-500">
-                        <span>Market Demand</span>
-                        <span>{skill.demand}%</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Your Level</span>
+                          <span>{skill.your_level}%</span>
+                        </div>
+                        <Progress value={skill.your_level} className="h-2" />
+                        <div className="flex justify-between text-sm text-gray-500">
+                          <span>Market Demand</span>
+                          <span>{skill.demand}%</span>
+                        </div>
+                        <Progress value={skill.demand} className="h-2 bg-blue-100" />
                       </div>
-                      <Progress value={skill.demand} className="h-2 bg-blue-100" />
+                      <Button variant="outline" size="sm" className="mt-3">
+                        Find Courses
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" className="mt-3">
-                      Find Courses
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1360,6 +1508,7 @@ const JobSeekerDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 };

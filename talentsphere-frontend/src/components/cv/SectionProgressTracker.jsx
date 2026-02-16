@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Circle, AlertCircle, Clock, Loader2, XCircle } from 'lucide-react';
 
 /**
- * SectionProgressTracker Component
- * Displays real-time progress of CV section generation
- * Shows completed sections, current section, and pending sections
- * Displays todos/follow-up items after generation
+ * SectionProgressTracker Component (Enhanced)
+ * Displays real-time progress of CV section generation with time estimates
  */
 const SectionProgressTracker = ({ 
   generationProgress = [], 
@@ -14,11 +12,25 @@ const SectionProgressTracker = ({
   sectionsRequested = []
 }) => {
   const [showTodos, setShowTodos] = useState(true);
+  const [estimatedTime, setEstimatedTime] = useState(null);
+
+  // Calculate estimated time remaining
+  useEffect(() => {
+    if (isGenerating && sectionsRequested.length > 0) {
+      const completed = generationProgress.filter(p => p.status === 'completed').length;
+      const remaining = sectionsRequested.length - completed;
+      // Assume ~3-5 seconds per section
+      const estimate = remaining * 4;
+      setEstimatedTime(estimate);
+    } else {
+      setEstimatedTime(null);
+    }
+  }, [isGenerating, generationProgress, sectionsRequested]);
 
   // Get status summary
   const getStatusSummary = () => {
     const completed = generationProgress.filter(p => p.status === 'completed').length;
-    const processing = generationProgress.filter(p => p.status === 'processing').length;
+    const processing = generationProgress.filter(p => p.status === 'processing' || p.status === 'in_progress').length;
     const failed = generationProgress.filter(p => p.status === 'failed').length;
     const total = sectionsRequested.length || generationProgress.length;
 
@@ -26,6 +38,7 @@ const SectionProgressTracker = ({
   };
 
   const summary = getStatusSummary();
+  const progressPercentage = summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0;
 
   // Get icon for section status
   const getStatusIcon = (status) => {
@@ -54,6 +67,7 @@ const SectionProgressTracker = ({
       case 'completed_with_warning':
         return 'bg-amber-50 border-amber-200 text-amber-800';
       case 'processing':
+      case 'in_progress':
         return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'skipped':
         return 'bg-gray-50 border-gray-300 text-gray-700';
@@ -90,18 +104,25 @@ const SectionProgressTracker = ({
           <h3 className="text-sm font-semibold text-gray-900">Generation Progress</h3>
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <Clock className="w-4 h-4" />
-            <span>
-              {summary.completed} / {summary.total} sections completed
-            </span>
+            {estimatedTime && isGenerating ? (
+              <span>~{estimatedTime}s remaining</span>
+            ) : (
+              <span>{summary.completed} / {summary.total} sections</span>
+            )}
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
           <div
-            className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${(summary.completed / summary.total) * 100}%` }}
+            className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${progressPercentage}%` }}
           />
+        </div>
+
+        {/* Percentage Display */}
+        <div className="text-center text-sm font-semibold text-gray-700 mb-3">
+          {progressPercentage}% Complete
         </div>
 
         {/* Section Status List */}
@@ -109,7 +130,7 @@ const SectionProgressTracker = ({
           {generationProgress.map((progress, idx) => (
             <div
               key={idx}
-              className={`flex items-center gap-3 p-3 rounded-lg border ${getStatusColor(progress.status)}`}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${getStatusColor(progress.status)}`}
             >
               <div className="flex-shrink-0">
                 {getStatusIcon(progress.status)}
@@ -134,7 +155,7 @@ const SectionProgressTracker = ({
                   </p>
                 )}
                 {progress.has_data !== undefined && !progress.has_data && (
-                  <p className="text-xs mt-1 opacity-80">
+                  <p className="text-xs mt-1 opacity-80">"
                     No data available in profile
                   </p>
                 )}

@@ -300,39 +300,47 @@ class ShareJobService {
 
   // Generate personalized share templates
   generateShareTemplates(job, companyName) {
+    const communityLink = '\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
+    
     const templates = [
       {
-        name: 'Professional',
-        template: `🔍 Exciting opportunity alert! Looking for a ${job.title} role? ${companyName} is hiring! This could be perfect for someone in your network. #JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
+        name: '✨ Professional',
+        template: `🔍 Exciting opportunity alert! Looking for a ${job.title} role? ${companyName} is hiring! This could be perfect for someone in your network.${communityLink} #JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
       },
       {
-        name: 'Casual',
-        template: `Hey friends! 👋 Know anyone looking for a ${job.title} position? Found this great opportunity at ${companyName}. Sharing is caring! 💼`
+        name: '👋 Casual',
+        template: `Hey friends! 👋 Know anyone looking for a ${job.title} position? Found this great opportunity at ${companyName}. Sharing is caring! 💼${communityLink}`
       },
       {
-        name: 'Urgent',
-        template: `⚡ URGENT: ${companyName} needs a ${job.title} ASAP! If you know someone perfect for this role, don't wait - opportunities like this move fast! #UrgentHiring #${job.title.replace(/\s+/g, '')}`
+        name: '⚡ Urgent',
+        template: `⚡ URGENT: ${companyName} needs a ${job.title} ASAP! If you know someone perfect for this role, don't wait - opportunities like this move fast!${communityLink} #UrgentHiring #${job.title.replace(/\s+/g, '')}`
       },
       {
-        name: 'Network Helper',
-        template: `🤝 Helping grow our professional network! ${companyName} is looking for a talented ${job.title}. Tag someone who might be interested or share to help a fellow professional! #Networking #CareerOpportunity`
+        name: '🤝 Network Helper',
+        template: `🤝 Helping grow our professional network! ${companyName} is looking for a talented ${job.title}. Tag someone who might be interested or share to help a fellow professional!${communityLink} #Networking #CareerOpportunity`
       },
       {
-        name: 'Company Focused',
-        template: `🏢 ${companyName} is expanding their team! They're looking for a skilled ${job.title}. Great company, great opportunity. Know someone who'd be a perfect fit? #CompanyGrowth #Hiring #TeamExpansion`
+        name: '🏢 Company Focused',
+        template: `🏢 ${companyName} is expanding their team! They're looking for a skilled ${job.title}. Great company, great opportunity. Know someone who'd be a perfect fit?${communityLink} #CompanyGrowth #Hiring #TeamExpansion`
+      },
+      {
+        name: '🎯 Detailed',
+        template: `📢 JOB ALERT!\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n📍 Apply Now!\n\nDon't miss this amazing opportunity to advance your career!${communityLink} #JobSearch #CareerGrowth`
       }
     ];
 
     // Add job-specific elements to templates
     if (job.salary_min || job.salary_max) {
       templates.forEach(template => {
-        template.template += ` 💰 Competitive salary offered.`;
+        const parts = template.template.split(communityLink);
+        template.template = parts[0] + ' 💰 Competitive salary offered.' + communityLink;
       });
     }
 
     if (job.employment_type === 'remote') {
       templates.forEach(template => {
-        template.template += ` 🏠 Remote work available!`;
+        const parts = template.template.split(communityLink);
+        template.template = parts[0] + ' 🏠 Remote work available!' + communityLink;
       });
     }
 

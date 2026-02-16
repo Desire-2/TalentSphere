@@ -1,23 +1,31 @@
 import React, { useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import EmployerDashboard from './EmployerDashboard';
 import JobSeekerDashboard from './JobSeekerDashboard';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    // Redirect admin users to their respective dashboards
-    if (user?.role === 'admin') {
-      navigate('/admin', { replace: true });
-    } else if (user?.role === 'external_admin') {
-      navigate('/external-admin', { replace: true });
+    // Redirect users to their role-specific dashboard routes if they're at the generic /dashboard
+    if (location.pathname === '/dashboard') {
+      if (user?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (user?.role === 'external_admin') {
+        navigate('/external-admin', { replace: true });
+      } else if (user?.role === 'employer') {
+        navigate('/employer/dashboard', { replace: true });
+      } else if (user?.role === 'job_seeker') {
+        navigate('/jobseeker/dashboard', { replace: true });
+      }
     }
-  }, [user?.role, navigate]);
+  }, [user?.role, navigate, location.pathname]);
 
   // Route to appropriate dashboard based on user role
+  // This renders when accessing /jobseeker/dashboard or /employer/dashboard
   if (user?.role === 'employer') {
     return <EmployerDashboard />;
   }

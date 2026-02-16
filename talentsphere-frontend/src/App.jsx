@@ -140,6 +140,13 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/test-employer" element={<TestEmployerComponents />} />
 
+          {/* Common Dashboard Route - automatically routes to correct dashboard based on user role */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+
           {/* Protected user routes with layout */}
           <Route path="/" element={
             <ProtectedRoute>
@@ -158,7 +165,7 @@ function App() {
           </Route>
 
           {/* Employer Routes with EmployerLayout */}
-          <Route path="/" element={
+          <Route path="/employer" element={
             <ProtectedRoute requiredRole="employer">
               <EmployerLayout />
             </ProtectedRoute>
@@ -168,7 +175,7 @@ function App() {
             <Route path="company/profile" element={<CompanyProfileManagement />} />
             <Route path="company/settings" element={<CompanySettings />} />
             <Route path="jobs/post" element={<PostJob />} />
-            <Route path="employer/jobs/create" element={<PostJob />} />
+            <Route path="jobs/create" element={<PostJob />} />
             <Route path="featured-ads" element={
               <div className="container mx-auto px-4 py-20 text-center">
                 <h1 className="text-4xl font-bold mb-4">Featured Ads</h1>
@@ -184,16 +191,16 @@ function App() {
           </Route>
 
           {/* Job Seeker Routes with JobSeekerLayout */}
-          <Route path="/" element={
+          <Route path="/jobseeker" element={
             <ProtectedRoute requiredRole="job_seeker">
               <JobSeekerLayout />
             </ProtectedRoute>
           }>
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="jobseeker/profile" element={<EnhancedJobSeekerProfile />} />
-            <Route path="jobseeker/settings" element={<ProfileSettings />} />
-            <Route path="jobseeker/applications" element={<ApplicationsDashboard />} />
-            <Route path="jobseeker/cv-builder" element={<CVBuilder />} />
+            <Route path="profile" element={<EnhancedJobSeekerProfile />} />
+            <Route path="settings" element={<ProfileSettings />} />
+            <Route path="applications" element={<ApplicationsDashboard />} />
+            <Route path="cv-builder" element={<CVBuilder />} />
           </Route>
 
           {/* Admin routes with admin layout */}

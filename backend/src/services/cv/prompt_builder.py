@@ -515,10 +515,7 @@ EMPLOYMENT TYPE: {job_data.get('employment_type', 'Not specified')}
 
 📋 JOB REQUIREMENTS:
 {job_data.get('requirements', 'Not specified')}
-{f"""
-📄 FULL ORIGINAL JOB POSTING (use this for deeper context):
-{job_data['full_posting']}
-""" if job_data.get('full_posting') else ''}
+{f"📄 FULL ORIGINAL JOB POSTING (use this for deeper context):\\n{job_data['full_posting']}" if job_data.get('full_posting') else ''}
 🔧 REQUIRED SKILLS:
 {', '.join(job_data.get('required_skills', [])) if isinstance(job_data.get('required_skills'), list) else job_data.get('required_skills', job_data.get('skills_required', 'Not specified'))}
 

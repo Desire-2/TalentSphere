@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import config from './config/environment.js';
 import Layout from './components/layout/Layout';
@@ -267,16 +267,8 @@ function App() {
             } />
           </Route>
 
-          {/* 404 Page */}
-          <Route path="*" element={
-            <Layout>
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Page Not Found</h1>
-                <p className="text-muted-foreground mb-8">The page you're looking for doesn't exist.</p>
-                <a href="/" className="text-primary hover:underline">Go back home</a>
-              </div>
-            </Layout>
-          } />
+          {/* 404 - redirect all unknown routes to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <FloatingWhatsAppButton />
       </Router>

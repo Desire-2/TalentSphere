@@ -6,9 +6,8 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Briefcase, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { 
   getAndClearIntendedDestination, 
@@ -119,72 +118,82 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-6" style={{ background: '#0D1B2E' }}>
       <div className="max-w-md w-full space-y-8">
-        {/* Header */}
+
+        {/* ── Page header: logo + title ── */}
         <div className="text-center">
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Briefcase className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-5">
+            <div className="relative">
+              <div className="absolute -inset-1 rounded-2xl" style={{ border: '1.5px solid rgba(44,181,194,0.45)' }} />
+              <div className="relative w-[110px] h-[82px] rounded-xl overflow-hidden" style={{ background: 'white', boxShadow: '0 6px 28px rgba(13,33,81,0.14)' }}>
+                <img src="/logo-192.png" alt="AfriTech Bridge" className="w-full h-full object-contain p-2" />
+              </div>
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Welcome back
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your TalentSphere account
-          </p>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="w-10 h-[3px] rounded-full" style={{ background: '#2CB5C2' }} />
+            <div className="w-4 h-[3px] rounded-full" style={{ background: '#F26522' }} />
+          </div>
+          <h2 className="text-3xl font-extrabold text-white">Welcome back</h2>
+          <p className="mt-1.5 text-gray-400">Sign in to continue your journey</p>
         </div>
 
-        {/* Login Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>
-              Enter your email and password to access your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+          {/* ─── Form card ─── */}
+          <div className="rounded-2xl p-8 relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: 'linear-gradient(90deg, #111111 0%, #2CB5C2 50%, #F26522 100%)' }} />
             {redirectMessage && (
-              <Alert className="mb-4">
-                <AlertDescription className="text-blue-600">
-                  {redirectMessage}
-                </AlertDescription>
-              </Alert>
+              <div
+                className="mb-5 p-4 rounded-xl text-sm font-medium"
+                style={{ background: 'rgba(44,181,194,0.12)', borderLeft: '4px solid #2CB5C2', color: 'white' }}
+              >
+                {redirectMessage}
+              </div>
             )}
-            
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="rounded-xl">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
+              {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="Enter your email"
-                  {...register('email')}
-                  className={errors.email ? 'border-red-500' : ''}
-                />
-                {errors.email && (
-                  <p className="text-sm text-red-600">{errors.email.message}</p>
-                )}
+                <Label htmlFor="email" className="text-sm font-semibold text-white">
+                  Email address
+                </Label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="your@email.com"
+                    {...register('email')}
+                    className={`h-11 rounded-xl pl-10 transition-all bg-[#162236] border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-[#2CB5C2] focus-visible:border-[#2CB5C2] ${errors.email ? 'border-red-500' : ''}`}
+                  />
+                </div>
+                {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-semibold text-white">
+                  Password
+                </Label>
                 <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     {...register('password')}
-                    className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
+                    className={`h-11 rounded-xl pl-10 pr-10 transition-all bg-[#162236] border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-[#2CB5C2] focus-visible:border-[#2CB5C2] ${errors.password ? 'border-red-500' : ''}`}
                   />
                   <button
                     type="button"
@@ -198,26 +207,25 @@ const Login = () => {
                     )}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-red-600">{errors.password.message}</p>
-                )}
+                {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  <Link
-                    to="/forgot-password"
-                    className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200 flex items-center gap-1 hover:underline"
-                  >
-                    <span className="text-xs">🔒</span>
-                    Forgot your password?
-                  </Link>
-                </div>
+              {/* Forgot password */}
+              <div className="flex items-center justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium transition-colors hover:opacity-80"
+                  style={{ color: '#2CB5C2' }}
+                >
+                  Forgot password?
+                </Link>
               </div>
 
+              {/* Sign-in CTA — orange, echoes logo arrow */}
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-12 rounded-xl text-white font-bold text-base border-0 transition-all duration-200 hover:opacity-90 hover:shadow-lg hover:shadow-orange-200 active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #F26522 0%, #F5823E 100%)' }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -226,22 +234,42 @@ const Login = () => {
                     Signing in...
                   </>
                 ) : (
-                  'Sign in'
+                  <span className="flex items-center justify-center gap-2">
+                    Sign In <ArrowRight className="h-4 w-4" />
+                  </span>
                 )}
               </Button>
+              {/* Trust indicators */}
+              <div className="flex items-center justify-center gap-4 pt-1">
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <ShieldCheck className="h-3.5 w-3.5" style={{ color: '#2CB5C2' }} />
+                  SSL Secured
+                </div>
+                <div className="w-px h-3 bg-white/20" />
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <Lock className="h-3.5 w-3.5" style={{ color: '#2CB5C2' }} />
+                  Privacy First
+                </div>
+                <div className="w-px h-3 bg-white/20" />
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <ShieldCheck className="h-3.5 w-3.5" style={{ color: '#2CB5C2' }} />
+                  Free to Join
+                </div>
+              </div>
             </form>
 
+            {/* Register link */}
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
+                  <div className="w-full border-t border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">New to TalentSphere?</span>
+                  <span className="px-4 bg-[#0D1B2E] text-gray-400">New to AfriTech?</span>
                 </div>
               </div>
 
-              <div className="mt-6 text-center">
+              <div className="mt-5 text-center">
                 <Link
                   to="/register"
                   state={(() => {
@@ -263,14 +291,15 @@ const Login = () => {
 
                     return Object.keys(payload).length ? payload : undefined;
                   })()}
-                  className="font-medium text-blue-600 hover:text-blue-500"
+                  className="inline-flex items-center justify-center gap-2 w-full font-semibold text-sm transition-all duration-200 px-6 py-2.5 rounded-xl hover:shadow-md hover:bg-white hover:text-[#0D1B2E] group"
+                  style={{ color: 'white', border: '2px solid rgba(255,255,255,0.3)' }}
                 >
                   Create your account
+                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
       </div>
     </div>
   );

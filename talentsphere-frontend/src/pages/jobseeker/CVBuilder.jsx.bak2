@@ -1,0 +1,1295 @@
+import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  FileText, Download, Eye, Loader2, CheckCircle, AlertTriangle, Briefcase,
+  ChevronDown, RefreshCw, History, TrendingUp, Search, UserCircle, X,
+  Target, Zap, Award, BarChart3, ClipboardPaste, Sparkles, MapPin,
+  GraduationCap, Clock, Brain, ShieldCheck, Maximize2, Minimize2,
+  ChevronRight, Star, Layers, Wand2, Palette, Settings2, ListChecks,
+} from 'lucide-react';
+import SectionProgressTracker from '../../components/cv/SectionProgressTracker';
+import CVRenderer from '../../components/cv/CVRenderer';
+import CVVersionHistory from '../../components/cv/CVVersionHistory';
+import { generateCV, getUserCVData, getCVStyles, parseJobPosting } from '../../services/cvBuilderService';
+import { saveCVVersion, clearAllCVs } from '../../utils/cvStorage';
+import apiService from '../../services/api';
+
+// ─── Template metadata ────────────────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    id: 'professional',
+    label: 'Professional',
+    desc: 'Clean, traditional, ATS-optimised',
+    color: '#1d4ed8',
+    bg: 'bg-blue-50',
+    border: 'border-blue-400',
+    ring: 'ring-blue-500',
+    badge: 'bg-blue-100 text-blue-800',
+    dot: 'bg-blue-500',
+  },
+  {
+    id: 'creative',
+    label: 'Creative',
+    desc: 'Bold gradients, modern flair',
+    color: '#7c3aed',
+    bg: 'bg-purple-50',
+    border: 'border-purple-400',
+    ring: 'ring-purple-500',
+    badge: 'bg-purple-100 text-purple-800',
+    dot: 'bg-purple-500',
+  },
+  {
+    id: 'modern',
+    label: 'Modern',
+    desc: 'Teal accents, contemporary',
+    color: '#0d9488',
+    bg: 'bg-teal-50',
+    border: 'border-teal-400',
+    ring: 'ring-teal-500',
+    badge: 'bg-teal-100 text-teal-800',
+    dot: 'bg-teal-500',
+  },
+];
+
+// ─── Section metadata ─────────────────────────────────────────────────────────
+const SECTION_META = [
+  { id: 'summary',        icon: FileText,      label: 'Summary',            dataKey: null,             required: true  },
+  { id: 'work',           icon: Briefcase,     label: 'Work Experience',    dataKey: 'work_experiences', required: true  },
+  { id: 'education',      icon: GraduationCap, label: 'Education',          dataKey: 'educations',     required: true  },
+  { id: 'skills',         icon: Zap,           label: 'Skills',             dataKey: null,             required: true  },
+  { id: 'projects',       icon: Layers,        label: 'Projects',           dataKey: 'projects',       required: false },
+  { id: 'certifications', icon: Award,         label: 'Certifications',     dataKey: 'certifications', required: false },
+  { id: 'awards',         icon: Star,          label: 'Awards',             dataKey: 'awards',         required: false },
+  { id: 'references',     icon: UserCircle,    label: 'References',         dataKey: 'references',     required: false },
+];
+
+// ─── Config tab definitions ───────────────────────────────────────────────────
+const CONFIG_TABS = [
+  { id: 'job',      label: 'Job',      icon: Target,     title: 'Target Job' },
+  { id: 'style',    label: 'Style',    icon: Palette,    title: 'CV Template' },
+  { id: 'sections', label: 'Sections', icon: ListChecks, title: 'Sections' },
+];
+
+// ─── Reducer ──────────────────────────────────────────────────────────────────
+const cvReducer = (state, action) => {
+  switch (action.type) {
+    case 'SET_LOADING':         return { ...state, loading: action.payload };
+    case 'SET_USER_DATA':       return { ...state, userData: action.payload };
+    case 'SET_SELECTED_STYLE':  return { ...state, selectedStyle: action.payload };
+    case 'SET_SELECTED_SECTIONS': return { ...state, selectedSections: action.payload };
+    case 'START_GENERATION':    return { ...state, isGenerating: true, error: null, generationProgress: [], todos: [], retryInfo: null };
+    case 'UPDATE_PROGRESS':     return { ...state, generationProgress: action.payload };
+    case 'UPDATE_RETRY_INFO':   return { ...state, retryInfo: action.payload };
+    case 'GENERATION_SUCCESS':
+      return {
+        ...state,
+        isGenerating: false,
+        cvContent: action.payload.cvContent,
+        atsScore: action.payload.atsScore,
+        atsBreakdown: action.payload.atsBreakdown,
+        atsImprovements: action.payload.atsImprovements,
+        jobMatchAnalysis: action.payload.jobMatchAnalysis || null,
+        agentReasoning: action.payload.agentReasoning || null,
+        generationMetadata: action.payload.generationMetadata || null,
+        generationProgress: action.payload.progress || [],
+        todos: action.payload.todos || [],
+        error: null,
+        isFromCache: false,
+        generationTime: action.payload.generationTime,
+        currentVersionId: action.payload.currentVersionId,
+      };
+    case 'GENERATION_ERROR':
+      return { ...state, isGenerating: false, error: action.payload, retryInfo: null };
+    case 'SET_JOB_MODE':         return { ...state, jobMode: action.payload };
+    case 'SET_SELECTED_JOB_ID':  return { ...state, selectedJobId: action.payload };
+    case 'SET_AVAILABLE_JOBS':   return { ...state, availableJobs: action.payload };
+    case 'SET_CUSTOM_JOB':       return { ...state, customJob: action.payload };
+    case 'SET_PARSING_JOB':      return { ...state, isParsingJob: action.payload };
+    case 'SET_SHOW_ADVANCED_JOB': return { ...state, showAdvancedJobFields: action.payload };
+    case 'LOAD_FROM_CACHE':
+      return { ...state, cvContent: action.payload.cvContent, atsScore: action.payload.atsScore, isFromCache: true, cacheTimestamp: action.payload.timestamp };
+    case 'CLEAR_CACHE':
+      return { ...state, cvContent: null, atsScore: null, atsBreakdown: null, atsImprovements: null, jobMatchAnalysis: null, agentReasoning: null, generationMetadata: null, isFromCache: false, cacheTimestamp: null, currentVersionId: null };
+    case 'RESTORE_VERSION':
+      return { ...state, cvContent: action.payload.cvContent, atsScore: action.payload.atsScore, atsBreakdown: action.payload.atsBreakdown, atsImprovements: action.payload.atsImprovements, selectedStyle: action.payload.selectedStyle, currentVersionId: action.payload.currentVersionId, isFromCache: true, cacheTimestamp: action.payload.timestamp };
+    case 'SET_SHOW_VERSION_HISTORY': return { ...state, showVersionHistory: action.payload };
+    case 'SET_SHOW_ATS_DETAILS':     return { ...state, showATSDetails: action.payload };
+    case 'SET_JOB_SEARCH_QUERY':     return { ...state, jobSearchQuery: action.payload };
+    case 'SET_ALL_JOBS':       return { ...state, allJobs: action.payload };
+    case 'SET_AVAILABLE_JOBS_FULL': return { ...state, availableJobs: action.payload };
+    case 'SET_LOADING_JOBS':   return { ...state, loadingJobs: action.payload };
+    case 'SET_PROFILE_COMPLETION': return { ...state, profileCompletion: action.payload };
+    case 'SET_SHOW_PROFILE_WARNING': return { ...state, showProfileWarning: action.payload };
+    default: return state;
+  }
+};
+
+const initialState = {
+  loading: false,
+  userData: null,
+  selectedStyle: 'professional',
+  selectedSections: ['summary', 'work', 'education', 'skills', 'projects', 'certifications', 'awards', 'references'],
+  jobMode: 'none',
+  selectedJobId: '',
+  availableJobs: [],
+  allJobs: [],
+  customJob: { title: '', company: '', description: '', requirements: '', required_skills: '', preferred_skills: '', experience_level: '', employment_type: '', education_requirement: '', location: '', years_experience_min: '', years_experience_max: '', full_posting: '' },
+  isParsingJob: false,
+  showAdvancedJobFields: false,
+  isGenerating: false,
+  generationProgress: [],
+  cvContent: null,
+  atsScore: null,
+  atsBreakdown: null,
+  atsImprovements: null,
+  jobMatchAnalysis: null,
+  agentReasoning: null,
+  generationMetadata: null,
+  todos: [],
+  error: null,
+  currentVersionId: null,
+  showVersionHistory: false,
+  showATSDetails: false,
+  isFromCache: false,
+  cacheTimestamp: null,
+  generationTime: null,
+  retryInfo: null,
+  jobSearchQuery: '',
+  loadingJobs: false,
+  profileCompletion: null,
+  showProfileWarning: false,
+};
+
+// ─── ATSRing ──────────────────────────────────────────────────────────────────
+const ATSRing = ({ score = 0, size = 56 }) => {
+  const r = 20;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 70 ? '#16a34a' : score >= 50 ? '#ca8a04' : '#dc2626';
+  return (
+    <svg width={size} height={size} viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r={r} fill="none" stroke="#e5e7eb" strokeWidth="3.5" />
+      <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="3.5"
+        strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+        transform="rotate(-90 22 22)" />
+      <text x="22" y="26" textAnchor="middle" fontSize="9" fontWeight="700" fill={color}>{score}</text>
+    </svg>
+  );
+};
+
+// ─── TemplateCard ─────────────────────────────────────────────────────────────
+const TemplateCard = ({ tpl, selected, onClick, disabled }) => (
+  <button
+    onClick={() => !disabled && onClick(tpl.id)}
+    disabled={disabled}
+    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-150 text-left
+      ${selected ? `${tpl.border} ${tpl.bg} ring-2 ${tpl.ring} ring-offset-1` : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
+      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+  >
+    <span className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${tpl.badge}`}>
+      <span className={`w-3 h-3 rounded-full ${tpl.dot}`} />
+    </span>
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold text-gray-900">{tpl.label}</p>
+      <p className="text-xs text-gray-500 truncate">{tpl.desc}</p>
+    </div>
+    {selected && <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: tpl.color }} />}
+  </button>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+const CVBuilder = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const jobIdFromUrl = searchParams.get('job_id');
+  const jobTitleFromUrl = searchParams.get('job_title');
+  const companyFromUrl = searchParams.get('company');
+  const descriptionFromUrl = searchParams.get('description');
+  const requirementsFromUrl = searchParams.get('requirements');
+  const cvRendererRef = useRef(null);
+
+  const [state, dispatch] = useReducer(cvReducer, {
+    ...initialState,
+    jobMode: jobIdFromUrl ? 'selected' : jobTitleFromUrl ? 'custom' : 'none',
+    selectedJobId: jobIdFromUrl || '',
+    customJob: jobTitleFromUrl ? { ...initialState.customJob, title: jobTitleFromUrl || '', company: companyFromUrl || '', description: descriptionFromUrl || '', requirements: requirementsFromUrl || '' } : initialState.customJob,
+  });
+
+  const [configTab, setConfigTab] = useState('job');
+  const [showPreviewFullScreen, setShowPreviewFullScreen] = useState(false);
+  const [showARIAReasoning, setShowARIAReasoning] = useState(false);
+  const [ssePhase, setSsePhase] = useState(null);
+
+  const {
+    loading, userData, selectedStyle, selectedSections,
+    jobMode, selectedJobId, availableJobs, customJob,
+    isGenerating, generationProgress, cvContent,
+    atsScore, atsBreakdown, atsImprovements, jobMatchAnalysis,
+    agentReasoning, generationMetadata,
+    todos, error, isFromCache, cacheTimestamp, generationTime, retryInfo,
+    isParsingJob, showAdvancedJobFields,
+    currentVersionId, showVersionHistory, showATSDetails,
+    profileCompletion, showProfileWarning, loadingJobs,
+  } = state;
+
+  // ── Load initial data ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      try {
+        // Load last-generated CV from localStorage
+        const cachedCV = localStorage.getItem('lastGeneratedCV');
+        const cachedTS = localStorage.getItem('lastCVTimestamp');
+        const cachedStyle = localStorage.getItem('lastCVStyle');
+        const cachedATS = localStorage.getItem('lastATSScore');
+        if (cachedCV) {
+          try {
+            dispatch({ type: 'LOAD_FROM_CACHE', payload: { cvContent: JSON.parse(cachedCV), atsScore: cachedATS ? JSON.parse(cachedATS) : null, timestamp: cachedTS } });
+            if (cachedStyle) dispatch({ type: 'SET_SELECTED_STYLE', payload: cachedStyle });
+          } catch { localStorage.removeItem('lastGeneratedCV'); }
+        }
+
+        const [userRes] = await Promise.all([getUserCVData()]);
+        dispatch({ type: 'SET_USER_DATA', payload: userRes.data });
+
+        // Profile completeness calculation
+        const ud = userRes.data;
+        if (ud) {
+          const fields = [ud.first_name, ud.last_name, ud.email, ud.phone, ud.location, ud.job_seeker_profile?.professional_title, ud.job_seeker_profile?.skills, ud.job_seeker_profile?.years_of_experience, ud.job_seeker_profile?.education_level];
+          const hasWork = (ud.work_experiences?.length || 0) > 0;
+          const hasEdu  = (ud.educations?.length || 0) > 0;
+          const total = fields.length + 2;
+          const filled = fields.filter(f => f && String(f).trim()).length + (hasWork ? 1 : 0) + (hasEdu ? 1 : 0);
+          const pct = Math.round((filled / total) * 100);
+          dispatch({ type: 'SET_PROFILE_COMPLETION', payload: pct });
+          if (pct < 60) dispatch({ type: 'SET_SHOW_PROFILE_WARNING', payload: true });
+        }
+
+        // Load jobs
+        try {
+          dispatch({ type: 'SET_LOADING_JOBS', payload: true });
+          const jobsRes = await apiService.getJobs({ per_page: 200 });
+          const jobs = Array.isArray(jobsRes) ? jobsRes : jobsRes?.jobs || jobsRes?.data?.jobs || jobsRes?.items || [];
+          if (jobs.length > 0) dispatch({ type: 'SET_AVAILABLE_JOBS', payload: jobs });
+        } catch (e) { console.log('Could not load jobs:', e); }
+        finally { dispatch({ type: 'SET_LOADING_JOBS', payload: false }); }
+
+      } catch (err) {
+        console.error('Load error:', err);
+        dispatch({ type: 'GENERATION_ERROR', payload: { message: 'Failed to load CV builder', code: 'LOAD_ERROR' } });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    };
+    loadData();
+  }, []);
+
+  // ── Toggle section ──────────────────────────────────────────────────────────
+  const toggleSection = useCallback((id) => {
+    const meta = SECTION_META.find(s => s.id === id);
+    if (meta?.required) return;
+    const next = selectedSections.includes(id)
+      ? selectedSections.filter(s => s !== id)
+      : [...selectedSections, id];
+    dispatch({ type: 'SET_SELECTED_SECTIONS', payload: next });
+  }, [selectedSections]);
+
+  // ── AI parse job posting ────────────────────────────────────────────────────
+  const handleParseJobPosting = async () => {
+    if (!customJob.full_posting?.trim() || customJob.full_posting.trim().length < 30) return;
+    dispatch({ type: 'SET_PARSING_JOB', payload: true });
+    try {
+      const parsed = await parseJobPosting(customJob.full_posting);
+      dispatch({
+        type: 'SET_CUSTOM_JOB',
+        payload: {
+          ...customJob,
+          title: parsed.title || customJob.title,
+          company: parsed.company || customJob.company,
+          description: parsed.description || customJob.description,
+          requirements: parsed.requirements || customJob.requirements,
+          required_skills: Array.isArray(parsed.required_skills) ? parsed.required_skills.join(', ') : (parsed.required_skills || customJob.required_skills),
+          preferred_skills: Array.isArray(parsed.preferred_skills) ? parsed.preferred_skills.join(', ') : (parsed.preferred_skills || customJob.preferred_skills),
+          experience_level: parsed.experience_level || customJob.experience_level,
+          employment_type: parsed.employment_type || customJob.employment_type,
+          education_requirement: parsed.education_requirement || customJob.education_requirement,
+          location: parsed.location || customJob.location,
+          years_experience_min: parsed.years_experience_min || customJob.years_experience_min,
+          years_experience_max: parsed.years_experience_max || customJob.years_experience_max,
+        }
+      });
+      dispatch({ type: 'SET_SHOW_ADVANCED_JOB', payload: true });
+    } catch (e) {
+      dispatch({ type: 'GENERATION_ERROR', payload: { message: `Parse failed: ${e.message}`, code: 'PARSE_ERROR' } });
+    } finally {
+      dispatch({ type: 'SET_PARSING_JOB', payload: false });
+    }
+  };
+
+  // ── Generate CV ─────────────────────────────────────────────────────────────
+  const handleGenerateCV = async () => {
+    dispatch({ type: 'START_GENERATION' });
+    setSsePhase(null);
+    const startTime = Date.now();
+    try {
+      let jobData = {};
+      if (jobMode === 'selected' && selectedJobId) jobData = { job_id: parseInt(selectedJobId) };
+      else if (jobMode === 'custom' && customJob.title) jobData = { custom_job: customJob };
+
+      const response = await generateCV(
+        { ...jobData, style: selectedStyle, sections: selectedSections, use_section_by_section: true },
+        {
+          onRetryWait: ({ attempt, waitSeconds, error: e }) => dispatch({ type: 'UPDATE_RETRY_INFO', payload: { attempt, waitSeconds, errorCode: e.code, message: e.message } }),
+          onPhaseUpdate: ({ phase, message: msg }) => setSsePhase({ phase, message: msg }),
+        }
+      );
+
+      if (response.success) {
+        const genTime = ((Date.now() - startTime) / 1000).toFixed(2);
+        let versionId = null;
+        try {
+          versionId = await saveCVVersion(response.data.cv_content, {
+            style: selectedStyle,
+            jobTitle: jobMode === 'custom' ? customJob.title : jobMode === 'selected' ? (availableJobs.find(j => j.id === parseInt(selectedJobId))?.title || 'Job') : 'General CV',
+            jobId: selectedJobId,
+            sections: selectedSections,
+            atsScore: response.data.ats_score,
+            atsBreakdown: response.data.ats_breakdown,
+            atsImprovements: response.data.ats_improvements,
+          });
+        } catch { /* version save is non-critical */ }
+
+        // Persist to localStorage for next page load
+        try {
+          localStorage.setItem('lastGeneratedCV', JSON.stringify(response.data.cv_content));
+          localStorage.setItem('lastCVTimestamp', new Date().toISOString());
+          localStorage.setItem('lastCVStyle', selectedStyle);
+          if (response.data.ats_score) localStorage.setItem('lastATSScore', JSON.stringify(response.data.ats_score));
+        } catch { /* localStorage quota */ }
+
+        dispatch({
+          type: 'GENERATION_SUCCESS',
+          payload: {
+            cvContent: response.data.cv_content,
+            atsScore: response.data.ats_score,
+            atsBreakdown: response.data.ats_breakdown,
+            atsImprovements: response.data.ats_improvements,
+            jobMatchAnalysis: response.data.job_match_analysis || response.data.cv_content?.job_match_analysis || null,
+            agentReasoning: response.data.agent_reasoning || null,
+            generationMetadata: response.data.metadata || null,
+            progress: response.data.progress || [],
+            todos: response.data.todos || [],
+            generationTime: genTime,
+            currentVersionId: versionId,
+          },
+        });
+        setSsePhase(null);
+      } else {
+        throw new Error(response.message || 'Generation failed');
+      }
+    } catch (err) {
+      console.error('CV generation error:', err);
+      const msgs = {
+        RATE_LIMITED: { message: `API rate limited (${err.retryAfter || 60}s wait)`, suggestion: 'The AI service is busy. Try again shortly.' },
+        TIMEOUT:      { message: 'Generation timed out (120s)', suggestion: 'Try selecting fewer sections.' },
+        NETWORK_ERROR:{ message: 'Network connection failed', suggestion: 'Check your internet and retry.' },
+        SERVER_ERROR: { message: `Server error – please retry`, suggestion: 'The server is temporarily unavailable.' },
+      };
+      const info = msgs[err.code] || { message: err.message || 'Generation failed', suggestion: 'If this persists, try fewer sections.' };
+      dispatch({ type: 'GENERATION_ERROR', payload: { ...info, code: err.code || 'UNKNOWN' } });
+      setSsePhase(null);
+    }
+  };
+
+  // ── Restore version ─────────────────────────────────────────────────────────
+  const handleRestoreVersion = (version) => {
+    dispatch({ type: 'RESTORE_VERSION', payload: { cvContent: version.cvContent, atsScore: version.metadata.atsScore || null, atsBreakdown: version.metadata.atsBreakdown || null, atsImprovements: version.metadata.atsImprovements || null, currentVersionId: version.id, selectedStyle: version.metadata.style || 'professional', timestamp: version.timestamp } });
+    dispatch({ type: 'SET_SHOW_VERSION_HISTORY', payload: false });
+  };
+
+  // ── Download PDF ────────────────────────────────────────────────────────────
+  const handleDownload = async () => {
+    if (!cvContent || !cvRendererRef.current) return;
+    try { await cvRendererRef.current.exportToPDF(); }
+    catch (e) { console.error('PDF export error:', e); }
+  };
+
+  // ── Clear cache ─────────────────────────────────────────────────────────────
+  const handleClearCache = () => {
+    clearAllCVs();
+    localStorage.removeItem('lastGeneratedCV');
+    localStorage.removeItem('lastCVTimestamp');
+    localStorage.removeItem('lastCVStyle');
+    localStorage.removeItem('lastATSScore');
+    dispatch({ type: 'CLEAR_CACHE' });
+  };
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const selectedJobObj = availableJobs.find(j => String(j.id) === String(selectedJobId));
+  const atsTotal = atsScore?.total_score || cvContent?.ats_score?.total_score || 0;
+  const jobForDisplay = jobMode === 'custom' ? customJob.title : jobMode === 'selected' ? selectedJobObj?.title : null;
+  const isReady = !isGenerating && selectedSections.length > 0 && !(jobMode === 'custom' && !customJob.title);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="relative mx-auto mb-6 w-16 h-16">
+            <Loader2 className="w-16 h-16 animate-spin text-blue-500" />
+            <Brain className="absolute inset-0 m-auto w-7 h-7 text-blue-700" />
+          </div>
+          <p className="text-lg font-semibold text-gray-800">Loading ARIA CV Builder…</p>
+          <p className="text-sm text-gray-500 mt-1">Setting up your workspace</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+
+      {/* ── Top sticky action bar (only when CV exists) ───────────────────── */}
+      {cvContent && (
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 flex-wrap">
+            {/* Title */}
+            <div className="flex items-center gap-2 mr-auto">
+              <Brain className="w-5 h-5 text-purple-600" />
+              <span className="font-semibold text-gray-900 text-sm hidden sm:inline">ARIA CV Builder</span>
+              {generationTime && (
+                <span className="text-xs text-gray-400 hidden md:inline">Generated in {generationTime}s</span>
+              )}
+            </div>
+
+            {/* ATS ring inline */}
+            {atsTotal > 0 && (
+              <button
+                onClick={() => dispatch({ type: 'SET_SHOW_ATS_DETAILS', payload: true })}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                title="View ATS breakdown"
+              >
+                <ATSRing score={atsTotal} size={36} />
+                <span className="text-xs font-medium text-gray-600 hidden sm:inline">ATS</span>
+              </button>
+            )}
+
+            {/* Job match */}
+            {jobMatchAnalysis?.relevance_score != null && (
+              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                jobMatchAnalysis.relevance_score >= 70 ? 'bg-green-100 text-green-700' :
+                jobMatchAnalysis.relevance_score >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+              }`}>
+                <Target className="w-3 h-3" />
+                {Math.round(jobMatchAnalysis.relevance_score)}% Match
+              </div>
+            )}
+
+            {/* Template switcher (switch without regeneration) */}
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5">
+              {TEMPLATES.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => dispatch({ type: 'SET_SELECTED_STYLE', payload: t.id })}
+                  title={t.label}
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                    selectedStyle === t.id ? `${t.badge} shadow-sm` : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => dispatch({ type: 'SET_SHOW_VERSION_HISTORY', payload: true })}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Download PDF</span>
+            </button>
+
+            <button
+              onClick={() => setShowPreviewFullScreen(f => !f)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+              title={showPreviewFullScreen ? 'Exit full screen' : 'Full screen preview'}
+            >
+              {showPreviewFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* ── Page header ──────────────────────────────────────────────────── */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-white" />
+                </div>
+                ARIA CV Builder
+              </h1>
+              <p className="mt-1.5 text-sm text-gray-500">
+                AI-powered, job-tailored CVs generated in seconds
+                {isFromCache && cacheTimestamp && (
+                  <span className="ml-2 text-amber-600 font-medium">
+                    · Cached from {new Date(cacheTimestamp).toLocaleTimeString()}
+                  </span>
+                )}
+              </p>
+            </div>
+            {isFromCache && (
+              <button
+                onClick={handleClearCache}
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Clear cache
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── URL-based job autofill notice ─────────────────────────────────── */}
+        {jobIdFromUrl && jobTitleFromUrl && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
+            <Briefcase className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900">
+                Tailoring for <span className="font-bold">{jobTitleFromUrl}</span>
+                {companyFromUrl && <span className="text-blue-700"> at {companyFromUrl}</span>}
+              </p>
+              <p className="text-xs text-blue-600 mt-0.5">Job details pre-filled — click Generate when ready.</p>
+            </div>
+            <CheckCircle className="w-5 h-5 text-blue-500 flex-shrink-0" />
+          </div>
+        )}
+
+        {/* ── Profile warning ──────────────────────────────────────────────── */}
+        {showProfileWarning && profileCompletion !== null && profileCompletion < 60 && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded-xl">
+            <div className="flex items-start gap-3">
+              <UserCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900 text-sm">Profile only {profileCompletion}% complete</p>
+                <p className="text-xs text-amber-700 mt-0.5 mb-2">Add work experience, education, and skills for a richer CV.</p>
+                <div className="w-full bg-amber-200 rounded-full h-1.5 mb-3">
+                  <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${profileCompletion}%` }} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => navigate('/jobseeker/profile')} className="px-3 py-1.5 bg-amber-600 text-white text-xs rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5">
+                    <UserCircle className="w-3.5 h-3.5" /> Complete Profile
+                  </button>
+                  <button onClick={() => dispatch({ type: 'SET_SHOW_PROFILE_WARNING', payload: false })} className="px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100 rounded-lg transition-colors">
+                    Continue anyway
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Retry info banner ────────────────────────────────────────────── */}
+        {retryInfo && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-yellow-900">Retrying · Attempt {retryInfo.attempt}/3</p>
+              <p className="text-xs text-yellow-700 mt-0.5">{retryInfo.message}</p>
+            </div>
+            <div className="text-center">
+              <span className="text-2xl font-bold text-yellow-600 tabular-nums">{retryInfo.waitSeconds}</span>
+              <p className="text-xs text-yellow-500">seconds</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Error banner ─────────────────────────────────────────────────── */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-900">
+                  {{ RATE_LIMITED: '⏳ Rate Limited', TIMEOUT: '⏱ Timeout', NETWORK_ERROR: '🌐 Network Error', SERVER_ERROR: '🔧 Server Error' }[error.code] || '❌ Error'}
+                </p>
+                <p className="text-sm text-red-700 mt-1">{error.message}</p>
+                {error.suggestion && <p className="text-xs text-red-600 mt-1">💡 {error.suggestion}</p>}
+              </div>
+              <div className="flex gap-2">
+                {error.code === 'RATE_LIMITED' && (
+                  <button onClick={handleGenerateCV} disabled={isGenerating} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5">
+                    <RefreshCw className="w-3 h-3" /> Retry
+                  </button>
+                )}
+                <button onClick={() => dispatch({ type: 'GENERATION_ERROR', payload: null })} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Main two-column layout ─────────────────────────────────────────── */}
+        <div className={`grid gap-6 ${showPreviewFullScreen ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-[340px_1fr]'}`}>
+
+          {/* ── Config panel (hidden in fullscreen) ─────────────────────── */}
+          {!showPreviewFullScreen && (
+            <div className="flex flex-col gap-0">
+
+              {/* Tab navigation */}
+              <div className="bg-white rounded-t-2xl border border-b-0 border-gray-200 px-4 pt-4">
+                <nav className="flex gap-1" role="tablist">
+                  {CONFIG_TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      role="tab"
+                      aria-selected={configTab === tab.id}
+                      onClick={() => setConfigTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+                        configTab === tab.id
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      <tab.icon className="w-3.5 h-3.5" />
+                      {tab.label}
+                      {tab.id === 'job' && (jobMode !== 'none') && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                      )}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Tab content */}
+              <div className="bg-white border border-gray-200 rounded-b-2xl px-4 pb-4 pt-4 flex flex-col gap-4 flex-1">
+
+                {/* ── Tab: Job ── */}
+                {configTab === 'job' && (
+                  <div className="space-y-4">
+                    {/* Mode selector */}
+                    <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-xl">
+                      {[['none', 'General'], ['selected', 'Browse'], ['custom', 'Custom']].map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => dispatch({ type: 'SET_JOB_MODE', payload: val })}
+                          disabled={isGenerating}
+                          className={`py-1.5 text-xs font-medium rounded-lg transition-all ${
+                            jobMode === val ? 'bg-white text-blue-700 shadow-sm font-semibold' : 'text-gray-600 hover:text-gray-900'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* No job selected info */}
+                    {jobMode === 'none' && (
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600">
+                        <p className="font-medium text-gray-700 mb-1">General CV</p>
+                        <p>A professional CV without job-specific tailoring. Good for general applications.</p>
+                      </div>
+                    )}
+
+                    {/* Browse jobs */}
+                    {jobMode === 'selected' && (
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                          <input
+                            type="text"
+                            value={state.jobSearchQuery}
+                            onChange={e => dispatch({ type: 'SET_JOB_SEARCH_QUERY', payload: e.target.value })}
+                            placeholder="Search jobs…"
+                            disabled={isGenerating}
+                            className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
+                          {state.jobSearchQuery && (
+                            <button onClick={() => dispatch({ type: 'SET_JOB_SEARCH_QUERY', payload: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {selectedJobId && selectedJobObj && (
+                          <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                            <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-blue-900 truncate">{selectedJobObj.title}</p>
+                              <p className="text-xs text-blue-600 truncate">{selectedJobObj.company_name || selectedJobObj.company?.name}</p>
+                            </div>
+                            <button onClick={() => dispatch({ type: 'SET_SELECTED_JOB_ID', payload: '' })} className="text-blue-400 hover:text-blue-600">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {loadingJobs ? (
+                          <div className="flex items-center justify-center py-6 gap-2 text-sm text-gray-500">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading jobs…
+                          </div>
+                        ) : (
+                          <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+                            {(() => {
+                              const q = state.jobSearchQuery.toLowerCase();
+                              const filtered = q
+                                ? availableJobs.filter(j => (j.title || '').toLowerCase().includes(q) || (j.company_name || j.company?.name || '').toLowerCase().includes(q))
+                                : availableJobs;
+                              if (!filtered.length)
+                                return <p className="p-4 text-center text-xs text-gray-500">{q ? 'No matches' : 'No jobs available'}</p>;
+                              return filtered.slice(0, 50).map(job => (
+                                <button
+                                  key={job.id}
+                                  onClick={() => { dispatch({ type: 'SET_SELECTED_JOB_ID', payload: String(job.id) }); dispatch({ type: 'SET_JOB_SEARCH_QUERY', payload: '' }); }}
+                                  disabled={isGenerating}
+                                  className={`w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors text-sm ${String(selectedJobId) === String(job.id) ? 'bg-blue-50 border-l-2 border-blue-500' : ''}`}
+                                >
+                                  <p className="font-medium text-gray-900 truncate text-xs">{job.title}</p>
+                                  <p className="text-gray-500 truncate" style={{ fontSize: '11px' }}>{job.company_name || job.company?.name}{job.location ? ` · ${job.location}` : ''}</p>
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400">{availableJobs.length} jobs</p>
+                      </div>
+                    )}
+
+                    {/* Custom job */}
+                    {jobMode === 'custom' && (
+                      <div className="space-y-3">
+                        {/* AI parse field */}
+                        <div className="p-3 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <ClipboardPaste className="w-3.5 h-3.5 text-purple-600" />
+                            <span className="text-xs font-semibold text-purple-800">Paste Full Job Posting</span>
+                            <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">AI</span>
+                          </div>
+                          <textarea
+                            value={customJob.full_posting}
+                            onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, full_posting: e.target.value } })}
+                            placeholder="Paste the full job posting here…"
+                            rows={4}
+                            disabled={isGenerating || isParsingJob}
+                            className="w-full px-3 py-2 text-xs border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-y bg-white"
+                          />
+                          <button
+                            onClick={handleParseJobPosting}
+                            disabled={isGenerating || isParsingJob || !customJob.full_posting || customJob.full_posting.trim().length < 30}
+                            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                          >
+                            {isParsingJob ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Parsing…</> : <><Sparkles className="w-3.5 h-3.5" /> Auto-Parse with AI</>}
+                          </button>
+                        </div>
+
+                        <div className="relative flex items-center">
+                          <div className="border-t border-gray-200 w-full" /><span className="absolute left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-400">or fill manually</span>
+                        </div>
+
+                        {/* Title + Company */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Job Title *</label>
+                            <input type="text" value={customJob.title} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, title: e.target.value } })} placeholder="e.g. Software Engineer" disabled={isGenerating} className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
+                            <input type="text" value={customJob.company} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, company: e.target.value } })} placeholder="e.g. Acme Corp" disabled={isGenerating} className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Job Description</label>
+                          <textarea value={customJob.description} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, description: e.target.value } })} placeholder="Role responsibilities and objectives…" rows={3} disabled={isGenerating} className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-y" />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Requirements</label>
+                          <textarea value={customJob.requirements} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, requirements: e.target.value } })} placeholder="Key qualifications…" rows={2} disabled={isGenerating} className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-y" />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Required Skills</label>
+                          <input type="text" value={customJob.required_skills} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, required_skills: e.target.value } })} placeholder="Python, React, SQL (comma-separated)" disabled={isGenerating} className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+
+                        {/* Advanced toggle */}
+                        <button onClick={() => dispatch({ type: 'SET_SHOW_ADVANCED_JOB', payload: !showAdvancedJobFields })} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 transition-colors">
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedJobFields ? 'rotate-180' : ''}`} />
+                          {showAdvancedJobFields ? 'Hide' : 'Show'} advanced fields
+                        </button>
+
+                        {showAdvancedJobFields && (
+                          <div className="space-y-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Preferred Skills</label>
+                              <input type="text" value={customJob.preferred_skills} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, preferred_skills: e.target.value } })} placeholder="Docker, AWS (nice to have)" disabled={isGenerating} className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Experience Level</label>
+                                <select value={customJob.experience_level} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, experience_level: e.target.value } })} disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                  <option value="">Auto-detect</option>
+                                  <option value="junior">Junior</option>
+                                  <option value="mid">Mid-level</option>
+                                  <option value="senior">Senior</option>
+                                  <option value="executive">Executive</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Employment Type</label>
+                                <select value={customJob.employment_type} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, employment_type: e.target.value } })} disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                  <option value="">Auto-detect</option>
+                                  <option value="full-time">Full-time</option>
+                                  <option value="part-time">Part-time</option>
+                                  <option value="contract">Contract</option>
+                                  <option value="internship">Internship</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1"><MapPin className="inline w-3 h-3 mr-0.5" />Location</label>
+                                <input type="text" value={customJob.location} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, location: e.target.value } })} placeholder="Remote / City" disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1"><GraduationCap className="inline w-3 h-3 mr-0.5" />Education</label>
+                                <select value={customJob.education_requirement} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, education_requirement: e.target.value } })} disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                  <option value="">Any</option>
+                                  <option value="High School">High School</option>
+                                  <option value="Bachelor's">Bachelor's</option>
+                                  <option value="Master's">Master's</option>
+                                  <option value="PhD">PhD</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1"><Clock className="inline w-3 h-3 mr-0.5" />Min Yrs Exp</label>
+                                <input type="number" min="0" max="30" value={customJob.years_experience_min} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, years_experience_min: e.target.value } })} placeholder="3" disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Max Yrs Exp</label>
+                                <input type="number" min="0" max="30" value={customJob.years_experience_max} onChange={e => dispatch({ type: 'SET_CUSTOM_JOB', payload: { ...customJob, years_experience_max: e.target.value } })} placeholder="7" disabled={isGenerating} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {customJob.title && (
+                          <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <p className="text-xs text-green-800">CV will be tailored for <strong>{customJob.title}</strong>{customJob.company ? ` at ${customJob.company}` : ''}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Tab: Style ── */}
+                {configTab === 'style' && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500">Choose a template. You can switch styles after generating without regenerating.</p>
+                    {TEMPLATES.map(tpl => (
+                      <TemplateCard key={tpl.id} tpl={tpl} selected={selectedStyle === tpl.id} onClick={id => dispatch({ type: 'SET_SELECTED_STYLE', payload: id })} disabled={false} />
+                    ))}
+                  </div>
+                )}
+
+                {/* ── Tab: Sections ── */}
+                {configTab === 'sections' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500 mb-3">Required sections are always included. Toggle optional sections on/off.</p>
+                    {SECTION_META.map(sec => {
+                      const Icon = sec.icon;
+                      const count = sec.dataKey ? (userData?.[sec.dataKey]?.length ?? 0) : null;
+                      const isOn = selectedSections.includes(sec.id);
+                      return (
+                        <label
+                          key={sec.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                            sec.required ? 'bg-blue-50 border-blue-200 cursor-default' :
+                            isOn ? 'bg-white border-blue-300 shadow-sm' : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isOn}
+                            onChange={() => toggleSection(sec.id)}
+                            disabled={sec.required || isGenerating}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${isOn ? 'text-blue-600' : 'text-gray-400'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium ${isOn ? 'text-gray-900' : 'text-gray-500'}`}>{sec.label}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {count !== null && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {count}
+                              </span>
+                            )}
+                            {sec.required && <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full">Required</span>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                    <p className="text-xs text-gray-400 pt-1">{selectedSections.length} of {SECTION_META.length} sections selected</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Sticky generate button ───────────────────────────────── */}
+              <div className="mt-4 space-y-2">
+                {jobForDisplay && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
+                    <Target className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                    <p className="text-xs text-green-800 truncate">Tailored for <strong className="font-semibold">{jobForDisplay}</strong></p>
+                  </div>
+                )}
+                <button
+                  onClick={handleGenerateCV}
+                  disabled={!isReady}
+                  className="w-full py-3.5 px-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 shadow-lg shadow-blue-500/25"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {ssePhase ? `${ssePhase.phase.replace(/_/g, ' ')}…` : 'Generating…'}
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-4 h-4" />
+                      {cvContent ? 'Regenerate CV' : 'Generate CV'}
+                    </>
+                  )}
+                </button>
+                {!isGenerating && (
+                  <p className="text-center text-xs text-gray-400">
+                    {selectedSections.length} sections · {TEMPLATES.find(t => t.id === selectedStyle)?.label} template
+                    {jobMode !== 'none' ? ' · Job-tailored' : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Right: Preview / Progress / Empty state ──────────────────── */}
+          <div className="min-w-0 space-y-4">
+
+            {/* Generation in progress */}
+            {isGenerating && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="relative w-10 h-10">
+                    <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+                    <Brain className="absolute inset-0 m-auto w-5 h-5 text-blue-700" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {ssePhase ? `${ssePhase.phase.replace(/_/g, ' ')}…` : 'ARIA is building your CV…'}
+                    </p>
+                    {ssePhase?.message && <p className="text-xs text-gray-500 mt-0.5">{ssePhase.message}</p>}
+                  </div>
+                </div>
+                <SectionProgressTracker
+                  generationProgress={generationProgress}
+                  todos={todos}
+                  isGenerating={isGenerating}
+                  sectionsRequested={selectedSections}
+                />
+              </div>
+            )}
+
+            {/* CV preview */}
+            {cvContent && !isGenerating && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                {/* Preview header */}
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gray-50/70">
+                  <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-gray-500" />
+                    Preview
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {atsTotal > 0 && (
+                      <button onClick={() => dispatch({ type: 'SET_SHOW_ATS_DETAILS', payload: true })} className="flex items-center gap-1.5 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors" title="ATS Details">
+                        <ATSRing score={atsTotal} size={32} />
+                        <span className="text-xs text-gray-500 hidden sm:inline">ATS Score</span>
+                        <ChevronRight className="w-3 h-3 text-gray-400" />
+                      </button>
+                    )}
+                    {jobMatchAnalysis?.relevance_score != null && (
+                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${jobMatchAnalysis.relevance_score >= 70 ? 'bg-green-100 text-green-700' : jobMatchAnalysis.relevance_score >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                        <Target className="w-3 h-3" />
+                        {Math.round(jobMatchAnalysis.relevance_score)}%
+                      </div>
+                    )}
+                    <button onClick={() => setShowPreviewFullScreen(f => !f)} className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors" title="Toggle full screen">
+                      {showPreviewFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Job match analysis */}
+                {jobMatchAnalysis && (
+                  <div className="px-5 py-4 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 border-b border-blue-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BarChart3 className="w-4 h-4 text-blue-700" />
+                      <span className="text-sm font-semibold text-blue-900">Job Match Analysis</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+                      <div className="bg-white rounded-xl p-2.5 shadow-sm">
+                        <div className={`text-xl font-bold ${(jobMatchAnalysis.relevance_score || 0) >= 70 ? 'text-green-600' : (jobMatchAnalysis.relevance_score || 0) >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{Math.round(jobMatchAnalysis.relevance_score || 0)}%</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Relevance</div>
+                      </div>
+                      <div className="bg-white rounded-xl p-2.5 shadow-sm">
+                        <div className="text-xl font-bold text-green-600">{(jobMatchAnalysis.matching_skills || []).length}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Skills Matched</div>
+                      </div>
+                      <div className="bg-white rounded-xl p-2.5 shadow-sm">
+                        <div className="text-xl font-bold text-amber-600">{(jobMatchAnalysis.skill_gaps || []).length}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Skill Gaps</div>
+                      </div>
+                    </div>
+                    {jobMatchAnalysis.matching_skills?.length > 0 && (
+                      <div className="mb-2">
+                        <div className="flex items-center gap-1 mb-1"><CheckCircle className="w-3 h-3 text-green-600" /><span className="text-xs font-medium text-green-800">Matched</span></div>
+                        <div className="flex flex-wrap gap-1">{jobMatchAnalysis.matching_skills.slice(0, 12).map((s, i) => <span key={i} className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">{s}</span>)}{jobMatchAnalysis.matching_skills.length > 12 && <span className="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">+{jobMatchAnalysis.matching_skills.length - 12}</span>}</div>
+                      </div>
+                    )}
+                    {jobMatchAnalysis.skill_gaps?.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1 mb-1"><AlertTriangle className="w-3 h-3 text-amber-600" /><span className="text-xs font-medium text-amber-800">To develop</span></div>
+                        <div className="flex flex-wrap gap-1">{jobMatchAnalysis.skill_gaps.slice(0, 8).map((s, i) => <span key={i} className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs rounded-full">{s}</span>)}{jobMatchAnalysis.skill_gaps.length > 8 && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-xs rounded-full">+{jobMatchAnalysis.skill_gaps.length - 8}</span>}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ARIA reasoning panel */}
+                {agentReasoning && (
+                  <div className="border-b border-gray-100">
+                    <button
+                      onClick={() => setShowARIAReasoning(p => !p)}
+                      className="w-full flex items-center justify-between px-5 py-3 bg-gradient-to-r from-purple-50/60 to-indigo-50/60 hover:from-purple-100/60 hover:to-indigo-100/60 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Brain className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                        <span className="text-sm font-semibold text-purple-900">How ARIA built your CV</span>
+                        {generationMetadata?.quality_gate_passed && <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full"><ShieldCheck className="w-3 h-3" />Verified</span>}
+                        {generationMetadata?.internal_revisions > 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">{generationMetadata.internal_revisions} revision{generationMetadata.internal_revisions > 1 ? 's' : ''}</span>}
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-purple-400 transition-transform flex-shrink-0 ${showARIAReasoning ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showARIAReasoning && (
+                      <div className="px-5 py-4 space-y-4 bg-white">
+                        {(agentReasoning.match_level || agentReasoning.job_match_score != null) && (
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {agentReasoning.match_level && <span className={`px-3 py-1 rounded-full text-xs font-bold ${agentReasoning.match_level === 'HIGH' ? 'bg-green-100 text-green-800' : agentReasoning.match_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{agentReasoning.match_level} Match</span>}
+                            {agentReasoning.job_match_score != null && <span className="text-sm text-gray-600">Score: <strong>{agentReasoning.job_match_score}%</strong></span>}
+                          </div>
+                        )}
+                        {(agentReasoning.candidate_analysis || agentReasoning.job_decoding) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {agentReasoning.candidate_analysis && <div className="p-3 bg-gray-50 rounded-xl"><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Candidate</p><p className="text-xs text-gray-700 leading-relaxed">{agentReasoning.candidate_analysis}</p></div>}
+                            {agentReasoning.job_decoding && <div className="p-3 bg-gray-50 rounded-xl"><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Job Decoded</p><p className="text-xs text-gray-700 leading-relaxed">{agentReasoning.job_decoding}</p></div>}
+                          </div>
+                        )}
+                        {agentReasoning.strategy_chosen && <div><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Strategy</p><p className="text-xs text-gray-700">{agentReasoning.strategy_chosen}</p></div>}
+                        {agentReasoning.key_decisions?.length > 0 && (
+                          <div><p className="text-xs font-semibold text-gray-400 uppercase mb-2">Key Decisions</p>
+                            <ul className="space-y-1">{agentReasoning.key_decisions.map((d, i) => <li key={i} className="flex items-start gap-2 text-xs text-gray-700"><span className="text-purple-500 font-bold flex-shrink-0">▸</span>{d}</li>)}</ul>
+                          </div>
+                        )}
+                        {agentReasoning.confidence_score != null && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1"><p className="text-xs font-semibold text-gray-400 uppercase">ARIA Confidence</p><span className="text-sm font-bold text-indigo-700">{agentReasoning.confidence_score}%</span></div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, agentReasoning.confidence_score)}%` }} /></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* CV Renderer */}
+                <div className="p-4 sm:p-6">
+                  <CVRenderer
+                    ref={cvRendererRef}
+                    cvData={cvContent}
+                    selectedTemplate={selectedStyle}
+                    onExport={(status, message) => { if (status === 'error') console.error('Export error:', message); }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!cvContent && !isGenerating && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-8 py-16 text-center">
+                  <div className="relative mx-auto w-20 h-20 mb-6">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                      <Brain className="w-10 h-10 text-blue-600" />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full border-2 border-gray-100 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to build your CV</h3>
+                  <p className="text-sm text-gray-500 mb-8 max-w-sm mx-auto">
+                    Configure your target job and preferred template, then click <strong>Generate CV</strong> to create a tailored, ATS-optimised CV in seconds.
+                  </p>
+
+                  {/* What ARIA will do */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 text-left">
+                    {[
+                      { icon: Target, color: 'text-blue-600', bg: 'bg-blue-50', title: 'Analyse Job', desc: 'Decodes the job requirements and identifies key keywords' },
+                      { icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50', title: 'Strategise', desc: 'Plans a narrative angle and tailoring strategy for your profile' },
+                      { icon: Wand2, color: 'text-teal-600', bg: 'bg-teal-50', title: 'Generate', desc: 'Writes achievement-driven content with ATS optimisation' },
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/60">
+                        <div className={`w-8 h-8 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
+                          <step.icon className={`w-4 h-4 ${step.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-800">{step.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{step.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Profile data summary */}
+                  {userData && (
+                    <div className="inline-flex flex-wrap justify-center gap-2 text-xs">
+                      {[
+                        { key: 'work_experiences', label: 'Work Exp', icon: Briefcase },
+                        { key: 'educations', label: 'Education', icon: GraduationCap },
+                        { key: 'certifications', label: 'Certs', icon: Award },
+                        { key: 'projects', label: 'Projects', icon: Layers },
+                        { key: 'references', label: 'References', icon: UserCircle },
+                      ].map(({ key, label, icon: Icon }) => {
+                        const count = userData[key]?.length || 0;
+                        return (
+                          <span key={key} className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${count > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                            <Icon className="w-3 h-3" />
+                            {count} {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Version History Modal ────────────────────────────────────────────── */}
+      {showVersionHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <History className="w-5 h-5 text-purple-600" />
+                CV Version History
+              </h2>
+              <button onClick={() => dispatch({ type: 'SET_SHOW_VERSION_HISTORY', payload: false })} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <CVVersionHistory currentCVId={currentVersionId} onRestore={handleRestoreVersion} onClose={() => dispatch({ type: 'SET_SHOW_VERSION_HISTORY', payload: false })} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ATS Details Modal ────────────────────────────────────────────────── */}
+      {showATSDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                ATS Score Breakdown
+              </h2>
+              <button onClick={() => dispatch({ type: 'SET_SHOW_ATS_DETAILS', payload: false })} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Overall */}
+              <div className="flex items-center justify-between p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Overall ATS Score</p>
+                  <div className="text-5xl font-bold text-gray-900">{atsTotal}<span className="text-2xl text-gray-400">/100</span></div>
+                  <p className={`text-sm font-medium mt-2 ${atsTotal >= 70 ? 'text-green-700' : atsTotal >= 50 ? 'text-yellow-700' : 'text-red-700'}`}>
+                    {atsTotal >= 70 ? '✓ Excellent ATS compatibility' : atsTotal >= 50 ? '⚠ Good – some improvements needed' : '✗ Needs improvement'}
+                  </p>
+                </div>
+                <ATSRing score={atsTotal} size={80} />
+              </div>
+
+              {/* Breakdown */}
+              {atsBreakdown && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3">Category Breakdown</h3>
+                  <div className="space-y-3">
+                    {Object.entries(atsBreakdown).map(([cat, data]) => {
+                      const pct = data.max_score > 0 ? Math.round((data.score / data.max_score) * 100) : 0;
+                      return (
+                        <div key={cat} className="p-3 bg-gray-50 rounded-xl">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-medium text-gray-800 capitalize">{cat.replace(/_/g, ' ')}</span>
+                            <span className="text-xs font-bold text-gray-900">{data.score}/{data.max_score}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mb-1.5">
+                            <div className={`h-2 rounded-full ${pct >= 70 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          {data.issues?.length > 0 && (
+                            <ul className="mt-1 space-y-0.5">{data.issues.map((issue, i) => <li key={i} className="text-xs text-red-600 flex items-start gap-1.5"><span>•</span>{issue}</li>)}</ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Improvements */}
+              {atsImprovements?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-600" />Recommendations</h3>
+                  <div className="space-y-2">
+                    {atsImprovements.map((tip, i) => (
+                      <div key={i} className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                        <span className="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                        <p className="text-xs text-gray-700">{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CVBuilder;

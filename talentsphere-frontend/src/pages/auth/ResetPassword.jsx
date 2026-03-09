@@ -203,142 +203,138 @@ const ResetPassword = () => {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
-            <p className="text-gray-600">Verifying reset token...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0D1B2E' }}>
+        <div className="w-full max-w-md rounded-2xl p-12 flex flex-col items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <Loader2 className="w-8 h-8 animate-spin mb-4" style={{ color: '#2CB5C2' }} />
+          <p className="text-gray-300">Verifying reset token...</p>
+        </div>
       </div>
     );
   }
 
   if (!tokenValid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-pink-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-red-500 to-rose-600 rounded-full flex items-center justify-center mb-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0D1B2E' }}>
+        <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="h-1 w-full" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)' }} />
+          <div className="p-8 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-red-500 to-rose-600 rounded-full flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-red-600">
-              Invalid Reset Link
-            </h1>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-gray-600 text-center">{error}</p>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-sm text-red-700">
-                This could happen if:
-              </p>
-              <ul className="text-sm text-red-700 mt-2 space-y-1">
+            <h1 className="text-2xl font-bold text-white">Invalid Reset Link</h1>
+            <p className="text-gray-300">{error}</p>
+            <div className="rounded-xl p-4 text-left" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <p className="text-sm text-red-400">This could happen if:</p>
+              <ul className="text-sm text-red-400 mt-2 space-y-1">
                 <li>• The link has expired (links expire after 1 hour)</li>
                 <li>• The link has already been used</li>
                 <li>• The link was copied incorrectly</li>
               </ul>
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Link
-              to="/forgot-password"
-              className="w-full"
-            >
-              <Button className="w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700">
-                Request New Reset Link
-              </Button>
-            </Link>
-            <Link
-              to="/login"
-              className="flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to login
-            </Link>
-          </CardFooter>
-        </Card>
+            <div className="flex flex-col space-y-3 pt-2">
+              <Link to="/forgot-password" className="w-full">
+                <button
+                  className="w-full text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, #F26522 0%, #F5823E 100%)' }}
+                >
+                  Request New Reset Link
+                </button>
+              </Link>
+              <Link
+                to="/login"
+                className="flex items-center justify-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to login
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mb-4 relative">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0D1B2E' }}>
+        <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="h-1 w-full" style={{ background: 'linear-gradient(135deg, #2CB5C2 0%, #F26522 100%)' }} />
+          <div className="p-8 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center relative">
               <CheckCircle2 className="w-8 h-8 text-white" />
               <div className="absolute -top-1 -right-1">
                 <Crown className="w-5 h-5 text-yellow-400 animate-bounce" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              Password Reset Successful!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Your password has been updated successfully
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-              <Zap className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <p className="text-green-700 font-semibold mb-2">
-                All Set! 🎉
-              </p>
-              <p className="text-sm text-green-600">
-                You can now log in with your new password. 
+            <div>
+              <h1 className="text-2xl font-bold text-white">Password Reset Successful!</h1>
+              <p className="text-gray-300 mt-2">Your password has been updated successfully</p>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: 'rgba(44,181,194,0.1)', border: '1px solid rgba(44,181,194,0.25)' }}>
+              <Zap className="w-8 h-8 mx-auto mb-3" style={{ color: '#2CB5C2' }} />
+              <p className="font-semibold text-white mb-2">All Set! 🎉</p>
+              <p className="text-sm text-gray-300">
+                You can now log in with your new password.
                 Redirecting you to login page...
               </p>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Link to="/login" className="w-full">
-              <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">
+            <Link to="/login" className="block">
+              <button
+                className="w-full text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #F26522 0%, #F5823E 100%)' }}
+              >
                 Continue to Login
-              </Button>
+              </button>
             </Link>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0D1B2E' }}>
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-4 relative">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2CB5C2 0%, #F26522 100%)' }}>
+              <span className="text-white font-bold text-lg">T</span>
+            </div>
+            <span className="text-2xl font-bold text-white">TalentSphere</span>
+          </Link>
+        </div>
+
+        <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="h-1 w-full" style={{ background: 'linear-gradient(135deg, #2CB5C2 0%, #F26522 100%)' }} />
+          <div className="p-8 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 relative" style={{ background: 'linear-gradient(135deg, #2CB5C2 0%, #F26522 100%)' }}>
               <Key className="w-8 h-8 text-white" />
               <div className="absolute -top-1 -right-1">
                 <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Reset Your Password
-            </h1>
+            <h1 className="text-2xl font-bold text-white">Reset Your Password</h1>
             {userInfo && (
-              <p className="text-gray-600 mt-2">
-                Hi {userInfo.name}, create your new password
-              </p>
+              <p className="text-gray-300 mt-2">Hi {userInfo.name}, create your new password</p>
             )}
-          </CardHeader>
+          </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-            <CardContent className="space-y-6">
+            <div className="px-8 pb-6 space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-pulse">
+                <div className="rounded-xl p-4" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
                   <div className="flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                    <p className="text-sm text-red-700">{error}</p>
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <p className="text-sm text-red-400">{error}</p>
                   </div>
                 </div>
               )}
 
               {/* New Password */}
               <div className="space-y-3">
-                <Label htmlFor="password" className="flex items-center gap-2 text-sm font-semibold">
-                  <Lock className="w-4 h-4 text-blue-500" />
+                <Label htmlFor="password" className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Lock className="w-4 h-4" style={{ color: '#2CB5C2' }} />
                   New password
                 </Label>
                 <div className="relative">
@@ -347,19 +343,17 @@ const ResetPassword = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Create a strong password"
                     {...register('password')}
-                    className={`pr-10 transition-all duration-300 ${
-                      errors.password 
-                        ? 'border-red-500 focus:border-red-500 bg-red-50' 
-                        : passwordStrength > 70
-                        ? 'border-green-500 focus:border-green-500 bg-green-50'
-                        : 'border-gray-300 hover:border-gray-400 focus:border-blue-400'
+                    className={`pr-10 transition-all duration-300 text-white placeholder:text-gray-500 ${
+                      errors.password
+                        ? 'border-red-500 focus:border-red-500 bg-red-900/20'
+                        : 'border-white/10 hover:border-white/25 focus:border-[#2CB5C2] bg-[#162236]'
                     }`}
                     disabled={isSubmitting}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -369,16 +363,16 @@ const ResetPassword = () => {
                 {watchedPassword && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">Password strength:</span>
+                      <span className="text-xs text-gray-400">Password strength:</span>
                       <span className={`text-xs font-semibold ${
-                        passwordStrength < 40 ? 'text-red-600' : 
-                        passwordStrength < 70 ? 'text-yellow-600' : 'text-green-600'
+                        passwordStrength < 40 ? 'text-red-400' :
+                        passwordStrength < 70 ? 'text-yellow-400' : 'text-green-400'
                       }`}>
                         {getStrengthText()}
                       </span>
                     </div>
-                    <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
+                    <div className="relative h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                      <div
                         className={`h-full transition-all duration-300 ${getStrengthColor()}`}
                         style={{ width: `${passwordStrength}%` }}
                       />
@@ -388,19 +382,15 @@ const ResetPassword = () => {
 
                 {/* Password Requirements */}
                 {watchedPassword && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Requirements:</p>
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <p className="text-xs font-semibold text-gray-300 mb-2">Requirements:</p>
                     <div className="space-y-1">
                       {getPasswordValidation().map((req, index) => {
                         const Icon = req.icon;
                         return (
                           <div key={index} className="flex items-center gap-2">
-                            <Icon className={`w-3 h-3 ${
-                              req.valid ? 'text-green-500' : 'text-red-500'
-                            }`} />
-                            <span className={`text-xs ${
-                              req.valid ? 'text-green-700' : 'text-red-700'
-                            }`}>
+                            <Icon className={`w-3 h-3 ${req.valid ? 'text-green-400' : 'text-red-400'}`} />
+                            <span className={`text-xs ${req.valid ? 'text-green-400' : 'text-gray-400'}`}>
                               {req.text}
                             </span>
                           </div>
@@ -411,7 +401,7 @@ const ResetPassword = () => {
                 )}
 
                 {errors.password && (
-                  <p className="text-sm text-red-600 flex items-center gap-2 animate-pulse">
+                  <p className="text-sm text-red-400 flex items-center gap-2 animate-pulse">
                     <AlertCircle className="w-4 h-4" />
                     {errors.password.message}
                   </p>
@@ -420,8 +410,8 @@ const ResetPassword = () => {
 
               {/* Confirm Password */}
               <div className="space-y-3">
-                <Label htmlFor="confirm_password" className="flex items-center gap-2 text-sm font-semibold">
-                  <Shield className="w-4 h-4 text-blue-500" />
+                <Label htmlFor="confirm_password" className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Shield className="w-4 h-4" style={{ color: '#2CB5C2' }} />
                   Confirm new password
                 </Label>
                 <div className="relative">
@@ -430,35 +420,36 @@ const ResetPassword = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm your password"
                     {...register('confirm_password')}
-                    className={`pr-10 transition-all duration-300 ${
-                      errors.confirm_password 
-                        ? 'border-red-500 focus:border-red-500 bg-red-50' 
-                        : 'border-gray-300 hover:border-gray-400 focus:border-blue-400'
+                    className={`pr-10 transition-all duration-300 text-white placeholder:text-gray-500 ${
+                      errors.confirm_password
+                        ? 'border-red-500 focus:border-red-500 bg-red-900/20'
+                        : 'border-white/10 hover:border-white/25 focus:border-[#2CB5C2] bg-[#162236]'
                     }`}
                     disabled={isSubmitting}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errors.confirm_password && (
-                  <p className="text-sm text-red-600 flex items-center gap-2 animate-pulse">
+                  <p className="text-sm text-red-400 flex items-center gap-2 animate-pulse">
                     <AlertCircle className="w-4 h-4" />
                     {errors.confirm_password.message}
                   </p>
                 )}
               </div>
-            </CardContent>
+            </div>
 
-            <CardFooter className="flex flex-col space-y-4">
-              <Button
+            <div className="px-8 pb-8 flex flex-col space-y-4">
+              <button
                 type="submit"
                 disabled={isSubmitting || passwordStrength < 70}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full text-white font-semibold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                style={{ background: 'linear-gradient(135deg, #F26522 0%, #F5823E 100%)' }}
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
@@ -471,18 +462,18 @@ const ResetPassword = () => {
                     Update Password
                   </div>
                 )}
-              </Button>
+              </button>
 
               <Link
                 to="/login"
-                className="flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                className="flex items-center justify-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
               </Link>
-            </CardFooter>
+            </div>
           </form>
-        </Card>
+        </div>
       </div>
     </div>
   );

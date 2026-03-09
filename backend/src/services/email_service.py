@@ -4,12 +4,8 @@ Provides comprehensive email delivery with templates, tracking, and batching
 """
 
 import os
-import smtplib
 import json
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
+import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
@@ -67,23 +63,19 @@ class EmailService:
     """Enhanced email service with templates, batching, and delivery tracking"""
     
     def __init__(self):
-        self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.mail.yahoo.com')
-        self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.sender_email = os.getenv('SENDER_EMAIL')
-        self.sender_password = os.getenv('SENDER_PASSWORD')
-        self.sender_name = os.getenv('SENDER_NAME', 'TalentSphere')
+        self.brevo_api_key = os.getenv('BREVO_API_KEY')
+        self.sender_email = os.getenv('SENDER_EMAIL', 'noreply@afritechbridge.online')
+        self.sender_name = os.getenv('SENDER_NAME', 'AfriTech Bridge')
         self.frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
         
-        # Debug: Log email configuration (mask password)
-        self.logger.info(f"📧 Email Service Configuration:")
-        self.logger.info(f"   SMTP Server: {self.smtp_server}:{self.smtp_port}")
+        # Log email configuration
+        self.logger.info(f"📧 Email Service Configuration (Brevo):")
         self.logger.info(f"   Sender Email: {self.sender_email}")
-        self.logger.info(f"   Password Set: {'Yes' if self.sender_password else 'No'}")
-        if self.sender_password:
-            self.logger.info(f"   Password Length: {len(self.sender_password)} chars")
+        self.logger.info(f"   Sender Name: {self.sender_name}")
+        self.logger.info(f"   Brevo API Key Set: {'Yes' if self.brevo_api_key else 'No'}")
         
         # Email templates
         self.templates = self._load_templates()
@@ -161,10 +153,10 @@ class EmailService:
         }
     
     def send_notification_email(self, notification: EmailNotification) -> bool:
-        """Send a single notification email"""
+        """Send a single notification email via Brevo"""
         try:
-            if not self.sender_password:
-                self.logger.warning("Email service not configured - SENDER_PASSWORD missing")
+            if not self.brevo_api_key:
+                self.logger.warning("Email service not configured - BREVO_API_KEY missing")
                 return False
             
             template = self.templates.get(notification.template_name)
@@ -177,29 +169,14 @@ class EmailService:
             html_body = self._render_template(template.html_body, notification.variables)
             text_body = self._render_template(template.text_body, notification.variables)
             
-            # Create email message
-            message = MIMEMultipart('alternative')
-            message['From'] = f"{self.sender_name} <{self.sender_email}>"
-            message['To'] = notification.recipient_email
-            message['Subject'] = subject
-            
-            # Add priority headers
-            if notification.priority == EmailPriority.HIGH:
-                message['X-Priority'] = '2'
-                message['Importance'] = 'high'
-            elif notification.priority == EmailPriority.URGENT:
-                message['X-Priority'] = '1'
-                message['Importance'] = 'high'
-            
-            # Attach text and HTML parts
-            text_part = MIMEText(text_body, 'plain', 'utf-8')
-            html_part = MIMEText(html_body, 'html', 'utf-8')
-            
-            message.attach(text_part)
-            message.attach(html_part)
-            
-            # Send email
-            success = self._send_smtp_email(notification.recipient_email, message)
+            # Send via Brevo API
+            success = self._send_brevo_email(
+                recipient_email=notification.recipient_email,
+                recipient_name=notification.recipient_name,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body
+            )
             
             # Update notification status if provided
             if success and notification.notification_id:
@@ -349,26 +326,49 @@ class EmailService:
         ]
         return notification_type in important_types
     
-    def _send_smtp_email(self, recipient_email: str, message: MIMEMultipart) -> bool:
-        """Send email via SMTP"""
+    def _send_brevo_email(self, recipient_email: str, recipient_name: str,
+                           subject: str, html_body: str, text_body: str) -> bool:
+        """Send email via Brevo Transactional Email API"""
         try:
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()
-            server.login(self.sender_email, self.sender_password)
-            server.sendmail(self.sender_email, recipient_email, message.as_string())
-            server.quit()
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "api-key": self.brevo_api_key,
+                "content-type": "application/json"
+            }
+            payload = {
+                "sender": {
+                    "name": self.sender_name,
+                    "email": self.sender_email
+                },
+                "to": [
+                    {
+                        "email": recipient_email,
+                        "name": recipient_name
+                    }
+                ],
+                "subject": subject,
+                "htmlContent": html_body,
+                "textContent": text_body
+            }
             
-            self.logger.info(f"Email sent successfully to {recipient_email}")
-            return True
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
             
-        except smtplib.SMTPAuthenticationError:
-            self.logger.error(f"SMTP Authentication failed for {self.sender_email}")
+            if response.status_code in (200, 201):
+                self.logger.info(f"Email sent successfully via Brevo to {recipient_email}")
+                return True
+            else:
+                self.logger.error(f"Brevo API error {response.status_code}: {response.text}")
+                return False
+            
+        except requests.exceptions.Timeout:
+            self.logger.error("Brevo API request timed out")
             return False
-        except smtplib.SMTPException as e:
-            self.logger.error(f"SMTP error: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Brevo API request failed: {str(e)}")
             return False
         except Exception as e:
-            self.logger.error(f"Error sending email: {str(e)}")
+            self.logger.error(f"Error sending email via Brevo: {str(e)}")
             return False
     
     def _update_notification_status(self, notification_id: int):

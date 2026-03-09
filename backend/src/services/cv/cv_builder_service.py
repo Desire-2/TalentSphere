@@ -97,6 +97,10 @@ class CVBuilderService:
             # Normalize data structure
             cv_content = self.parser.normalize_cv_structure(cv_content)
             print("[CV Builder] Data normalized")
+
+            # Always use profile references directly — bypasses AI which can
+            # corrupt / lose the position field or add placeholder text.
+            cv_content['references'] = user_data.get('references', [])
             
             # Validate and enhance content
             cv_content = self.validator.validate_content_quality(cv_content)
@@ -214,6 +218,17 @@ class CVBuilderService:
             try:
                 print(f"[CV Builder] 📝 Generating: {section}")
                 
+                # Special case: references always come from profile — no AI needed
+                if section == 'references':
+                    cv_content['references'] = user_data.get('references', [])
+                    self.generation_progress.append({
+                        'section': section,
+                        'status': 'completed',
+                        'timestamp': datetime.utcnow().isoformat()
+                    })
+                    print(f"[CV Builder] ✅ References loaded from profile ({len(cv_content['references'])})")
+                    continue
+
                 # Validate data availability
                 if not self._has_data_for_section(section, user_data):
                     print(f"[CV Builder] ⚠️  Insufficient data for: {section}")
@@ -256,6 +271,9 @@ class CVBuilderService:
                     'error': str(e)[:100]
                 })
         
+        # Always inject references from profile data (no AI, no stale value)
+        cv_content['references'] = user_data.get('references', [])
+
         # Add ATS score and metadata
         ats_result = CVBuilderEnhancements.calculate_ats_score(cv_content, job_data)
         cv_content['ats_score'] = ats_result

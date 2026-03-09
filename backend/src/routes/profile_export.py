@@ -9,6 +9,7 @@ from src.models.profile_extensions import (
     Award, Language, VolunteerExperience, ProfessionalMembership
 )
 from src.routes.auth import token_required, role_required
+from sqlalchemy import text
 from datetime import datetime
 import json
 import io
@@ -155,6 +156,21 @@ def calculate_comprehensive_completeness(user):
         'additional': 5
     }
     
+    # ── One round-trip to fetch ALL counts ───────────────────────────────────
+    row = db.session.execute(text("""
+        SELECT
+            (SELECT COUNT(*) FROM work_experiences        WHERE user_id=:uid) AS work,
+            (SELECT COUNT(*) FROM educations              WHERE user_id=:uid) AS edu,
+            (SELECT COUNT(*) FROM certifications          WHERE user_id=:uid) AS cert,
+            (SELECT COUNT(*) FROM projects                WHERE user_id=:uid) AS proj,
+            (SELECT COUNT(*) FROM awards                  WHERE user_id=:uid) AS award,
+            (SELECT COUNT(*) FROM languages               WHERE user_id=:uid) AS lang,
+            (SELECT COUNT(*) FROM volunteer_experiences   WHERE user_id=:uid) AS volunteer,
+            (SELECT COUNT(*) FROM professional_memberships WHERE user_id=:uid) AS membership
+    """), {'uid': user.id}).fetchone()
+    exp_count, edu_count, cert_count, proj_count = row[0], row[1], row[2], row[3]
+    additional_count = row[4] + row[5] + row[6] + row[7]
+
     # Basic info (15%)
     basic_fields = [user.first_name, user.last_name, user.email, user.phone, user.location]
     sections['basic_info'] = sum(1 for f in basic_fields if f) / len(basic_fields)
@@ -189,34 +205,28 @@ def calculate_comprehensive_completeness(user):
         sections['preferences'] = sum(1 for p in prefs if p) / len(prefs)
     
     # Work experience (20%)
-    exp_count = user.work_experiences.count()
     if exp_count >= 3:
         sections['work_experience'] = 1.0
     elif exp_count >= 1:
         sections['work_experience'] = exp_count / 3
     
     # Education (15%)
-    edu_count = user.educations.count()
     if edu_count >= 1:
         sections['education'] = 1.0
     
     # Certifications (5%)
-    cert_count = user.certifications.count()
     if cert_count >= 2:
         sections['certifications'] = 1.0
     elif cert_count == 1:
         sections['certifications'] = 0.5
     
     # Projects (5%)
-    proj_count = user.projects.count()
     if proj_count >= 2:
         sections['projects'] = 1.0
     elif proj_count == 1:
         sections['projects'] = 0.5
     
     # Additional (5%) - languages, awards, volunteer, memberships
-    additional_count = (user.languages.count() + user.awards.count() + 
-                       user.volunteer_experiences.count() + user.professional_memberships.count())
     if additional_count >= 3:
         sections['additional'] = 1.0
     elif additional_count > 0:
@@ -256,12 +266,6 @@ def get_completeness_analysis(current_user):
     """Get detailed profile completeness analysis"""
     try:
         analysis = calculate_comprehensive_completeness(current_user)
-        
-        # Update profile completeness in database
-        if current_user.job_seeker_profile:
-            current_user.job_seeker_profile.profile_completeness = analysis['overall_score']
-            db.session.commit()
-        
         return jsonify(analysis), 200
     except Exception as e:
         return jsonify({'error': 'Failed to analyze completeness', 'details': str(e)}), 500

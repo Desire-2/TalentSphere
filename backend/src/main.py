@@ -36,7 +36,7 @@ from src.routes.recommendations import recommendations_bp
 from src.routes.employer import employer_bp
 from src.routes.share_routes import share_bp
 from src.routes.scholarship import scholarship_bp
-from src.routes.cv_builder import cv_builder_bp
+from src.routes.cv_builder import cv_builder_bp, limiter as cv_limiter
 from src.routes.cleanup_routes import cleanup_bp
 
 # Import optimized components
@@ -167,6 +167,7 @@ app.register_blueprint(employer_bp, url_prefix='/api')
 app.register_blueprint(share_bp, url_prefix='/api')
 app.register_blueprint(scholarship_bp, url_prefix='/api')
 app.register_blueprint(cv_builder_bp)  # Already has /api/cv-builder prefix
+cv_limiter.init_app(app)  # Bind rate limiter to Flask app
 app.register_blueprint(cleanup_bp, url_prefix='/api')
 
 # Register optimized API endpoints

@@ -7,62 +7,162 @@ import re
 from typing import Dict, Any, Optional
 
 
+# Layer 7: field name aliases that AI models commonly use instead of canonical names
+FIELD_ALIASES = {
+    "summary": "professional_summary",
+    "profile_summary": "professional_summary",
+    "executive_summary": "professional_summary",
+    "experience": "professional_experience",
+    "jobs": "professional_experience",
+    "work_history": "professional_experience",
+    "work_experience": "professional_experience",
+    "employment_history": "professional_experience",
+    "skills": "technical_skills",
+    "skill_set": "technical_skills",
+    "technical_expertise": "technical_skills",
+    "education_history": "education",
+    "academic_background": "education",
+    "qualifications": "education",
+    "certs": "certifications",
+    "credentials": "certifications",
+    "licenses": "certifications",
+    "contact": "contact_information",
+    "personal_info": "contact_information",
+    "personal_details": "contact_information",
+}
+
+
 class CVParser:
     """Parses AI responses with robust error handling"""
-    
+
     def parse_cv_response(self, response_text: str) -> Dict[str, Any]:
         """Parse CV content from AI response with multiple fallback strategies"""
-        
+
         # Strategy 1: Direct JSON parse
         try:
             result = json.loads(response_text)
             print("[CV Parser] ✅ Direct JSON parse successful")
-            return result
+            return self._apply_layer7_validation(result)
         except json.JSONDecodeError:
             print("[CV Parser] Direct parse failed, trying extraction...")
             pass
-        
+
         # Strategy 2: Extract JSON from markdown code blocks
         json_text = self._extract_json_from_text(response_text)
         if json_text:
             try:
                 result = json.loads(json_text)
                 print("[CV Parser] ✅ Extracted JSON parse successful")
-                return result
+                return self._apply_layer7_validation(result)
             except json.JSONDecodeError:
                 print("[CV Parser] Extracted parse failed, trying repair...")
                 pass
-        
+
         # Strategy 3: Fix common JSON formatting issues
         try:
             fixed_json = self._fix_json_formatting(json_text or response_text)
             result = json.loads(fixed_json)
             print("[CV Parser] ✅ Fixed JSON parse successful")
-            return result
+            return self._apply_layer7_validation(result)
         except json.JSONDecodeError as e:
             print(f"[CV Parser] JSON repair failed: {str(e)[:100]}")
-        
+
         # Strategy 4: Try json-repair library if available
         try:
             from json_repair import repair_json
             repaired = repair_json(json_text or response_text)
             result = json.loads(repaired)
             print("[CV Parser] ✅ json-repair library successful")
-            return result
+            return self._apply_layer7_validation(result)
         except (ImportError, Exception) as e:
             print(f"[CV Parser] json-repair library failed: {str(e)[:100]}")
-        
+
         # Strategy 5: Aggressive manual repair
         try:
             result = self._aggressive_json_repair(json_text or response_text)
             print("[CV Parser] ✅ Aggressive repair successful")
-            return result
+            return self._apply_layer7_validation(result)
         except Exception as e:
             print(f"[CV Parser] Aggressive repair failed: {str(e)[:100]}")
-        
+
         # Strategy 6: Return safe default structure
         print("[CV Parser] ⚠️ All parsing failed, returning default structure")
         return self._get_default_cv_structure()
+
+    def _apply_layer7_validation(self, data: Dict) -> Dict:
+        """Layer 7: Apply FIELD_ALIASES normalization and schema validation"""
+        if not isinstance(data, dict):
+            return data
+
+        # Remap any aliased top-level keys to canonical names
+        for alias, canonical in FIELD_ALIASES.items():
+            if alias in data and canonical not in data:
+                print(f"[CV Parser L7] Remapping '{alias}' → '{canonical}'")
+                data[canonical] = data.pop(alias)
+
+        # Log quality check results (non-blocking warnings only)
+        quality_flags = self.content_quality_check(data)
+        if quality_flags:
+            print(f"[CV Parser L7] ⚠️ Content quality flags: {quality_flags}")
+
+        return data
+
+    def content_quality_check(self, cv_data: Dict) -> list:
+        """
+        Flag potential quality issues in the generated CV.
+        Returns a list of warning strings. Does NOT block or modify the CV.
+        """
+        flags = []
+
+        # Check 1: Summary word count > 80 words
+        summary = cv_data.get("professional_summary", "")
+        if summary:
+            word_count = len(summary.split())
+            if word_count > 80:
+                flags.append(
+                    f"Summary is {word_count} words (target: 50-75). Consider trimming."
+                )
+
+        # Check 2: Fewer than 3 quantified achievements in top 2 experiences
+        experiences = cv_data.get("professional_experience", [])
+        if experiences:
+            quantified_pattern = re.compile(
+                r"\b\d+[\.,]?\d*\s*(%|percent|k|m|b|million|billion|\$|usd|hours?|days?|weeks?|months?|years?|users?|customers?|clients?|employees?|members?|projects?|products?)\b",
+                re.IGNORECASE,
+            )
+            top_two = experiences[:2]
+            total_quantified = 0
+            for exp in top_two:
+                achievements = exp.get("achievements", [])
+                for bullet in achievements:
+                    if quantified_pattern.search(str(bullet)):
+                        total_quantified += 1
+            if total_quantified < 3:
+                flags.append(
+                    f"Only {total_quantified} quantified achievements found in top 2 experiences "
+                    f"(target: ≥3). Add %, $, or numeric metrics to bullets."
+                )
+
+        # Check 3: Skills section has fewer than 6 skills total
+        technical_skills = cv_data.get("technical_skills", {})
+        if isinstance(technical_skills, dict):
+            all_skills = []
+            for v in technical_skills.values():
+                if isinstance(v, list):
+                    all_skills.extend(v)
+                elif isinstance(v, str):
+                    all_skills.extend([s.strip() for s in v.split(",") if s.strip()])
+            if len(all_skills) < 6:
+                flags.append(
+                    f"Only {len(all_skills)} skills listed (target: ≥6). "
+                    "Consider expanding the skills section."
+                )
+        elif isinstance(technical_skills, list) and len(technical_skills) < 6:
+            flags.append(
+                f"Only {len(technical_skills)} skills listed (target: ≥6)."
+            )
+
+        return flags
     
     def _extract_json_from_text(self, text: str) -> Optional[str]:
         """Extract JSON from markdown code blocks or surrounding text"""

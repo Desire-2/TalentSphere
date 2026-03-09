@@ -15,20 +15,23 @@ const CVVersionHistory = ({ onRestore, currentCVId }) => {
     loadVersions();
   }, [currentCVId]);
 
-  const loadVersions = () => {
-    setVersions(getVersionsInfo());
-    setStats(getStorageStats());
+  const loadVersions = async () => {
+    const info = await getVersionsInfo();
+    const s = await getStorageStats();
+    setVersions(info);
+    setStats(s);
   };
 
-  const handleRestore = (versionId) => {
-    const version = getCVVersion(versionId);
+  const handleRestore = async (versionId) => {
+    const version = await getCVVersion(versionId);
     if (version && onRestore) {
       onRestore(version);
     }
   };
 
-  const handleDelete = (versionId) => {
-    if (deleteCVVersion(versionId)) {
+  const handleDelete = async (versionId) => {
+    const ok = await deleteCVVersion(versionId);
+    if (ok) {
       loadVersions();
       setShowConfirmDelete(null);
     }

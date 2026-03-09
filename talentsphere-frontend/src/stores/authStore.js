@@ -18,14 +18,12 @@ if (typeof window !== 'undefined') {
         console.log('🔒 Auth data cleared in another tab, syncing...');
         store.logout();
       } else {
-        // Token/user was updated in another tab
+        // Token/user was updated in another tab — only update token to avoid
+        // triggering profile page re-fetches from user object reference change
         console.log('🔒 Auth data updated in another tab, syncing...');
         const newToken = localStorage.getItem('token');
-        const newUser = authService.getCurrentUser();
-        if (newToken && newUser) {
-          store.user = newUser;
-          store.token = newToken;
-          store.isAuthenticated = true;
+        if (newToken) {
+          useAuthStore.setState({ token: newToken, isAuthenticated: true });
         }
       }
     }
@@ -298,12 +296,12 @@ export const useAuthStore = create((set, get) => ({
       const refreshed = await authService.refreshSession();
       
       if (refreshed) {
-        // Update token in state
+        // Only update the token — do NOT replace the user object with a new reference.
+        // Replacing user triggers useEffect([..., user]) in profile/dashboard pages,
+        // which calls loadProfile() and wiping any unsaved form data.
         const newToken = authService.getToken();
-        const user = authService.getCurrentUser();
         set({
           token: newToken,
-          user: user,
           isAuthenticated: true
         });
       }

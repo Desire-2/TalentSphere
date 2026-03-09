@@ -3,24 +3,102 @@ CV Builder API Routes
 Provides endpoints for AI-powered CV content generation
 Frontend handles all rendering, styling, and PDF export
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response, stream_with_context, current_app
 from functools import wraps
 from datetime import datetime
 import jwt
 import os
 import json
-
+import pickle
 import re
 
 from src.models.user import db, User
-from src.models.profile_extensions import WorkExperience, Education, Certification, Project, Award
+from src.models.profile_extensions import WorkExperience, Education, Certification, Project, Award, Reference
 from src.services.cv.cv_builder_service import CVBuilderService  # Refactored modular service
 from src.utils.db_utils import safe_db_operation
+
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 cv_builder_bp = Blueprint('cv_builder', __name__, url_prefix='/api/cv-builder')
 
 # Initialize CV Builder Service (Refactored - now ~300 lines instead of 2667!)
 cv_service = CVBuilderService()
+
+# ── Rate Limiter ──────────────────────────────────────────────────────────────
+# Uses JWT user_id as the key so limits are per-user, not per-IP.
+# Call limiter.init_app(app) in main.py after importing this blueprint.
+def _cv_rate_limit_key():
+    """Extract JWT user_id for per-user rate limiting. Falls back to remote IP."""
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Bearer ', '').strip()
+    if token:
+        try:
+            secret = current_app.config.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+            payload = jwt.decode(token, secret, algorithms=['HS256'])
+            return f"cv_user_{payload.get('user_id', 'unknown')}"
+        except Exception:
+            pass
+    return get_remote_address()
+
+
+limiter = Limiter(
+    key_func=_cv_rate_limit_key,
+    default_limits=[],
+    storage_uri=os.environ.get('REDIS_URL', 'memory://'),
+)
+
+
+@cv_builder_bp.errorhandler(429)
+def _rate_limit_handler(e):
+    retry_after = getattr(e, 'description', None)
+    return jsonify({
+        'success': False,
+        'message': 'CV generation rate limit reached.',
+        'error_code': 'RATE_LIMITED',
+        'retry_after_seconds': int(e.retry_after) if hasattr(e, 'retry_after') else 60,
+        'limit_detail': str(e.description),
+    }), 429
+
+# ── Redis Profile Cache ───────────────────────────────────────────────────────
+_redis_client = None
+
+
+def _get_redis():
+    """Return a Redis client, or None if Redis is not configured/reachable."""
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    try:
+        import redis as _redis_lib
+        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+        client = _redis_lib.from_url(redis_url, socket_timeout=1, socket_connect_timeout=1)
+        client.ping()
+        _redis_client = client
+        print('[CV Cache] Redis connected')
+        return _redis_client
+    except Exception as exc:
+        print(f'[CV Cache] Redis unavailable, caching disabled: {exc}')
+        return None
+
+
+def _profile_cache_key(user_id: int) -> str:
+    return f'user_profile_{user_id}'
+
+
+def invalidate_user_profile_cache(user_id: int):
+    """
+    Call this whenever a user updates their profile, work experience,
+    education, certifications, projects, or awards so the CV builder
+    picks up the latest data on the next request.
+    """
+    redis = _get_redis()
+    if redis:
+        try:
+            redis.delete(_profile_cache_key(user_id))
+            print(f'[CV Cache] Invalidated cache for user {user_id}')
+        except Exception as exc:
+            print(f'[CV Cache] Failed to invalidate cache: {exc}')
 
 # Token verification decorator
 def token_required(f):
@@ -75,6 +153,7 @@ def role_required(*allowed_roles):
 
 
 @cv_builder_bp.route('/generate', methods=['POST'])
+@limiter.limit('10 per hour; 50 per day')
 @token_required
 @role_required('job_seeker', 'admin')
 def generate_cv(current_user):
@@ -354,6 +433,7 @@ def generate_cv_incremental(current_user):
 
 
 @cv_builder_bp.route('/quick-generate', methods=['POST'])
+@limiter.limit('10 per hour; 50 per day')
 @token_required
 @role_required('job_seeker', 'admin')
 def quick_generate_cv(current_user):
@@ -429,7 +509,13 @@ def quick_generate_cv(current_user):
         
         # Extract job match analysis for top-level access
         job_match = cv_content.get('job_match_analysis', None)
-        
+
+        # ── Upgrade 4: expose agent reasoning & quality gate ──────────────────
+        agent_reasoning = cv_content.get('agent_reasoning', None)
+        ats_self_eval = (agent_reasoning or {}).get('ats_self_evaluation', {}) if agent_reasoning else {}
+        quality_gate_passed = ats_self_eval.get('passed_quality_gate', True)
+        internal_revisions = ats_self_eval.get('internal_revisions', 0)
+
         return jsonify({
             'success': True,
             'message': 'CV generated successfully',
@@ -438,13 +524,19 @@ def quick_generate_cv(current_user):
                 'progress': cv_content.get('generation_progress', []),
                 'todos': cv_content.get('todos', []),
                 'job_match_analysis': job_match,
+                'agent_reasoning': agent_reasoning,
                 'user_data': {
                     'name': f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
                     'email': user_data.get('email'),
                     'phone': user_data.get('phone'),
                     'location': user_data.get('location')
                 },
-                'generation_time': round(generation_time, 2)
+                'generation_time': round(generation_time, 2),
+                'metadata': {
+                    'quality_gate_passed': quality_gate_passed,
+                    'internal_revisions': internal_revisions,
+                    'ats_total_score': ats_self_eval.get('total_score', 0),
+                }
             }
         }), 200
         
@@ -544,6 +636,127 @@ def generate_cv_targeted(current_user):
             'success': False,
             'message': f'CV generation failed: {str(e)}'
         }), 500
+
+
+# ── Upgrade 6: Server-Sent Events streaming endpoint ─────────────────────────
+# NOTE: EventSource (browser) cannot set Authorization headers.
+# The SSE endpoint therefore accepts the JWT token via ?token= query param
+# in addition to the standard Authorization header.
+def _sse_token_required(f):
+    """Like @token_required but also checks ?token= query param (needed for EventSource)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+        if not token:
+            token = request.args.get('token')
+        if not token:
+            return jsonify({'success': False, 'message': 'Authentication token is missing'}), 401
+        try:
+            from flask import current_app
+            secret_key = current_app.config.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+            payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+            current_user = User.query.get(payload['user_id'])
+            if not current_user:
+                return jsonify({'success': False, 'message': 'User not found'}), 401
+        except jwt.ExpiredSignatureError:
+            return jsonify({'success': False, 'message': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'success': False, 'message': 'Invalid token'}), 401
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+
+@cv_builder_bp.route('/generate-stream', methods=['GET'])
+@_sse_token_required
+@role_required('job_seeker', 'admin')
+def generate_cv_stream(current_user):
+    """
+    Stream CV generation progress via Server-Sent Events (SSE).
+    The frontend connects with EventSource and receives incremental phase updates.
+
+    Query params:
+      job_id   – optional job ID
+      style    – CV style (default: professional)
+      sections – comma-separated section names
+      custom_job – URL-encoded JSON string of custom job data
+    """
+    job_id = request.args.get('job_id')
+    style = request.args.get('style', 'professional')
+    raw_sections = request.args.get('sections', 'summary,work,education,skills')
+    sections = [s.strip() for s in raw_sections.split(',') if s.strip()]
+    raw_custom_job = request.args.get('custom_job')
+
+    # Parse custom_job from query string if present
+    custom_job = None
+    if raw_custom_job:
+        try:
+            import urllib.parse
+            custom_job = json.loads(urllib.parse.unquote(raw_custom_job))
+        except Exception:
+            pass
+
+    def _stream():
+        try:
+            # Phase 1 — Analyzing
+            yield f"data: {json.dumps({'phase': 'analyzing', 'message': 'Analyzing your profile…'})}\n\n"
+
+            user_data = _get_user_profile_data(current_user)
+
+            # Phase 2 — Decoding job
+            yield f"data: {json.dumps({'phase': 'decoding_job', 'message': 'Decoding job requirements…'})}\n\n"
+
+            job_data = None
+            if job_id:
+                try:
+                    from src.models.job import Job
+                    job = Job.query.get(int(job_id))
+                    if job:
+                        job_data = _build_comprehensive_job_data(job)
+                except Exception:
+                    pass
+            elif custom_job:
+                job_data = _normalize_custom_job_data(custom_job)
+
+            # Phase 3 — Strategizing
+            yield f"data: {json.dumps({'phase': 'strategizing', 'message': 'Planning CV strategy…'})}\n\n"
+
+            # Phase 4 — Generating (AI call happens here — blocks until done)
+            yield f"data: {json.dumps({'phase': 'generating', 'message': 'Writing your CV with AI…'})}\n\n"
+
+            cv_content = cv_service.generate_cv_content(
+                user_data=user_data,
+                job_data=job_data,
+                cv_style=style,
+                include_sections=sections,
+            )
+
+            # Phase 5 — Evaluating
+            yield f"data: {json.dumps({'phase': 'evaluating', 'message': 'Running ATS quality check…'})}\n\n"
+
+            # Extract quality gate metadata
+            agent_reasoning = cv_content.get('agent_reasoning')
+            ats_self_eval = (agent_reasoning or {}).get('ats_self_evaluation', {})
+
+            # Phase 6 — Complete
+            yield f"data: {json.dumps({'phase': 'complete', 'cv_data': cv_content, 'agent_reasoning': agent_reasoning, 'metadata': {'quality_gate_passed': ats_self_eval.get('passed_quality_gate', True), 'internal_revisions': ats_self_eval.get('internal_revisions', 0), 'ats_total_score': ats_self_eval.get('total_score', 0)}})}\n\n"
+
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            yield f"data: {json.dumps({'phase': 'error', 'message': str(exc)})}\n\n"
+
+    return Response(
+        stream_with_context(_stream()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        },
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -955,23 +1168,95 @@ def _build_comprehensive_job_data(job) -> dict:
 
 # Helper function to gather user profile data
 def _get_user_profile_data(user: User) -> dict:
-    """Gather comprehensive user profile data for CV generation"""
-    
+    """
+    Gather comprehensive user profile data for CV generation.
+
+    Performance strategy:
+    - Layer 1: Redis cache with 1-hour TTL (cache key: user_profile_{user_id})
+    - Layer 2: If Redis is unavailable or cache is cold, run the DB queries and
+               populate the cache for subsequent requests.
+    - Invalidation: call invalidate_user_profile_cache(user_id) in profile-update
+      endpoints so stale data is never served.
+    """
+    cache_key = _profile_cache_key(user.id)
+    redis = _get_redis()
+
+    # ── Check cache ───────────────────────────────────────────────────────────
+    if redis:
+        try:
+            cached = redis.get(cache_key)
+            if cached:
+                print(f'[CV Cache] Cache HIT for user {user.id}')
+                return pickle.loads(cached)
+        except Exception as exc:
+            print(f'[CV Cache] Cache read error: {exc}')
+
+    # ── Cache miss — load from DB ─────────────────────────────────────────────
+    print(f'[CV Cache] Cache MISS for user {user.id}, querying DB')
+
+    # Use a single session scope and load all five related tables in one go
+    # by issuing the queries together before any lazy-loading can occur.
+    # (User model doesn't declare these relationships, so we use explicit
+    # filter queries. All five run within the same SQLAlchemy session which
+    # avoids repeated connection overhead.)
+    with db.session.no_autoflush:
+        # Reload the user inside this session in case it came from a different one
+        db_user = db.session.get(User, user.id)
+        if db_user is None:
+            db_user = user  # fallback
+
+        work_experiences = (
+            db.session.query(WorkExperience)
+            .filter_by(user_id=user.id)
+            .order_by(WorkExperience.is_current.desc(), WorkExperience.start_date.desc())
+            .all()
+        )
+        educations = (
+            db.session.query(Education)
+            .filter_by(user_id=user.id)
+            .order_by(Education.graduation_date.desc())
+            .all()
+        )
+        certifications = (
+            db.session.query(Certification)
+            .filter_by(user_id=user.id)
+            .order_by(Certification.issue_date.desc())
+            .all()
+        )
+        projects = (
+            db.session.query(Project)
+            .filter_by(user_id=user.id)
+            .order_by(Project.end_date.desc())
+            .all()
+        )
+        awards = (
+            db.session.query(Award)
+            .filter_by(user_id=user.id)
+            .order_by(Award.date_received.desc())
+            .all()
+        )
+        profile_references = (
+            db.session.query(Reference)
+            .filter_by(user_id=user.id)
+            .order_by(Reference.display_order)
+            .all()
+        )
+
     # Base user info
     user_data = {
-        'id': user.id,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'email': user.email,
-        'phone': user.phone,
-        'location': user.location,
-        'bio': user.bio,
-        'profile_picture': user.profile_picture
+        'id': db_user.id,
+        'first_name': db_user.first_name,
+        'last_name': db_user.last_name,
+        'email': db_user.email,
+        'phone': db_user.phone,
+        'location': db_user.location,
+        'bio': db_user.bio,
+        'profile_picture': db_user.profile_picture
     }
-    
+
     # Job seeker profile
-    if user.job_seeker_profile:
-        profile = user.job_seeker_profile
+    if db_user.job_seeker_profile:
+        profile = db_user.job_seeker_profile
         user_data['job_seeker_profile'] = {
             'professional_title': getattr(profile, 'professional_title', None),
             'professional_summary': getattr(profile, 'professional_summary', None),
@@ -1006,7 +1291,6 @@ def _get_user_profile_data(user: User) -> dict:
             'certifications': getattr(profile, 'certifications', None)
         }
     else:
-        # Create minimal profile data if no profile exists
         user_data['job_seeker_profile'] = {
             'professional_title': None,
             'professional_summary': None,
@@ -1017,56 +1301,20 @@ def _get_user_profile_data(user: User) -> dict:
             'career_level': None,
             'languages': None
         }
-    
-    # Work experiences
-    work_experiences = WorkExperience.query.filter_by(user_id=user.id).order_by(
-        WorkExperience.is_current.desc(),
-        WorkExperience.start_date.desc()
-    ).all()
-    
-    user_data['work_experiences'] = []
-    for exp in work_experiences:
-        exp_dict = exp.to_dict()
-        user_data['work_experiences'].append(exp_dict)
-    
-    # Education
-    educations = Education.query.filter_by(user_id=user.id).order_by(
-        Education.graduation_date.desc()
-    ).all()
-    
-    user_data['educations'] = []
-    for edu in educations:
-        edu_dict = edu.to_dict()
-        user_data['educations'].append(edu_dict)
-    
-    # Certifications
-    certifications = Certification.query.filter_by(user_id=user.id).order_by(
-        Certification.issue_date.desc()
-    ).all()
-    
-    user_data['certifications'] = []
-    for cert in certifications:
-        cert_dict = cert.to_dict()
-        user_data['certifications'].append(cert_dict)
-    
-    # Projects
-    projects = Project.query.filter_by(user_id=user.id).order_by(
-        Project.end_date.desc()
-    ).all()
-    
-    user_data['projects'] = []
-    for proj in projects:
-        proj_dict = proj.to_dict()
-        user_data['projects'].append(proj_dict)
-    
-    # Awards
-    awards = Award.query.filter_by(user_id=user.id).order_by(
-        Award.date_received.desc()
-    ).all()
-    
-    user_data['awards'] = []
-    for award in awards:
-        award_dict = award.to_dict()
-        user_data['awards'].append(award_dict)
-    
+
+    user_data['work_experiences'] = [exp.to_dict() for exp in work_experiences]
+    user_data['educations'] = [edu.to_dict() for edu in educations]
+    user_data['certifications'] = [cert.to_dict() for cert in certifications]
+    user_data['projects'] = [proj.to_dict() for proj in projects]
+    user_data['awards'] = [award.to_dict() for award in awards]
+    user_data['references'] = [ref.to_dict() for ref in profile_references]
+
+    # ── Populate cache ────────────────────────────────────────────────────────
+    if redis:
+        try:
+            redis.setex(cache_key, 3600, pickle.dumps(user_data))
+            print(f'[CV Cache] Cached profile for user {user.id} (TTL 1h)')
+        except Exception as exc:
+            print(f'[CV Cache] Cache write error: {exc}')
+
     return user_data

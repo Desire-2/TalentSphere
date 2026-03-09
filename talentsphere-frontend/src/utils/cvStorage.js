@@ -1,44 +1,109 @@
 /**
  * CV Storage Utility
- * Manages CV versions, caching, and localStorage with optional encryption
+ * Manages CV versions in sessionStorage using AES-GCM 256-bit encryption.
+ * Key is derived from the user's JWT token via Web Crypto API.
+ *
+ * Migration: on first load any old XOR-encoded entries (not JSON objects with
+ * {iv, data} keys) are silently cleared so legacy data is never surfaced.
  */
 
 const CV_STORAGE_KEY = 'cv_versions';
-const MAX_VERSIONS = 5;  // Keep last 5 CV versions
+const MAX_VERSIONS = 5;
+
+// ── AES-GCM Key Derivation ───────────────────────────────────────────────────
 
 /**
- * Simple XOR encryption for localStorage (basic security)
- * For production, consider using a proper encryption library
+ * Derive an AES-GCM 256-bit key from the current user's JWT token.
+ * Uses SHA-256 of the token as raw key material — one crypto.subtle call.
  */
-function simpleEncrypt(text, key = 'talentsphere_cv_2026') {
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-  }
-  return btoa(result);  // Base64 encode
+async function getEncryptionKey() {
+  const token = localStorage.getItem('token') || 'talentsphere-default-session-key-2026';
+  const rawKey = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(token)
+  );
+  return crypto.subtle.importKey(
+    'raw',
+    rawKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
-function simpleDecrypt(encrypted, key = 'talentsphere_cv_2026') {
+/**
+ * Encrypt a plaintext string with AES-GCM.
+ * Returns a JSON string: { iv: base64, data: base64 }
+ */
+async function aesEncrypt(plaintext) {
+  const key = await getEncryptionKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(plaintext)
+  );
+  return JSON.stringify({
+    iv: btoa(String.fromCharCode(...iv)),
+    data: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+  });
+}
+
+/**
+ * Decrypt an AES-GCM encrypted string produced by aesEncrypt().
+ * Returns null if decryption fails (wrong key, corrupt data, legacy format).
+ */
+async function aesDecrypt(storedString) {
   try {
-    const decoded = atob(encrypted);  // Base64 decode
-    let result = '';
-    for (let i = 0; i < decoded.length; i++) {
-      result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    const parsed = JSON.parse(storedString);
+    // Validate structure — old XOR data won't have {iv, data}
+    if (!parsed || typeof parsed.iv !== 'string' || typeof parsed.data !== 'string') {
+      return null; // Legacy format detected
     }
-    return result;
-  } catch (error) {
-    console.error('Failed to decrypt CV data:', error);
+    const iv = Uint8Array.from(atob(parsed.iv), c => c.charCodeAt(0));
+    const ciphertext = Uint8Array.from(atob(parsed.data), c => c.charCodeAt(0));
+    const key = await getEncryptionKey();
+    const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(plaintext);
+  } catch (err) {
+    console.warn('[cvStorage] Decryption failed (possible legacy format), clearing storage.', err);
     return null;
   }
 }
 
+// ── Migration helper ─────────────────────────────────────────────────────────
+
 /**
- * Save a new CV version to localStorage
+ * Silently clear sessionStorage if it holds old XOR-encrypted (non-JSON) data.
+ * Called transparently inside getCVVersions().
  */
-export function saveCVVersion(cvData, metadata = {}) {
+function _clearIfLegacyFormat() {
+  const raw = sessionStorage.getItem(CV_STORAGE_KEY);
+  if (!raw) return;
   try {
-    const versions = getCVVersions();
-    
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.iv !== 'string') {
+      sessionStorage.removeItem(CV_STORAGE_KEY);
+      console.info('[cvStorage] Cleared legacy XOR-encrypted CV data.');
+    }
+  } catch {
+    // Not valid JSON at all → definitely old format
+    sessionStorage.removeItem(CV_STORAGE_KEY);
+    console.info('[cvStorage] Cleared legacy XOR-encrypted CV data.');
+  }
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Save a new CV version to sessionStorage (encrypted).
+ * Returns the numeric version id, or null on failure.
+ */
+export async function saveCVVersion(cvData, metadata = {}) {
+  try {
+    _clearIfLegacyFormat();
+    const versions = await getCVVersions();
+
     const newVersion = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
@@ -48,87 +113,79 @@ export function saveCVVersion(cvData, metadata = {}) {
         jobTitle: metadata.jobTitle,
         jobId: metadata.jobId,
         sections: metadata.sections || [],
-        ...metadata
-      }
+        ...metadata,
+      },
     };
-    
-    // Add to beginning of array
+
     versions.unshift(newVersion);
-    
-    // Keep only MAX_VERSIONS
-    const trimmedVersions = versions.slice(0, MAX_VERSIONS);
-    
-    // Encrypt and save
-    const dataToSave = JSON.stringify(trimmedVersions);
-    const encrypted = simpleEncrypt(dataToSave);
-    
+    const trimmed = versions.slice(0, MAX_VERSIONS);
+
+    const encrypted = await aesEncrypt(JSON.stringify(trimmed));
     sessionStorage.setItem(CV_STORAGE_KEY, encrypted);
-    
-    console.log(`✅ CV version saved (${trimmedVersions.length} total versions)`);
+
+    console.log(`✅ CV version saved (${trimmed.length} total versions)`);
     return newVersion.id;
-  } catch (error) {
-    console.error('Failed to save CV version:', error);
+  } catch (err) {
+    console.error('[cvStorage] Failed to save CV version:', err);
     return null;
   }
 }
 
 /**
- * Get all CV versions
+ * Get all saved CV versions (decrypted).
  */
-export function getCVVersions() {
+export async function getCVVersions() {
   try {
-    const encrypted = sessionStorage.getItem(CV_STORAGE_KEY);
-    if (!encrypted) return [];
-    
-    const decrypted = simpleDecrypt(encrypted);
-    if (!decrypted) return [];
-    
+    _clearIfLegacyFormat();
+    const stored = sessionStorage.getItem(CV_STORAGE_KEY);
+    if (!stored) return [];
+    const decrypted = await aesDecrypt(stored);
+    if (!decrypted) {
+      sessionStorage.removeItem(CV_STORAGE_KEY);
+      return [];
+    }
     return JSON.parse(decrypted);
-  } catch (error) {
-    console.error('Failed to load CV versions:', error);
+  } catch (err) {
+    console.error('[cvStorage] Failed to load CV versions:', err);
     return [];
   }
 }
 
 /**
- * Get a specific CV version by ID
+ * Get a specific CV version by id.
  */
-export function getCVVersion(versionId) {
-  const versions = getCVVersions();
-  return versions.find(v => v.id === versionId);
+export async function getCVVersion(versionId) {
+  const versions = await getCVVersions();
+  return versions.find(v => v.id === versionId) || null;
 }
 
 /**
- * Get the latest CV version
+ * Get the most recently saved CV version.
  */
-export function getLatestCV() {
-  const versions = getCVVersions();
+export async function getLatestCV() {
+  const versions = await getCVVersions();
   return versions.length > 0 ? versions[0] : null;
 }
 
 /**
- * Delete a specific CV version
+ * Delete a specific CV version by id.
  */
-export function deleteCVVersion(versionId) {
+export async function deleteCVVersion(versionId) {
   try {
-    const versions = getCVVersions();
+    const versions = await getCVVersions();
     const filtered = versions.filter(v => v.id !== versionId);
-    
-    const dataToSave = JSON.stringify(filtered);
-    const encrypted = simpleEncrypt(dataToSave);
-    
+    const encrypted = await aesEncrypt(JSON.stringify(filtered));
     sessionStorage.setItem(CV_STORAGE_KEY, encrypted);
-    
     console.log(`🗑️ CV version ${versionId} deleted`);
     return true;
-  } catch (error) {
-    console.error('Failed to delete CV version:', error);
+  } catch (err) {
+    console.error('[cvStorage] Failed to delete CV version:', err);
     return false;
   }
 }
 
 /**
- * Clear all CV versions
+ * Clear all saved CV versions.
  */
 export function clearAllCVs() {
   sessionStorage.removeItem(CV_STORAGE_KEY);
@@ -136,67 +193,61 @@ export function clearAllCVs() {
 }
 
 /**
- * Get formatted version info for display
+ * Get formatted version info for display.
  */
-export function getVersionsInfo() {
-  const versions = getCVVersions();
+export async function getVersionsInfo() {
+  const versions = await getCVVersions();
   return versions.map(v => ({
     id: v.id,
     timestamp: v.timestamp,
-    timeAgo: getTimeAgo(v.timestamp),
+    timeAgo: _getTimeAgo(v.timestamp),
     style: v.metadata.style,
     jobTitle: v.metadata.jobTitle || 'General CV',
-    sectionsCount: v.metadata.sections?.length || 0
+    sectionsCount: v.metadata.sections?.length || 0,
   }));
 }
 
 /**
- * Helper: Get human-readable time ago
+ * Get rough storage stats (does not require decryption for byte count).
  */
-function getTimeAgo(timestamp) {
-  const now = new Date();
-  const then = new Date(timestamp);
-  const seconds = Math.floor((now - then) / 1000);
-  
+export async function getStorageStats() {
+  const versions = await getCVVersions();
+  const raw = sessionStorage.getItem(CV_STORAGE_KEY) || '';
+  return {
+    totalVersions: versions.length,
+    maxVersions: MAX_VERSIONS,
+    storageUsed: (raw.length / 1024).toFixed(2) + ' KB',
+    oldestVersion: versions.length > 0 ? versions[versions.length - 1].timestamp : null,
+    newestVersion: versions.length > 0 ? versions[0].timestamp : null,
+  };
+}
+
+/**
+ * Export a specific CV version as a JSON file download.
+ */
+export async function exportCVAsJSON(versionId) {
+  const version = await getCVVersion(versionId);
+  if (!version) return false;
+
+  const dataStr = JSON.stringify(version, null, 2);
+  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+  const fileName = `cv_${version.metadata.style}_${version.id}.json`;
+
+  const link = document.createElement('a');
+  link.setAttribute('href', dataUri);
+  link.setAttribute('download', fileName);
+  link.click();
+  return true;
+}
+
+// ── Internal helpers ─────────────────────────────────────────────────────────
+
+function _getTimeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);
   if (seconds < 60) return 'Just now';
   if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-  return then.toLocaleDateString();
+  return new Date(timestamp).toLocaleDateString();
 }
 
-/**
- * Export CV version as JSON file
- */
-export function exportCVAsJSON(versionId) {
-  const version = getCVVersion(versionId);
-  if (!version) return false;
-  
-  const dataStr = JSON.stringify(version, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-  
-  const exportFileDefaultName = `cv_${version.metadata.style}_${version.id}.json`;
-  
-  const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
-  linkElement.click();
-  
-  return true;
-}
-
-/**
- * Get storage usage statistics
- */
-export function getStorageStats() {
-  const versions = getCVVersions();
-  const encrypted = sessionStorage.getItem(CV_STORAGE_KEY) || '';
-  
-  return {
-    totalVersions: versions.length,
-    maxVersions: MAX_VERSIONS,
-    storageUsed: (encrypted.length / 1024).toFixed(2) + ' KB',
-    oldestVersion: versions.length > 0 ? versions[versions.length - 1].timestamp : null,
-    newestVersion: versions.length > 0 ? versions[0].timestamp : null
-  };
-}

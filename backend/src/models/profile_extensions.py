@@ -430,3 +430,44 @@ class ProfessionalMembership(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+
+
+class Reference(db.Model):
+    """Model for professional references"""
+    __tablename__ = 'professional_references'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Reference person details
+    name = db.Column(db.String(150), nullable=False)
+    position = db.Column(db.String(150))
+    company = db.Column(db.String(200))
+    email = db.Column(db.String(120))
+    phone = db.Column(db.String(30))
+    relationship = db.Column(db.String(100))  # e.g., "Direct Manager", "Colleague"
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Display order
+    display_order = db.Column(db.Integer, default=0)
+
+    # Relationship
+    user = db.relationship('User', backref=db.backref('references', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'name': self.name,
+            'position': self.position,
+            'company': self.company,
+            'email': self.email,
+            'phone': self.phone,
+            'relationship': self.relationship,
+            'display_order': self.display_order,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }

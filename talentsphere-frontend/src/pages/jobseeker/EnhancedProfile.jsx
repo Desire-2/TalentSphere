@@ -2,7 +2,7 @@
  * Comprehensive Job Seeker Profile Page
  * Enhanced with work experience, education, certifications, projects, and more
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
@@ -30,6 +30,7 @@ import AwardsSection from './sections/AwardsSection';
 import LanguagesSection from './sections/LanguagesSection';
 import VolunteerSection from './sections/VolunteerSection';
 import MembershipsSection from './sections/MembershipsSection';
+import ReferencesSection from './sections/ReferencesSection';
 import PreferencesSection from './sections/PreferencesSection';
 import PrivacySection from './sections/PrivacySection';
 import ProfileOptimization from './sections/ProfileOptimization';
@@ -42,6 +43,7 @@ const EnhancedJobSeekerProfile = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState({ type: '', text: '' });
+  const hasFetchedRef = useRef(false);
   
   // Profile data state
   const [profileData, setProfileData] = useState({
@@ -55,6 +57,7 @@ const EnhancedJobSeekerProfile = () => {
     languages: [],
     volunteerExperiences: [],
     professionalMemberships: [],
+    references: [],
     preferences: {}
   });
   
@@ -70,8 +73,13 @@ const EnhancedJobSeekerProfile = () => {
       navigate('/login');
       return;
     }
-    loadCompleteProfile();
-  }, [isAuthenticated, user, navigate]);
+    // Only fetch once — prevents re-fetch when authStore creates a new user object reference
+    // (e.g. after token refresh), which would wipe any unsaved edits
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      loadCompleteProfile();
+    }
+  }, [isAuthenticated, user?.role, navigate]);
   
   const loadCompleteProfile = async () => {
     try {
@@ -91,6 +99,7 @@ const EnhancedJobSeekerProfile = () => {
         languages: response.languages || [],
         volunteerExperiences: response.volunteer_experiences || [],
         professionalMemberships: response.professional_memberships || [],
+        references: response.references || [],
         preferences: response.job_seeker_profile || {}
       });
       
@@ -233,6 +242,18 @@ const EnhancedJobSeekerProfile = () => {
       }));
     } catch (error) {
       console.error('Failed to refresh memberships:', error);
+    }
+  };
+
+  const refreshReferences = async () => {
+    try {
+      const data = await apiService.getReferences();
+      setProfileData(prev => ({
+        ...prev,
+        references: data || []
+      }));
+    } catch (error) {
+      console.error('Failed to refresh references:', error);
     }
   };
   
@@ -539,6 +560,10 @@ const EnhancedJobSeekerProfile = () => {
           <MembershipsSection 
             data={profileData.professionalMemberships} 
             onUpdate={refreshMemberships} 
+          />
+          <ReferencesSection
+            data={profileData.references}
+            onUpdate={refreshReferences}
           />
         </TabsContent>
         

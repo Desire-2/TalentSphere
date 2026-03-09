@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
@@ -60,6 +60,7 @@ const ApplicationsDashboard = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedApplications, setSelectedApplications] = useState([]);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -72,8 +73,12 @@ const ApplicationsDashboard = () => {
       return;
     }
     
-    loadApplications();
-  }, [isAuthenticated, user, navigate]);
+    // Only load once — prevents re-fetch when authStore creates a new user object reference
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      loadApplications();
+    }
+  }, [isAuthenticated, user?.role, navigate]);
 
   useEffect(() => {
     filterAndSortApplications();

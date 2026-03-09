@@ -5,17 +5,64 @@ Handles work experience, education, certifications, projects, awards, languages,
 from flask import Blueprint, jsonify, request
 from src.models.user import User, db
 from src.models.profile_extensions import (
-    WorkExperience, Education, Certification, Project, 
-    Award, Language, VolunteerExperience, ProfessionalMembership
+    WorkExperience, Education, Certification, Project,
+    Award, Language, VolunteerExperience, ProfessionalMembership, Reference
 )
 from src.routes.auth import token_required, role_required
 from datetime import datetime
 import json
+import pickle
+import os
 
 profile_extensions_bp = Blueprint('profile_extensions', __name__)
 
+# ── Redis cache for complete-profile ──────────────────────────────────
+_profile_redis = None
 
-# ==================== WORK EXPERIENCE ROUTES ====================
+def _get_profile_redis():
+    global _profile_redis
+    if _profile_redis is not None:
+        return _profile_redis
+    try:
+        import redis as _r
+        client = _r.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'),
+                             socket_timeout=1, socket_connect_timeout=1)
+        client.ping()
+        _profile_redis = client
+        return _profile_redis
+    except Exception:
+        return None
+
+def _complete_profile_cache_key(user_id):
+    return f'complete_profile_{user_id}'
+
+def _invalidate_complete_profile_cache(user_id):
+    r = _get_profile_redis()
+    if r:
+        try:
+            # Bust both the complete-profile cache and the CV builder profile cache
+            r.delete(_complete_profile_cache_key(user_id))
+            r.delete(f'user_profile_{user_id}')
+        except Exception:
+            pass
+
+
+@profile_extensions_bp.after_request
+def _bust_cache_on_write(response):
+    """Invalidate the complete-profile cache after any successful mutating request."""
+    if request.method in ('POST', 'PUT', 'DELETE') and response.status_code < 400:
+        try:
+            import jwt as _jwt
+            from flask import current_app
+            auth_header = request.headers.get('Authorization', '')
+            token = auth_header.split(' ')[-1] if auth_header else None
+            if token:
+                payload = _jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+                _invalidate_complete_profile_cache(payload['user_id'])
+        except Exception:
+            pass
+    return response
+
 
 @profile_extensions_bp.route('/work-experience', methods=['GET'])
 @token_required
@@ -781,6 +828,18 @@ def delete_professional_membership(current_user, membership_id):
 def get_complete_profile(current_user):
     """Get complete profile with all sections"""
     try:
+        # ── Check Redis cache (2-minute TTL) ───────────────────────────────
+        r = _get_profile_redis()
+        cache_key = _complete_profile_cache_key(current_user.id)
+        if r:
+            try:
+                cached = r.get(cache_key)
+                if cached:
+                    return jsonify(pickle.loads(cached)), 200
+            except Exception:
+                pass
+
+        # ── Cache miss – query DB ───────────────────────────────────────
         profile_data = {
             'user': current_user.to_dict(include_sensitive=True),
             'work_experiences': [exp.to_dict() for exp in current_user.work_experiences.order_by(WorkExperience.display_order, WorkExperience.start_date.desc()).all()],
@@ -790,12 +849,20 @@ def get_complete_profile(current_user):
             'awards': [award.to_dict() for award in current_user.awards.order_by(Award.display_order, Award.date_received.desc()).all()],
             'languages': [lang.to_dict() for lang in current_user.languages.order_by(Language.display_order).all()],
             'volunteer_experiences': [exp.to_dict() for exp in current_user.volunteer_experiences.order_by(VolunteerExperience.display_order).all()],
-            'professional_memberships': [memb.to_dict() for memb in current_user.professional_memberships.order_by(ProfessionalMembership.is_current.desc()).all()]
+            'professional_memberships': [memb.to_dict() for memb in current_user.professional_memberships.order_by(ProfessionalMembership.is_current.desc()).all()],
+            'references': [ref.to_dict() for ref in current_user.references.order_by(Reference.display_order).all()]
         }
         
         if current_user.job_seeker_profile:
             profile_data['job_seeker_profile'] = current_user.job_seeker_profile.to_dict()
-        
+
+        # ── Store in cache ─────────────────────────────────────────────
+        if r:
+            try:
+                r.setex(cache_key, 120, pickle.dumps(profile_data))
+            except Exception:
+                pass
+
         return jsonify(profile_data), 200
         
     except Exception as e:
@@ -907,3 +974,77 @@ def update_complete_profile(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update profile', 'details': str(e)}), 500
+
+
+# ==================== REFERENCES ROUTES ====================
+
+@profile_extensions_bp.route('/references', methods=['GET'])
+@token_required
+def get_references(current_user):
+    """Get all references for current user"""
+    try:
+        refs = Reference.query.filter_by(user_id=current_user.id)\
+            .order_by(Reference.display_order).all()
+        return jsonify([r.to_dict() for r in refs]), 200
+    except Exception as e:
+        return jsonify({'error': 'Failed to get references', 'details': str(e)}), 500
+
+
+@profile_extensions_bp.route('/references', methods=['POST'])
+@token_required
+@role_required('job_seeker')
+def add_reference(current_user):
+    """Add a new reference"""
+    try:
+        data = request.get_json()
+        ref = Reference(
+            user_id=current_user.id,
+            name=data['name'],
+            position=data.get('position'),
+            company=data.get('company'),
+            email=data.get('email'),
+            phone=data.get('phone'),
+            relationship=data.get('relationship'),
+            display_order=data.get('display_order', 0)
+        )
+        db.session.add(ref)
+        db.session.commit()
+        _invalidate_complete_profile_cache(current_user.id)
+        return jsonify({'message': 'Reference added successfully', 'reference': ref.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to add reference', 'details': str(e)}), 500
+
+
+@profile_extensions_bp.route('/references/<int:ref_id>', methods=['PUT'])
+@token_required
+def update_reference(current_user, ref_id):
+    """Update a reference"""
+    try:
+        ref = Reference.query.filter_by(id=ref_id, user_id=current_user.id).first_or_404()
+        data = request.get_json()
+        for field in ('name', 'position', 'company', 'email', 'phone', 'relationship', 'display_order'):
+            if field in data:
+                setattr(ref, field, data[field])
+        ref.updated_at = datetime.utcnow()
+        db.session.commit()
+        _invalidate_complete_profile_cache(current_user.id)
+        return jsonify({'message': 'Reference updated successfully', 'reference': ref.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update reference', 'details': str(e)}), 500
+
+
+@profile_extensions_bp.route('/references/<int:ref_id>', methods=['DELETE'])
+@token_required
+def delete_reference(current_user, ref_id):
+    """Delete a reference"""
+    try:
+        ref = Reference.query.filter_by(id=ref_id, user_id=current_user.id).first_or_404()
+        db.session.delete(ref)
+        db.session.commit()
+        _invalidate_complete_profile_cache(current_user.id)
+        return jsonify({'message': 'Reference deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete reference', 'details': str(e)}), 500

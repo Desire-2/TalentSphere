@@ -953,8 +953,24 @@ class ApiService {
   async exportProfilePDF() {
     return this.get('/profile/export-pdf');
   }
-}
 
+  // References
+  async getReferences() {
+    return this.get('/profile/references');
+  }
+
+  async addReference(data) {
+    return this.post('/profile/references', data);
+  }
+
+  async updateReference(id, data) {
+    return this.put(`/profile/references/${id}`, data);
+  }
+
+  async deleteReference(id) {
+    return this.delete(`/profile/references/${id}`);
+  }
+}
 // Create and export a singleton instance
 const apiService = new ApiService();
 export default apiService;

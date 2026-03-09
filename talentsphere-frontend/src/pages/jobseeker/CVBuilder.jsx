@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useReducer, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, Download, Eye, Loader2, CheckCircle, AlertTriangle, Briefcase, ChevronDown, RefreshCw, Info, History, TrendingUp, Search, UserCircle, X, Target, Zap, Award, BarChart3, ClipboardPaste, Sparkles, MapPin, GraduationCap, Clock } from 'lucide-react';
+import { FileText, Download, Eye, Loader2, CheckCircle, AlertTriangle, Briefcase, ChevronDown, RefreshCw, Info, History, TrendingUp, Search, UserCircle, X, Target, Zap, Award, BarChart3, ClipboardPaste, Sparkles, MapPin, GraduationCap, Clock, Brain, ShieldCheck } from 'lucide-react';
 import SectionProgressTracker from '../../components/cv/SectionProgressTracker';
 import CVRenderer from '../../components/cv/CVRenderer';
 import CVVersionHistory from '../../components/cv/CVVersionHistory';
@@ -36,6 +36,8 @@ const cvReducer = (state, action) => {
         atsBreakdown: action.payload.atsBreakdown,
         atsImprovements: action.payload.atsImprovements,
         jobMatchAnalysis: action.payload.jobMatchAnalysis || null,
+        agentReasoning: action.payload.agentReasoning || null,
+        generationMetadata: action.payload.generationMetadata || null,
         generationProgress: action.payload.progress || [],
         todos: action.payload.todos || [],
         error: null,
@@ -81,6 +83,8 @@ const cvReducer = (state, action) => {
         atsBreakdown: null,
         atsImprovements: null,
         jobMatchAnalysis: null,
+        agentReasoning: null,
+        generationMetadata: null,
         isFromCache: false,
         cacheTimestamp: null,
         currentVersionId: null
@@ -144,6 +148,8 @@ const initialState = {
   atsBreakdown: null,
   atsImprovements: null,
   jobMatchAnalysis: null,
+  agentReasoning: null,
+  generationMetadata: null,
   todos: [],
   error: null,
   currentVersionId: null,
@@ -168,6 +174,7 @@ const CVBuilder = () => {
   const descriptionFromUrl = searchParams.get('description');
   const requirementsFromUrl = searchParams.get('requirements');
   const cvRendererRef = useRef(null);
+  const [showARIAReasoning, setShowARIAReasoning] = useState(false);
 
   // Determine initial job mode from URL params
   const getInitialJobMode = () => {
@@ -195,6 +202,7 @@ const CVBuilder = () => {
     loading, userData, cvStyles, selectedStyle, selectedSections,
     jobMode, selectedJobId, availableJobs, customJob, showJobSection,
     isGenerating, generationProgress, cvContent, atsScore, atsBreakdown, atsImprovements, jobMatchAnalysis,
+    agentReasoning, generationMetadata,
     todos, error, isFromCache, cacheTimestamp, generationTime, retryInfo,
     isParsingJob, showAdvancedJobFields,
     currentVersionId, showVersionHistory, showATSDetails
@@ -416,7 +424,7 @@ const CVBuilder = () => {
         // Save to encrypted version history
         let versionId = null;
         try {
-          versionId = saveCVVersion(response.data.cv_content, {
+          versionId = await saveCVVersion(response.data.cv_content, {
             style: selectedStyle,
             jobTitle: jobMode === 'custom' ? customJob.title : 
                       jobMode === 'selected' ? availableJobs.find(j => j.id === parseInt(selectedJobId))?.title : 
@@ -440,6 +448,8 @@ const CVBuilder = () => {
             atsBreakdown: response.data.ats_breakdown,
             atsImprovements: response.data.ats_improvements,
             jobMatchAnalysis: response.data.job_match_analysis || response.data.cv_content?.job_match_analysis || null,
+            agentReasoning: response.data.agent_reasoning || null,
+            generationMetadata: response.data.metadata || null,
             progress: response.data.progress || [],
             todos: response.data.todos || [],
             generationTime: generationTime.toFixed(2),
@@ -1411,6 +1421,129 @@ const CVBuilder = () => {
                             <span className="font-medium">Experience:</span> {typeof jobMatchAnalysis.experience_match === 'string' ? jobMatchAnalysis.experience_match : jobMatchAnalysis.experience_match?.summary || 'N/A'}
                           </span>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ARIA Reasoning Panel — How ARIA built your CV */}
+                {agentReasoning && (
+                  <div className="mb-5 border border-purple-200 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setShowARIAReasoning(prev => !prev)}
+                      className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Brain className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                        <h3 className="font-semibold text-purple-900">How ARIA built your CV</h3>
+                        {generationMetadata?.quality_gate_passed && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                            <ShieldCheck className="w-3 h-3" />
+                            Quality Verified
+                          </span>
+                        )}
+                        {generationMetadata?.internal_revisions > 0 && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                            {generationMetadata.internal_revisions} revision{generationMetadata.internal_revisions > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-purple-500 transition-transform flex-shrink-0 ${showARIAReasoning ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showARIAReasoning && (
+                      <div className="p-4 space-y-4 bg-white">
+                        {/* Match Level + Score row */}
+                        {(agentReasoning.match_level || agentReasoning.job_match_score != null) && (
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {agentReasoning.match_level && (
+                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                agentReasoning.match_level === 'HIGH' ? 'bg-green-100 text-green-800' :
+                                agentReasoning.match_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {agentReasoning.match_level} Match
+                              </span>
+                            )}
+                            {agentReasoning.job_match_score != null && (
+                              <span className="text-sm text-gray-600">
+                                Job Match Score: <strong className="text-gray-900">{agentReasoning.job_match_score}%</strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Candidate / Job Analysis */}
+                        {(agentReasoning.candidate_analysis || agentReasoning.job_decoding) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {agentReasoning.candidate_analysis && (
+                              <div className="p-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Candidate Analysis</p>
+                                <p className="text-sm text-gray-800 leading-relaxed">{agentReasoning.candidate_analysis}</p>
+                              </div>
+                            )}
+                            {agentReasoning.job_decoding && (
+                              <div className="p-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Job Decoding</p>
+                                <p className="text-sm text-gray-800 leading-relaxed">{agentReasoning.job_decoding}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Strategy */}
+                        {agentReasoning.strategy_chosen && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Strategy Chosen</p>
+                            <p className="text-sm text-gray-800 leading-relaxed">{agentReasoning.strategy_chosen}</p>
+                          </div>
+                        )}
+
+                        {/* Key Decisions */}
+                        {agentReasoning.key_decisions?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Key Decisions</p>
+                            <ul className="space-y-1.5">
+                              {agentReasoning.key_decisions.map((decision, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                                  <span className="text-purple-500 mt-0.5 flex-shrink-0 font-bold">▸</span>
+                                  <span>{decision}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Gaps Bridged */}
+                        {agentReasoning.gaps_bridged?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Gaps Bridged</p>
+                            <ul className="space-y-1.5">
+                              {agentReasoning.gaps_bridged.map((gap, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                                  <span className="text-blue-400 mt-0.5 flex-shrink-0">↔</span>
+                                  <span>{gap}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Confidence Score */}
+                        {agentReasoning.confidence_score != null && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <p className="text-xs font-semibold text-gray-500 uppercase">ARIA Confidence</p>
+                              <span className="text-sm font-bold text-indigo-700">{agentReasoning.confidence_score}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(100, agentReasoning.confidence_score)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -45,15 +45,55 @@ class CVPromptBuilder:
         # Build section requirements
         section_reqs = self._build_section_requirements(include_sections, user_data)
         
-        # Build the prompt with strategic instructions
-        prompt = f"""You are a world-class CV/Resume strategist with 20+ years of experience in career consulting, executive recruiting, and ATS optimization. You have successfully helped thousands of candidates land interviews at top companies.
+        # Build the prompt with AGENTIC strategic instructions
+        prompt = f"""You are ARIA (AI Resume Intelligence Agent), an autonomous CV/Resume strategist with 20+ years of experience in career consulting, executive recruiting, and ATS optimization. You are not a simple content generator — you are an intelligent agent that REASONS, ANALYZES, PLANS, DECIDES, and SELF-EVALUATES.
 
-Your task: Generate a strategically tailored CV that maximizes this candidate's chances of getting an interview for the target role.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 YOUR AUTONOMOUS AGENT WORKFLOW (FOLLOW THIS EXACTLY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**PHASE 1: ANALYZE THE CANDIDATE** (Think before writing)
+- Review their complete career trajectory, progression, and arc
+- Identify their 3 strongest achievements across all experience
+- Determine their seniority level and career narrative angle
+- Assess quantifiable impact patterns (what metrics do they naturally have?)
+- List their TRUE core strengths (not buzzwords)
+
+**PHASE 2: DECODE THE JOB POSTING** (Understand what they REALLY want)
+- Extract MUST-HAVE vs NICE-TO-HAVE skills (read between the lines)
+- Identify exact keywords and phrases to mirror (the recruiter's language)
+- Detect cultural tone (startup/corporate/academic/creative)
+- Determine what the hiring manager's pain points are
+- Score candidate fit: HIGH (70-100) | MEDIUM (40-69) | LOW (0-39)
+
+**PHASE 3: STRATEGIZE THE NARRATIVE** (Plan before generating)
+- Choose the narrative angle: "Career Progression", "Career Pivot", "Domain Expert", "Problem Solver", or "Rising Star"
+- Decide section ordering based on strengths (do they lead with skills or experience?)
+- Plan bullet depth per experience: 6 bullets for highly relevant roles, 2-3 for less relevant
+- Identify gaps to bridge with transferable skills
+- Choose which achievements to quantify and how
+
+**PHASE 4: GENERATE THE CV** (Execute your plan)
+- Use the strategy from Phase 3 to write every section
+- Mirror job posting language in high-relevance sections
+- Transform responsibilities into achievement statements
+- Quantify everything possible in top 2 experiences
+
+**PHASE 5: SELF-EVALUATE AGAINST ATS RUBRIC** (Judge your own work)
+Score your generated CV on this rubric (0-100):
+- Keyword Match (0-25): Are ALL critical job keywords present naturally?
+- Quantification (0-20): Do top experiences have 80%+ quantified bullets?
+- ATS Formatting (0-15): Clean structure, no tables/graphics, standard headings?
+- Achievement Depth (0-20): Action verbs + task + quantified results?
+- Completeness (0-20): All candidate experiences included, none skipped?
+
+**IF YOUR SELF-SCORE < 80/100, YOU MUST REVISE INTERNALLY BEFORE OUTPUTTING.**
+Do NOT output anything until you achieve 80+/100.
 
 {job_context}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 CANDIDATE PROFILE DATA
+📋 CANDIDATE PROFILE DATA (Your raw materials)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {personal_info}
@@ -98,11 +138,39 @@ Soft Skills: {profile.get('soft_skills', 'Not specified')}
 {section_reqs}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 OUTPUT FORMAT (STRICT JSON)
+🎯 OUTPUT FORMAT (STRICT JSON WITH AGENT REASONING)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Return ONLY valid JSON with this exact structure (no markdown, no code blocks, just raw JSON):
 {{
+  "agent_reasoning": {{
+    "candidate_analysis": "2-3 sentence analysis of candidate's strongest attributes, career trajectory, and seniority level",
+    "job_decoding": "2-3 sentences on what the employer REALLY wants — must-haves vs nice-to-haves, cultural fit indicators",
+    "job_match_score": 75,
+    "match_level": "HIGH or MEDIUM or LOW",
+    "strategy_chosen": "One sentence: what narrative angle and approach you're taking (e.g., 'Career Progression narrative, leading with 8 years Python expertise')",
+    "key_decisions": [
+      "Decision 1: e.g., Emphasized cloud migration achievements due to 'AWS' appearing 7 times in posting",
+      "Decision 2: e.g., Reduced bullets for early retail role to 2, focusing on transferable leadership skills",
+      "Decision 3: e.g., Mirrored exact phrase 'stakeholder management' from job requirements 4 times across summary and bullets"
+    ],
+    "gaps_bridged": [
+      "Gap 1: e.g., No direct Kubernetes experience — highlighted Docker containerization as adjacent skill",
+      "Gap 2: e.g., Lack of healthcare domain — emphasized transferable data privacy and compliance work"
+    ],
+    "confidence_score": 85,
+    "ats_self_evaluation": {{
+      "keyword_match_score": 23,
+      "quantification_score": 18,
+      "ats_formatting_score": 15,
+      "achievement_depth_score": 19,
+      "completeness_score": 20,
+      "total_score": 95,
+      "passed_quality_gate": true,
+      "internal_revisions": 1,
+      "revision_notes": "Initial score 78, revised summary to add 'DevOps' keyword and quantified project delivery metric to reach 95"
+    }}
+  }},
   "contact_information": {{
     "full_name": "First Last",
     "email": "email@example.com",
@@ -112,7 +180,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks, j
     "github": "github.com/username",
     "portfolio": "portfolio.com"
   }},
-  "professional_summary": "Strategic 2-4 sentence summary (50-80 words) explicitly using keywords from the job posting. Start with [X] years of experience as [Target Role Title]. Include 2 quantified achievements. End with value proposition aligned to company needs.",
+  "professional_summary": "Strategic 2-4 sentence summary (50-75 words MAX) explicitly using keywords from the job posting. MUST start with exact job title from posting or candidate's target title. Include at least 1 quantified achievement. End with value proposition aligned to company needs.",
   "professional_experience": [
     {{
       "company": "Company Name",
@@ -193,10 +261,16 @@ Return ONLY valid JSON with this exact structure (no markdown, no code blocks, j
 4. **KEYWORD SATURATION**: Naturally weave 10-15 keywords from the job posting across ALL sections (summary, experience, skills). Each keyword should appear at least once.
 5. **INCLUDE ALL EXPERIENCES WITH VARIED DEPTH**: You MUST include EVERY single work experience the candidate has provided — do NOT skip ANY. Order by relevance to the target job. Highly relevant roles (70+ score) get 5-6 detailed bullets with heavy keyword mirroring. Relevant roles (50-69) get 4-5 bullets. Moderately relevant roles (30-49) get 3-4 bullets bridging transferable skills. Less relevant roles (<30) get 2-3 concise bullets highlighting universal skills. NEVER omit an experience.
 6. **ACTION VERBS**: Start EVERY achievement bullet with a strong action verb (Led, Developed, Architected, Implemented, Optimized, Spearheaded, Launched, Streamlined, Mentored, Delivered).
-7. **ATS OPTIMIZATION**: Use standard section headings. Avoid tables, graphics references, or special characters. Spell out acronyms at first use.
-8. **SKILLS ALIGNMENT**: Categorize skills with job requirements in mind. List matching skills FIRST in each category.
-9. **INCLUDE ONLY REQUESTED SECTIONS**: Generate content only for the sections listed in REQUIRED SECTIONS above.
-10. **VALID JSON**: No trailing commas, proper string escaping, no comments in JSON.
+7. **NEVER USE FILLER PHRASES**: Do NOT use "results-driven", "passionate", "hardworking", "dynamic", "detail-oriented", "team player", "go-getter", "self-starter", "synergy", or "leverage" as standalone claims. These are ATS red-flag phrases recruiters skip. Replace every instance with a specific, quantified achievement.
+8. **NEVER USE PASSIVE VOICE**: Do NOT write "was responsible for", "helped with", "assisted in", "was tasked with", "participated in", "worked on", or "involved in". Use active ownership: "Led", "Owned", "Delivered", "Engineered", "Managed", "Drove", "Built".
+9. **ATS OPTIMIZATION**: Use standard section headings. Avoid tables, graphics references, or special characters. Spell out acronyms at first use.
+10. **SKILLS ALIGNMENT — THREE TIERS**: Categorize skills in three explicit tiers:
+    - Tier 1: EXACT keywords from the job posting (verbatim match — these appear first)
+    - Tier 2: Adjacent skills (closely related, transferable, 1 step removed from requirements)
+    - Tier 3: Differentiators (unique strengths that set this candidate apart, impressive extras)
+    List Tier 1 skills FIRST in every category. Do NOT add skills the candidate does not have.
+11. **INCLUDE ONLY REQUESTED SECTIONS**: Generate content only for the sections listed in REQUIRED SECTIONS above.
+12. **VALID JSON**: No trailing commas, proper string escaping, no comments in JSON.
 
 Generate the CV now:"""
         
@@ -267,7 +341,7 @@ WORK HISTORY (ALL POSITIONS — use for context):
 SUMMARY STRATEGY: {summary_strategy}
 
 REQUIREMENTS:
-1. Exactly 50-80 words, 2-4 sentences
+1. Exactly 50-75 words, 2-4 sentences (HARD LIMIT: 75 words. Count every word.)
 2. FIRST SENTENCE: "[X] years of experience as a [Target Job Title/Professional Title]"
 3. SECOND SENTENCE: 2 specific quantified achievements that match the job's key requirements
 4. FINAL SENTENCE: Value proposition — what unique impact you bring to this specific role

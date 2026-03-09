@@ -53,6 +53,7 @@ const JobSeekerProfile = () => {
   const [showRemoveSkillDialog, setShowRemoveSkillDialog] = useState(false);
   const [skillToRemove, setSkillToRemove] = useState(null);
   const fileInputRef = useRef();
+  const hasFetchedRef = useRef(false);
   const [activeTab, setActiveTab] = useState('personal');
   
   // Form states
@@ -104,8 +105,13 @@ const JobSeekerProfile = () => {
       return;
     }
     
-    loadProfile();
-  }, [isAuthenticated, user, navigate]);
+    // Only fetch profile once — prevents re-fetch on user object reference changes
+    // (e.g. when session token refreshes and authStore creates a new user object)
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      loadProfile();
+    }
+  }, [isAuthenticated, user?.role, navigate]);
 
   const loadProfile = async () => {
     try {
@@ -314,8 +320,9 @@ const JobSeekerProfile = () => {
       };
       
       await apiService.updateProfile(updateData);
+      // Update local profile state without re-fetching (prevents form data loss)
+      setProfile(prev => prev ? { ...prev, ...personalData, job_seeker_profile: { ...(prev.job_seeker_profile || {}), ...professionalData, ...preferencesData, skills: JSON.stringify(skillsList) } } : prev);
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      loadProfile();
       
     } catch (error) {
       console.error('Failed to update profile:', error);

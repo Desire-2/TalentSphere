@@ -71,6 +71,7 @@ const baseSchema = z.object({
     required_error: 'Please select your role'
   }),
   phone: z.string().optional().or(z.literal('')),
+  confirm_password: z.string().min(1, 'Please confirm your password'),
   terms_accepted: z.boolean().refine(val => val === true, {
     message: 'You must accept the terms and conditions'
   })
@@ -111,16 +112,28 @@ const employerSchema = baseSchema.extend({
 });
 
 const getSchema = (role) => {
+  let schema;
   if (role === 'employer') {
-    return employerSchema;
+    schema = employerSchema;
   } else if (role === 'job_seeker') {
-    return jobSeekerSchema;
+    schema = jobSeekerSchema;
+  } else {
+    schema = baseSchema;
   }
-  return baseSchema;
+  return schema.superRefine((data, ctx) => {
+    if (data.confirm_password !== data.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Passwords do not match',
+        path: ['confirm_password'],
+      });
+    }
+  });
 };
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState('');
@@ -1095,6 +1108,47 @@ const Register = () => {
                       <p className="text-sm text-red-600 flex items-center gap-2 animate-pulse">
                         <AlertCircle className="w-4 h-4" />
                         {errors.password.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm_password" className="flex items-center gap-2 text-sm font-semibold">
+                      <Lock className="w-4 h-4" style={{ color: '#2CB5C2' }} />
+                      Confirm Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm_password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Re-enter your password"
+                        {...register('confirm_password')}
+                        className={`pr-12 transition-all duration-300 ${
+                          errors.confirm_password
+                            ? 'border-red-500 focus:border-red-500 bg-red-50'
+                            : 'border-white/10 hover:border-white/25 focus:border-[#2CB5C2] bg-[#162236] text-white'
+                        }`}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <button
+                          type="button"
+                          className="hover:text-blue-600 transition-colors p-1 rounded"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4 text-gray-400 hover:text-blue-500" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-400 hover:text-blue-500" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {errors.confirm_password && (
+                      <p className="text-sm text-red-600 flex items-center gap-2 animate-pulse">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.confirm_password.message}
                       </p>
                     )}
                   </div>

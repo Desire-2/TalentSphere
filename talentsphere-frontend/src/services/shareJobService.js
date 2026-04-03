@@ -299,8 +299,7 @@ class ShareJobService {
 
   // Generate personalized share templates
   generateShareTemplates(job, companyName) {
-    const jobLink = `${window.location.origin}/jobs/${job.id}`;
-    const applyLink = job.application_url || jobLink;
+    const applyLink = `https://jobs.afritechbridge.online/jobs/${job.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
 
     const linksBlock = `\n\n🔗 Apply Here: ${applyLink}\n🌍 Join Our Community: ${communityLink}`;

@@ -115,7 +115,7 @@ def send_job_share_email(job_id):
         
         # Generate job URL
         job_url = f"{request.host_url.rstrip('/')}/jobs/{job.id}"
-        apply_url = job.application_url or job_url
+        apply_url = f"https://jobs.afritechbridge.online/jobs/{job.id}"
         community_url = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl'
 
         # Create personal message section separately

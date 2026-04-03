@@ -83,7 +83,7 @@ const ShareJob = ({
 
   // Generate job URL
   const jobUrl = `${window.location.origin}/jobs/${job.id}`;
-  const applyUrl = job.application_url || jobUrl;
+  const applyUrl = `https://jobs.afritechbridge.online/jobs/${job.id}`;
   const communityUrl = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
   
   // Job preview data

@@ -78,6 +78,8 @@ const ShareScholarship = ({
 
   // Generate scholarship URL
   const scholarshipUrl = `${window.location.origin}/scholarships/${scholarship.id}`;
+  const applyUrl = scholarship.application_url || scholarshipUrl;
+  const communityUrl = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
   
   // Scholarship preview data
   const organizationName = scholarship.external_organization_name || 'TalentSphere';
@@ -90,7 +92,7 @@ const ShareScholarship = ({
     : 'Open';
 
   // Default sharing message
-  const defaultMessage = `🎓 Great scholarship opportunity: ${scholarshipTitle} at ${organizationName}. Award: ${amount}. Apply by ${deadline}!\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl`;
+  const defaultMessage = `🎓 Scholarship Opportunity: ${scholarshipTitle}\n🏢 Provider: ${organizationName}\n💰 Award: ${amount}\n⏰ Deadline: ${deadline}\n\n🔗 Apply Here: ${applyUrl}\n🌍 Join Our Community: ${communityUrl}`;
 
   // Load data when dialog opens
   useEffect(() => {
@@ -300,7 +302,7 @@ const ShareScholarship = ({
         )}
       </DialogTrigger>
       
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[96vw] max-w-6xl 2xl:max-w-7xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-xl sm:text-2xl font-bold flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg">
@@ -313,9 +315,9 @@ const ShareScholarship = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mt-4 sm:mt-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 mt-4 sm:mt-6">
           {/* Scholarship Preview */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-4">
             <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-300 lg:sticky lg:top-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardHeader className="pb-3 bg-gradient-to-r from-blue-100 to-indigo-100 border-b-2 border-blue-300">
                 <div className="flex items-center gap-3">
@@ -419,7 +421,7 @@ const ShareScholarship = ({
           </div>
 
           {/* Sharing Options */}
-          <div className="lg:col-span-3">
+          <div className="xl:col-span-8 min-w-0">
             {/* Quick Share Bar */}
             <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-3 sm:p-4 rounded-xl border-2 border-blue-200 mb-4 shadow-sm">
               <p className="text-xs sm:text-sm font-medium text-gray-700 mb-3">🚀 Quick Share</p>
@@ -454,26 +456,26 @@ const ShareScholarship = ({
             </div>
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 h-auto bg-gradient-to-r from-gray-100 to-gray-200 p-1.5 gap-1.5">
-                <TabsTrigger value="link" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
-                  <LinkIcon className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
-                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Link</span>
+              <TabsList className="w-full flex flex-nowrap bg-gradient-to-r from-gray-100 to-gray-200 p-1.5 gap-1 sm:gap-1.5 rounded-xl overflow-x-auto">
+                <TabsTrigger value="link" className="flex-1 min-w-[72px] sm:min-w-[96px] flex items-center justify-center gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5 px-2 text-xs sm:text-sm whitespace-nowrap rounded-md transition-all">
+                  <LinkIcon className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xl:inline">Link</span>
                 </TabsTrigger>
-                <TabsTrigger value="social" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
-                  <Globe className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
-                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Social</span>
+                <TabsTrigger value="social" className="flex-1 min-w-[72px] sm:min-w-[96px] flex items-center justify-center gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5 px-2 text-xs sm:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Globe className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xl:inline">Social</span>
                 </TabsTrigger>
-                <TabsTrigger value="templates" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
-                  <MessageSquare className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
-                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Templates</span>
+                <TabsTrigger value="templates" className="flex-1 min-w-[72px] sm:min-w-[96px] flex items-center justify-center gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5 px-2 text-xs sm:text-sm whitespace-nowrap rounded-md transition-all">
+                  <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xl:inline">Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
-                  <Mail className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
-                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">Email</span>
+                <TabsTrigger value="email" className="flex-1 min-w-[72px] sm:min-w-[96px] flex items-center justify-center gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5 px-2 text-xs sm:text-sm whitespace-nowrap rounded-md transition-all">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xl:inline">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="qr" className="flex flex-col xl:flex-row items-center justify-center gap-1 xl:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-3 px-1.5 xl:px-4 text-[10px] xl:text-sm whitespace-nowrap rounded-md transition-all">
-                  <QrCode className="w-4 h-4 xl:w-4 xl:h-4 flex-shrink-0" />
-                  <span className="text-[9px] xl:text-sm mt-0.5 xl:mt-0">QR</span>
+                <TabsTrigger value="qr" className="flex-1 min-w-[72px] sm:min-w-[96px] flex items-center justify-center gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5 px-2 text-xs sm:text-sm whitespace-nowrap rounded-md transition-all">
+                  <QrCode className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden xl:inline">QR</span>
                 </TabsTrigger>
               </TabsList>
 

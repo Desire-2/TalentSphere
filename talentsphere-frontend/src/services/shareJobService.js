@@ -127,8 +127,7 @@ class ShareJobService {
   // Send direct emails through backend
   async sendDirectEmails(jobId, recipients, customMessage = '') {
     try {
-      const response = await apiService.post('/jobs/share/email', {
-        jobId,
+      const response = await apiService.post(`/jobs/${jobId}/share/email`, {
         recipients,
         customMessage,
         timestamp: new Date().toISOString()
@@ -300,47 +299,49 @@ class ShareJobService {
 
   // Generate personalized share templates
   generateShareTemplates(job, companyName) {
-    const communityLink = '\n\n🌟 Join our community for more opportunities: http://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
+    const jobLink = `${window.location.origin}/jobs/${job.id}`;
+    const applyLink = job.application_url || jobLink;
+    const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
+
+    const linksBlock = `\n\n🔗 Apply Here: ${applyLink}\n🌍 Join Our Community: ${communityLink}`;
     
     const templates = [
       {
         name: '✨ Professional',
-        template: `🔍 Exciting opportunity alert! Looking for a ${job.title} role? ${companyName} is hiring! This could be perfect for someone in your network.${communityLink} #JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
+        template: `🔍 Exciting opportunity alert!\n\n${companyName} is hiring a ${job.title}. This could be a perfect fit for someone in your network.${linksBlock}\n\n#JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '👋 Casual',
-        template: `Hey friends! 👋 Know anyone looking for a ${job.title} position? Found this great opportunity at ${companyName}. Sharing is caring! 💼${communityLink}`
+        template: `Hey friends! 👋\n\nKnow anyone looking for a ${job.title} role? I found this opening at ${companyName}.${linksBlock}\n\nSharing is caring! 💼`
       },
       {
         name: '⚡ Urgent',
-        template: `⚡ URGENT: ${companyName} needs a ${job.title} ASAP! If you know someone perfect for this role, don't wait - opportunities like this move fast!${communityLink} #UrgentHiring #${job.title.replace(/\s+/g, '')}`
+        template: `⚡ URGENT HIRING\n\n${companyName} needs a ${job.title} ASAP. If you know someone perfect for this role, don't wait.${linksBlock}\n\n#UrgentHiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '🤝 Network Helper',
-        template: `🤝 Helping grow our professional network! ${companyName} is looking for a talented ${job.title}. Tag someone who might be interested or share to help a fellow professional!${communityLink} #Networking #CareerOpportunity`
+        template: `🤝 Helping our network grow\n\n${companyName} is looking for a talented ${job.title}. Tag someone who should see this.${linksBlock}\n\n#Networking #CareerOpportunity`
       },
       {
         name: '🏢 Company Focused',
-        template: `🏢 ${companyName} is expanding their team! They're looking for a skilled ${job.title}. Great company, great opportunity. Know someone who'd be a perfect fit?${communityLink} #CompanyGrowth #Hiring #TeamExpansion`
+        template: `🏢 ${companyName} is expanding!\n\nThey're looking for a skilled ${job.title}. Great company, great opportunity.${linksBlock}\n\n#CompanyGrowth #Hiring #TeamExpansion`
       },
       {
         name: '🎯 Detailed',
-        template: `📢 JOB ALERT!\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n📍 Apply Now!\n\nDon't miss this amazing opportunity to advance your career!${communityLink} #JobSearch #CareerGrowth`
+        template: `📢 JOB ALERT\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n${job.location ? `📍 Location: ${job.location}\n` : ''}${linksBlock}\n\nDon't miss this opportunity to advance your career. #JobSearch #CareerGrowth`
       }
     ];
 
     // Add job-specific elements to templates
     if (job.salary_min || job.salary_max) {
       templates.forEach(template => {
-        const parts = template.template.split(communityLink);
-        template.template = parts[0] + ' 💰 Competitive salary offered.' + communityLink;
+        template.template = `${template.template}\n💰 Competitive salary offered.`;
       });
     }
 
     if (job.employment_type === 'remote') {
       templates.forEach(template => {
-        const parts = template.template.split(communityLink);
-        template.template = parts[0] + ' 🏠 Remote work available!' + communityLink;
+        template.template = `${template.template}\n🏠 Remote work available!`;
       });
     }
 

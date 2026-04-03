@@ -115,6 +115,11 @@ def send_job_share_email(job_id):
         
         # Generate job URL
         job_url = f"{request.host_url.rstrip('/')}/jobs/{job.id}"
+        apply_url = job.application_url or job_url
+        community_url = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl'
+
+        # Create personal message section separately
+        personal_message_section = f"\n**Personal Message:**\n{custom_message}\n" if custom_message else ""
         
         # Email template
         email_body = f"""
@@ -127,25 +132,20 @@ Hello!
 {f"Location: {job.location}" if job.location else ""}
 {f"Employment Type: {job.employment_type.replace('_', ' ').title()}" if job.employment_type else ""}
 {f"Salary: ${job.salary_min:,} - ${job.salary_max:,}" if job.salary_min and job.salary_max else ""}
+{personal_message_section}
 
 **Job Description:**
 {job.description[:500]}{"..." if len(job.description) > 500 else ""}
 
-{personal_message_section}
+**Apply Here:** {apply_url}
+
+**Join Our Community:** {community_url}
 
 **View Full Job Details:** {job_url}
 
 ---
 This job was shared through TalentSphere
 """
-
-        # Create personal message section separately to avoid f-string backslash issue
-        personal_message_section = f"**Personal Message:**\n{custom_message}\n" if custom_message else ""
-        
-        # Format the final message
-        message = message.format(
-            personal_message_section=personal_message_section
-        )
         
         # Send emails
         success_count = 0

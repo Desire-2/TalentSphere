@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   GraduationCap,
@@ -157,6 +157,7 @@ const ScholarshipList = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('updated_at');
@@ -172,6 +173,7 @@ const ScholarshipList = () => {
   });
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
+  const searchDebounceRef = useRef(null);
 
   // Constants
   const itemsPerPage = 12;
@@ -199,11 +201,28 @@ const ScholarshipList = () => {
     fetchCategories();
   }, [currentPage, searchTerm, selectedCategory, sortBy, sortOrder]);
 
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      const normalizedSearch = searchInput.trim();
+      setSearchTerm(normalizedSearch);
+      setCurrentPage(1);
+    }, 450);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchInput]);
+
     const fetchScholarships = async () => {
     try {
       setLoading(true);
       setError(null); // Clear any previous errors
-      setScholarships([]); // Clear existing data to prevent mixed rendering
       const params = {
         page: currentPage,
         per_page: itemsPerPage,
@@ -291,8 +310,12 @@ const ScholarshipList = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    const normalizedSearch = searchInput.trim();
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    setSearchTerm(normalizedSearch);
     setCurrentPage(1);
-    fetchScholarships();
   };
 
   const handleCategoryFilter = (categorySlug) => {
@@ -431,8 +454,8 @@ const ScholarshipList = () => {
                   <Input
                     type="text"
                     placeholder="Search scholarships by name, organization, or field..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="pl-10 h-12 bg-white/95 border-white/20 text-gray-900 placeholder:text-gray-500"
                   />
                 </div>
@@ -557,6 +580,7 @@ const ScholarshipList = () => {
                 {searchTerm && (
                   <Button 
                     onClick={() => {
+                      setSearchInput('');
                       setSearchTerm('');
                       setSelectedCategory('');
                       setCurrentPage(1);

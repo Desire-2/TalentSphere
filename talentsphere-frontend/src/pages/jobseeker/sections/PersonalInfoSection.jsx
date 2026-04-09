@@ -12,6 +12,7 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
   const [formData, setFormData] = useState({
     first_name: data?.first_name || '',
     last_name: data?.last_name || '',
+    email: data?.email || '',
     phone: data?.phone || '',
     location: data?.location || '',
     bio: data?.bio || ''
@@ -48,6 +49,10 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
             <div>
               <p className="text-sm font-medium text-gray-500">Phone</p>
               <p className="text-base">{data?.phone || 'Not provided'}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Email</p>
+              <p className="text-base">{data?.email || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Location</p>
@@ -87,6 +92,15 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
             </div>
             <div>

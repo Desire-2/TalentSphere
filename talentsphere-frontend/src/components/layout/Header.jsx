@@ -415,13 +415,13 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   asChild 
-                  className="rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium px-2.5 sm:px-3"
+                  className="h-10 rounded-xl bg-white/90 border border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-all duration-300 font-semibold px-3 sm:px-3.5 shadow-sm"
                 >
                   <Link to="/login">Sign In</Link>
                 </Button>
                 <Button 
                   asChild 
-                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold px-3 sm:px-4"
+                  className="h-10 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold px-3 sm:px-4 ring-1 ring-indigo-300/50"
                 >
                   <Link to="/register">
                     <span className="flex items-center space-x-1">
@@ -437,7 +437,7 @@ const Header = () => {
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden h-9 w-9 rounded-xl hover:bg-gray-50 transition-all duration-300"
+              className="lg:hidden h-9 w-9 rounded-xl hover:bg-gray-50 transition-all duration-300 bg-white/95 border border-gray-200 text-gray-700 shadow-sm"
               onClick={toggleMobileMenu}
               aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={isMobileMenuOpen}
@@ -552,11 +552,12 @@ const Header = () => {
                 )}
 
                 {!isAuthenticated && (
-                  <div className="flex flex-col space-y-1 pt-2 mx-1 border-t border-gray-200/50">
+                  <div className="flex flex-col space-y-2 pt-3 mt-1 mx-1 border-t border-gray-200/60">
+                    <p className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">Quick Access</p>
                     <Button 
                       variant="ghost" 
                       asChild 
-                      className="justify-start rounded-xl hover:bg-gray-50 transition-all duration-300 text-sm"
+                      className="justify-center rounded-xl bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-all duration-300 text-sm font-semibold shadow-sm"
                     >
                       <Link to="/login">
                         <User className="w-4 h-4 mr-2" />
@@ -565,7 +566,7 @@ const Header = () => {
                     </Button>
                     <Button 
                       asChild 
-                      className="justify-start bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg text-sm"
+                      className="justify-center bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg text-sm font-semibold ring-1 ring-indigo-300/50"
                     >
                       <Link to="/register">
                         <Zap className="w-4 h-4 mr-2" />

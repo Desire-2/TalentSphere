@@ -477,7 +477,7 @@ const ProfileSettings = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="mx-auto w-full max-w-5xl overflow-x-hidden px-4 py-8">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
           <p className="text-gray-600">Loading your settings...</p>
@@ -487,7 +487,7 @@ const ProfileSettings = () => {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
+    <div className="mx-auto w-full max-w-5xl overflow-x-hidden px-4 py-6 sm:py-8 [&_*]:min-w-0">
       {/* Header */}
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-2xl font-bold sm:text-3xl">
@@ -517,7 +517,7 @@ const ProfileSettings = () => {
         </Alert>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 w-full space-y-6">
         <div className="md:hidden">
           <Label htmlFor="settings-tab-selector" className="mb-2 block text-sm text-muted-foreground">
             Settings Section
@@ -536,7 +536,7 @@ const ProfileSettings = () => {
           </Select>
         </div>
 
-        <TabsList className="hidden w-full grid-cols-4 md:grid">
+        <TabsList className="hidden min-w-0 w-full grid-cols-4 md:grid">
           <TabsTrigger value="security">
             <Shield className="w-4 h-4 mr-2" />
             Security
@@ -556,8 +556,8 @@ const ProfileSettings = () => {
         </TabsList>
 
         {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
+        <TabsContent value="security" className="min-w-0 w-full space-y-6 overflow-x-hidden">
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="w-5 h-5" />
@@ -567,7 +567,7 @@ const ProfileSettings = () => {
                 Manage your password and security settings
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               {/* Password Change */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Change Password</h3>
@@ -756,8 +756,8 @@ const ProfileSettings = () => {
           </Card>
         </TabsContent>
         {/* Privacy Tab */}
-        <TabsContent value="privacy" className="space-y-6">
-          <Card>
+        <TabsContent value="privacy" className="min-w-0 w-full space-y-6 overflow-x-hidden">
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
@@ -767,7 +767,7 @@ const ProfileSettings = () => {
                 Control your profile visibility and data sharing preferences
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               {/* Profile Visibility */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Profile Visibility</h3>
@@ -897,9 +897,9 @@ const ProfileSettings = () => {
         </TabsContent>
 
         {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="min-w-0 w-full space-y-6 overflow-x-hidden">
           {/* Email Notifications */}
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
@@ -909,7 +909,7 @@ const ProfileSettings = () => {
                 Choose which email notifications you want to receive
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {notificationPreferences.email_preferences.enabled ? (
@@ -1049,7 +1049,7 @@ const ProfileSettings = () => {
           </Card>
 
           {/* In-App/Push Notifications */}
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
@@ -1059,7 +1059,7 @@ const ProfileSettings = () => {
                 Manage real-time notifications within the app
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               <div className="flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {notificationPreferences.push_preferences.enabled ? (
@@ -1109,7 +1109,7 @@ const ProfileSettings = () => {
           </Card>
 
           {/* Digest & Quiet Hours */}
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -1119,7 +1119,7 @@ const ProfileSettings = () => {
                 Control notification frequency and timing
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               {/* Weekly Digest */}
               <div className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1259,8 +1259,8 @@ const ProfileSettings = () => {
         </TabsContent>
 
         {/* Account Tab */}
-        <TabsContent value="account" className="space-y-6">
-          <Card>
+        <TabsContent value="account" className="min-w-0 w-full space-y-6 overflow-x-hidden">
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="w-5 h-5" />
@@ -1270,7 +1270,7 @@ const ProfileSettings = () => {
                 Manage your account status, verification, and data
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="min-w-0 space-y-6">
               {/* Account Status */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Account Status</h3>

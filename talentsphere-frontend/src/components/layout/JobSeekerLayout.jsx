@@ -142,7 +142,7 @@ const JobSeekerLayout = () => {
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/20 to-teal-50/20 flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/20 to-teal-50/20 flex overflow-x-hidden">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -296,9 +296,9 @@ const JobSeekerLayout = () => {
       </aside>
 
       {/* Main content - Adjust for fixed sidebar */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-72">
-        {/* Top bar - Sticky */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200/70">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 lg:ml-72">
+        {/* Top bar - Fixed */}
+        <header className="fixed top-0 left-0 right-0 z-30 border-b border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-md lg:left-72">
           <div className="flex items-center justify-between h-16 px-3 sm:px-6 gap-2 relative">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 sm:flex-none">
               <Button
@@ -389,8 +389,8 @@ const JobSeekerLayout = () => {
         </header>
 
         {/* Page content - Enhanced */}
-        <main className="flex-1 p-3 sm:p-5 md:p-8 overflow-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 pt-20 sm:p-5 sm:pt-20 md:p-8 md:pt-24">
+          <div className="mx-auto w-full max-w-7xl min-w-0">
             <Outlet />
           </div>
         </main>

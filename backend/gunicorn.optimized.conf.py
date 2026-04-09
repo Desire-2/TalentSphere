@@ -90,6 +90,28 @@ def post_fork(server, worker):
     import setproctitle
     setproctitle.setproctitle(f"talentsphere-worker-{worker.pid}")
 
+    # Start background schedulers only in the primary worker.
+    if worker.age <= 1:
+        try:
+            from src.main import app
+            from src.services.job_digest_scheduler import job_digest_scheduler
+            job_digest_scheduler.start(app)
+            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (primary worker)")
+        except Exception as e:
+            server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
+
+        try:
+            from src.services.cleanup_service import start_cleanup_service
+            service = start_cleanup_service(app)
+            if service and service.is_running:
+                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (primary worker)")
+            else:
+                server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
+        except Exception as e:
+            server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
+    else:
+        server.log.info(f"Worker {worker.pid} - background schedulers run in primary worker")
+
 def pre_exec(server):
     """Called just before a new master process is forked."""
     server.log.info("Forked child, re-executing.")

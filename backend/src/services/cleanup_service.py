@@ -23,6 +23,7 @@ class CleanupService:
         self.logger = logging.getLogger(__name__)
         self.is_running = False
         self.scheduler_thread = None
+        self.app = None
         # Check every 12 hours
         self.check_interval = 12 * 60 * 60  # 12 hours in seconds
         # Delete 1 day after deadline
@@ -32,12 +33,13 @@ class CleanupService:
         self._stats_cache_time = None
         self._stats_cache_ttl = 300  # 5 minutes
         
-    def start(self):
+    def start(self, app=None):
         """Start the cleanup scheduler"""
         if self.is_running:
             self.logger.warning("Cleanup service is already running")
             return
         
+        self.app = app
         self.is_running = True
         self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
         self.scheduler_thread.start()
@@ -58,10 +60,14 @@ class CleanupService:
         while self.is_running:
             try:
                 self.logger.info("🔍 Running cleanup check...")
-                
-                # Run cleanup for both jobs and scholarships
-                jobs_deleted = self.cleanup_external_jobs()
-                scholarships_deleted = self.cleanup_external_scholarships()
+
+                if self.app is not None:
+                    with self.app.app_context():
+                        jobs_deleted = self.cleanup_external_jobs()
+                        scholarships_deleted = self.cleanup_external_scholarships()
+                else:
+                    jobs_deleted = self.cleanup_external_jobs()
+                    scholarships_deleted = self.cleanup_external_scholarships()
                 
                 total_deleted = jobs_deleted + scholarships_deleted
                 if total_deleted > 0:
@@ -358,11 +364,11 @@ def get_cleanup_service() -> CleanupService:
         _cleanup_service = CleanupService()
     return _cleanup_service
 
-def start_cleanup_service():
+def start_cleanup_service(app=None):
     """Start the cleanup service"""
     global _service_started
     service = get_cleanup_service()
-    service.start()
+    service.start(app=app)
     _service_started = True  # Mark that service was started
     return service
 

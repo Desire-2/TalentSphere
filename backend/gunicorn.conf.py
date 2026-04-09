@@ -65,11 +65,19 @@ def post_fork(server, worker):
     """Called just after a worker has been forked."""
     server.log.info(f"Worker {worker.pid} booted")
     
-    # Only start cleanup service in worker 1 (age 0) to avoid duplicate schedulers
-    if worker.age == 0:
+    # Only start background schedulers in primary worker (age 0) to avoid duplicates.
+    if worker.age <= 1:
+        try:
+            from src.main import app
+            from src.services.job_digest_scheduler import job_digest_scheduler
+            job_digest_scheduler.start(app)
+            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (primary worker)")
+        except Exception as e:
+            server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
+
         try:
             from src.services.cleanup_service import start_cleanup_service
-            service = start_cleanup_service()
+            service = start_cleanup_service(app)
             if service and service.is_running:
                 server.log.info(f"✅ Cleanup service started in worker {worker.pid} (primary worker)")
             else:
@@ -79,8 +87,8 @@ def post_fork(server, worker):
             import traceback
             traceback.print_exc()
     else:
-        # Other workers just acknowledge the service is running elsewhere
-        server.log.info(f"Worker {worker.pid} - cleanup service runs in primary worker")
+        # Other workers acknowledge schedulers/services are running elsewhere.
+        server.log.info(f"Worker {worker.pid} - background schedulers run in primary worker")
 
 def worker_abort(worker):
     """Called when a worker received the SIGABRT signal."""

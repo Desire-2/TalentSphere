@@ -314,7 +314,7 @@ if __name__ == '__main__':
         print(f"⚠️  Job scheduler failed to start: {e}")    
     # Start job digest scheduler
     try:
-        job_digest_scheduler.start()
+        job_digest_scheduler.start(app)
         print("✅ Job digest scheduler started (daily & weekly digests)")
     except Exception as e:
         print(f"⚠️  Job digest scheduler failed to start: {e}")

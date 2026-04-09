@@ -18,9 +18,13 @@ class JobDigestScheduler:
     def __init__(self):
         self.running = False
         self.thread = None
+        self.app = None
         self.enabled = os.getenv('JOB_DIGEST_ENABLED', 'true').lower() == 'true'
+        self.local_timezone = os.getenv('APP_TIMEZONE', '')
+        self.daily_digest_time = os.getenv('MORNING_JOB_UPDATE_TIME', '06:00')
+        self.weekly_digest_time = os.getenv('WEEKLY_DIGEST_TIME', '18:00')
     
-    def start(self):
+    def start(self, app=None):
         """Start the scheduler in a background thread"""
         if not self.enabled:
             print("⚠️  Job digest scheduler is disabled")
@@ -30,6 +34,7 @@ class JobDigestScheduler:
             print("⚠️  Job digest scheduler is already running")
             return
         
+        self.app = app
         self.running = True
         self.thread = threading.Thread(target=self._run_scheduler, daemon=True)
         self.thread.start()
@@ -38,21 +43,35 @@ class JobDigestScheduler:
     def stop(self):
         """Stop the scheduler"""
         self.running = False
+        schedule.clear('job_digest_scheduler')
         if self.thread:
             self.thread.join(timeout=5)
         print("🛑 Job digest scheduler stopped")
     
     def _run_scheduler(self):
         """Run the scheduler loop"""
-        # Schedule daily digest at 9:00 AM
-        schedule.every().day.at("09:00").do(self._run_daily_digest)
+        # If APP_TIMEZONE is provided, run schedule checks in that timezone.
+        if self.local_timezone:
+            try:
+                os.environ['TZ'] = self.local_timezone
+                if hasattr(time, 'tzset'):
+                    time.tzset()
+                print(f"🌍 Job digest scheduler timezone set to {self.local_timezone}")
+            except Exception as e:
+                print(f"⚠️  Failed to apply APP_TIMEZONE '{self.local_timezone}': {e}")
+
+        # Clear stale jobs in case of restart
+        schedule.clear('job_digest_scheduler')
+
+        # Schedule daily morning update
+        schedule.every().day.at(self.daily_digest_time).do(self._run_daily_digest).tag('job_digest_scheduler')
         
-        # Schedule weekly digest on Monday at 9:00 AM
-        schedule.every().monday.at("09:00").do(self._run_weekly_digest)
+        # Schedule weekly digest every Friday evening
+        schedule.every().friday.at(self.weekly_digest_time).do(self._run_weekly_digest).tag('job_digest_scheduler')
         
         print("📅 Scheduled tasks:")
-        print("   - Daily digest: Every day at 09:00")
-        print("   - Weekly digest: Every Monday at 09:00")
+        print(f"   - Morning update: Every day at {self.daily_digest_time}")
+        print(f"   - Weekly digest: Every Friday at {self.weekly_digest_time}")
         
         while self.running:
             try:
@@ -65,20 +84,31 @@ class JobDigestScheduler:
     def _run_daily_digest(self):
         """Run daily digest task"""
         try:
-            print(f"📧 Running daily job digest at {datetime.now()}")
-            result = job_notification_service.send_daily_digest()
-            print(f"✅ Daily digest complete: {result}")
+            print(f"📧 Running morning top jobs update at {datetime.now()}")
+            result = self._execute_in_app_context(job_notification_service.send_morning_top_jobs_update)
+            print(f"✅ Morning update complete: {result}")
+            return result
         except Exception as e:
-            print(f"❌ Daily digest failed: {e}")
+            print(f"❌ Morning update failed: {e}")
+            return None
     
     def _run_weekly_digest(self):
         """Run weekly digest task"""
         try:
-            print(f"📧 Running weekly job digest at {datetime.now()}")
-            result = job_notification_service.send_weekly_digest()
+            print(f"📧 Running weekly jobs/scholarships digest at {datetime.now()}")
+            result = self._execute_in_app_context(job_notification_service.send_weekly_jobs_scholarships_digest)
             print(f"✅ Weekly digest complete: {result}")
+            return result
         except Exception as e:
             print(f"❌ Weekly digest failed: {e}")
+            return None
+
+    def _execute_in_app_context(self, task):
+        """Execute a scheduled task within Flask app context when available."""
+        if self.app is not None:
+            with self.app.app_context():
+                return task()
+        return task()
     
     def run_daily_digest_now(self):
         """Manually trigger daily digest (for testing)"""

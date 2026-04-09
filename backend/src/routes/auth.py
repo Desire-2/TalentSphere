@@ -691,6 +691,27 @@ def update_profile(current_user):
     """Update current user profile"""
     try:
         data = request.get_json()
+
+        # Handle primary email updates with validation and uniqueness checks.
+        if 'email' in data:
+            new_email = (data.get('email') or '').strip().lower()
+
+            if not new_email:
+                return jsonify({'error': 'Email cannot be empty'}), 400
+
+            if not validate_email(new_email):
+                return jsonify({'error': 'Invalid email format'}), 400
+
+            if new_email != (current_user.email or '').lower():
+                existing_user = User.query.filter(
+                    User.email == new_email,
+                    User.id != current_user.id
+                ).first()
+
+                if existing_user:
+                    return jsonify({'error': 'Email already registered'}), 409
+
+                current_user.email = new_email
         
         # Update basic user information
         if 'first_name' in data:

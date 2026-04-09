@@ -125,16 +125,16 @@ const AdminSettings = () => {
     try {
       setIsLoading(true);
       const [systemResponse, emailResponse, securityResponse, dbResponse] = await Promise.all([
-        api.get('/admin/settings/system').catch(() => ({ data: systemSettings })),
-        api.get('/admin/settings/email').catch(() => ({ data: emailSettings })),
-        api.get('/admin/settings/security').catch(() => ({ data: securitySettings })),
-        api.get('/admin/settings/database').catch(() => ({ data: databaseSettings }))
+        api.get('/admin/settings/system').catch(() => ({})),
+        api.get('/admin/settings/email').catch(() => ({})),
+        api.get('/admin/settings/security').catch(() => ({})),
+        api.get('/admin/settings/database').catch(() => ({}))
       ]);
 
-      setSystemSettings(systemResponse.data);
-      setEmailSettings(emailResponse.data);
-      setSecuritySettings(securityResponse.data);
-      setDatabaseSettings(dbResponse.data);
+      setSystemSettings(prev => ({ ...prev, ...(systemResponse || {}) }));
+      setEmailSettings(prev => ({ ...prev, ...(emailResponse || {}) }));
+      setSecuritySettings(prev => ({ ...prev, ...(securityResponse || {}) }));
+      setDatabaseSettings(prev => ({ ...prev, ...(dbResponse || {}) }));
     } catch (error) {
       console.error('Error fetching settings:', error);
       toast.error("Settings load error - using default settings. Some features may not be available.");
@@ -146,7 +146,7 @@ const AdminSettings = () => {
   const fetchSystemHealth = async () => {
     try {
       const response = await api.get('/admin/system/health');
-      setSystemHealth(response.data);
+      setSystemHealth(prev => ({ ...prev, ...(response || {}) }));
     } catch (error) {
       console.error('Error fetching system health:', error);
       // Keep mock data as fallback

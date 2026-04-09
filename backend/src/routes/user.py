@@ -80,11 +80,27 @@ def delete_user(current_user, user_id):
         
         # Clean up or cascade related data
         with db.session.no_autoflush:
+            # Delete application activities performed by this user (non-nullable FK)
+            ApplicationActivity.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
             # Set referrer_id to NULL where this user is referenced (nullable foreign key)
             Application.query.filter_by(referrer_id=user_id).update({'referrer_id': None}, synchronize_session=False)
             
             # Handle reviews moderated by this user (nullable foreign key)
             Review.query.filter_by(moderated_by=user_id).update({'moderated_by': None}, synchronize_session=False)
+
+            # Remove review votes created by this user
+            ReviewVote.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+            # Remove reviews created for/by this user, and votes on those reviews
+            review_ids = [
+                review_id for (review_id,) in db.session.query(Review.id).filter(
+                    (Review.reviewer_id == user_id) | (Review.reviewee_id == user_id)
+                ).all()
+            ]
+            if review_ids:
+                ReviewVote.query.filter(ReviewVote.review_id.in_(review_ids)).delete(synchronize_session=False)
+                Review.query.filter(Review.id.in_(review_ids)).delete(synchronize_session=False)
             
             # Handle messages where this user is sender or recipient
             # We can't set sender_id or recipient_id to NULL (since they're non-nullable)
@@ -133,11 +149,27 @@ def bulk_delete_users(current_user):
         
         # Clean up references that might cause constraint violations
         with db.session.no_autoflush:
+            # Delete application activities performed by these users (non-nullable FK)
+            ApplicationActivity.query.filter(ApplicationActivity.user_id.in_(user_ids)).delete(synchronize_session=False)
+
             # Handle referrer_id in Applications (nullable foreign key)
             Application.query.filter(Application.referrer_id.in_(user_ids)).update({'referrer_id': None}, synchronize_session=False)
             
             # Handle reviews moderated by these users (nullable foreign key)
             Review.query.filter(Review.moderated_by.in_(user_ids)).update({'moderated_by': None}, synchronize_session=False)
+
+            # Remove votes cast by users being deleted
+            ReviewVote.query.filter(ReviewVote.user_id.in_(user_ids)).delete(synchronize_session=False)
+
+            # Remove reviews authored for/by these users, and votes attached to those reviews
+            review_ids = [
+                review_id for (review_id,) in db.session.query(Review.id).filter(
+                    (Review.reviewer_id.in_(user_ids)) | (Review.reviewee_id.in_(user_ids))
+                ).all()
+            ]
+            if review_ids:
+                ReviewVote.query.filter(ReviewVote.review_id.in_(review_ids)).delete(synchronize_session=False)
+                Review.query.filter(Review.id.in_(review_ids)).delete(synchronize_session=False)
             
             # Delete messages where these users are senders or recipients (non-nullable foreign keys)
             Message.query.filter((Message.sender_id.in_(user_ids)) | (Message.recipient_id.in_(user_ids))).delete(synchronize_session=False)

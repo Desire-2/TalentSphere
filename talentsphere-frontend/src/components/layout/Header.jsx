@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { 
@@ -37,8 +37,12 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [sessionWarning, setSessionWarning] = useState(false);
-  const { user, isAuthenticated, logout, isTokenExpired, getTokenExpiration } = useAuthStore();
+  const { user, isAuthenticated, logout, getTokenExpiration } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const userFullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
+  const roleLabel = user?.role?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   // Handle scroll effect for header styling
   useEffect(() => {
@@ -49,6 +53,31 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close mobile menu whenever route changes.
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Keep menu state in sync with viewport transitions.
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Prevent background scroll when the mobile overlay is open.
+  useEffect(() => {
+    document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   // Monitor token expiration and show warnings
   useEffect(() => {
@@ -123,8 +152,8 @@ const Header = () => {
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-transparent to-purple-50/50 opacity-60 pointer-events-none"></div>
 
-      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-center h-auto min-h-[56px] md:min-h-[64px] gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 relative z-10">
+        <div className="flex items-center justify-between gap-2 min-h-[60px] md:min-h-[68px]">
           {/* Enhanced Logo */}
           <div className="flex items-center py-2 sm:py-0">
             <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">
@@ -146,7 +175,7 @@ const Header = () => {
           </div>
 
           {/* Enhanced Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-0.5 lg:space-x-1 xl:space-x-2">
+          <nav className="hidden lg:flex items-center space-x-0.5 xl:space-x-1">
             <Link 
               to="/jobs" 
               className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
@@ -216,14 +245,14 @@ const Header = () => {
           </nav>
 
           {/* Enhanced Right side */}
-          <div className="flex items-center space-x-1 sm:space-x-2 py-2 sm:py-0">
+          <div className="flex items-center gap-1 sm:gap-2">
             {isAuthenticated ? (
               <>
                 {/* Enhanced Search */}
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="hidden md:flex h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:scale-105"
+                  className="hidden xl:flex h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:scale-105"
                   aria-label="Search"
                 >
                   <Search className="w-4 h-4" />
@@ -233,7 +262,7 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-9 w-9 rounded-xl hover:bg-green-50 hover:text-green-600 transition-all duration-300 hover:scale-105"
+                  className="hidden sm:flex h-9 w-9 rounded-xl hover:bg-green-50 hover:text-green-600 transition-all duration-300 hover:scale-105"
                   aria-label="Messages"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -242,15 +271,21 @@ const Header = () => {
                 {/* Enhanced User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 px-2 sm:px-3 rounded-xl hover:bg-purple-50 transition-all duration-300 hover:scale-105 group">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
+                    <Button variant="ghost" className="relative h-10 px-1.5 sm:px-2.5 rounded-xl hover:bg-purple-50 transition-all duration-300 group">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
                           <AvatarImage src={user?.profile_picture} alt={user?.first_name} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
                             {getInitials(user?.first_name, user?.last_name)}
                           </AvatarFallback>
                         </Avatar>
-                        <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-purple-600 transition-colors duration-300" />
+
+                        <div className="hidden xl:flex flex-col items-start leading-tight text-left max-w-[140px]">
+                          <span className="text-sm font-semibold text-gray-800 truncate w-full">{userFullName || 'Account'}</span>
+                          {roleLabel && <span className="text-[11px] text-gray-500 truncate w-full">{roleLabel}</span>}
+                        </div>
+
+                        <ChevronDown className="hidden sm:block w-4 h-4 text-gray-500 group-hover:text-purple-600 transition-colors duration-300" />
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
@@ -264,13 +299,13 @@ const Header = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-semibold text-gray-900">{user?.first_name} {user?.last_name}</p>
+                        <p className="font-semibold text-gray-900">{userFullName || 'User'}</p>
                         <p className="text-sm text-gray-600 truncate max-w-[160px]">
                           {user?.email}
                         </p>
                         {user?.role && (
                           <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 w-fit">
-                            {user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {roleLabel}
                           </Badge>
                         )}
                       </div>
@@ -380,13 +415,13 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   asChild 
-                  className="rounded-xl hover:bg-gray-50 transition-all duration-300 hover:scale-105 font-medium"
+                  className="rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium px-2.5 sm:px-3"
                 >
                   <Link to="/login">Sign In</Link>
                 </Button>
                 <Button 
                   asChild 
-                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold"
+                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold px-3 sm:px-4"
                 >
                   <Link to="/register">
                     <span className="flex items-center space-x-1">
@@ -402,9 +437,10 @@ const Header = () => {
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden h-9 w-9 rounded-xl hover:bg-gray-50 transition-all duration-300 hover:scale-105"
+              className="lg:hidden h-9 w-9 rounded-xl hover:bg-gray-50 transition-all duration-300"
               onClick={toggleMobileMenu}
               aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={isMobileMenuOpen}
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -417,13 +453,27 @@ const Header = () => {
 
         {/* Enhanced Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gradient-to-r from-transparent via-gray-200 to-transparent animate-slideDown">
-            <div className="py-3 px-2 bg-gradient-to-br from-white/95 to-blue-50/70 backdrop-blur-md rounded-b-2xl border border-white/20 shadow-xl">
+          <div className="lg:hidden border-t border-gray-200/70 animate-slideDown">
+            <div className="py-3 px-2.5 sm:px-3 bg-gradient-to-br from-white/95 to-blue-50/70 backdrop-blur-md rounded-b-2xl border border-white/20 shadow-xl max-h-[calc(100vh-72px)] overflow-y-auto">
+              {isAuthenticated && (
+                <div className="flex items-center gap-3 p-2.5 mb-2 rounded-xl bg-white/80 border border-gray-100">
+                  <Avatar className="h-9 w-9 ring-2 ring-white shadow-md">
+                    <AvatarImage src={user?.profile_picture} alt={user?.first_name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
+                      {getInitials(user?.first_name, user?.last_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{userFullName || 'User'}</p>
+                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                  </div>
+                </div>
+              )}
+
               <nav className="flex flex-col space-y-1">
                 <Link 
                   to="/jobs" 
                   className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Search className="w-4 h-4 flex-shrink-0" />
                   <span>Find Jobs</span>
@@ -431,7 +481,6 @@ const Header = () => {
                 <Link 
                   to="/companies" 
                   className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Briefcase className="w-4 h-4 flex-shrink-0" />
                   <span>Companies</span>
@@ -439,7 +488,6 @@ const Header = () => {
                 <Link 
                   to="/scholarships" 
                   className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/80 text-sm"
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <GraduationCap className="w-4 h-4 flex-shrink-0" />
                   <span>Scholarships</span>
@@ -448,7 +496,6 @@ const Header = () => {
                   <Link 
                     to="/post-job" 
                     className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/80 text-sm"
-                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Star className="w-4 h-4 flex-shrink-0" />
                     <span>Post Job</span>
@@ -458,7 +505,6 @@ const Header = () => {
                   <Link 
                     to="/admin" 
                     className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70 text-sm"
-                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Shield className="w-4 h-4" />
                     <span>Admin</span>
@@ -468,12 +514,43 @@ const Header = () => {
                   <Link 
                     to="/external-admin" 
                     className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/70 text-sm"
-                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <GraduationCap className="w-4 h-4" />
                     <span>Manage Scholarships</span>
                   </Link>
                 )}
+
+                {isAuthenticated && (
+                  <div className="flex flex-col space-y-1 pt-2 mt-2 mx-1 border-t border-gray-200/60">
+                    <Link
+                      to="/dashboard"
+                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
+                    >
+                      <User className="w-4 h-4 flex-shrink-0" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link
+                      to={
+                        user?.role === 'job_seeker' ? '/jobseeker/settings' :
+                        user?.role === 'employer' ? '/company/settings' :
+                        '/profile'
+                      }
+                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/80 text-sm"
+                    >
+                      <Settings className="w-4 h-4 flex-shrink-0" />
+                      <span>Settings</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-red-600 font-medium transition-all duration-300 hover:bg-red-50/80 text-sm text-left"
+                    >
+                      <LogOut className="w-4 h-4 flex-shrink-0" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+
                 {!isAuthenticated && (
                   <div className="flex flex-col space-y-1 pt-2 mx-1 border-t border-gray-200/50">
                     <Button 
@@ -481,7 +558,7 @@ const Header = () => {
                       asChild 
                       className="justify-start rounded-xl hover:bg-gray-50 transition-all duration-300 text-sm"
                     >
-                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link to="/login">
                         <User className="w-4 h-4 mr-2" />
                         Sign In
                       </Link>
@@ -490,7 +567,7 @@ const Header = () => {
                       asChild 
                       className="justify-start bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg text-sm"
                     >
-                      <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link to="/register">
                         <Zap className="w-4 h-4 mr-2" />
                         Get Started
                       </Link>

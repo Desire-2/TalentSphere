@@ -259,13 +259,20 @@ const EnhancedJobSeekerProfile = () => {
   
   const loadProfileAnalysis = async () => {
     try {
-      const [completeness, keywords] = await Promise.all([
+      const [completenessResult, keywordsResult] = await Promise.allSettled([
         apiService.get('/profile/completeness-analysis'),
         apiService.get('/profile/keywords-analysis')
       ]);
-      
+
+      const completeness = completenessResult.status === 'fulfilled'
+        ? completenessResult.value
+        : { overall_score: 0, sections: {}, recommendations: [] };
+      const keywords = keywordsResult.status === 'fulfilled'
+        ? keywordsResult.value
+        : { current_keywords: [], suggested_keywords: [] };
+
       console.log('📊 Profile Analysis Loaded:', { completeness, keywords });
-      
+
       setProfileAnalysis({ completeness, keywords });
     } catch (error) {
       console.error('Failed to load profile analysis:', error);
@@ -478,14 +485,14 @@ const EnhancedJobSeekerProfile = () => {
       
       {/* Profile Sections Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="experience">Experience</TabsTrigger>
-          <TabsTrigger value="education">Education</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="additional">Additional</TabsTrigger>
-          <TabsTrigger value="optimization">
+        <TabsList className="mb-4 flex w-full gap-1 overflow-x-auto whitespace-nowrap md:grid md:grid-cols-7 md:overflow-visible">
+          <TabsTrigger value="overview" className="shrink-0 px-3">Overview</TabsTrigger>
+          <TabsTrigger value="experience" className="shrink-0 px-3">Experience</TabsTrigger>
+          <TabsTrigger value="education" className="shrink-0 px-3">Education</TabsTrigger>
+          <TabsTrigger value="skills" className="shrink-0 px-3">Skills</TabsTrigger>
+          <TabsTrigger value="projects" className="shrink-0 px-3">Projects</TabsTrigger>
+          <TabsTrigger value="additional" className="shrink-0 px-3">Additional</TabsTrigger>
+          <TabsTrigger value="optimization" className="shrink-0 px-3">
             <Lightbulb className="w-4 h-4 mr-2" />
             Optimize
           </TabsTrigger>
@@ -571,6 +578,7 @@ const EnhancedJobSeekerProfile = () => {
         <TabsContent value="optimization" className="space-y-6">
           <ProfileOptimization 
             analysis={profileAnalysis} 
+            profileData={profileData}
             onRefresh={() => loadProfileAnalysis()} 
           />
         </TabsContent>

@@ -91,6 +91,12 @@ const JobSeekerProfile = () => {
 
   const [skillsList, setSkillsList] = useState([]);
   const [newSkill, setNewSkill] = useState('');
+  const tabOptions = [
+    { value: 'personal', label: 'Personal Info' },
+    { value: 'professional', label: 'Professional' },
+    { value: 'preferences', label: 'Job Preferences' },
+    { value: 'privacy', label: 'Privacy & Settings' }
+  ];
 
   useEffect(() => {
     // Check authentication before proceeding
@@ -162,16 +168,39 @@ const JobSeekerProfile = () => {
       });
       
       // Parse skills
-      if (jobSeekerProfile.skills) {
-        try {
-          const parsed = typeof jobSeekerProfile.skills === 'string' 
-            ? JSON.parse(jobSeekerProfile.skills) 
-            : jobSeekerProfile.skills;
-          setSkillsList(Array.isArray(parsed) ? parsed : []);
-        } catch (e) {
-          setSkillsList(jobSeekerProfile.skills.split(',').map(s => s.trim()).filter(s => s));
+      const parseSkillsField = (value) => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value.map((item) => String(item).trim()).filter(Boolean);
         }
-      }
+        if (typeof value === 'string') {
+          const raw = value.trim();
+          if (!raw) return [];
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item) => String(item).trim()).filter(Boolean);
+            }
+            if (typeof parsed === 'string') {
+              return parsed.split(',').map((s) => s.trim()).filter(Boolean);
+            }
+          } catch (e) {
+            // Fallback to CSV parsing for non-JSON string values.
+          }
+          return raw.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+
+      const mergedSkills = [
+        ...parseSkillsField(jobSeekerProfile.skills),
+        ...parseSkillsField(jobSeekerProfile.technical_skills),
+        ...parseSkillsField(jobSeekerProfile.soft_skills)
+      ];
+      const uniqueSkills = Array.from(new Set(mergedSkills.map((skill) => skill.toLowerCase())))
+        .map((lowerSkill) => mergedSkills.find((skill) => skill.toLowerCase() === lowerSkill))
+        .filter(Boolean);
+      setSkillsList(uniqueSkills);
       
     } catch (error) {
       console.error('❌ Failed to load profile:', error);
@@ -368,7 +397,7 @@ const JobSeekerProfile = () => {
 
   return (
     <TooltipProvider>
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
+    <div className="container mx-auto py-6 px-4 sm:py-8 max-w-6xl">
       {/* Navigation */}
       <div className="mb-4 flex items-center gap-2">
         <Button variant="ghost" onClick={() => navigate('/dashboard')} aria-label="Back to Dashboard">
@@ -377,14 +406,14 @@ const JobSeekerProfile = () => {
       </div>
   {/* Header */}
   <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold">Job Seeker Profile</h1>
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold sm:text-3xl">Job Seeker Profile</h1>
             <p className="text-muted-foreground">Manage your professional profile and preferences</p>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={handleSave} disabled={saving} size="lg" aria-label="Save Changes">
+              <Button onClick={handleSave} disabled={saving} size="lg" aria-label="Save Changes" className="w-full sm:w-auto">
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -394,9 +423,9 @@ const JobSeekerProfile = () => {
         </div>
 
         {/* Profile Completion */}
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="flex items-center justify-between p-6">
-            <div className="flex items-center space-x-4">
+        <Card className="border-l-4 border-l-blue-500 overflow-hidden">
+          <CardContent className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center space-x-4 min-w-0">
               <div className="relative">
                 <Avatar className="w-16 h-16">
                   <AvatarImage src={personalData.profile_picture} alt="Profile" />
@@ -427,12 +456,12 @@ const JobSeekerProfile = () => {
                   aria-label="Profile picture upload"
                 />
               </div>
-              <div>
-                <h3 className="text-xl font-semibold">
+              <div className="min-w-0">
+                <h3 className="text-xl font-semibold truncate">
                   {personalData.first_name} {personalData.last_name}
                 </h3>
-                <p className="text-gray-600">{professionalData.desired_position || 'Professional'}</p>
-                <div className="flex items-center gap-2 mt-2">
+                <p className="text-gray-600 break-words">{professionalData.desired_position || 'Professional'}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge 
                     className={`${getCompletionColor(profileCompletion)} font-semibold`}
                   >
@@ -447,11 +476,11 @@ const JobSeekerProfile = () => {
                 </div>
               </div>
             </div>
-            <div className="text-right">
+            <div className="w-full lg:w-64 lg:text-right">
               <div className="mb-2">
                 <span className="text-sm font-medium">Profile Completion</span>
               </div>
-              <Progress value={profileCompletion} className="w-48 h-3 transition-all duration-500" />
+              <Progress value={profileCompletion} className="h-3 w-full transition-all duration-500 lg:ml-auto lg:w-48" />
               <p className="text-xs text-gray-500 mt-1">
                 {profileCompletion < 80 ? 'Complete your profile to get more opportunities' : 'Great! Your profile is well-optimized'}
               </p>
@@ -462,8 +491,8 @@ const JobSeekerProfile = () => {
 
       {/* Alert Messages */}
       {message.text && message.show && (
-        <Alert className={`mb-6 flex items-center justify-between ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'} animate-fade-in`} role="alert">
-          <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+        <Alert className={`mb-6 flex items-start justify-between gap-3 ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'} animate-fade-in`} role="alert">
+          <AlertDescription className={`min-w-0 break-words ${message.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
             {message.text}
           </AlertDescription>
           <Button variant="ghost" size="icon" aria-label="Dismiss message" onClick={() => setMessage(prev => ({ ...prev, show: false }))}>
@@ -473,11 +502,27 @@ const JobSeekerProfile = () => {
       )}
 
   <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 transition-all duration-300">
-  <TabsList className="grid w-full grid-cols-4 mb-2">
-          <TabsTrigger value="personal">Personal Info</TabsTrigger>
-          <TabsTrigger value="professional">Professional</TabsTrigger>
-          <TabsTrigger value="preferences">Job Preferences</TabsTrigger>
-          <TabsTrigger value="privacy">Privacy & Settings</TabsTrigger>
+        <div className="md:hidden">
+          <Label htmlFor="profile-tab-selector" className="mb-2 block text-sm text-muted-foreground">Section</Label>
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger id="profile-tab-selector" className="w-full">
+              <SelectValue placeholder="Select section" />
+            </SelectTrigger>
+            <SelectContent>
+              {tabOptions.map((tab) => (
+                <SelectItem key={tab.value} value={tab.value}>
+                  {tab.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <TabsList className="mb-2 hidden h-auto w-full grid-cols-4 gap-2 md:grid">
+          <TabsTrigger value="personal" className="whitespace-normal px-3 py-2 text-center">Personal Info</TabsTrigger>
+          <TabsTrigger value="professional" className="whitespace-normal px-3 py-2 text-center">Professional</TabsTrigger>
+          <TabsTrigger value="preferences" className="whitespace-normal px-3 py-2 text-center">Job Preferences</TabsTrigger>
+          <TabsTrigger value="privacy" className="whitespace-normal px-3 py-2 text-center">Privacy & Settings</TabsTrigger>
         </TabsList>
 
         {/* Personal Information Tab */}
@@ -637,7 +682,7 @@ const JobSeekerProfile = () => {
               {/* Skills Section */}
               <div className="space-y-4">
                 <Label>Skills <span className="text-red-500">*</span></Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
@@ -647,7 +692,7 @@ const JobSeekerProfile = () => {
                   />
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button type="button" onClick={handleAddSkill} aria-label="Add skill">
+                      <Button type="button" onClick={handleAddSkill} aria-label="Add skill" className="w-full sm:w-auto">
                         <Plus className="w-4 h-4" />
                       </Button>
                     </TooltipTrigger>
@@ -923,7 +968,7 @@ const JobSeekerProfile = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Account Actions</h3>
                   
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h4 className="font-medium">Download Profile Data</h4>
                       <p className="text-sm text-gray-500">
@@ -932,7 +977,7 @@ const JobSeekerProfile = () => {
                     </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" aria-label="Download profile data">
+                        <Button variant="outline" aria-label="Download profile data" className="w-full sm:w-auto">
                           <Download className="w-4 h-4 mr-2" />
                           Download
                         </Button>
@@ -941,7 +986,7 @@ const JobSeekerProfile = () => {
                     </Tooltip>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h4 className="font-medium">Public Profile URL</h4>
                       <p className="text-sm text-gray-500">
@@ -950,7 +995,7 @@ const JobSeekerProfile = () => {
                     </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" aria-label="View public profile">
+                        <Button variant="outline" aria-label="View public profile" className="w-full sm:w-auto">
                           <ExternalLink className="w-4 h-4 mr-2" />
                           View Public Profile
                         </Button>

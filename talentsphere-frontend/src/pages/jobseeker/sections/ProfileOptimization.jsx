@@ -10,8 +10,49 @@ import {
   Heart, Users, RefreshCw, Download, Share2, Sparkles
 } from 'lucide-react';
 
-const ProfileOptimization = ({ analysis = {}, onRefresh }) => {
+const ProfileOptimization = ({ analysis = {}, profileData = {}, onRefresh }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const parseSkillsValue = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+    if (typeof value === 'string') {
+      const raw = value.trim();
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item).trim()).filter(Boolean);
+        }
+        if (typeof parsed === 'string') {
+          return parsed.split(',').map((item) => item.trim()).filter(Boolean);
+        }
+      } catch (_error) {
+        // Not JSON, treat as comma-separated text.
+      }
+      return raw.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const getFallbackSkillsScore = () => {
+    const professional = profileData?.professional || {};
+    const allSkills = [
+      ...parseSkillsValue(professional.skills),
+      ...parseSkillsValue(professional.technical_skills),
+      ...parseSkillsValue(professional.soft_skills)
+    ];
+
+    const uniqueCount = new Set(
+      allSkills
+        .map((skill) => String(skill).trim().toLowerCase())
+        .filter(Boolean)
+    ).size;
+
+    if (uniqueCount >= 5) return 100;
+    if (uniqueCount > 0) return 50;
+    return 0;
+  };
   
   console.log('🎯 ProfileOptimization received analysis:', analysis);
   
@@ -21,8 +62,26 @@ const ProfileOptimization = ({ analysis = {}, onRefresh }) => {
   console.log('📊 Completeness data:', completeness);
   console.log('🔑 Keywords data:', keywords);
   
-  const overallScore = completeness.overall_score || 0;
-  const sections = completeness.sections || {};
+  const overallScore = Number(completeness.overall_score || 0);
+  const rawSections = completeness.sections || {};
+  const sections = Object.fromEntries(
+    Object.entries(rawSections).map(([sectionName, score]) => [
+      sectionName,
+      Number(score) || 0
+    ])
+  );
+
+  const skillSectionKey = Object.keys(sections).find(
+    (sectionName) => sectionName.toLowerCase() === 'skills' || sectionName.toLowerCase() === 'skill'
+  );
+  const currentSkillsScore = skillSectionKey ? sections[skillSectionKey] : 0;
+
+  if (currentSkillsScore <= 0) {
+    const fallbackSkillsScore = getFallbackSkillsScore();
+    if (fallbackSkillsScore > 0) {
+      sections[skillSectionKey || 'skills'] = fallbackSkillsScore;
+    }
+  }
   const recommendations = completeness.recommendations || [];
   
   // Handle both array of objects {keyword, count} and array of strings

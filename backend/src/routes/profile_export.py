@@ -39,6 +39,35 @@ def extract_keywords_from_text(text):
     return keywords
 
 
+def parse_list_field(value):
+    """Parse a list-like field that may be an array, JSON string, or CSV string."""
+    if not value:
+        return []
+
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return []
+
+        # Try JSON first
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            if isinstance(parsed, str) and parsed.strip():
+                return [s.strip() for s in parsed.split(',') if s.strip()]
+        except Exception:
+            pass
+
+        # Fallback: comma-separated text
+        return [s.strip() for s in raw.split(',') if s.strip()]
+
+    return []
+
+
 def analyze_profile_keywords(user):
     """Analyze profile and suggest keywords for optimization"""
     try:
@@ -52,12 +81,9 @@ def analyze_profile_keywords(user):
             profile = user.job_seeker_profile
             if profile.professional_summary:
                 all_text.append(profile.professional_summary)
-            if profile.skills:
-                try:
-                    skills = json.loads(profile.skills) if isinstance(profile.skills, str) else profile.skills
-                    all_text.extend(skills if isinstance(skills, list) else [])
-                except:
-                    pass
+            all_text.extend(parse_list_field(profile.skills))
+            all_text.extend(parse_list_field(profile.technical_skills))
+            all_text.extend(parse_list_field(profile.soft_skills))
         
         # Work experience
         for exp in user.work_experiences.all():
@@ -185,15 +211,16 @@ def calculate_comprehensive_completeness(user):
             sections['professional_summary'] = 0.5
         
         # Skills (15%)
-        if profile.skills:
-            try:
-                skills_list = json.loads(profile.skills) if isinstance(profile.skills, str) else profile.skills
-                if isinstance(skills_list, list) and len(skills_list) >= 5:
-                    sections['skills'] = 1.0
-                elif skills_list:
-                    sections['skills'] = 0.5
-            except:
-                pass
+        combined_skills = []
+        combined_skills.extend(parse_list_field(profile.skills))
+        combined_skills.extend(parse_list_field(profile.technical_skills))
+        combined_skills.extend(parse_list_field(profile.soft_skills))
+        unique_skills = list({skill.lower(): skill for skill in combined_skills}.values())
+
+        if len(unique_skills) >= 5:
+            sections['skills'] = 1.0
+        elif len(unique_skills) > 0:
+            sections['skills'] = 0.5
         
         # Professional links (5%)
         links = [profile.resume_url, profile.linkedin_url, profile.portfolio_url, profile.github_url]

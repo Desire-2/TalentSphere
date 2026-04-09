@@ -367,11 +367,11 @@ class JobNotificationService:
             company_name = self._get_job_company_name(job)
             jobs_html.append(
                 f"""
-                <li style=\"margin-bottom: 14px;\">
-                    <a href=\"{self.frontend_url}/jobs/{job.id}\" style=\"color: #0f172a; text-decoration: none;\">
+                <li style='margin-bottom: 14px;'>
+                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #0f172a; text-decoration: none;'>
                         <strong>{idx}. {job.title}</strong>
                     </a><br>
-                    <span style=\"color: #475569;\">{company_name} • {job.get_location_display() or 'Location not specified'}</span>
+                    <span style='color: #475569;'>{company_name} • {job.get_location_display() or 'Location not specified'}</span>
                 </li>
                 """
             )
@@ -385,11 +385,11 @@ class JobNotificationService:
             organization_name = self._get_scholarship_organization_name(scholarship)
             scholarships_html.append(
                 f"""
-                <li style=\"margin-bottom: 14px;\">
-                    <a href=\"{self.frontend_url}/scholarships/{scholarship.id}\" style=\"color: #0f172a; text-decoration: none;\">
+                <li style='margin-bottom: 14px;'>
+                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #0f172a; text-decoration: none;'>
                         <strong>{idx}. {scholarship.title}</strong>
                     </a><br>
-                    <span style=\"color: #475569;\">{organization_name}</span>
+                    <span style='color: #475569;'>{organization_name}</span>
                 </li>
                 """
             )
@@ -400,19 +400,19 @@ class JobNotificationService:
         subject = "Morning Update: Top 5 latest jobs and scholarships"
         html_body = f"""
         <html>
-            <body style=\"font-family: Arial, sans-serif; color: #111827;\">
-                <h2 style=\"margin-bottom: 8px;\">Good morning {user.get_full_name()},</h2>
+            <body style='font-family: Arial, sans-serif; color: #111827;'>
+                <h2 style='margin-bottom: 8px;'>Good morning {user.get_full_name()},</h2>
                 <p>Here are today's top opportunities for you:</p>
 
-                <h3 style=\"margin-bottom: 8px;\">Top Jobs ({len(jobs)})</h3>
+                <h3 style='margin-bottom: 8px;'>Top Jobs ({len(jobs)})</h3>
                 <ol>{''.join(jobs_html) if jobs_html else '<li>No new jobs right now.</li>'}</ol>
 
-                <h3 style=\"margin-bottom: 8px; margin-top: 18px;\">Top Scholarships ({len(scholarships)})</h3>
+                <h3 style='margin-bottom: 8px; margin-top: 18px;'>Top Scholarships ({len(scholarships)})</h3>
                 <ol>{''.join(scholarships_html) if scholarships_html else '<li>No new scholarships right now.</li>'}</ol>
 
-                <p style=\"margin-top: 20px;\">
-                    Explore more opportunities: <a href=\"{self.frontend_url}/jobs\">Browse all jobs</a><br>
-                    Explore scholarships: <a href=\"{self.frontend_url}/scholarships\">Browse all scholarships</a>
+                <p style='margin-top: 20px;'>
+                    Explore more opportunities: <a href='{self.frontend_url}/jobs'>Browse all jobs</a><br>
+                    Explore scholarships: <a href='{self.frontend_url}/scholarships'>Browse all scholarships</a>
                 </p>
             </body>
         </html>
@@ -451,11 +451,11 @@ class JobNotificationService:
             company_name = self._get_job_company_name(job)
             jobs_html.append(
                 f"""
-                <li style=\"margin-bottom: 10px;\">
-                    <a href=\"{self.frontend_url}/jobs/{job.id}\" style=\"color: #0f172a; text-decoration: none;\">
+                <li style='margin-bottom: 10px;'>
+                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #0f172a; text-decoration: none;'>
                         <strong>{idx}. {job.title}</strong>
                     </a>
-                    <span style=\"color: #475569;\"> - {company_name}</span>
+                    <span style='color: #475569;'> - {company_name}</span>
                 </li>
                 """
             )
@@ -467,11 +467,11 @@ class JobNotificationService:
             organization_name = self._get_scholarship_organization_name(scholarship)
             scholarships_html.append(
                 f"""
-                <li style=\"margin-bottom: 10px;\">
-                    <a href=\"{self.frontend_url}/scholarships/{scholarship.id}\" style=\"color: #0f172a; text-decoration: none;\">
+                <li style='margin-bottom: 10px;'>
+                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #0f172a; text-decoration: none;'>
                         <strong>{idx}. {scholarship.title}</strong>
                     </a>
-                    <span style=\"color: #475569;\"> - {organization_name}</span>
+                    <span style='color: #475569;'> - {organization_name}</span>
                 </li>
                 """
             )
@@ -482,23 +482,23 @@ class JobNotificationService:
         subject = "Weekly Digest: Jobs and scholarships for your weekend"
         html_body = f"""
         <html>
-            <body style=\"font-family: Arial, sans-serif; color: #111827;\">
-                <h2 style=\"margin-bottom: 8px;\">Hello {user.get_full_name()},</h2>
+            <body style='font-family: Arial, sans-serif; color: #111827;'>
+                <h2 style='margin-bottom: 8px;'>Hello {user.get_full_name()},</h2>
                 <p>
                     Here is your weekly digest for opportunities added this week
                     ({week_start.strftime('%B %d, %Y')} to {week_end.strftime('%B %d, %Y')})
                     to help you plan weekend applications.
                 </p>
 
-                <h3 style=\"margin-bottom: 8px;\">Jobs ({len(jobs)})</h3>
+                <h3 style='margin-bottom: 8px;'>Jobs ({len(jobs)})</h3>
                 <ol>{''.join(jobs_html) if jobs_html else '<li>No new jobs this week.</li>'}</ol>
 
-                <h3 style=\"margin-bottom: 8px; margin-top: 18px;\">Scholarships ({len(scholarships)})</h3>
+                <h3 style='margin-bottom: 8px; margin-top: 18px;'>Scholarships ({len(scholarships)})</h3>
                 <ol>{''.join(scholarships_html) if scholarships_html else '<li>No new scholarships this week.</li>'}</ol>
 
-                <p style=\"margin-top: 20px;\">
-                    Jobs: <a href=\"{self.frontend_url}/jobs\">Browse all jobs</a><br>
-                    Scholarships: <a href=\"{self.frontend_url}/scholarships\">Browse all scholarships</a>
+                <p style='margin-top: 20px;'>
+                    Jobs: <a href='{self.frontend_url}/jobs'>Browse all jobs</a><br>
+                    Scholarships: <a href='{self.frontend_url}/scholarships'>Browse all scholarships</a>
                 </p>
             </body>
         </html>

@@ -60,6 +60,7 @@ const JobSeekerProfile = () => {
   const [personalData, setPersonalData] = useState({
     first_name: '',
     last_name: '',
+    email: '',
     phone: '',
     bio: '',
     location: '',
@@ -128,6 +129,7 @@ const JobSeekerProfile = () => {
       setPersonalData({
         first_name: response.first_name || '',
         last_name: response.last_name || '',
+        email: response.email || '',
         phone: response.phone || '',
         bio: response.bio || '',
         location: response.location || '',
@@ -522,6 +524,17 @@ const JobSeekerProfile = () => {
                     value={personalData.phone}
                     onChange={(e) => handlePersonalDataChange('phone', e.target.value)}
                     placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={personalData.email}
+                    onChange={(e) => handlePersonalDataChange('email', e.target.value)}
+                    placeholder="Enter your email address"
                   />
                 </div>
 

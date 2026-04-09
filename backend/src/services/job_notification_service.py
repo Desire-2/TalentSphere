@@ -417,13 +417,17 @@ class JobNotificationService:
             </body>
         </html>
         """
+        jobs_text_block = "\n".join(jobs_text) if jobs_text else "No new jobs right now."
+        scholarships_text_block = (
+            "\n".join(scholarships_text) if scholarships_text else "No new scholarships right now."
+        )
         text_body = (
             f"Good morning {user.get_full_name()},\n\n"
             "Here are today's top opportunities:\n\n"
             f"Top Jobs ({len(jobs)}):\n"
-            f"{('\n'.join(jobs_text)) if jobs_text else 'No new jobs right now.'}\n\n"
+            f"{jobs_text_block}\n\n"
             f"Top Scholarships ({len(scholarships)}):\n"
-            f"{('\n'.join(scholarships_text)) if scholarships_text else 'No new scholarships right now.'}\n\n"
+            f"{scholarships_text_block}\n\n"
             f"Browse all jobs: {self.frontend_url}/jobs\n"
             f"Browse all scholarships: {self.frontend_url}/scholarships"
         )
@@ -503,13 +507,17 @@ class JobNotificationService:
             </body>
         </html>
         """
+        jobs_text_block = "\n".join(jobs_text) if jobs_text else "No new jobs this week."
+        scholarships_text_block = (
+            "\n".join(scholarships_text) if scholarships_text else "No new scholarships this week."
+        )
         text_body = (
             f"Hello {user.get_full_name()},\n\n"
             f"Weekly digest ({week_start.strftime('%B %d, %Y')} to {week_end.strftime('%B %d, %Y')})\n\n"
             f"Jobs ({len(jobs)}):\n"
-            f"{('\n'.join(jobs_text)) if jobs_text else 'No new jobs this week.'}\n\n"
+            f"{jobs_text_block}\n\n"
             f"Scholarships ({len(scholarships)}):\n"
-            f"{('\n'.join(scholarships_text)) if scholarships_text else 'No new scholarships this week.'}\n\n"
+            f"{scholarships_text_block}\n\n"
             f"Jobs: {self.frontend_url}/jobs\n"
             f"Scholarships: {self.frontend_url}/scholarships"
         )

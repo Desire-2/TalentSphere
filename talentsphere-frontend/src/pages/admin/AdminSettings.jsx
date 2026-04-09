@@ -40,6 +40,9 @@ const AdminSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [adminAccount, setAdminAccount] = useState({
+    email: ''
+  });
 
   // System Settings
   const [systemSettings, setSystemSettings] = useState({
@@ -119,7 +122,19 @@ const AdminSettings = () => {
   useEffect(() => {
     fetchSettings();
     fetchSystemHealth();
+    fetchAdminAccount();
   }, []);
+
+  const fetchAdminAccount = async () => {
+    try {
+      const response = await api.get('/auth/profile');
+      setAdminAccount({
+        email: response?.email || ''
+      });
+    } catch (error) {
+      console.error('Error fetching admin account profile:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -161,6 +176,27 @@ const AdminSettings = () => {
     } catch (error) {
       console.error(`Error saving ${settingsType} settings:`, error);
       toast.error(`Failed to save ${settingsType} settings. Please try again.`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateAdminEmail = async () => {
+    const normalizedEmail = (adminAccount.email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      toast.error('Admin email is required');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await api.put('/auth/profile', { email: normalizedEmail });
+      setAdminAccount(prev => ({ ...prev, email: normalizedEmail }));
+      toast.success('Admin email updated successfully');
+    } catch (error) {
+      console.error('Error updating admin email:', error);
+      toast.error(error?.message || 'Failed to update admin email');
     } finally {
       setIsSaving(false);
     }
@@ -372,6 +408,32 @@ const AdminSettings = () => {
 
         {/* Security Settings Tab */}
         <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Admin Account
+              </CardTitle>
+              <CardDescription>Update the primary email used by this admin account</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2 max-w-xl">
+                <Label htmlFor="adminEmail">Admin Email</Label>
+                <Input
+                  id="adminEmail"
+                  type="email"
+                  value={adminAccount.email}
+                  onChange={(e) => setAdminAccount(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="admin@example.com"
+                />
+              </div>
+              <Button onClick={updateAdminEmail} disabled={isSaving}>
+                <Save className="h-4 w-4 mr-2" />
+                Update Admin Email
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

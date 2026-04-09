@@ -49,9 +49,9 @@ const VolunteerSection = ({ data = [], onUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><CardTitle className="flex items-center gap-2"><Heart className="w-5 h-5" />Volunteer Experience</CardTitle><CardDescription>Community involvement and volunteer work</CardDescription></div>
-          {!isAdding && (<Button onClick={() => setIsAdding(true)} size="sm"><Plus className="w-4 h-4 mr-1" />Add Volunteer Work</Button>)}
+          {!isAdding && (<Button onClick={() => setIsAdding(true)} size="sm" className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-1" />Add Volunteer Work</Button>)}
         </div>
       </CardHeader>
       <CardContent>
@@ -66,22 +66,22 @@ const VolunteerSection = ({ data = [], onUpdate }) => {
               <div><Label htmlFor="end_date">End Date</Label><Input id="end_date" type="date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} disabled={formData.is_current} /><label className="flex items-center gap-2 mt-2 text-sm"><input type="checkbox" checked={formData.is_current} onChange={(e) => setFormData({...formData, is_current: e.target.checked, end_date: ''})} />Currently volunteering</label></div>
             </div>
             <div><Label htmlFor="description">Description</Label><Textarea id="description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={3} placeholder="What did you do?" /></div>
-            <div className="flex gap-2"><Button type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update' : 'Add'}</Button><Button type="button" variant="outline" onClick={resetForm}>Cancel</Button></div>
+            <div className="flex flex-col gap-2 sm:flex-row"><Button type="submit" disabled={saving} className="w-full sm:w-auto">{saving ? 'Saving...' : editingId ? 'Update' : 'Add'}</Button><Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">Cancel</Button></div>
           </form>
         ) : data.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed rounded-lg"><Heart className="w-12 h-12 mx-auto text-gray-400 mb-3" /><p className="text-gray-500 mb-4">No volunteer experience added yet</p><Button onClick={() => setIsAdding(true)}><Plus className="w-4 h-4 mr-1" />Add Volunteer Work</Button></div>
+          <div className="text-center py-12 border-2 border-dashed rounded-lg"><Heart className="w-12 h-12 mx-auto text-gray-400 mb-3" /><p className="text-gray-500 mb-4">No volunteer experience added yet</p><Button onClick={() => setIsAdding(true)} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-1" />Add Volunteer Work</Button></div>
         ) : (
           <div className="space-y-4">
             {data.map((vol) => (
               <div key={vol.id} className="border-l-4 border-pink-500 pl-4 pb-4 relative group hover:bg-gray-50 p-4 rounded-r transition-colors">
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4 flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <Button size="sm" variant="ghost" onClick={() => handleEdit(vol)}><Edit2 className="w-4 h-4" /></Button>
                   <Button size="sm" variant="ghost" onClick={() => handleDelete(vol.id)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
                 </div>
-                <h3 className="font-semibold">{vol.role}</h3>
-                <p className="text-sm text-gray-600">{vol.organization}</p>
+                <h3 className="font-semibold break-words pr-0 sm:pr-20">{vol.role}</h3>
+                <p className="text-sm text-gray-600 break-words pr-0 sm:pr-20">{vol.organization}</p>
                 <p className="text-sm text-gray-500 flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(vol.start_date)} - {vol.is_current ? 'Present' : formatDate(vol.end_date)}</p>
-                {vol.description && <p className="text-sm text-gray-600 mt-2">{vol.description}</p>}
+                {vol.description && <p className="text-sm text-gray-600 mt-2 break-words pr-0 sm:pr-20">{vol.description}</p>}
               </div>
             ))}
           </div>

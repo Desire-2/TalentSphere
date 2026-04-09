@@ -31,7 +31,7 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5" />
@@ -39,34 +39,36 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
         </CardTitle>
         <CardDescription>Your basic profile information and contact details</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {!isEditing ? (
           <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <p className="text-sm font-medium text-gray-500">Name</p>
-              <p className="text-base">{data?.first_name} {data?.last_name}</p>
+              <p className="text-base break-words">{data?.first_name} {data?.last_name}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Phone</p>
-              <p className="text-base">{data?.phone || 'Not provided'}</p>
+              <p className="text-base break-words">{data?.phone || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Email</p>
-              <p className="text-base">{data?.email || 'Not provided'}</p>
+              <p className="text-base break-all">{data?.email || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Location</p>
-              <p className="text-base">{data?.location || 'Not provided'}</p>
+              <p className="text-base break-words">{data?.location || 'Not provided'}</p>
+            </div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Bio</p>
-              <p className="text-base">{data?.bio || 'Not provided'}</p>
+              <p className="text-base break-words">{data?.bio || 'Not provided'}</p>
             </div>
-            <Button onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">Edit</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="first_name">First Name *</Label>
                 <Input
@@ -122,9 +124,9 @@ const PersonalInfoSection = ({ data, onUpdate }) => {
               />
               <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit">Save</Button>
-              <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="submit" className="w-full sm:w-auto">Save</Button>
+              <Button type="button" variant="outline" onClick={() => setIsEditing(false)} className="w-full sm:w-auto">Cancel</Button>
             </div>
           </form>
         )}

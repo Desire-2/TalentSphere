@@ -103,7 +103,7 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
@@ -112,7 +112,7 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
             <CardDescription>Your professional certifications and licenses</CardDescription>
           </div>
           {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} size="sm">
+            <Button onClick={() => setIsAdding(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Certification
             </Button>
@@ -193,11 +193,11 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
                 />
               </div>
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={saving}>
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : editingId ? 'Update' : 'Add Certification'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
+              <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                 Cancel
               </Button>
             </div>
@@ -206,7 +206,7 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <Award className="w-12 h-12 mx-auto text-gray-400 mb-3" />
             <p className="text-gray-500 mb-4">No certifications added yet</p>
-            <Button onClick={() => setIsAdding(true)}>
+            <Button onClick={() => setIsAdding(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Your First Certification
             </Button>
@@ -215,7 +215,7 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.map((cert) => (
               <div key={cert.id} className="border rounded-lg p-4 relative group hover:shadow-md transition-shadow">
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4 flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <Button size="sm" variant="ghost" onClick={() => handleEdit(cert)}>
                     <Edit2 className="w-4 h-4" />
                   </Button>
@@ -223,12 +223,12 @@ const CertificationsSection = ({ data = [], onUpdate }) => {
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className="pr-16">
+                <div className="pr-0 sm:pr-16">
                   <div className="flex items-start gap-2 mb-2">
                     <Award className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
                     <div>
-                      <h3 className="font-semibold">{cert.name}</h3>
-                      <p className="text-sm text-gray-600">{cert.issuing_organization}</p>
+                      <h3 className="font-semibold break-words">{cert.name}</h3>
+                      <p className="text-sm text-gray-600 break-words">{cert.issuing_organization}</p>
                     </div>
                   </div>
                   <div className="space-y-2 mt-3">

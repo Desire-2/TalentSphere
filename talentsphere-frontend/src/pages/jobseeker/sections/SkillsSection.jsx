@@ -150,8 +150,8 @@ const SkillsSection = ({ data, onUpdate }) => {
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
                   {technicalSkills.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -170,7 +170,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                     <span className="text-xs font-medium text-blue-600">({selectedTechnical.length} selected)</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {selectedTechnical.length > 0 && (
                     <Button
                       variant="ghost"
@@ -230,7 +230,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 placeholder="Add skills (comma-separated): Python, React, AWS, Docker..."
                 value={newTechnicalSkill}
@@ -239,7 +239,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                 disabled={saving}
                 className="flex-1"
               />
-              <Button onClick={handleAddTechnicalSkill} disabled={saving || !newTechnicalSkill.trim()} className="gap-1">
+              <Button onClick={handleAddTechnicalSkill} disabled={saving || !newTechnicalSkill.trim()} className="gap-1 w-full sm:w-auto">
                 <Plus className="w-4 h-4" /> Add
               </Button>
             </div>
@@ -264,8 +264,8 @@ const SkillsSection = ({ data, onUpdate }) => {
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
                   {softSkills.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -284,7 +284,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                     <span className="text-xs font-medium text-purple-600">({selectedSoft.length} selected)</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {selectedSoft.length > 0 && (
                     <Button
                       variant="ghost"
@@ -344,7 +344,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 placeholder="Add skills (comma-separated): Leadership, Communication, Problem Solving..."
                 value={newSoftSkill}
@@ -353,7 +353,7 @@ const SkillsSection = ({ data, onUpdate }) => {
                 disabled={saving}
                 className="flex-1"
               />
-              <Button onClick={handleAddSoftSkill} disabled={saving || !newSoftSkill.trim()} variant="outline" className="gap-1">
+              <Button onClick={handleAddSoftSkill} disabled={saving || !newSoftSkill.trim()} variant="outline" className="gap-1 w-full sm:w-auto">
                 <Plus className="w-4 h-4" /> Add
               </Button>
             </div>

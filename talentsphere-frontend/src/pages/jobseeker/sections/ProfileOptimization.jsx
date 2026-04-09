@@ -176,12 +176,12 @@ const ProfileOptimization = ({ analysis = {}, profileData = {}, onRefresh }) => 
       {/* Overall Score Card */}
       <Card className="border-2">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="p-3 bg-blue-50 rounded-lg">
                 <TrendingUp className="w-6 h-6 text-blue-600" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <CardTitle>Profile Strength Score</CardTitle>
                 <CardDescription>Your overall profile completeness</CardDescription>
               </div>
@@ -191,6 +191,7 @@ const ProfileOptimization = ({ analysis = {}, profileData = {}, onRefresh }) => 
               size="sm" 
               onClick={handleRefresh}
               disabled={isRefreshing}
+              className="w-full sm:w-auto"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -199,7 +200,7 @@ const ProfileOptimization = ({ analysis = {}, profileData = {}, onRefresh }) => 
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Score Display */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className={`text-5xl font-bold ${getCompletenessColor(overallScore)}`}>
                 {overallScore}%
@@ -221,12 +222,12 @@ const ProfileOptimization = ({ analysis = {}, profileData = {}, onRefresh }) => 
 
           {/* Action Buttons */}
           {overallScore >= 75 && (
-            <div className="flex gap-2 pt-4 border-t">
-              <Button variant="outline" size="sm" className="flex-1">
+            <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
+              <Button variant="outline" size="sm" className="w-full sm:flex-1">
                 <Download className="w-4 h-4 mr-2" />
                 Export Profile
               </Button>
-              <Button variant="outline" size="sm" className="flex-1">
+              <Button variant="outline" size="sm" className="w-full sm:flex-1">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share Profile
               </Button>

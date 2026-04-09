@@ -113,7 +113,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <FolderGit2 className="w-5 h-5" />
@@ -122,7 +122,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
             <CardDescription>Showcase your portfolio and personal projects</CardDescription>
           </div>
           {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} size="sm">
+            <Button onClick={() => setIsAdding(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Project
             </Button>
@@ -241,11 +241,11 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
               </label>
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={saving}>
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : editingId ? 'Update' : 'Add Project'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
+              <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                 Cancel
               </Button>
             </div>
@@ -254,7 +254,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <FolderGit2 className="w-12 h-12 mx-auto text-gray-400 mb-3" />
             <p className="text-gray-500 mb-4">No projects added yet</p>
-            <Button onClick={() => setIsAdding(true)}>
+            <Button onClick={() => setIsAdding(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Your First Project
             </Button>
@@ -269,7 +269,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                     Featured
                   </Badge>
                 )}
-                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <Button size="sm" variant="ghost" onClick={() => handleEdit(project)}>
                     <Edit2 className="w-4 h-4" />
                   </Button>
@@ -279,11 +279,11 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                 </div>
 
                 <div className={`${project.is_featured ? 'mt-6' : ''}`}>
-                  <h3 className="font-semibold text-lg mb-2">{project.name}</h3>
+                  <h3 className="font-semibold text-lg mb-2 break-words">{project.name}</h3>
                   {project.role && (
-                    <p className="text-sm text-gray-600 mb-2">{project.role}</p>
+                    <p className="text-sm text-gray-600 mb-2 break-words">{project.role}</p>
                   )}
-                  <p className="text-sm text-gray-700 mb-3">{project.description}</p>
+                  <p className="text-sm text-gray-700 mb-3 break-words">{project.description}</p>
 
                   {(project.start_date || project.end_date) && (
                     <div className="text-sm text-gray-600 mb-3 flex items-center gap-1">
@@ -302,7 +302,7 @@ const ProjectsSection = ({ data = [], onUpdate }) => {
                     </div>
                   )}
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {project.project_url && (
                       <a 
                         href={project.project_url} 

@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -59,6 +60,13 @@ const ProfileSettings = () => {
     new: false,
     confirm: false
   });
+
+  const tabOptions = [
+    { value: 'security', label: 'Security', icon: Shield },
+    { value: 'privacy', label: 'Privacy', icon: Eye },
+    { value: 'notifications', label: 'Notifications', icon: Bell },
+    { value: 'account', label: 'Account', icon: User }
+  ];
 
   // Settings states
   const [securitySettings, setSecuritySettings] = useState({
@@ -479,10 +487,10 @@ const ProfileSettings = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
+    <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
+        <h1 className="flex items-center gap-3 text-2xl font-bold sm:text-3xl">
           <Settings className="w-8 h-8" />
           Account Settings
         </h1>
@@ -496,7 +504,7 @@ const ProfileSettings = () => {
           message.type === 'success' ? 'border-green-200 bg-green-50' : 
           'border-blue-200 bg-blue-50'
         }`}>
-          <AlertDescription className={`flex items-center gap-2 ${
+          <AlertDescription className={`flex items-start gap-2 break-words ${
             message.type === 'error' ? 'text-red-800' : 
             message.type === 'success' ? 'text-green-800' : 
             'text-blue-800'
@@ -510,7 +518,25 @@ const ProfileSettings = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <div className="md:hidden">
+          <Label htmlFor="settings-tab-selector" className="mb-2 block text-sm text-muted-foreground">
+            Settings Section
+          </Label>
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger id="settings-tab-selector" className="w-full">
+              <SelectValue placeholder="Select section" />
+            </SelectTrigger>
+            <SelectContent>
+              {tabOptions.map((tab) => (
+                <SelectItem key={tab.value} value={tab.value}>
+                  {tab.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <TabsList className="hidden w-full grid-cols-4 md:grid">
           <TabsTrigger value="security">
             <Shield className="w-4 h-4 mr-2" />
             Security
@@ -591,7 +617,7 @@ const ProfileSettings = () => {
                     {/* Password Strength Indicator */}
                     {securitySettings.newPassword && (
                       <div className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
+                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                           <span className="text-gray-600">Password Strength:</span>
                           <span className={`font-medium ${
                             passwordStrength < 40 ? 'text-red-600' :
@@ -673,7 +699,7 @@ const ProfileSettings = () => {
 
               {/* Two-Factor Authentication */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                       Two-Factor Authentication
@@ -705,7 +731,7 @@ const ProfileSettings = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Active Sessions</h3>
                 <div className="border rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Smartphone className="w-5 h-5 text-gray-600" />
                       <div>
@@ -816,7 +842,7 @@ const ProfileSettings = () => {
                 <h3 className="text-lg font-semibold">Additional Privacy Options</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium">Show Last Active</p>
                       <p className="text-sm text-gray-500">Let others see when you were last active</p>
@@ -827,7 +853,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium">Allow Messages</p>
                       <p className="text-sm text-gray-500">Let employers and other users send you messages</p>
@@ -838,7 +864,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium">Show Contact Information</p>
                       <p className="text-sm text-gray-500">Display your contact details on your public profile</p>
@@ -849,7 +875,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium">Opt out of Analytics</p>
                       <p className="text-sm text-gray-500">Don't track my profile views and interactions for analytics</p>
@@ -884,7 +910,7 @@ const ProfileSettings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {notificationPreferences.email_preferences.enabled ? (
                     <Mail className="w-5 h-5 text-blue-600" />
@@ -906,7 +932,7 @@ const ProfileSettings = () => {
 
               {notificationPreferences.email_preferences.enabled && (
                 <div className="space-y-4 pl-4 border-l-2 border-blue-200">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Briefcase className="w-4 h-4 text-gray-600" />
                       <div>
@@ -920,7 +946,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <TrendingUp className="w-4 h-4 text-gray-600" />
                       <div>
@@ -934,7 +960,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <MessageSquare className="w-4 h-4 text-gray-600" />
                       <div>
@@ -948,7 +974,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Calendar className="w-4 h-4 text-gray-600" />
                       <div>
@@ -962,7 +988,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Clock className="w-4 h-4 text-gray-600" />
                       <div>
@@ -976,7 +1002,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Info className="w-4 h-4 text-gray-600" />
                       <div>
@@ -990,7 +1016,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Settings className="w-4 h-4 text-gray-600" />
                       <div>
@@ -1004,7 +1030,7 @@ const ProfileSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <Zap className="w-4 h-4 text-gray-600" />
                       <div>
@@ -1034,7 +1060,7 @@ const ProfileSettings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   {notificationPreferences.push_preferences.enabled ? (
                     <Bell className="w-5 h-5 text-green-600" />
@@ -1066,7 +1092,7 @@ const ProfileSettings = () => {
                     { key: 'system_notifications', label: 'System Notifications', icon: Settings },
                     { key: 'promotions', label: 'Promotions', icon: Zap }
                   ].map(({ key, label, icon: Icon }) => (
-                    <div key={key} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                    <div key={key} className="flex flex-col gap-3 rounded-lg border p-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-gray-600" />
                         <span className="text-sm font-medium">{label}</span>
@@ -1096,7 +1122,7 @@ const ProfileSettings = () => {
             <CardContent className="space-y-6">
               {/* Weekly Digest */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">Weekly Digest</p>
                     <p className="text-sm text-gray-500">Get a weekly summary of your activity</p>
@@ -1132,7 +1158,7 @@ const ProfileSettings = () => {
 
               {/* Quiet Hours */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <Moon className="w-5 h-5 text-gray-600" />
                     <div>
@@ -1147,7 +1173,7 @@ const ProfileSettings = () => {
                 </div>
 
                 {notificationPreferences.quiet_hours.enabled && (
-                  <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-purple-200">
+                  <div className="grid grid-cols-1 gap-4 border-l-2 border-purple-200 pl-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="quiet_start">Start Time</Label>
                       <Input
@@ -1178,7 +1204,7 @@ const ProfileSettings = () => {
               <div className="space-y-4">
                 <h4 className="font-semibold">Advanced Settings</h4>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">Batch Notifications</p>
                     <p className="text-sm text-gray-500">Group similar notifications together</p>
@@ -1189,7 +1215,7 @@ const ProfileSettings = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">Immediate for Urgent</p>
                     <p className="text-sm text-gray-500">Always send urgent notifications immediately</p>

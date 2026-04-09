@@ -500,18 +500,22 @@ const EnhancedJobSeekerProfile = () => {
         
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <PersonalInfoSection 
-            data={profileData.personal} 
-            onUpdate={refreshPersonalInfo} 
-          />
-          <ProfessionalSummarySection 
-            data={profileData.professional} 
-            onUpdate={refreshProfessionalInfo} 
-          />
-          <PreferencesSection 
-            data={profileData.preferences} 
-            onUpdate={refreshProfessionalInfo} 
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <PersonalInfoSection 
+              data={profileData.personal} 
+              onUpdate={refreshPersonalInfo} 
+            />
+            <ProfessionalSummarySection 
+              data={profileData.professional} 
+              onUpdate={refreshProfessionalInfo} 
+            />
+            <div className="xl:col-span-2">
+              <PreferencesSection 
+                data={profileData.preferences} 
+                onUpdate={refreshProfessionalInfo} 
+              />
+            </div>
+          </div>
         </TabsContent>
         
         {/* Experience Tab */}
@@ -524,14 +528,16 @@ const EnhancedJobSeekerProfile = () => {
         
         {/* Education Tab */}
         <TabsContent value="education" className="space-y-6">
-          <EducationSection 
-            data={profileData.educations} 
-            onUpdate={refreshEducations} 
-          />
-          <CertificationsSection 
-            data={profileData.certifications} 
-            onUpdate={refreshCertifications} 
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <EducationSection 
+              data={profileData.educations} 
+              onUpdate={refreshEducations} 
+            />
+            <CertificationsSection 
+              data={profileData.certifications} 
+              onUpdate={refreshCertifications} 
+            />
+          </div>
         </TabsContent>
         
         {/* Skills Tab */}
@@ -552,26 +558,30 @@ const EnhancedJobSeekerProfile = () => {
         
         {/* Additional Tab */}
         <TabsContent value="additional" className="space-y-6">
-          <AwardsSection 
-            data={profileData.awards} 
-            onUpdate={refreshAwards} 
-          />
-          <LanguagesSection 
-            data={profileData.languages} 
-            onUpdate={refreshLanguages} 
-          />
-          <VolunteerSection 
-            data={profileData.volunteerExperiences} 
-            onUpdate={refreshVolunteerExperiences} 
-          />
-          <MembershipsSection 
-            data={profileData.professionalMemberships} 
-            onUpdate={refreshMemberships} 
-          />
-          <ReferencesSection
-            data={profileData.references}
-            onUpdate={refreshReferences}
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <AwardsSection 
+              data={profileData.awards} 
+              onUpdate={refreshAwards} 
+            />
+            <LanguagesSection 
+              data={profileData.languages} 
+              onUpdate={refreshLanguages} 
+            />
+            <VolunteerSection 
+              data={profileData.volunteerExperiences} 
+              onUpdate={refreshVolunteerExperiences} 
+            />
+            <MembershipsSection 
+              data={profileData.professionalMemberships} 
+              onUpdate={refreshMemberships} 
+            />
+            <div className="xl:col-span-2">
+              <ReferencesSection
+                data={profileData.references}
+                onUpdate={refreshReferences}
+              />
+            </div>
+          </div>
         </TabsContent>
         
         {/* Optimization Tab */}

@@ -77,7 +77,7 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
@@ -86,7 +86,7 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
             <CardDescription>People who can vouch for your work</CardDescription>
           </div>
           {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} size="sm">
+            <Button onClick={() => setIsAdding(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />Add Reference
             </Button>
           )}
@@ -107,18 +107,18 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
               {field('email', 'Email', 'jane@example.com', 'email')}
               {field('phone', 'Phone', '+1 555 000 0000', 'tel')}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button type="submit" disabled={saving}>
                 {saving ? 'Saving...' : editingId ? 'Update Reference' : 'Add Reference'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">Cancel</Button>
             </div>
           </form>
         ) : data.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <Users className="w-12 h-12 mx-auto text-gray-400 mb-3" />
             <p className="text-gray-500 mb-4">No references added yet</p>
-            <Button onClick={() => setIsAdding(true)}>
+            <Button onClick={() => setIsAdding(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />Add Your First Reference
             </Button>
           </div>
@@ -129,10 +129,10 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
                 key={ref.id}
                 className="relative group p-4 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
               >
-                <div className="pr-16">
-                  <h3 className="font-semibold text-base">{ref.name}</h3>
+                <div className="pr-0 sm:pr-16">
+                  <h3 className="font-semibold text-base break-words">{ref.name}</h3>
                   {ref.position && (
-                    <p className="text-sm text-blue-700 flex items-center gap-1 mt-0.5">
+                    <p className="text-sm text-blue-700 flex items-center gap-1 mt-0.5 break-words">
                       <Briefcase className="w-3 h-3 flex-shrink-0" />{ref.position}
                       {ref.company ? ` · ${ref.company}` : ''}
                     </p>
@@ -141,7 +141,7 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
                     <p className="text-xs text-gray-500 italic mt-1">{ref.relationship}</p>
                   )}
                   {ref.email && (
-                    <p className="text-xs text-gray-600 flex items-center gap-1 mt-1">
+                    <p className="text-xs text-gray-600 flex items-center gap-1 mt-1 break-all">
                       <Mail className="w-3 h-3 flex-shrink-0" />{ref.email}
                     </p>
                   )}
@@ -151,7 +151,7 @@ const ReferencesSection = ({ data = [], onUpdate }) => {
                     </p>
                   )}
                 </div>
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-3 right-3 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <Button size="sm" variant="ghost" onClick={() => handleEdit(ref)}>
                     <Edit2 className="w-4 h-4" />
                   </Button>

@@ -32,7 +32,7 @@ const ProfessionalSummarySection = ({ data, onUpdate }) => {
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5" />
@@ -40,18 +40,18 @@ const ProfessionalSummarySection = ({ data, onUpdate }) => {
         </CardTitle>
         <CardDescription>Your headline and elevator pitch</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {!isEditing ? (
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium text-gray-500">Professional Title</p>
-              <p className="text-lg font-semibold">{data?.professional_title || 'Not provided'}</p>
+              <p className="text-lg font-semibold break-words">{data?.professional_title || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Summary</p>
-              <p className="text-base text-gray-700">{data?.professional_summary || 'Not provided'}</p>
+              <p className="text-base text-gray-700 break-words">{data?.professional_summary || 'Not provided'}</p>
             </div>
-            <Button onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">Edit</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -77,11 +77,11 @@ const ProfessionalSummarySection = ({ data, onUpdate }) => {
               />
               <p className="text-xs text-gray-500 mt-1">{formData.professional_summary.length}/1000 characters</p>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : 'Save'}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setIsEditing(false)} className="w-full sm:w-auto">Cancel</Button>
             </div>
           </form>
         )}

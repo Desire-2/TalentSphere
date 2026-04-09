@@ -121,7 +121,7 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Briefcase className="w-5 h-5" />
@@ -130,7 +130,7 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
             <CardDescription>Your professional work history and achievements</CardDescription>
           </div>
           {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} size="sm">
+            <Button onClick={() => setIsAdding(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Experience
             </Button>
@@ -264,11 +264,11 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
               />
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={saving}>
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? 'Saving...' : editingId ? 'Update' : 'Add Experience'}
               </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
+              <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                 Cancel
               </Button>
             </div>
@@ -278,7 +278,7 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
             <Briefcase className="w-12 h-12 mx-auto text-gray-400 mb-3" />
             <p className="text-gray-500 mb-4">No work experience added yet</p>
             <p className="text-sm text-gray-400 mb-4">Add your professional experience to showcase your career journey</p>
-            <Button onClick={() => setIsAdding(true)}>
+            <Button onClick={() => setIsAdding(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" />
               Add Your First Experience
             </Button>
@@ -287,7 +287,7 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
           <div className="space-y-4">
             {data.map((exp) => (
               <div key={exp.id} className="border-l-4 border-blue-500 pl-4 pb-4 relative group hover:bg-gray-50 p-4 rounded-r transition-colors">
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4 flex gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <Button
                     size="sm"
                     variant="ghost"
@@ -305,9 +305,9 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
                   </Button>
                 </div>
 
-                <div className="pr-20">
-                  <h3 className="font-semibold text-lg">{exp.job_title}</h3>
-                  <p className="text-gray-700 font-medium">{exp.company_name}</p>
+                <div className="pr-0 sm:pr-20">
+                  <h3 className="font-semibold text-lg break-words">{exp.job_title}</h3>
+                  <p className="text-gray-700 font-medium break-words">{exp.company_name}</p>
                   <div className="flex items-center gap-3 text-sm text-gray-600 mt-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
@@ -318,7 +318,7 @@ const WorkExperienceSection = ({ data = [], onUpdate }) => {
                   </div>
 
                   {exp.description && (
-                    <p className="mt-3 text-sm text-gray-700">{exp.description}</p>
+                    <p className="mt-3 text-sm text-gray-700 break-words">{exp.description}</p>
                   )}
 
                   {exp.key_responsibilities && exp.key_responsibilities.length > 0 && (

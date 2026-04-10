@@ -1394,6 +1394,143 @@ def bulk_import_external_jobs(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to bulk import jobs', 'details': str(e)}), 500
 
+
+# ==================== BOOKMARKS ENDPOINTS ====================
+
+@job_bp.route('/my-bookmarks', methods=['GET'])
+@token_required
+def get_my_bookmarks(current_user):
+    """Get user's bookmarked jobs (job seeker only)"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can view bookmarks'}), 403
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        
+        # Get bookmarked jobs with company information
+        bookmarks = db.session.query(JobBookmark, Job, Company).join(
+            Job, JobBookmark.job_id == Job.id
+        ).join(
+            Company, Job.company_id == Company.id
+        ).filter(
+            JobBookmark.user_id == current_user.id,
+            Job.is_active == True
+        ).order_by(
+            JobBookmark.created_at.desc()
+        ).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        job_list = []
+        for bookmark, job, company in bookmarks.items:
+            job_data = job.to_dict()
+            job_data['company'] = company.to_dict() if company else None
+            job_data['bookmarked_at'] = bookmark.created_at.isoformat()
+            job_data['is_bookmarked'] = True
+            job_list.append(job_data)
+        
+        return jsonify({
+            'bookmarks': job_list,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': bookmarks.total,
+                'pages': bookmarks.pages,
+                'has_next': bookmarks.has_next,
+                'has_prev': bookmarks.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get bookmarks', 'details': str(e)}), 500
+
+
+@job_bp.route('/jobs/<int:job_id>/bookmark', methods=['POST'])
+@token_required
+def bookmark_job(current_user, job_id):
+    """Bookmark a job"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can bookmark jobs'}), 403
+        
+        job = Job.query.get_or_404(job_id)
+        
+        # Check if already bookmarked
+        existing_bookmark = JobBookmark.query.filter_by(
+            user_id=current_user.id,
+            job_id=job_id
+        ).first()
+        
+        if existing_bookmark:
+            return jsonify({'message': 'Job already bookmarked', 'is_bookmarked': True}), 200
+        
+        # Create new bookmark
+        bookmark = JobBookmark(
+            user_id=current_user.id,
+            job_id=job_id
+        )
+        db.session.add(bookmark)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Job bookmarked successfully',
+            'is_bookmarked': True,
+            'bookmarked_at': bookmark.created_at.isoformat()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to bookmark job', 'details': str(e)}), 500
+
+
+@job_bp.route('/jobs/<int:job_id>/bookmark', methods=['DELETE'])
+@token_required
+def remove_bookmark(current_user, job_id):
+    """Remove job bookmark"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can remove bookmarks'}), 403
+        
+        bookmark = JobBookmark.query.filter_by(
+            user_id=current_user.id,
+            job_id=job_id
+        ).first_or_404()
+        
+        db.session.delete(bookmark)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Bookmark removed successfully',
+            'is_bookmarked': False
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to remove bookmark', 'details': str(e)}), 500
+
+
+@job_bp.route('/jobs/<int:job_id>/is-bookmarked', methods=['GET'])
+@token_required
+def check_bookmark_status(current_user, job_id):
+    """Check if user has bookmarked a job"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'is_bookmarked': False}), 200
+        
+        bookmark = JobBookmark.query.filter_by(
+            user_id=current_user.id,
+            job_id=job_id
+        ).first()
+        
+        return jsonify({
+            'is_bookmarked': bookmark is not None,
+            'bookmarked_at': bookmark.created_at.isoformat() if bookmark else None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to check bookmark status', 'details': str(e), 'is_bookmarked': False}), 500
+
 # Error handlers
 @job_bp.errorhandler(400)
 def bad_request(error):

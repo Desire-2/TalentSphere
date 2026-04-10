@@ -15,8 +15,15 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { 
   User, Briefcase, GraduationCap, Award, FolderKanban, 
   Languages, Heart, Users, Settings, Download, Lightbulb,
-  TrendingUp, CheckCircle2, AlertCircle, Save
+  TrendingUp, CheckCircle2, AlertCircle, Save, ChevronRight,
+  Menu, X, Code2, Zap, Target
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 
 // Import sub-components
 import PersonalInfoSection from './sections/PersonalInfoSection';
@@ -43,6 +50,8 @@ const EnhancedJobSeekerProfile = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showMessageBadge, setShowMessageBadge] = useState(false);
   const hasFetchedRef = useRef(false);
   
   // Profile data state
@@ -331,14 +340,53 @@ const EnhancedJobSeekerProfile = () => {
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
+
+  // Get section completion percentage
+  const getSectionCompletion = (sectionName) => {
+    return profileAnalysis.completeness?.sections?.[sectionName] || 0;
+  };
+
+  // Tab configuration with icons
+  const tabs = [
+    { value: 'overview', label: 'Overview', icon: User, color: 'text-blue-600' },
+    { value: 'experience', label: 'Experience', icon: Briefcase, color: 'text-purple-600' },
+    { value: 'education', label: 'Education', icon: GraduationCap, color: 'text-green-600' },
+    { value: 'skills', label: 'Skills', icon: Zap, color: 'text-yellow-600' },
+    { value: 'projects', label: 'Projects', icon: Code2, color: 'text-indigo-600' },
+    { value: 'additional', label: 'Credentials', icon: Award, color: 'text-rose-600' },
+    { value: 'optimization', label: 'Optimize', icon: Lightbulb, color: 'text-amber-600' }
+  ];
   
   if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-7xl">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
-          <div className="h-32 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        {/* Sticky Header Skeleton */}
+        <div className="sticky top-0 z-40 bg-white border-b border-slate-200">
+          <div className="container mx-auto px-4 max-w-7xl py-4">
+            <div className="h-10 bg-slate-200 rounded w-1/4 animate-pulse" />
+          </div>
+        </div>
+        
+        <div className="container mx-auto py-8 px-4 max-w-7xl">
+          <div className="animate-pulse space-y-8">
+            {/* Header skeleton */}
+            <div className="space-y-4">
+              <div className="h-10 bg-slate-200 rounded w-1/2" />
+              <div className="h-4 bg-slate-200 rounded w-2/3" />
+            </div>
+            
+            {/* Card skeleton */}
+            <div className="h-40 bg-slate-200 rounded-lg" />
+            
+            {/* Tabs skeleton */}
+            <div className="h-12 bg-slate-200 rounded-lg" />
+            
+            {/* Content skeleton */}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="h-64 bg-slate-200 rounded-lg" />
+              <div className="h-64 bg-slate-200 rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -347,53 +395,53 @@ const EnhancedJobSeekerProfile = () => {
   // Show error message if profile failed to load
   if (message.type === 'error' && !profileData.personal?.id) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-7xl">
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-red-200">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          <Card className="border-red-200 shadow-lg">
             <CardHeader className="text-center pb-3">
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                   <AlertCircle className="w-8 h-8 text-red-600" />
                 </div>
               </div>
-              <CardTitle className="text-2xl text-red-900">Authentication Required</CardTitle>
+              <CardTitle className="text-2xl text-red-900">Session Expired</CardTitle>
               <CardDescription className="text-base">
-                Please login to access your profile
+                We couldn't load your profile. Please try again.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="border-red-300">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Failed to load profile.</strong> {message.text}
+                  <strong>Error:</strong> {message.text}
                 </AlertDescription>
               </Alert>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-blue-900">Why am I seeing this?</h3>
-                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <h3 className="font-semibold text-blue-900 text-sm">Common reasons:</h3>
+                <ul className="text-sm text-blue-800 space-y-1.5 list-disc list-inside">
                   <li>Your session has expired</li>
-                  <li>You're not logged in</li>
-                  <li>Your authentication token is invalid</li>
+                  <li>You've been logged out</li>
+                  <li>Your internet connection is unstable</li>
                 </ul>
               </div>
 
-              <div className="flex flex-col gap-2 pt-2">
-                <Button onClick={() => navigate('/login')} size="lg" className="w-full">
-                  Go to Login Page
+              <div className="flex flex-col gap-2 pt-2 space-y-2">
+                <Button onClick={() => location.reload()} size="lg" className="w-full">
+                  Try Again
+                </Button>
+                <Button onClick={() => navigate('/login')} variant="outline" className="w-full">
+                  Return to Login
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   onClick={() => {
                     localStorage.clear();
-                    navigate('/login');
+                    navigate('/');
                   }}
-                  className="w-full"
+                  className="w-full text-slate-600"
                 >
-                  Clear Data & Login Again
-                </Button>
-                <Button variant="ghost" onClick={() => navigate('/')} className="w-full">
-                  ← Back to Home
+                  ← Go to Home
                 </Button>
               </div>
             </CardContent>
@@ -403,103 +451,169 @@ const EnhancedJobSeekerProfile = () => {
     );
   }
   
-  const { overall_score, strength } = profileAnalysis.completeness;
-  
   return (
-    <div className="container mx-auto py-8 px-4 max-w-7xl">
-      {/* Navigation */}
-      <div className="mb-4">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-          ← Back to Dashboard
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div className="container mx-auto px-4 max-w-7xl py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="hidden sm:inline-flex text-slate-600"
+            >
+              ← Dashboard
+            </Button>
+            <div className="hidden sm:flex items-center text-sm text-slate-500 gap-2 min-w-0">
+              <ChevronRight className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate font-medium text-slate-700">My Profile</span>
+            </div>
+          </div>
+          
+          {/* Export Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportText} className="gap-2">
+                <Download className="w-4 h-4" />
+                Export as Text
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON} className="gap-2">
+                <Download className="w-4 h-4" />
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      
-      {/* Header with Profile Completion */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-4xl font-bold">Professional Profile</h1>
-            <p className="text-muted-foreground mt-2">
-              Build a comprehensive profile that stands out to employers
-            </p>
+
+      <div className="container mx-auto py-8 px-4 max-w-7xl">
+        {/* Page Header with Profile Card */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-slate-900">Professional Profile</h1>
+              <p className="text-slate-600 mt-2">
+                Build and showcase your comprehensive career profile
+              </p>
+            </div>
+            {profileData.preferences?.open_to_opportunities && (
+              <Badge className="w-fit gap-2 bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="w-4 h-4" />
+                Open to Work
+              </Badge>
+            )}
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportText}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Text
-            </Button>
-            <Button variant="outline" onClick={handleExportJSON}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Data
-            </Button>
-          </div>
+          
+          {/* Profile Strength Card - Enhanced */}
+          <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                {/* Score */}
+                <div className="flex flex-col items-center sm:items-start">
+                  <div className="flex items-baseline gap-2">
+                    <span className={`text-5xl font-bold ${getCompletionColor(profileAnalysis.completeness.overall_score)}`}>
+                      {profileAnalysis.completeness.overall_score}%
+                    </span>
+                    <span className="text-sm text-slate-500">Complete</span>
+                  </div>
+                  <p className="text-lg font-semibold text-slate-900 mt-2">
+                    {profileAnalysis.completeness.strength || 'Good'} Profile
+                  </p>
+                </div>
+
+                {/* Progress & Message */}
+                <div className="sm:col-span-2">
+                  <Progress 
+                    value={profileAnalysis.completeness.overall_score} 
+                    className="h-3 mb-3"
+                  />
+                  <p className="text-sm text-slate-700 mb-3">
+                    {profileAnalysis.completeness.overall_score >= 80 
+                      ? '🌟 Your profile is optimized for maximum visibility!' 
+                      : profileAnalysis.completeness.overall_score >= 60
+                      ? '📈 Good progress! Complete a few more sections to stand out.'
+                      : '🎯 Complete your profile to attract more opportunities.'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {profileAnalysis.completeness.recommendations?.length || 0} recommendations available · 
+                    Last updated today
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
-        {/* Profile Strength Card */}
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className={`text-5xl font-bold ${getCompletionColor(overall_score)}`}>
-                    {overall_score}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Complete</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-semibold">{strength} Profile</div>
-                  <p className="text-muted-foreground">
-                    {overall_score >= 80 
-                      ? 'Your profile is optimized for maximum visibility!' 
-                      : overall_score >= 60
-                      ? 'Good progress! Complete a few more sections to stand out.'
-                      : 'Complete your profile to attract more opportunities.'}
-                  </p>
-                  {profileData.preferences.open_to_opportunities && (
-                    <Badge variant="outline" className="mt-2 text-green-600 border-green-600">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Open to Work
-                    </Badge>
-                  )}
+        {/* Alert Messages - Floating */}
+        {message.text && (
+          <div className="mb-6 animate-in slide-in-from-top-4 duration-300">
+            <Alert className={`${message.type === 'error' 
+              ? 'border-red-200 bg-red-50 text-red-800' 
+              : 'border-green-200 bg-green-50 text-green-800'}`
+            }>
+              <div className="flex items-start gap-3">
+                {message.type === 'error' ? 
+                  <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" /> :
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                }
+                <div className="flex-1">
+                  <AlertDescription className="font-medium">
+                    {message.text}
+                  </AlertDescription>
                 </div>
               </div>
-              <div className="text-right">
-                <Progress value={overall_score} className="w-64 h-4" />
-                <p className="text-xs text-muted-foreground mt-2">
-                  {profileAnalysis.completeness.recommendations?.length || 0} recommendations
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Alert Messages */}
-      {message.text && (
-        <Alert className={`mb-6 ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-          <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
-            {message.text}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {/* Profile Sections Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="mb-4 flex w-full gap-1 overflow-x-auto whitespace-nowrap md:grid md:grid-cols-7 md:overflow-visible">
-          <TabsTrigger value="overview" className="shrink-0 px-3">Overview</TabsTrigger>
-          <TabsTrigger value="experience" className="shrink-0 px-3">Experience</TabsTrigger>
-          <TabsTrigger value="education" className="shrink-0 px-3">Education</TabsTrigger>
-          <TabsTrigger value="skills" className="shrink-0 px-3">Skills</TabsTrigger>
-          <TabsTrigger value="projects" className="shrink-0 px-3">Projects</TabsTrigger>
-          <TabsTrigger value="additional" className="shrink-0 px-3">Additional</TabsTrigger>
-          <TabsTrigger value="optimization" className="shrink-0 px-3">
-            <Lightbulb className="w-4 h-4 mr-2" />
-            Optimize
-          </TabsTrigger>
-        </TabsList>
+            </Alert>
+          </div>
+        )}
+        
+        {/* Tabs with Enhanced Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Tab Navigation - Multi-line on mobile, single line on desktop */}
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-7 w-full gap-1 bg-slate-100 p-1 rounded-lg">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const completion = getSectionCompletion(tab.value);
+                return (
+                  <TabsTrigger 
+                    key={tab.value}
+                    value={tab.value} 
+                    className="shrink-0 sm:shrink group relative data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm hover:bg-slate-50"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Icon className={`w-4 h-4 ${tab.color} transition-colors`} />
+                      <span className="text-xs sm:text-sm font-medium">{tab.label}</span>
+                      {completion > 0 && completion < 100 && tab.value !== 'optimization' && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs h-5 px-1.5 flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          {completion}%
+                        </Badge>
+                      )}
+                      {completion === 100 && tab.value !== 'optimization' && (
+                        <CheckCircle2 className="w-3 h-3 text-green-600 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
         
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-6 mt-6 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <PersonalInfoSection 
               data={profileData.personal} 
@@ -519,63 +633,147 @@ const EnhancedJobSeekerProfile = () => {
         </TabsContent>
         
         {/* Experience Tab */}
-        <TabsContent value="experience" className="space-y-6">
-          <WorkExperienceSection 
-            data={profileData.workExperiences} 
-            onUpdate={refreshWorkExperiences} 
-          />
-        </TabsContent>
-        
-        {/* Education Tab */}
-        <TabsContent value="education" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <EducationSection 
-              data={profileData.educations} 
-              onUpdate={refreshEducations} 
-            />
-            <CertificationsSection 
-              data={profileData.certifications} 
-              onUpdate={refreshCertifications} 
+        <TabsContent value="experience" className="space-y-6 mt-6 animate-in fade-in duration-300">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Work Experience</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  {profileData.workExperiences?.length || 0} position{(profileData.workExperiences?.length || 0) !== 1 ? 's' : ''} added
+                </p>
+              </div>
+              <Badge variant="outline">{getSectionCompletion('experience')}% Complete</Badge>
+            </div>
+            <WorkExperienceSection 
+              data={profileData.workExperiences} 
+              onUpdate={refreshWorkExperiences} 
             />
           </div>
         </TabsContent>
         
+        {/* Education Tab */}
+        <TabsContent value="education" className="space-y-6 mt-6 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Education</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    {profileData.educations?.length || 0} qualification{(profileData.educations?.length || 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <Badge variant="outline">{getSectionCompletion('education')}% Complete</Badge>
+              </div>
+              <EducationSection 
+                data={profileData.educations} 
+                onUpdate={refreshEducations} 
+              />
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Certifications</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    {profileData.certifications?.length || 0} certification{(profileData.certifications?.length || 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <CertificationsSection 
+                data={profileData.certifications} 
+                onUpdate={refreshCertifications} 
+              />
+            </div>
+          </div>
+        </TabsContent>
+        
         {/* Skills Tab */}
-        <TabsContent value="skills" className="space-y-6">
-          <SkillsSection 
-            data={profileData.professional}
-            onUpdate={refreshProfessionalInfo} 
-          />
+        <TabsContent value="skills" className="space-y-6 mt-6 animate-in fade-in duration-300">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Skills & Expertise</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Highlight your professional capabilities
+                </p>
+              </div>
+              <Badge variant="outline">{getSectionCompletion('skills')}% Complete</Badge>
+            </div>
+            <SkillsSection 
+              data={profileData.professional}
+              onUpdate={refreshProfessionalInfo} 
+            />
+          </div>
         </TabsContent>
         
         {/* Projects Tab */}
-        <TabsContent value="projects" className="space-y-6">
-          <ProjectsSection 
-            data={profileData.projects} 
-            onUpdate={refreshProjects} 
-          />
+        <TabsContent value="projects" className="space-y-6 mt-6 animate-in fade-in duration-300">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Projects & Portfolio</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  {profileData.projects?.length || 0} project{(profileData.projects?.length || 0) !== 1 ? 's' : ''} showcased
+                </p>
+              </div>
+              <Badge variant="outline">{getSectionCompletion('projects')}% Complete</Badge>
+            </div>
+            <ProjectsSection 
+              data={profileData.projects} 
+              onUpdate={refreshProjects} 
+            />
+          </div>
         </TabsContent>
         
-        {/* Additional Tab */}
-        <TabsContent value="additional" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <AwardsSection 
-              data={profileData.awards} 
-              onUpdate={refreshAwards} 
-            />
-            <LanguagesSection 
-              data={profileData.languages} 
-              onUpdate={refreshLanguages} 
-            />
-            <VolunteerSection 
-              data={profileData.volunteerExperiences} 
-              onUpdate={refreshVolunteerExperiences} 
-            />
-            <MembershipsSection 
-              data={profileData.professionalMemberships} 
-              onUpdate={refreshMemberships} 
-            />
-            <div className="xl:col-span-2">
+        {/* Credentials Tab (renamed from Additional) */}
+        <TabsContent value="additional" className="space-y-6 mt-6 animate-in fade-in duration-300">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">Awards & Recognition</h3>
+                  <Badge variant="outline" className="text-xs">{getSectionCompletion('awards')}%</Badge>
+                </div>
+                <AwardsSection 
+                  data={profileData.awards} 
+                  onUpdate={refreshAwards} 
+                />
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">Languages</h3>
+                  <Badge variant="outline" className="text-xs">{getSectionCompletion('languages')}%</Badge>
+                </div>
+                <LanguagesSection 
+                  data={profileData.languages} 
+                  onUpdate={refreshLanguages} 
+                />
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">Volunteer Experience</h3>
+                  <Badge variant="outline" className="text-xs">{getSectionCompletion('volunteer')}%</Badge>
+                </div>
+                <VolunteerSection 
+                  data={profileData.volunteerExperiences} 
+                  onUpdate={refreshVolunteerExperiences} 
+                />
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">Professional Memberships</h3>
+                  <Badge variant="outline" className="text-xs">{getSectionCompletion('memberships')}%</Badge>
+                </div>
+                <MembershipsSection 
+                  data={profileData.professionalMemberships} 
+                  onUpdate={refreshMemberships} 
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">References</h3>
+                <Badge variant="outline" className="text-xs">{getSectionCompletion('references')}%</Badge>
+              </div>
               <ReferencesSection
                 data={profileData.references}
                 onUpdate={refreshReferences}
@@ -585,7 +783,7 @@ const EnhancedJobSeekerProfile = () => {
         </TabsContent>
         
         {/* Optimization Tab */}
-        <TabsContent value="optimization" className="space-y-6">
+        <TabsContent value="optimization" className="space-y-6 mt-6 animate-in fade-in duration-300">
           <ProfileOptimization 
             analysis={profileAnalysis} 
             profileData={profileData}
@@ -593,6 +791,7 @@ const EnhancedJobSeekerProfile = () => {
           />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 };

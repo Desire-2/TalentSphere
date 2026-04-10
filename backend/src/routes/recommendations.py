@@ -20,6 +20,9 @@ def calculate_job_match_score(job, user_profile):
     if not user_profile:
         return 0
     
+    # Base score for any published job
+    score += 10
+    
     # Skills matching (40% weight)
     if user_profile.skills and job.required_skills:
         try:
@@ -33,33 +36,56 @@ def calculate_job_match_score(job, user_profile):
         except:
             pass
     
-    # Experience level matching (25% weight)
-    if user_profile.years_of_experience and job.years_experience_min:
-        exp_diff = abs(user_profile.years_of_experience - job.years_experience_min)
-        if exp_diff <= 1:
-            score += 25
-        elif exp_diff <= 3:
-            score += 15
-        elif exp_diff <= 5:
-            score += 10
+    # Experience level matching (20% weight) - more lenient
+    if user_profile.years_of_experience is not None and job.years_experience_min:
+        try:
+            exp_diff = abs(user_profile.years_of_experience - job.years_experience_min)
+            if exp_diff <= 2:
+                score += 20
+            elif exp_diff <= 5:
+                score += 12
+            else:
+                score += 5
+        except:
+            score += 5  # Give some points even if calculation fails
+    else:
+        score += 5  # Base points if no experience data
     
-    # Location matching (20% weight)
+    # Location matching (15% weight)
     if user_profile.preferred_location and job.city:
         if user_profile.preferred_location.lower() in job.city.lower() or job.city.lower() in user_profile.preferred_location.lower():
-            score += 20
+            score += 15
         elif job.is_remote:
-            score += 15
+            score += 12
     elif job.is_remote:
-        score += 20
+        score += 15
+    else:
+        score += 3  # Base points for location
     
-    # Job type preference matching (15% weight)
+    # Job type preference matching (10% weight)
     if user_profile.job_type_preference and job.employment_type:
-        if user_profile.job_type_preference.lower() == job.employment_type.lower():
-            score += 15
+        if user_profile.job_type_preference.lower() in job.employment_type.lower():
+            score += 10
         elif 'remote' in user_profile.job_type_preference.lower() and job.is_remote:
-            score += 15
+            score += 10
+    else:
+        score += 3  # Base points for job type
+    
+    # Salary matching (15% weight)
+    if user_profile.desired_salary_min and (job.salary_min or job.salary_max):
+        try:
+            job_salary = job.salary_max or job.salary_min or 0
+            if job_salary >= user_profile.desired_salary_min:
+                score += 15
+            elif job_salary >= (user_profile.desired_salary_min * 0.8):
+                score += 8
+        except:
+            score += 5
+    else:
+        score += 3  # Base points if no salary data for matching
     
     return min(score, max_score)
+
 
 @recommendations_bp.route('/recommendations/jobs', methods=['GET'])
 @token_required
@@ -74,50 +100,37 @@ def get_job_recommendations(current_user):
         if not profile:
             return jsonify({'error': 'Job seeker profile not found'}), 404
         
-        # Get jobs user hasn't applied to
+        # Get jobs user hasn't applied to (this is the only hard filter)
         applied_job_ids = [app.job_id for app in current_user.applications]
         bookmarked_job_ids = [bookmark.job_id for bookmark in JobBookmark.query.filter_by(user_id=current_user.id).all()]
         
-        # Get active jobs
+        # Get ALL active jobs that user hasn't applied to yet
+        # We'll score and filter them, don't pre-filter by preferences
         jobs_query = Job.query.filter(
             and_(
                 Job.status == 'published',
                 Job.is_active == True,
-                ~Job.id.in_(applied_job_ids)
+                ~Job.id.in_(applied_job_ids) if applied_job_ids else True
             )
         )
         
-        # Apply basic filters based on user preferences
-        if profile.preferred_location:
-            jobs_query = jobs_query.filter(
-                or_(
-                    Job.city.ilike(f'%{profile.preferred_location}%'),
-                    Job.state.ilike(f'%{profile.preferred_location}%'),
-                    Job.is_remote == True
-                )
-            )
+        # Get a larger pool of jobs to score (increase from limit*3 to limit*10 for better coverage)
+        jobs = jobs_query.limit(min(limit * 10, 500)).all()
         
-        if profile.job_type_preference:
-            if 'remote' in profile.job_type_preference.lower():
-                jobs_query = jobs_query.filter(Job.is_remote == True)
-            else:
-                jobs_query = jobs_query.filter(Job.employment_type.ilike(f'%{profile.job_type_preference}%'))
+        # If no jobs found at all
+        if not jobs:
+            return jsonify({
+                'recommendations': [],
+                'total_analyzed': 0,
+                'profile_completeness': calculate_profile_completeness(profile)
+            }), 200
         
-        if profile.desired_salary_min:
-            jobs_query = jobs_query.filter(
-                or_(
-                    Job.salary_max >= profile.desired_salary_min,
-                    Job.salary_min >= profile.desired_salary_min
-                )
-            )
-        
-        # Get jobs and calculate match scores
-        jobs = jobs_query.limit(limit * 3).all()  # Get more jobs to score and filter
-        
+        # Calculate match scores for all jobs
         job_scores = []
         for job in jobs:
             score = calculate_job_match_score(job, profile)
-            if score > 20:  # Only include jobs with reasonable match
+            # Lower threshold to include more recommendations
+            if score > 10:  # Reduced from 20 to 10 to be less restrictive
                 job_scores.append((job, score))
         
         # Sort by score and limit results

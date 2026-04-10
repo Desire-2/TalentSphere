@@ -87,8 +87,26 @@ const ApplicationsDashboard = () => {
   const loadApplications = async () => {
     try {
       setLoading(true);
+      setMessage({ type: '', text: '' }); // Clear previous messages
+      
       const response = await apiService.getMyApplications({ per_page: 100 });
-      const apps = response.applications || [];
+      
+      // Handle both response formats: direct array or nested in applications key
+      let apps = [];
+      if (Array.isArray(response)) {
+        apps = response;
+      } else if (response.applications && Array.isArray(response.applications)) {
+        apps = response.applications;
+      } else if (response.data && Array.isArray(response.data)) {
+        apps = response.data;
+      }
+      
+      // Ensure all apps have required data structures
+      apps = apps.map(app => ({
+        ...app,
+        job: app.job || {},
+        company: app.company || (app.job?.company) || {}
+      }));
       
       setApplications(apps);
       
@@ -103,7 +121,13 @@ const ApplicationsDashboard = () => {
       
     } catch (error) {
       console.error('Failed to load applications:', error);
-      setMessage({ type: 'error', text: 'Failed to load applications' });
+      const errorMessage = error.message || 'Failed to load applications. Please try again.';
+      setMessage({ type: 'error', text: errorMessage });
+      
+      // Auto-dismiss error after 5 seconds
+      setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 5000);
     } finally {
       setLoading(false);
     }
@@ -168,15 +192,16 @@ const ApplicationsDashboard = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      submitted: 'bg-blue-100 text-blue-800',
-      under_review: 'bg-yellow-100 text-yellow-800',
-      shortlisted: 'bg-purple-100 text-purple-800',
-      interviewed: 'bg-indigo-100 text-indigo-800',
-      hired: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      withdrawn: 'bg-gray-100 text-gray-800'
+      submitted: 'bg-blue-100 text-blue-800 border border-blue-300',
+      under_review: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+      shortlisted: 'bg-purple-100 text-purple-800 border border-purple-300',
+      interviewed: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+      hired: 'bg-green-100 text-green-800 border border-green-300',
+      rejected: 'bg-red-100 text-red-800 border border-red-300',
+      withdrawn: 'bg-gray-100 text-gray-800 border border-gray-300',
+      archived: 'bg-gray-100 text-gray-800 border border-gray-300'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-800 border border-gray-300';
   };
 
   const getStatusIcon = (status) => {
@@ -219,26 +244,69 @@ const ApplicationsDashboard = () => {
       try {
         await apiService.withdrawApplication(applicationId);
         setMessage({ type: 'success', text: 'Application withdrawn successfully' });
+        // Auto-dismiss success message after 3 seconds
+        setTimeout(() => {
+          setMessage({ type: '', text: '' });
+        }, 3000);
+        // Reload applications
         loadApplications();
       } catch (error) {
         console.error('Failed to withdraw application:', error);
-        setMessage({ type: 'error', text: 'Failed to withdraw application' });
+        const errorMsg = error.message || 'Failed to withdraw application. Please try again.';
+        setMessage({ type: 'error', text: errorMsg });
+        setTimeout(() => {
+          setMessage({ type: '', text: '' });
+        }, 5000);
       }
     }
   };
 
   const handleBulkAction = async (action) => {
-    if (selectedApplications.length === 0) return;
+    if (selectedApplications.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one application' });
+      setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 3000);
+      return;
+    }
     
     if (action === 'withdraw') {
       if (window.confirm(`Are you sure you want to withdraw ${selectedApplications.length} application(s)?`)) {
         try {
-          await Promise.all(selectedApplications.map(id => apiService.withdrawApplication(id)));
-          setMessage({ type: 'success', text: 'Applications withdrawn successfully' });
+          setLoading(true);
+          const results = await Promise.allSettled(
+            selectedApplications.map(id => apiService.withdrawApplication(id))
+          );
+          
+          const successful = results.filter(r => r.status === 'fulfilled').length;
+          const failed = results.filter(r => r.status === 'rejected').length;
+          
+          let message = '';
+          if (successful > 0 && failed === 0) {
+            message = `Successfully withdrawn ${successful} application(s)`;
+            setMessage({ type: 'success', text: message });
+          } else if (successful > 0 && failed > 0) {
+            message = `Withdrawn ${successful} application(s), ${failed} failed`;
+            setMessage({ type: 'error', text: message });
+          } else {
+            message = 'Failed to withdraw applications. Please try again.';
+            setMessage({ type: 'error', text: message });
+          }
+          
+          setTimeout(() => {
+            setMessage({ type: '', text: '' });
+          }, 4000);
+          
           setSelectedApplications([]);
           loadApplications();
         } catch (error) {
-          setMessage({ type: 'error', text: 'Failed to withdraw applications' });
+          console.error('Failed to withdraw applications:', error);
+          setMessage({ type: 'error', text: 'Failed to withdraw applications. Please try again.' });
+          setTimeout(() => {
+            setMessage({ type: '', text: '' });
+          }, 5000);
+        } finally {
+          setLoading(false);
         }
       }
     }
@@ -528,16 +596,16 @@ const ApplicationsDashboard = () => {
                             </h3>
                             <div className="flex items-center gap-2 text-gray-600 text-sm">
                               <Building className="w-4 h-4" />
-                              <span>{application.job?.company?.name || application.company?.name || 'Unknown Company'}</span>
-                              {application.job?.location && (
+                              <span>{application.job?.company?.name || application.company?.name || 'Not specified'}</span>
+                              {(application.job?.location || application.company?.location) && (
                                 <>
                                   <span>•</span>
                                   <MapPin className="w-4 h-4" />
                                   <span>
-                                    {typeof application.job.location === 'object' 
-                                      ? application.job.location.display || 
-                                        `${application.job.location.city || ''}${application.job.location.city && application.job.location.state ? ', ' : ''}${application.job.location.state || ''}`
-                                      : application.job.location
+                                    {typeof (application.job?.location || application.company?.location) === 'object' 
+                                      ? (application.job?.location || application.company?.location)?.display || 
+                                        `${(application.job?.location || application.company?.location)?.city || ''}${(application.job?.location || application.company?.location)?.city && (application.job?.location || application.company?.location)?.state ? ', ' : ''}${(application.job?.location || application.company?.location)?.state || ''}`
+                                      : (application.job?.location || application.company?.location)
                                     }
                                   </span>
                                 </>
@@ -545,7 +613,7 @@ const ApplicationsDashboard = () => {
                             </div>
                           </div>
                           
-                          <Badge className={`${getStatusColor(application.status)} flex items-center gap-1`}>
+                          <Badge className={`${getStatusColor(application.status)} flex items-center gap-1 px-3 py-1 rounded-full`}>
                             {getStatusIcon(application.status)}
                             {application.status.replace('_', ' ').toUpperCase()}
                           </Badge>

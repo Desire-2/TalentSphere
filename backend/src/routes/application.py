@@ -537,6 +537,122 @@ def get_application_stats(current_user):
     except Exception as e:
         return jsonify({'error': 'Failed to get stats', 'details': str(e)}), 500
 
+
+# ==================== INTERVIEW ENDPOINTS ====================
+
+@application_bp.route('/my-interviews', methods=['GET'])
+@token_required
+def get_my_interviews(current_user):
+    """Get user's interviews (job seeker)"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can view interviews'}), 403
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        
+        # Get all applications with scheduled interviews for this user
+        applications = Application.query.filter(
+            Application.applicant_id == current_user.id,
+            Application.interview_scheduled == True
+        ).order_by(
+            Application.interview_datetime.desc()
+        ).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        interviews = []
+        for app in applications.items:
+            job = Job.query.get(app.job_id)
+            if job:
+                interview_data = {
+                    'id': app.id,
+                    'application_id': app.id,
+                    'job_id': app.job_id,
+                    'job_title': job.title,
+                    'company': job.company.name if job.company else 'Unknown',
+                    'company_logo': job.company.logo_url if job.company else None,
+                    'interview_type': app.interview_type or 'scheduled',
+                    'date': app.interview_datetime.isoformat() if app.interview_datetime else None,
+                    'location': app.interview_location or 'Virtual',
+                    'interviewer': app.interview_notes or '',
+                    'status': app.status,
+                    'application_status': app.status
+                }
+                interviews.append(interview_data)
+        
+        return jsonify({
+            'interviews': interviews,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': applications.total,
+                'pages': applications.pages,
+                'has_next': applications.has_next,
+                'has_prev': applications.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get interviews', 'details': str(e)}), 500
+
+
+@application_bp.route('/interviews', methods=['GET'])
+@token_required
+def get_interviews_alt(current_user):
+    """Alternative endpoint for getting interviews (alias for /my-interviews)"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can view interviews'}), 403
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        
+        # Get all applications with scheduled interviews
+        applications = Application.query.filter(
+            Application.applicant_id == current_user.id,
+            Application.interview_scheduled == True
+        ).order_by(
+            Application.interview_datetime.desc()
+        ).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        interviews = []
+        for app in applications.items:
+            job = Job.query.get(app.job_id)
+            if job:
+                interview_data = {
+                    'id': app.id,
+                    'application_id': app.id,
+                    'job_id': app.job_id,
+                    'job_title': job.title,
+                    'company': job.company.name if job.company else 'Unknown',
+                    'company_logo': job.company.logo_url if job.company else None,
+                    'interview_type': app.interview_type or 'scheduled',
+                    'date': app.interview_datetime.isoformat() if app.interview_datetime else None,
+                    'location': app.interview_location or 'Virtual',
+                    'interviewer': app.interview_notes or '',
+                    'status': app.status,
+                    'application_status': app.status
+                }
+                interviews.append(interview_data)
+        
+        return jsonify({
+            'interviews': interviews,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': applications.total,
+                'pages': applications.pages,
+                'has_next': applications.has_next,
+                'has_prev': applications.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get interviews', 'details': str(e)}), 500
+
 # Error handlers
 @application_bp.errorhandler(400)
 def bad_request(error):

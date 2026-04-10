@@ -230,7 +230,7 @@ const Home = () => {
   const websiteStructuredData = generateWebsiteStructuredData();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 relative overflow-hidden">
+    <div className="w-full min-h-screen bg-gradient-to-br from-[#001F3F] via-[#0a2847] to-[#001F3F] relative overflow-hidden">
       {/* SEO Meta Tags */}
       <SEOHelmet
         title="TalentSphere - Connect Talent with Opportunities"
@@ -243,9 +243,9 @@ const Home = () => {
       />
       {/* Floating Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#003366]/10 to-[#17a2b8]/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute top-1/3 -left-32 w-64 h-64 bg-gradient-to-br from-[#17a2b8]/10 to-[#FF6B35]/10 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-br from-[#FF6B35]/10 to-[#003366]/10 rounded-full blur-3xl animate-float" style={{animationDelay: '4s'}}></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#1BA398]/15 to-[#FF6B35]/15 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute top-1/3 -left-32 w-64 h-64 bg-gradient-to-br from-[#FF6B35]/15 to-[#1BA398]/15 rounded-full blur-3xl animate-float" style={{animationDelay: '2s'}}></div>
+        <div className="absolute bottom-20 right-1/4 w-48 h-48 bg-gradient-to-br from-[#1BA398]/15 to-[#FF6B35]/15 rounded-full blur-3xl animate-float" style={{animationDelay: '4s'}}></div>
       </div>
 
       {/* Featured Advertisements Carousel */}
@@ -255,7 +255,7 @@ const Home = () => {
 
       {/* Hero Section - Enhanced for Jobs & Scholarships */}
       <section className="relative py-20 px-4 mb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#003366]/95 via-[#17a2b8]/90 to-[#FF6B35]/85 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#001F3F]/95 via-[#0a2847]/90 to-[#001F3F]/85 backdrop-blur-sm"></div>
         
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -269,7 +269,7 @@ const Home = () => {
             <h1 className="text-5xl md:text-7xl font-black mb-4 text-white leading-tight drop-shadow-lg">
               Discover Your Future
             </h1>
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B35] via-orange-300 to-yellow-300 leading-tight">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#1BA398] via-[#FF6B35] to-[#FF6B35] leading-tight">
               Jobs & Scholarships
             </h2>
           </div>
@@ -371,14 +371,14 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 mb-20">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] rounded-full mr-4"></div>
-            <Briefcase className="w-8 h-8 text-[#003366]" />
-            <div className="w-12 h-1 bg-gradient-to-r from-[#17a2b8] to-[#003366] rounded-full ml-4"></div>
+            <div className="w-12 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-full mr-4"></div>
+            <Briefcase className="w-8 h-8" style={{color: '#1BA398'}} />
+            <div className="w-12 h-1 bg-gradient-to-r from-[#FF6B35] to-[#1BA398] rounded-full ml-4"></div>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#003366] to-[#17a2b8]">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#1BA398] to-[#FF6B35]">
             Latest Jobs
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
             Discover all available job opportunities from top companies across various industries
           </p>
         </div>
@@ -386,7 +386,7 @@ const Home = () => {
         {loading.featuredJobs ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 border border-white/20 shadow-xl">
+              <div key={i} className="bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-6 border border-[#1BA398]/30 shadow-xl">
                 <LoadingSkeleton className="h-16 w-16 rounded-2xl mb-4" />
                 <LoadingSkeleton className="h-6 w-3/4 mb-2" />
                 <LoadingSkeleton className="h-4 w-1/2 mb-4" />
@@ -414,14 +414,14 @@ const Home = () => {
               return (
               <Card 
                 key={job.id} 
-                className="group bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-white/80 cursor-pointer animate-slide-up"
+                className="group bg-[#0a2847]/80 backdrop-blur-lg border border-[#1BA398]/30 shadow-xl hover:shadow-2xl hover:border-[#1BA398]/60 rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-[#0a2847]/95 cursor-pointer animate-slide-up"
                 style={{animationDelay: `${index * 0.1}s`}}
                 onClick={(e) => handleJobCardClick(job.id, e)}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300 rounded-2xl overflow-hidden">
-                      <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center border-2 border-white shadow-md">
+                      <div className="w-16 h-16 bg-[#1BA398]/20 rounded-2xl flex items-center justify-center border-2 border-[#1BA398]/30 shadow-md">
                         {job.company?.logo_url ? (
                           <img 
                             src={job.company.logo_url} 
@@ -436,12 +436,12 @@ const Home = () => {
                         ) : null}
                         <div className={`fallback-icon w-14 h-14 flex items-center justify-center ${job.company?.logo_url ? 'hidden' : 'flex'}`}>
                           {(job.is_external || job.job_source || job.external_company_name) ? (
-                            <div className="flex flex-col items-center text-blue-600">
+                            <div className="flex flex-col items-center" style={{color: '#1BA398'}}>
                               <ExternalLink className="w-5 h-5 mb-1" />
                               <Building className="w-4 h-4" />
                             </div>
                           ) : (
-                            <Building className="w-8 h-8 text-blue-600" />
+                            <Building className="w-8 h-8" style={{color: '#1BA398'}} />
                           )}
                         </div>
                       </div>
@@ -472,10 +472,10 @@ const Home = () => {
                       </Badge>
                     </div>
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-[#003366] transition-colors line-clamp-2 mb-2">
+                  <CardTitle className="text-xl font-bold text-white group-hover:text-[#FF6B35] transition-colors line-clamp-2 mb-2">
                     {safeRenderText(job.title)}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 font-medium mb-1">
+                  <CardDescription className="text-[#1BA398] font-medium mb-1">
                     {/* Enhanced company name display for external jobs */}
                     <div className="flex items-center space-x-2">
                       <span className="font-semibold">
@@ -493,14 +493,14 @@ const Home = () => {
                   </CardDescription>
                   {/* Enhanced description for external jobs */}
                   {(job.company?.description || job.external_company_description) && (
-                    <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
                       {job.external_company_description || job.company.description}
                     </p>
                   )}
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <MapPin className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">
                         {(() => {
@@ -528,7 +528,7 @@ const Home = () => {
                         })()}
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <DollarSign className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
                       <span className="text-sm font-medium">
                         {job.salary?.show_salary && job.salary?.min && job.salary?.max 
@@ -541,17 +541,17 @@ const Home = () => {
                         }
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <Briefcase className="w-4 h-4 mr-2 text-[#003366] flex-shrink-0" />
                       <span className="text-sm">{snakeToTitle(job.employment_type || job.job_type || 'full_time')}</span>
                     </div>
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <Users className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">{job.statistics?.application_count || job.applications_count || 0} applicants</span>
                     </div>
                     {/* Enhanced external job source display */}
                     {(job.job_source || job.is_external || job.external_company_name) && (
-                      <div className="flex items-center text-gray-600">
+                      <div className="flex items-center text-gray-300">
                         <ExternalLink className="w-4 h-4 mr-2 text-orange-500 flex-shrink-0" />
                         <span className="text-sm font-medium text-orange-600">
                           {job.job_source ? `Source: ${job.job_source}` : 'External Job'}
@@ -570,7 +570,7 @@ const Home = () => {
                       </div>
                     )}
                     {job.years_experience_min !== undefined && (
-                      <div className="flex items-center text-gray-600">
+                      <div className="flex items-center text-gray-300">
                         <Award className="w-4 h-4 mr-2 text-orange-500 flex-shrink-0" />
                         <span className="text-sm">
                           {job.years_experience_min === 0 && !job.years_experience_max 
@@ -623,7 +623,7 @@ const Home = () => {
                   {/* Summary or Description Preview */}
                   {(job.summary || job.description) && (
                     <div className="mb-4">
-                      <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                      <p className="text-sm text-gray-300 line-clamp-3 leading-relaxed">
                         {job.summary || (job.description && job.description.substring(0, 150) + '...')}
                       </p>
                     </div>
@@ -639,7 +639,7 @@ const Home = () => {
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
                       </Link>
                       {job.statistics?.view_count && (
-                        <div className="flex items-center text-gray-500">
+                        <div className="flex items-center text-gray-400">
                           <Eye className="w-3 h-3 mr-1" />
                           <span className="text-xs">{job.statistics.view_count}</span>
                         </div>
@@ -666,8 +666,8 @@ const Home = () => {
             }) : (
               <div className="col-span-full text-center py-12">
                 <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Jobs Available</h3>
-                <p className="text-gray-500">Check back later for new opportunities</p>
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">No Jobs Available</h3>
+                <p className="text-gray-400">Check back later for new opportunities</p>
               </div>
             )}
           </div>
@@ -695,14 +695,14 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 mb-20">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-1 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full mr-4"></div>
-            <GraduationCap className="w-8 h-8 text-purple-600" />
-            <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-purple-400 rounded-full ml-4"></div>
+            <div className="w-12 h-1 bg-gradient-to-r from-[#FF6B35] to-[#1BA398] rounded-full mr-4"></div>
+            <GraduationCap className="w-8 h-8" style={{color: '#FF6B35'}} />
+            <div className="w-12 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-full ml-4"></div>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B35] to-[#1BA398]">
             Featured Scholarships
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-300 max-w-2xl mx-auto">
             Unlock your educational potential with funding opportunities from renowned institutions
           </p>
         </div>
@@ -710,7 +710,7 @@ const Home = () => {
         {loading.scholarships ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white/70 backdrop-blur-lg rounded-3xl p-6 border border-white/20 shadow-xl">
+              <div key={i} className="bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-6 border border-[#FF6B35]/30 shadow-xl">
                 <LoadingSkeleton className="h-16 w-16 rounded-2xl mb-4" />
                 <LoadingSkeleton className="h-6 w-3/4 mb-2" />
                 <LoadingSkeleton className="h-4 w-1/2 mb-4" />
@@ -724,7 +724,7 @@ const Home = () => {
             {featuredScholarships.length > 0 ? featuredScholarships.map((scholarship, index) => (
               <Card 
                 key={scholarship.id} 
-                className="group bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-white/80 cursor-pointer animate-slide-up"
+                className="group bg-[#0a2847]/80 backdrop-blur-lg border border-[#FF6B35]/30 shadow-xl hover:shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 hover:scale-105 hover:bg-[#0a2847]/95 hover:border-[#FF6B35]/60 cursor-pointer animate-slide-up"
                 style={{animationDelay: `${index * 0.1}s`}}
                 onClick={(e) => handleScholarshipCardClick(scholarship.id, e)}
               >
@@ -753,21 +753,21 @@ const Home = () => {
                       </Badge>
                     </div>
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-[#FF6B35] transition-colors line-clamp-2 mb-2">
+                  <CardTitle className="text-xl font-bold text-white group-hover:text-[#FF6B35] transition-colors line-clamp-2 mb-2">
                     {safeRenderText(scholarship.title)}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 font-medium mb-1">
+                  <CardDescription className="text-gray-300 font-medium mb-1">
                     {safeRenderText(scholarship.external_organization_name || scholarship.university_name || scholarship.provider)}
                   </CardDescription>
                   {scholarship.description && (
-                    <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
                       {scholarship.description.substring(0, 100)}...
                     </p>
                   )}
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <DollarSign className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
                       <span className="text-sm font-bold text-green-600">
                         {scholarship.award_amount 
@@ -776,28 +776,28 @@ const Home = () => {
                         }
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <BookOpen className="w-4 h-4 mr-2 text-[#17a2b8] flex-shrink-0" />
                       <span className="text-sm">
                         {safeRenderText(scholarship.eligible_programs || scholarship.field_of_study || 'All Fields')}
                       </span>
                     </div>
                     {scholarship.study_level && (
-                      <div className="flex items-center text-gray-600">
+                      <div className="flex items-center text-gray-300">
                         <GraduationCap className="w-4 h-4 mr-2 text-[#FF6B35] flex-shrink-0" />
                         <span className="text-sm capitalize">
                           {scholarship.study_level.replace('_', ' ')}
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center text-gray-600">
+                    <div className="flex items-center text-gray-300">
                       <Globe className="w-4 h-4 mr-2 text-[#003366] flex-shrink-0" />
                       <span className="text-sm">
                         {safeRenderLocation(scholarship.location) || 'Global'}
                       </span>
                     </div>
                     {(scholarship.external_application_url || scholarship.application_url) && (
-                      <div className="flex items-center text-gray-600">
+                      <div className="flex items-center text-gray-300">
                         <ExternalLink className="w-4 h-4 mr-2 text-orange-500 flex-shrink-0" />
                         <span className="text-sm text-orange-600 font-medium">External Application</span>
                       </div>
@@ -838,7 +838,7 @@ const Home = () => {
                   {/* Eligibility Requirements Preview */}
                   {scholarship.eligibility_requirements && (
                     <div className="mb-4">
-                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-gray-300 line-clamp-2 leading-relaxed">
                         <span className="font-medium text-gray-700">Requirements: </span>
                         {scholarship.eligibility_requirements.substring(0, 100)}...
                       </p>
@@ -859,7 +859,7 @@ const Home = () => {
                           href={scholarship.external_organization_website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center text-gray-500 hover:text-gray-700"
+                          className="flex items-center text-gray-400 hover:text-gray-700"
                         >
                           <Globe className="w-3 h-3 mr-1" />
                           <span className="text-xs">Website</span>
@@ -887,8 +887,8 @@ const Home = () => {
             )) : (
               <div className="col-span-full text-center py-12">
                 <GraduationCap className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Featured Scholarships Available</h3>
-                <p className="text-gray-500">Check back later for new opportunities</p>
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">No Featured Scholarships Available</h3>
+                <p className="text-gray-400">Check back later for new opportunities</p>
               </div>
             )}
           </div>
@@ -909,62 +909,62 @@ const Home = () => {
       <section className="max-w-7xl mx-auto px-4 mb-20">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#003366] to-[#17a2b8] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#003366] to-[#17a2b8] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="relative bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-[#1BA398]/30 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-[#0a2847]/95">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#1BA398] to-[#FF6B35] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Briefcase className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#003366] to-[#17a2b8] bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] bg-clip-text text-transparent">
                 {stats.activeJobs}
               </div>
-              <div className="text-gray-600 font-semibold text-lg mb-2">Active Jobs</div>
-              <div className="text-sm text-gray-500">Updated daily</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] mx-auto mt-4 rounded-full"></div>
+              <div className="text-[#1BA398] font-semibold text-lg mb-2">Active Jobs</div>
+              <div className="text-sm text-gray-400">Updated daily</div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35] to-orange-600 rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#FF6B35] to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35] to-[#1BA398] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="relative bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-[#FF6B35]/30 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-[#0a2847]/95">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#FF6B35] to-[#1BA398] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <GraduationCap className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#FF6B35] to-orange-600 bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#FF6B35] to-[#1BA398] bg-clip-text text-transparent">
                 {stats.scholarships}
               </div>
-              <div className="text-gray-600 font-semibold text-lg mb-2">Scholarships</div>
-              <div className="text-sm text-gray-500">Available now</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-[#FF6B35] to-orange-600 mx-auto mt-4 rounded-full"></div>
+              <div className="text-[#FF6B35] font-semibold text-lg mb-2">Scholarships</div>
+              <div className="text-sm text-gray-400">Available now</div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#FF6B35] to-[#1BA398] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#17a2b8] to-[#138496] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#17a2b8] to-[#138496] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="relative bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-[#1BA398]/30 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-[#0a2847]/95">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#1BA398] to-[#FF6B35] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Users className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#17a2b8] to-[#138496] bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] bg-clip-text text-transparent">
                 {stats.totalUsers}
               </div>
-              <div className="text-gray-600 font-semibold text-lg mb-2">Active Users</div>
-              <div className="text-sm text-gray-500">Growing community</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-[#17a2b8] to-[#138496] mx-auto mt-4 rounded-full"></div>
+              <div className="text-[#1BA398] font-semibold text-lg mb-2">Active Users</div>
+              <div className="text-sm text-gray-400">Growing community</div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
 
           <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#003366] to-[#FF6B35] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-white/90">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#003366] to-[#FF6B35] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#001F3F] to-[#1BA398] rounded-3xl blur-lg opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="relative bg-[#0a2847]/80 backdrop-blur-lg rounded-3xl p-8 text-center border border-[#1BA398]/30 shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:bg-[#0a2847]/95">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#001F3F] to-[#1BA398] rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                 <TrendingUp className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-[#003366] to-[#FF6B35] bg-clip-text text-transparent">
+              <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] bg-clip-text text-transparent">
                 {stats.successRate}
               </div>
-              <div className="text-gray-600 font-semibold text-lg mb-2">Success Rate</div>
-              <div className="text-sm text-gray-500">Proven results</div>
-              <div className="w-16 h-1 bg-gradient-to-r from-[#003366] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
+              <div className="text-[#FF6B35] font-semibold text-lg mb-2">Success Rate</div>
+              <div className="text-sm text-gray-400">Proven results</div>
+              <div className="w-16 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
         </div>
@@ -972,7 +972,7 @@ const Home = () => {
 
       {/* Call to Action Section */}
       <section className="max-w-7xl mx-auto px-4 mb-20">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#FF6B35] p-12 text-center">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#1BA398] via-[#FF6B35] to-[#1BA398] p-12 text-center">
           <div className="absolute inset-0 bg-black/20"></div>
           <div className="relative z-10">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -984,13 +984,13 @@ const Home = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/jobs">
-                <Button size="lg" className="bg-white text-[#003366] hover:bg-blue-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                <Button size="lg" className="bg-white text-[#1BA398] hover:bg-[#1BA398]/10 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                   <Briefcase className="w-5 h-5 mr-2" />
                   Explore Jobs
                 </Button>
               </Link>
               <Link to="/scholarships">
-                <Button size="lg" className="bg-white text-[#FF6B35] hover:bg-orange-50 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                <Button size="lg" className="bg-white text-[#FF6B35] hover:bg-[#FF6B35]/10 px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                   <GraduationCap className="w-5 h-5 mr-2" />
                   Find Scholarships
                 </Button>

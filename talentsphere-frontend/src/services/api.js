@@ -111,23 +111,28 @@ class ApiService {
           console.log('🌐 Response preview:', responseText.substring(0, 200));
         }
         
-        // Check if response is HTML (error page) instead of JSON
+        // Handle 404s early before attempting JSON parsing
+        if (response.status === 404) {
+          console.warn('⚠️ API endpoint not found (404):', url);
+          throw new Error(`API endpoint not found: ${url}`);
+        }
+        
         const trimmedText = responseText.trim();
+        
+        // Check if response is HTML (error page) instead of JSON
         if (trimmedText.toLowerCase().startsWith('<!doctype') || 
             trimmedText.toLowerCase().startsWith('<html')) {
           console.error('❌ Server returned HTML instead of JSON');
           console.error('URL:', url);
           console.error('Status:', response.status);
           console.error('Response preview:', trimmedText.substring(0, 500));
-          
-          // This is likely a CORS error, 404, or server misconfiguration
-          if (response.status === 404) {
-            throw new Error(`API endpoint not found: ${url}`);
-          } else if (response.status === 0) {
-            throw new Error('Network error: Cannot reach API server. Check CORS configuration and API URL.');
-          } else {
-            throw new Error(`Server error (${response.status}): API returned HTML instead of JSON. This may indicate a CORS issue or server misconfiguration.`);
-          }
+          throw new Error(`Server error (${response.status}): API returned HTML instead of JSON. This may indicate a CORS issue or server misconfiguration.`);
+        }
+        
+        // Check if response is plain text that's not JSON
+        if (trimmedText.length > 0 && !trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+          console.warn('⚠️ Server returned plain text instead of JSON:', trimmedText.substring(0, 100));
+          throw new Error(`Server returned plain text instead of JSON: "${trimmedText.substring(0, 50)}"`);
         }
         
         // Only parse if there's content
@@ -138,8 +143,9 @@ class ApiService {
         }
       } catch (jsonError) {
         // Re-throw if it's already our custom error
-        if (jsonError.message.includes('API returned HTML') || 
-            jsonError.message.includes('API endpoint not found') ||
+        if (jsonError.message.includes('API endpoint not found') || 
+            jsonError.message.includes('API returned HTML') ||
+            jsonError.message.includes('plain text') ||
             jsonError.message.includes('Network error')) {
           throw jsonError;
         }
@@ -521,6 +527,101 @@ class ApiService {
   // Statistics endpoints
   async getApplicationStats() {
     return this.get('/application-stats');
+  }
+
+  async getProfileViews(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.get(`/user/profile-views${queryString ? `?${queryString}` : ''}`);
+  }
+
+  // Interview schedule endpoints (with fallback for missing endpoints)
+  // Returns empty list if endpoint doesn't exist
+  async getInterviewSchedule(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      return await this.get(`/interviews${queryString ? `?${queryString}` : ''}`);
+    } catch (error) {
+      if (error.message.includes('endpoint not found')) {
+        console.info('ℹ️ Interview schedule endpoint not implemented yet');
+      } else {
+        console.warn('⚠️ Failed to fetch interview schedule:', error.message);
+      }
+      return { interviews: [] };
+    }
+  }
+
+  async getMyInterviews(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      return await this.get(`/my-interviews${queryString ? `?${queryString}` : ''}`);
+    } catch (error) {
+      if (error.message.includes('endpoint not found')) {
+        console.info('ℹ️ My interviews endpoint not implemented yet');
+      } else {
+        console.warn('⚠️ Failed to fetch interviews:', error.message);
+      }
+      return { interviews: [] };
+    }
+  }
+
+  // Skill gap analysis endpoints (with fallback for missing endpoints)
+  // Returns empty list if endpoint doesn't exist
+  async getSkillGaps(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      return await this.get(`/skill-analysis/gaps${queryString ? `?${queryString}` : ''}`);
+    } catch (error) {
+      if (error.message.includes('endpoint not found')) {
+        console.info('ℹ️ Skill gap analysis endpoint not implemented yet');
+      } else {
+        console.warn('⚠️ Failed to fetch skill gaps:', error.message);
+      }
+      return { skill_gaps: [] };
+    }
+  }
+
+  // Career insights endpoints (with fallback for missing endpoints)
+  // Returns default insights if endpoint doesn't exist
+  async getCareerInsights(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      return await this.get(`/career-insights${queryString ? `?${queryString}` : ''}`);
+    } catch (error) {
+      if (error.message.includes('endpoint not found')) {
+        console.info('ℹ️ Career insights endpoint not implemented yet');
+      } else {
+        console.warn('⚠️ Failed to fetch career insights:', error.message);
+      }
+      return { avg_salary_increase: 0, market_demand: 'Medium', top_skills_in_demand: [], career_growth_potential: 0 };
+    }
+  }
+
+  // Profile views endpoint (with fallback for missing endpoint)
+  // Returns 0 views if endpoint doesn't exist
+  async getProfileViews(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      return await this.get(`/user/profile-views${queryString ? `?${queryString}` : ''}`);
+    } catch (error) {
+      if (error.message.includes('endpoint not found')) {
+        console.info('ℹ️ Profile views endpoint not implemented yet');
+      } else {
+        console.warn('⚠️ Failed to fetch profile views:', error.message);
+      }
+      return { total_views: 0, profile_views: 0 };
+    }
+  }
+
+  // Check if job is bookmarked
+  async checkJobBookmark(jobId) {
+    try {
+      const bookmarks = await this.getMyBookmarks();
+      const bookmarkList = bookmarks.bookmarks || [];
+      return bookmarkList.some(b => b.job_id === jobId || b.job?.id === jobId);
+    } catch (error) {
+      console.warn('Could not check bookmark status:', error);
+      return false;
+    }
   }
 
   // Employer Dashboard specific endpoints

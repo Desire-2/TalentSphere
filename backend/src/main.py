@@ -72,13 +72,13 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Ultra-optimized performance settings
+# Database connection pooling - conservative for Aiven database limits
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
-    'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '1800')),  # 30 minutes
-    'pool_size': int(os.getenv('DB_POOL_SIZE', '15')),  # Increased pool size
-    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '25')),  # Increased overflow
-    'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '20')),  # Reduced timeout
+    'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '600')),  # 10 minutes - faster recycling
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '3')),  # Reduced from 15 to 3
+    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '5')),  # Reduced from 25 to 5
+    'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '10')),  # Reduced from 20 to 10
     'echo': os.getenv('SQL_ECHO', 'false').lower() == 'true',
     'echo_pool': os.getenv('SQL_ECHO_POOL', 'false').lower() == 'true'
 }
@@ -319,15 +319,21 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"⚠️  Job digest scheduler failed to start: {e}")
     
-    # Start cleanup service
-    try:
-        cleanup_service = start_cleanup_service()
-        if cleanup_service and cleanup_service.is_running:
-            print("✅ Cleanup service started (external jobs & scholarships auto-delete)")
-        else:
-            print("⚠️  Cleanup service initialized but may not be running in all workers")
-    except Exception as e:
-        print(f"⚠️  Cleanup service failed to start: {e}")
+    # Start cleanup service - DISABLED to prevent database connection exhaustion
+    # The cleanup service was causing "too many clients" errors on the Aiven database
+    # It will be re-enabled once connection pooling is optimized
+    cleanup_enabled = os.getenv('ENABLE_CLEANUP_SERVICE', 'false').lower() == 'true'
+    if cleanup_enabled:
+        try:
+            cleanup_service = start_cleanup_service()
+            if cleanup_service and cleanup_service.is_running:
+                print("✅ Cleanup service started (external jobs & scholarships auto-delete)")
+            else:
+                print("⚠️  Cleanup service initialized but may not be running in all workers")
+        except Exception as e:
+            print(f"⚠️  Cleanup service failed to start: {e}")
+    else:
+        print("⚠️  Cleanup service disabled (set ENABLE_CLEANUP_SERVICE=true to enable)")
         import traceback
         traceback.print_exc()
     

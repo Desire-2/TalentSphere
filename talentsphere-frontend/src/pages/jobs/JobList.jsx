@@ -299,7 +299,7 @@ const JobList = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 relative overflow-hidden">
+      <div className="w-full min-h-screen bg-gradient-to-br from-[#001F3F] via-[#0a2847] to-[#001F3F] relative overflow-hidden">
         {/* SEO Meta Tags */}
         <SEOHelmet
           title={seoTitle}
@@ -312,11 +312,11 @@ const JobList = () => {
         />
         {/* Background Decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#003366]/10 to-[#17a2b8]/10 rounded-full blur-3xl animate-float" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#17a2b8]/10 to-[#FF6B35]/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#1BA398]/15 to-[#FF6B35]/15 rounded-full blur-3xl animate-float" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#FF6B35]/15 to-[#1BA398]/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         </div>
 
-  <div className="relative max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
+  <div className="relative w-full px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
           {/* Enhanced Header with Stats */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
@@ -328,7 +328,7 @@ const JobList = () => {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#003366] bg-clip-text text-transparent mb-2">
                   Find Your Dream Job
                 </h1>
-                <p className="text-lg text-gray-600 flex items-center gap-2">
+                <p className="text-lg text-gray-300 flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-green-500" />
                   Discover {pagination.total || 0} exciting opportunities
                 </p>
@@ -359,30 +359,30 @@ const JobList = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-4 sm:p-8 mb-6 sm:mb-8 hover-lift"
+            className="bg-[#0a2847]/80 backdrop-blur-lg rounded-2xl shadow-xl border border-[#FF6B35]/30 p-4 sm:p-8 mb-6 sm:mb-8 hover-lift"
           >
             <form onSubmit={handleSearch} className="space-y-6">
               {/* Main Search Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2 sm:gap-4">
                 <div className="sm:col-span-2 md:col-span-5 relative group">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#17a2b8] transition-colors" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#FF6B35] transition-colors" />
                   <Input
                     type="text"
                     placeholder="Job title, keywords, company name, or skills..."
                     value={filters.search}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-[#17a2b8] rounded-xl bg-white/50 backdrop-blur-sm transition-all"
+                    className="pl-12 h-12 text-lg border-2 border-[#FF6B35]/30 focus:border-[#FF6B35] rounded-xl bg-[#0a2847]/60 text-white placeholder:text-gray-400 backdrop-blur-sm transition-all"
                   />
                   {/* Recent Searches Dropdown */}
                   {recentSearches.length > 0 && filters.search === '' && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-10">
-                      <div className="p-2 text-xs text-gray-500 bg-gray-50">Recent searches</div>
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a2847]/95 backdrop-blur-sm rounded-lg shadow-lg border border-[#FF6B35]/30 overflow-hidden z-10">
+                      <div className="p-2 text-xs text-gray-400 bg-[#0a2847]/40">Recent searches</div>
                       {recentSearches.map((search, index) => (
                         <button
                           key={index}
                           type="button"
                           onClick={() => handleQuickSearch(search)}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm transition-colors"
+                          className="w-full text-left px-4 py-2 hover:bg-[#0a2847]/60 text-sm text-gray-300 transition-colors"
                         >
                           <Clock className="w-3 h-3 inline mr-2 text-gray-400" />
                           {search}
@@ -392,17 +392,17 @@ const JobList = () => {
                   )}
                 </div>
                 <div className="sm:col-span-2 md:col-span-4 relative group">
-                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#17a2b8] transition-colors" />
+                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#FF6B35] transition-colors" />
                   <Input
                     type="text"
                     placeholder="City, state, or remote work..."
                     value={filters.location}
                     onChange={(e) => handleFilterChange('location', e.target.value)}
-                    className="pl-12 h-12 text-lg border-2 border-gray-100 focus:border-[#17a2b8] rounded-xl bg-white/50 backdrop-blur-sm transition-all"
+                    className="pl-12 h-12 text-lg border-2 border-[#FF6B35]/30 focus:border-[#FF6B35] rounded-xl bg-[#0a2847]/60 text-white placeholder:text-gray-400 backdrop-blur-sm transition-all"
                   />
                 </div>
                 <div className="sm:col-span-2 md:col-span-3">
-                  <Button type="submit" size="lg" className="w-full h-12 bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#002244] hover:to-[#138496] rounded-xl shadow-lg hover:shadow-xl transition-all btn-primary-hover">
+                  <Button type="submit" size="lg" className="w-full h-12 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] hover:from-[#158b7e] hover:to-[#e55a24] rounded-xl shadow-lg hover:shadow-xl transition-all btn-primary-hover">
                     <Search className="w-5 h-5 mr-2" />
                     Search Jobs
                   </Button>
@@ -415,7 +415,7 @@ const JobList = () => {
                   type="button"
                   variant="ghost"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="text-gray-600 hover:text-[#17a2b8] transition-colors"
+                  className="text-gray-300 hover:text-[#FF6B35] transition-colors"
                 >
                   <SlidersHorizontal className="w-4 h-4 mr-2" />
                   Advanced Filters
@@ -429,7 +429,7 @@ const JobList = () => {
                 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Sort by:</span>
+                    <span className="text-sm text-gray-300">Sort by:</span>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-40 border-gray-200">
                         <SelectValue />
@@ -444,7 +444,7 @@ const JobList = () => {
                     </Select>
                   </div>
                   
-                    <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-white mt-2 sm:mt-0">
+                    <div className="flex items-center border border-[#FF6B35]/30 rounded-lg p-1 bg-[#0a2847]/60 mt-2 sm:mt-0">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
@@ -490,7 +490,7 @@ const JobList = () => {
                       </Select>
 
                       <Select value={filters.employment_type || "all"} onValueChange={(value) => handleFilterChange('employment_type', value === "all" ? "" : value)}>
-                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg">
+                        <SelectTrigger className="h-11 border-2 border-[#FF6B35]/30 bg-[#0a2847]/60 text-gray-300 focus:border-[#FF6B35] rounded-lg">
                           <SelectValue placeholder="Job Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -502,7 +502,7 @@ const JobList = () => {
                       </Select>
 
                       <Select value={filters.experience_level || "all"} onValueChange={(value) => handleFilterChange('experience_level', value === "all" ? "" : value)}>
-                        <SelectTrigger className="h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg">
+                        <SelectTrigger className="h-11 border-2 border-[#FF6B35]/30 bg-[#0a2847]/60 text-gray-300 focus:border-[#FF6B35] rounded-lg">
                           <SelectValue placeholder="Experience" />
                         </SelectTrigger>
                         <SelectContent>
@@ -513,7 +513,7 @@ const JobList = () => {
                         </SelectContent>
                       </Select>
 
-                      <Button variant="outline" onClick={clearFilters} className="h-11 border-2 border-gray-100 hover:border-red-300 hover:text-red-600 transition-colors rounded-lg">
+                      <Button variant="outline" onClick={clearFilters} className="h-11 border-2 border-[#FF6B35]/30 text-gray-300 hover:border-red-500 hover:text-red-400 transition-colors rounded-lg">
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Clear Filters
                       </Button>
@@ -521,7 +521,7 @@ const JobList = () => {
 
                     {/* Salary Range */}
                     <div className="mt-2 sm:mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Salary Range</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -530,7 +530,7 @@ const JobList = () => {
                             placeholder="Min salary"
                             value={filters.salary_min}
                             onChange={(e) => handleFilterChange('salary_min', e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg"
+                            className="pl-10 h-11 border-2 border-[#FF6B35]/30 bg-[#0a2847]/60 text-white placeholder:text-gray-400 focus:border-[#FF6B35] rounded-lg\"
                           />
                         </div>
                         <div className="relative">
@@ -540,7 +540,7 @@ const JobList = () => {
                             placeholder="Max salary"
                             value={filters.salary_max}
                             onChange={(e) => handleFilterChange('salary_max', e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-100 focus:border-[#17a2b8] rounded-lg"
+                            className="pl-10 h-11 border-2 border-[#FF6B35]/30 bg-[#0a2847]/60 text-white placeholder:text-gray-400 focus:border-[#FF6B35] rounded-lg"
                           />
                         </div>
                       </div>
@@ -574,8 +574,8 @@ const JobList = () => {
                     <Briefcase className="w-8 h-8 text-[#003366] animate-pulse" />
                   </div>
                 </div>
-                <p className="text-lg text-gray-600 font-medium">Finding amazing opportunities...</p>
-                <p className="text-sm text-gray-500 mt-2">This might take a moment</p>
+                <p className="text-lg text-gray-300 font-medium">Finding amazing opportunities...</p>
+                <p className="text-sm text-gray-400 mt-2">This might take a moment</p>
               </motion.div>
             ) : error ? (
               <motion.div
@@ -587,8 +587,8 @@ const JobList = () => {
                 <div className="w-32 h-32 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Search className="w-16 h-16 text-red-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">{error}</p>
+                <h3 className="text-2xl font-bold text-white mb-2">Oops! Something went wrong</h3>
+                <p className="text-gray-300 mb-6 max-w-md mx-auto">{error}</p>
                 <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Try Again
@@ -602,10 +602,10 @@ const JobList = () => {
                 className="text-center py-16"
               >
                 <div className="w-32 h-32 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Search className="w-16 h-16 text-gray-400" />
+                  <Search className="w-16 h-16 text-gray-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">No jobs match your search</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                <h3 className="text-2xl font-bold text-white mb-2">No jobs match your search</h3>
+                <p className="text-gray-300 mb-6 max-w-md mx-auto">
                   Try adjusting your search criteria or explore different filters to find more opportunities
                 </p>
                 <Button onClick={clearFilters} variant="outline" size="lg">
@@ -795,7 +795,7 @@ const JobCard = ({
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#003366] transition-colors">
+                      <h3 className="text-xl font-bold text-white group-hover:text-[#FF6B35] transition-colors">
                         {job.title}
                       </h3>
                       {job.job_source === 'external' && (
@@ -967,17 +967,17 @@ const JobCard = ({
       animate="visible"
       className="group stagger-item"
     >
-      <Card className="h-full hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-2xl hover:border-blue-200/50 cursor-pointer" onClick={handleCardClick}>
+      <Card className="h-full hover-lift bg-[#0a2847]/80 backdrop-blur-sm border border-[#FF6B35]/30 transition-all duration-300 hover:bg-[#0a2847]/95 hover:shadow-2xl hover:border-[#FF6B35]/60 cursor-pointer" onClick={handleCardClick}>
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between mb-4">
             {/* Company Avatar and Basic Info */}
             <div className="flex items-start gap-4 flex-1">
               <div className="relative">
-                <Avatar className="w-14 h-14 border-2 border-white shadow-md ring-2 ring-blue-100">
+                <Avatar className="w-14 h-14 border-2 border-[#FF6B35]/40 shadow-md ring-2 ring-[#1BA398]/30">
                   <AvatarImage 
                     src={getCompanyLogo(job)} 
                     alt={getCompanyName(job)} 
-                    className={job.job_source === 'external' ? 'ring-2 ring-purple-200' : ''}
+                    className={job.job_source === 'external' ? 'ring-2 ring-[#FF6B35]/30' : ''}
                     onError={() => {
                       if (job.job_source === 'external') {
                         console.log(`External logo failed to load for ${getCompanyName(job)}:`, job.external_company_logo);
@@ -1003,7 +1003,7 @@ const JobCard = ({
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                  <h3 className="font-bold text-lg text-white group-hover:text-[#FF6B35] transition-colors line-clamp-1">
                     {job.title}
                   </h3>
                 </div>
@@ -1012,12 +1012,12 @@ const JobCard = ({
                 <div className="mb-2">
                   <div className="flex items-center gap-2 mb-1">
                     <Building className="w-4 h-4 text-gray-400" />
-                    <p className="text-gray-800 font-semibold">{getCompanyName(job)}</p>
+                    <p className="text-gray-300 font-semibold">{getCompanyName(job)}</p>
                     {job.external_company_website && (
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-5 px-2 text-xs text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                        className="h-5 px-2 text-xs text-[#1BA398] hover:text-[#FF6B35] hover:bg-[#0a2847]/40 rounded-md transition-all"
                         asChild
                       >
                         <a href={job.external_company_website} target="_blank" rel="noopener noreferrer">
@@ -1027,7 +1027,7 @@ const JobCard = ({
                       </Button>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
                     <MapPin className="w-3 h-3" />
                     <span>{getJobLocation(job)}</span>
                   </div>
@@ -1041,12 +1041,12 @@ const JobCard = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => onToggleBookmark(job.id)}
-                className="h-9 w-9 p-0 hover:bg-blue-50 transition-colors"
+                className="h-9 w-9 p-0 hover:bg-[#0a2847]/60 transition-colors"
               >
                 {isBookmarked ? (
-                  <BookmarkCheck className="w-4 h-4 text-blue-600" />
+                  <BookmarkCheck className="w-4 h-4 text-[#FF6B35]" />
                 ) : (
-                  <Bookmark className="w-4 h-4 group-hover:text-blue-600 transition-colors" />
+                  <Bookmark className="w-4 h-4 text-gray-400 group-hover:text-[#FF6B35] transition-colors" />
                 )}
               </Button>
             </div>
@@ -1072,7 +1072,7 @@ const JobCard = ({
                 Urgent
               </Badge>
             )}
-            <Badge variant="outline" className="bg-indigo-50/50 text-indigo-700 border-indigo-200 text-xs">
+            <Badge variant="outline" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20 text-xs">
               {snakeToTitle(job.employment_type)}
             </Badge>
           </div>
@@ -1081,8 +1081,8 @@ const JobCard = ({
         <CardContent className="pt-0">
           <div className="space-y-4">
             {/* Enhanced Job Description */}
-            <div className="bg-gray-50/50 rounded-lg p-3 border border-gray-100">
-              <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
+            <div className="bg-[#0a2847]/40 rounded-lg p-3 border border-[#FF6B35]/20">
+              <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed">
                 {getJobDescription(job)}
               </p>
             </div>
@@ -1090,18 +1090,18 @@ const JobCard = ({
             {/* Skills */}
             {job.required_skills && (
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="text-xs font-medium text-gray-600 mr-2 self-center">Skills:</span>
+                <span className="text-xs font-medium text-gray-400 mr-2 self-center">Skills:</span>
                 {job.required_skills.split(',').slice(0, 4).map((skill, skillIndex) => (
                   <Badge 
                     key={skillIndex} 
                     variant="outline" 
-                    className="bg-blue-50/50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors text-xs"
+                    className="bg-[#1BA398]/10 text-[#1BA398] border-[#1BA398]/20 hover:bg-[#1BA398]/20 transition-colors text-xs"
                   >
                     {skill.trim()}
                   </Badge>
                 ))}
                 {job.required_skills.split(',').length > 4 && (
-                  <Badge variant="outline" className="bg-gray-50 text-gray-600 text-xs">
+                  <Badge variant="outline" className="bg-[#0a2847]/60 text-gray-400 text-xs">
                     +{job.required_skills.split(',').length - 4} more
                   </Badge>
                 )}
@@ -1111,20 +1111,20 @@ const JobCard = ({
             {/* Job Details */}
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between">
-                <div className="flex items-center text-gray-600">
+                <div className="flex items-center text-gray-300">
                   <DollarSign className="w-3 h-3 mr-1 text-green-500" />
                   <span className="font-medium">
                     {getSalaryDisplay(job)}
                   </span>
                 </div>
-                <div className="flex items-center text-gray-600">
+                <div className="flex items-center text-gray-300">
                   <Clock className="w-3 h-3 mr-1 text-purple-500" />
                   <span className="font-medium">{formatRelativeTime(job.created_at)}</span>
                 </div>
               </div>
               
               {/* Application Count */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between pt-2 border-t border-[#FF6B35]/20">
                 <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(job.statistics?.application_count || 0)}`}>
                   <Users className="w-3 h-3 inline mr-1" />
                   {job.statistics?.application_count || 0} applied
@@ -1133,7 +1133,7 @@ const JobCard = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 hover:bg-gray-50 transition-colors"
+                    className="h-6 w-6 p-0 hover:bg-[#0a2847]/40 transition-colors"
                   >
                     <Eye className="w-3 h-3 text-gray-400" />
                   </Button>
@@ -1148,7 +1148,7 @@ const JobCard = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 hover:bg-gray-50 transition-colors"
+                        className="h-6 w-6 p-0 hover:bg-[#0a2847]/40 transition-colors"
                       >
                         <Share2 className="w-3 h-3 text-gray-400" />
                       </Button>
@@ -1161,7 +1161,7 @@ const JobCard = ({
             {/* View Job Button */}
             <Button 
               asChild 
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all btn-primary-hover"
+              className="w-full bg-gradient-to-r from-[#1BA398] to-[#FF6B35] hover:from-[#158b7e] hover:to-[#e55a24] shadow-md hover:shadow-lg transition-all btn-primary-hover text-white"
             >
               <Link to={`/jobs/${job.id}`} className="flex items-center justify-center">
                 View Details

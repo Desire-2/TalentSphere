@@ -339,7 +339,7 @@ const ScholarshipList = () => {
   };
 
   const getDeadlineColor = (deadline) => {
-    if (!deadline) return 'text-gray-500';
+    if (!deadline) return 'text-gray-400';
     const date = new Date(deadline);
     const today = new Date();
     const diffTime = date - today;
@@ -391,7 +391,7 @@ const ScholarshipList = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading scholarships...</p>
+          <p className="text-gray-300">Loading scholarships...</p>
         </div>
       </div>
     );
@@ -418,7 +418,7 @@ const ScholarshipList = () => {
   const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbs);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
+    <div className="w-full min-h-screen bg-gradient-to-br from-[#001F3F] via-[#0a2847] to-[#001F3F]">
       {/* SEO Meta Tags */}
       <SEOHelmet
         title={seoTitle}
@@ -430,8 +430,8 @@ const ScholarshipList = () => {
         structuredData={breadcrumbStructuredData}
       />
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#FF6B35] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="bg-gradient-to-r from-[#1BA398] via-[#0a2847] to-[#FF6B35] text-white">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <div className="flex justify-center mb-6">
               <div className="p-4 bg-white/20 rounded-full">
@@ -456,7 +456,7 @@ const ScholarshipList = () => {
                     placeholder="Search scholarships by name, organization, or field..."
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    className="pl-10 h-12 bg-white/95 border-white/20 text-gray-900 placeholder:text-gray-500"
+                    className="pl-10 h-12 bg-[#0a2847]/80 border-[#FF6B35]/30 text-white placeholder:text-gray-400"
                   />
                 </div>
                 <Button type="submit" size="lg" className="bg-white text-[#FF6B35] hover:bg-orange-50 px-8 font-bold">
@@ -469,13 +469,13 @@ const ScholarshipList = () => {
       </div>
 
       {/* Google Ads - Leaderboard */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex justify-center mb-8">
           <LeaderboardAd className="rounded-lg shadow-sm" />
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar - Filters */}
           <div className="lg:w-1/4">
@@ -484,8 +484,8 @@ const ScholarshipList = () => {
               <SquareAd className="rounded-lg shadow-sm mx-auto" />
             </div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-[#0a2847]/80 backdrop-blur-sm rounded-2xl border border-[#FF6B35]/20 shadow-lg p-6 sticky top-6\">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
                 <Filter className="w-5 h-5 mr-2 text-[#FF6B35]" />
                 Filter by Category
               </h3>
@@ -496,7 +496,7 @@ const ScholarshipList = () => {
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedCategory === '' 
                       ? 'bg-[#FF6B35]/10 text-[#FF6B35] border border-[#FF6B35]/20' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                      : 'text-gray-300 hover:bg-[#0a2847]/40'
                   }`}
                 >
                   All Categories
@@ -508,7 +508,7 @@ const ScholarshipList = () => {
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       selectedCategory === category.slug 
                         ? 'bg-[#FF6B35]/10 text-[#FF6B35] border border-[#FF6B35]/20' 
-                        : 'text-gray-600 hover:bg-gray-50'
+                        : 'text-gray-300 hover:bg-[#0a2847]/40'
                     }`}
                   >
                     {category.name}
@@ -523,13 +523,13 @@ const ScholarshipList = () => {
             {/* Results Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-white">
                   {selectedCategory ? 
                     categories.find(c => c.slug === selectedCategory)?.name + ' Scholarships' : 
                     'All Scholarships'
                   }
                 </h2>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-300 mt-1">
                   {totalScholarships} scholarships found
                   {searchTerm && ` for "${searchTerm}"`}
                 </p>
@@ -541,7 +541,7 @@ const ScholarshipList = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => handleSortChange(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20"
+                  className="px-3 py-2 border border-[#FF6B35]/30 rounded-lg text-sm font-medium text-gray-300 bg-[#0a2847]/60 hover:bg-[#0a2847]/80 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20"
                 >
                   <option value="updated_at">Recently Updated</option>
                   <option value="created_at">Newly Added</option>
@@ -569,9 +569,9 @@ const ScholarshipList = () => {
             {/* Scholarship Grid */}
             {scholarships.length === 0 ? (
               <div className="text-center py-12">
-                <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No scholarships found</h3>
-                <p className="text-gray-600 mb-4">
+                <GraduationCap className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No scholarships found</h3>
+                <p className="text-gray-300 mb-4">
                   {searchTerm ? 
                     'Try adjusting your search terms or filters.' : 
                     'No scholarships are currently available.'
@@ -596,7 +596,7 @@ const ScholarshipList = () => {
                 {scholarships.map((scholarship) => (
                   <Card 
                     key={scholarship.id} 
-                    className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:scale-[1.02] cursor-pointer"
+                    className="group bg-[#0a2847]/80 backdrop-blur-sm border border-[#FF6B35]/30 hover:shadow-xl transition-all duration-300 shadow-lg hover:scale-[1.02] cursor-pointer hover:bg-[#0a2847]/95 hover:border-[#FF6B35]/60"
                     onClick={(e) => handleCardClick(scholarship.id, e)}
                   >
                     <CardHeader className="pb-3">
@@ -606,7 +606,7 @@ const ScholarshipList = () => {
                             {scholarship.category?.name || 'General'}
                           </Badge>
                           {scholarship.external_application_url && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                            <Badge variant="outline" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/30 text-xs">
                               <ExternalLink className="w-3 h-3 mr-1" />
                               External
                             </Badge>
@@ -617,28 +617,28 @@ const ScholarshipList = () => {
                           {formatDeadline(scholarship.application_deadline)}
                         </div>
                       </div>
-                      <CardTitle className="text-lg group-hover:text-[#FF6B35] transition-colors line-clamp-2">
+                      <CardTitle className="text-lg font-bold text-white group-hover:text-[#FF6B35] transition-colors line-clamp-2">
                         {scholarship.title}
                       </CardTitle>
-                      <CardDescription className="flex items-center text-gray-600">
+                      <CardDescription className="flex items-center text-gray-300">
                         <Building2 className="w-4 h-4 mr-1" />
                         {scholarship.external_organization_name || scholarship.university_name || 'TalentSphere'}
                       </CardDescription>
                       {scholarship.updated_at && (
-                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                        <div className="flex items-center text-xs text-gray-400 mt-1">
                           <RefreshCw className="w-3 h-3 mr-1" />
                           Updated {formatLastUpdated(scholarship.updated_at)}
                         </div>
                       )}
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      <p className="text-gray-300 text-sm mb-4 line-clamp-3">
                         {scholarship.description}
                       </p>
                       
                       <div className="space-y-2 mb-4">
                         {scholarship.award_amount && (
-                          <div className="flex items-center text-sm text-gray-600">
+                          <div className="flex items-center text-sm text-gray-300">
                             <DollarSign className="w-4 h-4 mr-2 text-green-600" />
                             <span className="font-medium text-green-600">
                               ${scholarship.award_amount.toLocaleString()}
@@ -646,13 +646,13 @@ const ScholarshipList = () => {
                           </div>
                         )}
                         {scholarship.location && (
-                          <div className="flex items-center text-sm text-gray-600">
+                          <div className="flex items-center text-sm text-gray-300">
                             <MapPin className="w-4 h-4 mr-2" />
                             {getLocationDisplay(scholarship.location)}
                           </div>
                         )}
                         {scholarship.eligible_programs && (
-                          <div className="flex items-center text-sm text-gray-600">
+                          <div className="flex items-center text-sm text-gray-300">
                             <Users className="w-4 h-4 mr-2" />
                             {scholarship.eligible_programs}
                           </div>
@@ -662,7 +662,7 @@ const ScholarshipList = () => {
                       <div className="flex justify-between items-center">
                         <Link 
                           to={`/scholarships/${scholarship.id}`}
-                          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm group"
+                          className="inline-flex items-center text-[#1BA398] hover:text-[#FF6B35] font-medium text-sm group transition-colors"
                         >
                           Learn More
                           <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
@@ -672,7 +672,7 @@ const ScholarshipList = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-gray-400 hover:text-blue-600 p-2"
+                            className="text-gray-300 hover:text-[#FF6B35] p-2"
                           >
                             <Bookmark className="w-4 h-4" />
                           </Button>

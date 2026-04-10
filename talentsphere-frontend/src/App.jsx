@@ -71,9 +71,6 @@ import CVBuilder from './pages/jobseeker/CVBuilder';
 import CompanyProfileManagement from './pages/company/CompanyProfileManagement';
 import CompanySettings from './pages/company/CompanySettings';
 
-// Test Pages
-import RedirectTestPage from './pages/test/RedirectTestPage';
-
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
@@ -123,7 +120,6 @@ function App() {
                 <ApplicationSuccess />
               </ProtectedRoute>
             } />
-            <Route path="test-redirect" element={<RedirectTestPage />} />
             {/* Job application route - protected and nested properly */}
             <Route path="jobs/:id/apply" element={
               <ProtectedRoute requiredRole="job_seeker">

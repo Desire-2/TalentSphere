@@ -582,6 +582,178 @@ def update_user_profile(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to update profile', 'details': str(e)}), 500
 
+
+# ==================== PROFILE ANALYTICS ENDPOINTS ====================
+
+@user_bp.route('/user/profile-views', methods=['GET'])
+@token_required
+def get_profile_views(current_user):
+    """Get user's profile view count (job seeker only)"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers have profile views'}), 403
+        
+        profile = current_user.job_seeker_profile
+        if not profile:
+            return jsonify({
+                'total_views': 0,
+                'profile_views': []
+            }), 200
+        
+        # Get total views (stored in profile if available, otherwise 0)
+        total_views = getattr(profile, 'profile_views', 0) or 0
+        
+        return jsonify({
+            'total_views': total_views,
+            'profile_views': [],
+            'message': 'Profile view tracking initialized'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get profile views', 'details': str(e), 'total_views': 0}), 500
+
+
+# ==================== SKILL ANALYSIS ENDPOINTS ====================
+
+@user_bp.route('/skill-analysis/gaps', methods=['GET'])
+@token_required
+def get_skill_gaps(current_user):
+    """Get user's skill gaps based on job applications and market trends"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can view skill gaps'}), 403
+        
+        profile = current_user.job_seeker_profile
+        if not profile:
+            return jsonify({'skill_gaps': []}), 200
+        
+        # Parse user's current skills
+        import json
+        user_skills = []
+        if profile.technical_skills:
+            try:
+                user_skills.extend(json.loads(profile.technical_skills) if isinstance(profile.technical_skills, str) else profile.technical_skills)
+            except:
+                pass
+        
+        if profile.skills:
+            try:
+                user_skills.extend(json.loads(profile.skills) if isinstance(profile.skills, str) else profile.skills)
+            except:
+                pass
+        
+        # Analyze skills needed in recent job applications
+        from src.models.application import Application
+        from src.models.job import Job
+        
+        user_applications = Application.query.filter_by(applicant_id=current_user.id).limit(10).all()
+        
+        required_skills_count = {}
+        for app in user_applications:
+            job = Job.query.get(app.job_id)
+            if job and job.required_skills:
+                try:
+                    job_skills = json.loads(job.required_skills) if isinstance(job.required_skills, str) else job.required_skills
+                    for skill in job_skills:
+                        skill_name = skill.lower() if isinstance(skill, str) else str(skill).lower()
+                        if skill_name not in [s.lower() for s in user_skills]:
+                            required_skills_count[skill_name] = required_skills_count.get(skill_name, 0) + 1
+                except:
+                    pass
+        
+        # Return top skill gaps
+        skill_gaps = []
+        for skill, count in sorted(required_skills_count.items(), key=lambda x: x[1], reverse=True)[:10]:
+            skill_gaps.append({
+                'skill_name': skill.title(),
+                'market_demand': 'High' if count >= 3 else 'Medium' if count >= 1 else 'Low',
+                'your_level': 0,
+                'frequency': count
+            })
+        
+        return jsonify({'skill_gaps': skill_gaps}), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get skill gaps', 'details': str(e), 'skill_gaps': []}), 500
+
+
+# ==================== CAREER INSIGHTS ENDPOINTS ====================
+
+@user_bp.route('/career-insights', methods=['GET'])
+@token_required
+def get_career_insights(current_user):
+    """Get career insights based on user profile and job market"""
+    try:
+        if current_user.role != 'job_seeker':
+            return jsonify({'error': 'Only job seekers can view career insights'}), 403
+        
+        profile = current_user.job_seeker_profile
+        if not profile:
+            # Return default insights
+            return jsonify({
+                'avg_salary_increase': 0,
+                'market_demand': 'Medium',
+                'top_skills_in_demand': [],
+                'career_growth_potential': 0,
+                'message': 'Complete your profile for personalized insights'
+            }), 200
+        
+        # Calculate insights based on profile and applications
+        from src.models.application import Application
+        from src.models.job import Job
+        
+        # Get user's applications to analyze trends
+        applications = Application.query.filter_by(applicant_id=current_user.id).all()
+        
+        # Calculate average desired salary
+        avg_salary = 0
+        if profile.desired_salary_min and profile.desired_salary_max:
+            avg_salary = (profile.desired_salary_min + profile.desired_salary_max) // 2
+        
+        # Extract skills in demand
+        import json
+        skills_in_demand = {}
+        for app in applications:
+            job = Job.query.get(app.job_id)
+            if job and job.required_skills:
+                try:
+                    job_skills = json.loads(job.required_skills) if isinstance(job.required_skills, str) else job.required_skills
+                    for skill in job_skills:
+                        skill_name = str(skill).title()
+                        skills_in_demand[skill_name] = skills_in_demand.get(skill_name, 0) + 1
+                except:
+                    pass
+        
+        # Sort by frequency
+        top_skills = [skill for skill, _ in sorted(skills_in_demand.items(), key=lambda x: x[1], reverse=True)[:5]]
+        
+        # Calculate market demand based on number of applications
+        market_demand = 'High'
+        if len(applications) < 5:
+            market_demand = 'Low'
+        elif len(applications) < 15:
+            market_demand = 'Medium'
+        
+        # Career growth potential (based on experience and skills)
+        growth_potential = 50  # Base score
+        if profile.years_of_experience and profile.years_of_experience >= 5:
+            growth_potential += 20
+        if len(profile.technical_skills or []) >= 5:
+            growth_potential += 15
+        growth_potential = min(growth_potential, 100)
+        
+        return jsonify({
+            'avg_salary_increase': avg_salary,
+            'market_demand': market_demand,
+            'top_skills_in_demand': top_skills,
+            'career_growth_potential': growth_potential,
+            'applications_count': len(applications),
+            'years_experience': profile.years_of_experience or 0
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get career insights', 'details': str(e), 'avg_salary_increase': 0, 'market_demand': 'Medium', 'top_skills_in_demand': [], 'career_growth_potential': 0}), 500
+
 # Error handlers
 @user_bp.errorhandler(400)
 def bad_request(error):

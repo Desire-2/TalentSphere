@@ -150,7 +150,7 @@ const Header = () => {
         : 'bg-white/80 backdrop-blur-sm border-b border-gray-100'
     }`}>
       {/* Background gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-transparent to-purple-50/50 opacity-60 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398]/10 via-transparent to-[#FF6B35]/10 opacity-60 pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 relative z-10">
         <div className="flex items-center justify-between gap-2 min-h-[60px] md:min-h-[68px]">
@@ -163,10 +163,10 @@ const Header = () => {
                   alt="AfriTech Opportunities Logo" 
                   className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg object-contain shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:shadow-xl group-hover:drop-shadow-xl"
                 />
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1BA398] to-[#FF6B35] rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm sm:text-base md:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 group-hover:from-blue-600 group-hover:to-purple-600 transition-colors duration-300 leading-tight">
+                <span className="text-sm sm:text-base md:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-[#001F3F] via-[#1BA398] to-[#FF6B35] group-hover:from-[#1BA398] group-hover:to-[#FF6B35] transition-colors duration-300 leading-tight">
                   AfriTech Opp.
                 </span>
                 <span className="text-[8px] sm:text-[9px] md:text-xs text-gray-500 font-medium -mt-0.5 leading-tight">Jobs & Scholarships</span>
@@ -178,68 +178,68 @@ const Header = () => {
           <nav className="hidden lg:flex items-center space-x-0.5 xl:space-x-1">
             <Link 
               to="/jobs" 
-              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10"
             >
               <span className="relative z-10 flex items-center space-x-1">
                 <Search className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Find Jobs</span>
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398]/0 to-[#FF6B35]/0 group-hover:from-[#1BA398]/10 group-hover:to-[#FF6B35]/10 rounded-xl transition-all duration-300"></div>
             </Link>
             <Link 
               to="/companies" 
-              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10"
             >
               <span className="relative z-10 flex items-center space-x-1">
                 <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Companies</span>
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-purple-500/0 group-hover:from-blue-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398]/0 to-[#FF6B35]/0 group-hover:from-[#1BA398]/10 group-hover:to-[#FF6B35]/10 rounded-xl transition-all duration-300"></div>
             </Link>
             <Link 
               to="/scholarships" 
-              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
+              className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10"
             >
               <span className="relative z-10 flex items-center space-x-1">
                 <GraduationCap className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Scholarships</span>
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-indigo-500/0 group-hover:from-purple-500/10 group-hover:to-indigo-500/10 rounded-xl transition-all duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35]/0 to-[#1BA398]/0 group-hover:from-[#FF6B35]/10 group-hover:to-[#1BA398]/10 rounded-xl transition-all duration-300"></div>
             </Link>
             {isAuthenticated && user?.role === 'employer' && (
               <Link 
                 to="/post-job" 
-                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/50"
+                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10"
               >
                 <span className="relative z-10 flex items-center space-x-1">
                   <Star className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   <span>Post Job</span>
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 to-teal-500/0 group-hover:from-emerald-500/10 group-hover:to-teal-500/10 rounded-xl transition-all duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35]/0 to-[#1BA398]/0 group-hover:from-[#FF6B35]/10 group-hover:to-[#1BA398]/10 rounded-xl transition-all duration-300"></div>
               </Link>
             )}
             {isAuthenticated && user?.role === 'admin' && (
               <Link 
                 to="/admin" 
-                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/50"
+                className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10"
               >
                 <span className="relative z-10 flex items-center space-x-1">
                   <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   <span>Admin</span>
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-pink-500/0 group-hover:from-purple-500/10 group-hover:to-pink-500/10 rounded-xl transition-all duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#1BA398]/0 to-[#FF6B35]/0 group-hover:from-[#1BA398]/10 group-hover:to-[#FF6B35]/10 rounded-xl transition-all duration-300"></div>
               </Link>
             )}
             {isAuthenticated && user?.role === 'external_admin' && (
               <Link 
                 to="/external-admin" 
-                className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/50"
+                  className="group relative px-4 py-2 rounded-xl text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10"
               >
                 <span className="relative z-10 flex items-center space-x-1">
                   <GraduationCap className="w-4 h-4" />
                   <span>Manage Scholarships</span>
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-purple-500/0 group-hover:from-indigo-500/10 group-hover:to-purple-500/10 rounded-xl transition-all duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FF6B35]/0 to-[#1BA398]/0 group-hover:from-[#FF6B35]/10 group-hover:to-[#1BA398]/10 rounded-xl transition-all duration-300"></div>
               </Link>
             )}
           </nav>
@@ -252,7 +252,7 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="hidden xl:flex h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:scale-105"
+                  className="hidden xl:flex h-9 w-9 rounded-xl hover:bg-[#1BA398]/20 hover:text-[#1BA398] transition-all duration-300 hover:scale-105"
                   aria-label="Search"
                 >
                   <Search className="w-4 h-4" />
@@ -262,7 +262,7 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="hidden sm:flex h-9 w-9 rounded-xl hover:bg-green-50 hover:text-green-600 transition-all duration-300 hover:scale-105"
+                  className="hidden sm:flex h-9 w-9 rounded-xl hover:bg-[#FF6B35]/20 hover:text-[#FF6B35] transition-all duration-300 hover:scale-105"
                   aria-label="Messages"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -271,11 +271,11 @@ const Header = () => {
                 {/* Enhanced User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 px-1.5 sm:px-2.5 rounded-xl hover:bg-purple-50 transition-all duration-300 group">
+                    <Button variant="ghost" className="relative h-10 px-1.5 sm:px-2.5 rounded-xl hover:bg-[#FF6B35]/10 transition-all duration-300 group">
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
                           <AvatarImage src={user?.profile_picture} alt={user?.first_name} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
+                          <AvatarFallback className="bg-gradient-to-br from-[#1BA398] to-[#FF6B35] text-white font-semibold">
                             {getInitials(user?.first_name, user?.last_name)}
                           </AvatarFallback>
                         </Avatar>
@@ -285,16 +285,16 @@ const Header = () => {
                           {roleLabel && <span className="text-[11px] text-gray-500 truncate w-full">{roleLabel}</span>}
                         </div>
 
-                        <ChevronDown className="hidden sm:block w-4 h-4 text-gray-500 group-hover:text-purple-600 transition-colors duration-300" />
+                        <ChevronDown className="hidden sm:block w-4 h-4 text-gray-500 group-hover:text-[#FF6B35] transition-colors duration-300" />
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-64 max-h-[70vh] overflow-y-auto bg-white/95 backdrop-blur-lg border border-white/20 shadow-2xl rounded-2xl p-2" align="end" forceMount>
                     {/* Enhanced User Info */}
-                    <div className="flex items-center justify-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl mb-2">
+                    <div className="flex items-center justify-start gap-3 p-3 bg-gradient-to-r from-[#1BA398]/10 to-[#FF6B35]/10 rounded-xl mb-2">
                       <Avatar className="h-10 w-10 ring-2 ring-white shadow-lg">
                         <AvatarImage src={user?.profile_picture} alt={user?.first_name} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
+                        <AvatarFallback className="bg-gradient-to-br from-[#1BA398] to-[#FF6B35] text-white font-semibold">
                           {getInitials(user?.first_name, user?.last_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -304,7 +304,7 @@ const Header = () => {
                           {user?.email}
                         </p>
                         {user?.role && (
-                          <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 w-fit">
+                          <Badge variant="secondary" className="text-xs bg-gradient-to-r from-[#1BA398]/20 to-[#FF6B35]/20 text-[#1BA398] w-fit">
                             {roleLabel}
                           </Badge>
                         )}
@@ -347,7 +347,7 @@ const Header = () => {
                     })()}
                     
                     <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
-                    <DropdownMenuItem asChild className="rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer">
+                    <DropdownMenuItem asChild className="rounded-xl hover:bg-[#1BA398]/10 hover:text-[#1BA398] transition-all duration-200 cursor-pointer">
                       <Link to="/dashboard" className="flex items-center px-3 py-2">
                         <User className="mr-3 h-4 w-4" />
                         <span className="font-medium">Dashboard</span>
@@ -357,13 +357,13 @@ const Header = () => {
                     {/* Job Seeker Menu Items */}
                     {user?.role === 'job_seeker' && (
                       <>
-                        <DropdownMenuItem asChild className="rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 cursor-pointer">
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-[#1BA398]/10 hover:text-[#1BA398] transition-all duration-200 cursor-pointer">
                           <Link to="/jobseeker/profile" className="flex items-center px-3 py-2">
                             <User className="mr-3 h-4 w-4" />
                             <span className="font-medium">My Profile</span>
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 cursor-pointer">
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-all duration-200 cursor-pointer">
                           <Link to="/jobseeker/applications" className="flex items-center px-3 py-2">
                             <Briefcase className="mr-3 h-4 w-4" />
                             <span className="font-medium">My Applications</span>
@@ -375,13 +375,13 @@ const Header = () => {
                     {/* Employer Menu Items */}
                     {user?.role === 'employer' && (
                       <>
-                        <DropdownMenuItem asChild className="rounded-xl hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 cursor-pointer">
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-[#1BA398]/10 hover:text-[#1BA398] transition-all duration-200 cursor-pointer">
                           <Link to="/employer/company/profile" className="flex items-center px-3 py-2">
                             <Building2 className="mr-3 h-4 w-4" />
                             <span className="font-medium">Company Profile</span>
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 cursor-pointer">
+                        <DropdownMenuItem asChild className="rounded-xl hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-all duration-200 cursor-pointer">
                           <Link to="/jobs/post" className="flex items-center px-3 py-2">
                             <Plus className="mr-3 h-4 w-4" />
                             <span className="font-medium">Post Job</span>
@@ -415,13 +415,13 @@ const Header = () => {
                 <Button 
                   variant="ghost" 
                   asChild 
-                  className="h-10 rounded-xl bg-white/90 border border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 transition-all duration-300 font-semibold px-3 sm:px-3.5 shadow-sm"
+                  className="h-10 rounded-xl bg-white/90 border border-[#1BA398]/30 text-[#1BA398] hover:bg-[#1BA398]/10 hover:text-[#1BA398] transition-all duration-300 font-semibold px-3 sm:px-3.5 shadow-sm"
                 >
                   <Link to="/login">Sign In</Link>
                 </Button>
                 <Button 
                   asChild 
-                  className="h-10 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold px-3 sm:px-4 ring-1 ring-indigo-300/50"
+                  className="h-10 bg-gradient-to-r from-[#1BA398] via-[#0a2847] to-[#FF6B35] hover:from-[#158b7e] hover:via-[#072a5e] hover:to-[#e55a24] text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold px-3 sm:px-4 ring-1 ring-[#FF6B35]/30"
                 >
                   <Link to="/register">
                     <span className="flex items-center space-x-1">
@@ -473,21 +473,21 @@ const Header = () => {
               <nav className="flex flex-col space-y-1">
                 <Link 
                   to="/jobs" 
-                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10 text-sm"
                 >
                   <Search className="w-4 h-4 flex-shrink-0" />
                   <span>Find Jobs</span>
                 </Link>
                 <Link 
                   to="/companies" 
-                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10 text-sm"
                 >
                   <Briefcase className="w-4 h-4 flex-shrink-0" />
                   <span>Companies</span>
                 </Link>
                 <Link 
                   to="/scholarships" 
-                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/80 text-sm"
+                  className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10 text-sm"
                 >
                   <GraduationCap className="w-4 h-4 flex-shrink-0" />
                   <span>Scholarships</span>
@@ -504,7 +504,7 @@ const Header = () => {
                 {isAuthenticated && user?.role === 'admin' && (
                   <Link 
                     to="/admin" 
-                    className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-purple-600 font-medium transition-all duration-300 hover:bg-purple-50/70 text-sm"
+                    className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10 text-sm"
                   >
                     <Shield className="w-4 h-4" />
                     <span>Admin</span>
@@ -513,7 +513,7 @@ const Header = () => {
                 {isAuthenticated && user?.role === 'external_admin' && (
                   <Link 
                     to="/external-admin" 
-                    className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-indigo-600 font-medium transition-all duration-300 hover:bg-indigo-50/70 text-sm"
+                    className="group flex items-center space-x-2 px-2 py-2 mx-1 rounded-xl text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10 text-sm"
                   >
                     <GraduationCap className="w-4 h-4" />
                     <span>Manage Scholarships</span>
@@ -524,7 +524,7 @@ const Header = () => {
                   <div className="flex flex-col space-y-1 pt-2 mt-2 mx-1 border-t border-gray-200/60">
                     <Link
                       to="/dashboard"
-                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 hover:bg-blue-50/80 text-sm"
+                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-[#1BA398] font-medium transition-all duration-300 hover:bg-[#1BA398]/10 text-sm"
                     >
                       <User className="w-4 h-4 flex-shrink-0" />
                       <span>Dashboard</span>
@@ -535,7 +535,7 @@ const Header = () => {
                         user?.role === 'employer' ? '/company/settings' :
                         '/profile'
                       }
-                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/80 text-sm"
+                      className="group flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10 text-sm"
                     >
                       <Settings className="w-4 h-4 flex-shrink-0" />
                       <span>Settings</span>

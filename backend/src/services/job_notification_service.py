@@ -365,71 +365,221 @@ class JobNotificationService:
 
         for idx, job in enumerate(jobs, start=1):
             company_name = self._get_job_company_name(job)
+            location = job.get_location_display() or 'Location not specified'
+            salary_display = f"💰 {job.salary_min:,.0f}" if job.salary_min else "Salary not specified"
+            job_type = getattr(job, 'employment_type', 'Full-time') or 'Full-time'
+            
             jobs_html.append(
                 f"""
-                <li style='margin-bottom: 14px;'>
-                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #0f172a; text-decoration: none;'>
-                        <strong>{idx}. {job.title}</strong>
-                    </a><br>
-                    <span style='color: #475569;'>{company_name} • {job.get_location_display() or 'Location not specified'}</span>
-                </li>
+                <tr>
+                    <td style='padding: 16px 20px; border-bottom: 1px solid #e5e7eb;'>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <span style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;'>#{idx}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #1f2937; text-decoration: none; font-weight: 700; font-size: 16px;'>
+                                        {job.title}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <span style='color: #6b7280; font-size: 14px;'>{company_name}</span>
+                                    <span style='color: #d1d5db;'> • </span>
+                                    <span style='color: #6b7280; font-size: 14px;'>{location}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table cellpadding='0' cellspacing='0' border='0'>
+                                        <tr>
+                                            <td style='padding-right: 12px;'>
+                                                <span style='display: inline-block; background-color: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 6px; font-size: 12px;'>{job_type}</span>
+                                            </td>
+                                            <td>
+                                                <span style='display: inline-block; background-color: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 6px; font-size: 12px;'>{salary_display}</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-top: 12px;'>
+                                    <a href='{self.frontend_url}/jobs/{job.id}' style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px;'>
+                                        View Details →
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
                 """
             )
             jobs_text.append(
-                f"{idx}. {job.title} - {company_name} - {self.frontend_url}/jobs/{job.id}"
+                f"{idx}. {job.title}\n   {company_name} • {location}\n   {job_type} • {salary_display}\n   {self.frontend_url}/jobs/{job.id}\n"
             )
 
         scholarships_html = []
         scholarships_text = []
         for idx, scholarship in enumerate(scholarships, start=1):
             organization_name = self._get_scholarship_organization_name(scholarship)
+            deadline = scholarship.deadline.strftime('%b %d, %Y') if hasattr(scholarship, 'deadline') and scholarship.deadline else 'No deadline specified'
+            
             scholarships_html.append(
                 f"""
-                <li style='margin-bottom: 14px;'>
-                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #0f172a; text-decoration: none;'>
-                        <strong>{idx}. {scholarship.title}</strong>
-                    </a><br>
-                    <span style='color: #475569;'>{organization_name}</span>
-                </li>
+                <tr>
+                    <td style='padding: 16px 20px; border-bottom: 1px solid #e5e7eb;'>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <span style='display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;'>#{idx}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #1f2937; text-decoration: none; font-weight: 700; font-size: 16px;'>
+                                        {scholarship.title}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-bottom: 8px;'>
+                                    <span style='color: #6b7280; font-size: 14px;'>{organization_name}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table cellpadding='0' cellspacing='0' border='0'>
+                                        <tr>
+                                            <td style='padding-right: 12px;'>
+                                                <span style='display: inline-block; background-color: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 6px; font-size: 12px;'>📅 Deadline: {deadline}</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding-top: 12px;'>
+                                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px;'>
+                                        View Details →
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
                 """
             )
             scholarships_text.append(
-                f"{idx}. {scholarship.title} - {organization_name} - {self.frontend_url}/scholarships/{scholarship.id}"
+                f"{idx}. {scholarship.title}\n   {organization_name}\n   Deadline: {deadline}\n   {self.frontend_url}/scholarships/{scholarship.id}\n"
             )
 
-        subject = "Morning Update: Top 5 latest jobs and scholarships"
+        subject = "☀️ Good morning! Your top 5 opportunities are waiting"
+        
         html_body = f"""
+        <!DOCTYPE html>
         <html>
-            <body style='font-family: Arial, sans-serif; color: #111827;'>
-                <h2 style='margin-bottom: 8px;'>Good morning {user.get_full_name()},</h2>
-                <p>Here are today's top opportunities for you:</p>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        </head>
+        <body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f9fafb;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                <!-- Header with gradient -->
+                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;'>
+                    <h1 style='margin: 0; color: white; font-size: 28px; font-weight: 700;'>☀️ Good morning!</h1>
+                    <p style='margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;'>Your top opportunities are ready</p>
+                </div>
 
-                <h3 style='margin-bottom: 8px;'>Top Jobs ({len(jobs)})</h3>
-                <ol>{''.join(jobs_html) if jobs_html else '<li>No new jobs right now.</li>'}</ol>
+                <!-- Main content -->
+                <div style='padding: 40px 20px;'>
+                    <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;'>
+                        Hi <strong>{user.get_full_name()}</strong>,
+                    </p>
+                    <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 32px 0;'>
+                        We've curated the latest opportunities just for you. Check out today's top picks and take your next step towards your dream career!
+                    </p>
 
-                <h3 style='margin-bottom: 8px; margin-top: 18px;'>Top Scholarships ({len(scholarships)})</h3>
-                <ol>{''.join(scholarships_html) if scholarships_html else '<li>No new scholarships right now.</li>'}</ol>
+                    <!-- Jobs Section -->
+                    <div style='margin-bottom: 32px;'>
+                        <h2 style='color: #1f2937; font-size: 18px; font-weight: 700; margin: 0 0 16px 0; display: flex; align-items: center;'>
+                            <span style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700; margin-right: 10px;'>💼</span>
+                            Latest Jobs ({len(jobs)})
+                        </h2>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden;'>
+                            {''.join(jobs_html) if jobs_html else '<tr><td style="padding: 20px; text-align: center; color: #6b7280;">No new jobs right now. Check back soon!</td></tr>'}
+                        </table>
+                    </div>
 
-                <p style='margin-top: 20px;'>
-                    Explore more opportunities: <a href='{self.frontend_url}/jobs'>Browse all jobs</a><br>
-                    Explore scholarships: <a href='{self.frontend_url}/scholarships'>Browse all scholarships</a>
-                </p>
-            </body>
+                    <!-- Scholarships Section -->
+                    <div style='margin-bottom: 32px;'>
+                        <h2 style='color: #1f2937; font-size: 18px; font-weight: 700; margin: 0 0 16px 0; display: flex; align-items: center;'>
+                            <span style='display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700; margin-right: 10px;'>🎓</span>
+                            Scholarships Available ({len(scholarships)})
+                        </h2>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden;'>
+                            {''.join(scholarships_html) if scholarships_html else '<tr><td style="padding: 20px; text-align: center; color: #6b7280;">No new scholarships right now. Check back soon!</td></tr>'}
+                        </table>
+                    </div>
+
+                    <!-- CTA Buttons -->
+                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                        <tr>
+                            <td style='padding-right: 10px; width: 50%;'>
+                                <a href='{self.frontend_url}/jobs' style='display: block; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;'>
+                                    Browse All Jobs
+                                </a>
+                            </td>
+                            <td style='padding-left: 10px; width: 50%;'>
+                                <a href='{self.frontend_url}/scholarships' style='display: block; text-align: center; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 14px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;'>
+                                    Explore Scholarships
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Tips Section -->
+                    <div style='background-color: #f0f9ff; border-left: 4px solid #0284c7; padding: 16px; margin-top: 32px; border-radius: 4px;'>
+                        <p style='margin: 0; color: #0c4a6e; font-size: 13px; font-weight: 600;'>💡 Pro Tip</p>
+                        <p style='margin: 8px 0 0 0; color: #0c4a6e; font-size: 13px; line-height: 1.5;'>
+                            Create job alerts to get notified immediately when matching opportunities are posted. Set your preferences in your account!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style='background-color: #f9fafb; padding: 24px 20px; text-align: center; border-top: 1px solid #e5e7eb;'>
+                    <p style='margin: 0; color: #6b7280; font-size: 13px;'>
+                        You're receiving this because you're a valued TalentSphere member
+                    </p>
+                    <p style='margin: 12px 0 0 0; color: #9ca3af; font-size: 12px;'>
+                        <a href='{self.frontend_url}/settings/notifications' style='color: #3b82f6; text-decoration: none;'>Manage Preferences</a> •
+                        <a href='{self.frontend_url}/account' style='color: #3b82f6; text-decoration: none;'>Account Settings</a>
+                    </p>
+                </div>
+            </div>
+        </body>
         </html>
         """
+        
         jobs_text_block = "\n".join(jobs_text) if jobs_text else "No new jobs right now."
         scholarships_text_block = (
             "\n".join(scholarships_text) if scholarships_text else "No new scholarships right now."
         )
         text_body = (
             f"Good morning {user.get_full_name()},\n\n"
-            "Here are today's top opportunities:\n\n"
+            "Your top opportunities are ready!\n\n"
             f"Top Jobs ({len(jobs)}):\n"
-            f"{jobs_text_block}\n\n"
+            f"{jobs_text_block}\n"
             f"Top Scholarships ({len(scholarships)}):\n"
-            f"{scholarships_text_block}\n\n"
+            f"{scholarships_text_block}\n"
             f"Browse all jobs: {self.frontend_url}/jobs\n"
-            f"Browse all scholarships: {self.frontend_url}/scholarships"
+            f"Browse all scholarships: {self.frontend_url}/scholarships\n\n"
+            f"Manage preferences: {self.frontend_url}/settings/notifications"
         )
 
         return email_service._send_brevo_email(
@@ -453,73 +603,202 @@ class JobNotificationService:
         jobs_text = []
         for idx, job in enumerate(jobs[:10], start=1):
             company_name = self._get_job_company_name(job)
+            location = job.get_location_display() or 'Location not specified'
+            job_type = getattr(job, 'employment_type', 'Full-time') or 'Full-time'
+            
             jobs_html.append(
                 f"""
-                <li style='margin-bottom: 10px;'>
-                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #0f172a; text-decoration: none;'>
-                        <strong>{idx}. {job.title}</strong>
-                    </a>
-                    <span style='color: #475569;'> - {company_name}</span>
-                </li>
+                <tr>
+                    <td style='padding: 16px 20px; border-bottom: 1px solid #e5e7eb;'>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                            <tr>
+                                <td style='width: 40px; padding-right: 12px;'>
+                                    <span style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 36px; height: 36px; border-radius: 8px; text-align: center; line-height: 36px; font-weight: 700; font-size: 14px;'>{idx}</span>
+                                </td>
+                                <td>
+                                    <a href='{self.frontend_url}/jobs/{job.id}' style='color: #1f2937; text-decoration: none; font-weight: 700; font-size: 15px; display: block; margin-bottom: 4px;'>
+                                        {job.title}
+                                    </a>
+                                    <p style='margin: 0; color: #6b7280; font-size: 13px;'>{company_name} • {location}</p>
+                                    <p style='margin: 6px 0 0 0;'>
+                                        <span style='display: inline-block; background-color: #f3f4f6; color: #374151; padding: 3px 8px; border-radius: 4px; font-size: 11px; margin-right: 6px;'>{job_type}</span>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
                 """
             )
-            jobs_text.append(f"{idx}. {job.title} - {company_name} - {self.frontend_url}/jobs/{job.id}")
+            jobs_text.append(f"{idx}. {job.title} - {company_name} - {location} - {self.frontend_url}/jobs/{job.id}")
 
         scholarships_html = []
         scholarships_text = []
         for idx, scholarship in enumerate(scholarships[:10], start=1):
             organization_name = self._get_scholarship_organization_name(scholarship)
+            deadline = scholarship.deadline.strftime('%b %d, %Y') if hasattr(scholarship, 'deadline') and scholarship.deadline else 'No deadline'
+            
             scholarships_html.append(
                 f"""
-                <li style='margin-bottom: 10px;'>
-                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #0f172a; text-decoration: none;'>
-                        <strong>{idx}. {scholarship.title}</strong>
-                    </a>
-                    <span style='color: #475569;'> - {organization_name}</span>
-                </li>
+                <tr>
+                    <td style='padding: 16px 20px; border-bottom: 1px solid #e5e7eb;'>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                            <tr>
+                                <td style='width: 40px; padding-right: 12px;'>
+                                    <span style='display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; width: 36px; height: 36px; border-radius: 8px; text-align: center; line-height: 36px; font-weight: 700; font-size: 14px;'>{idx}</span>
+                                </td>
+                                <td>
+                                    <a href='{self.frontend_url}/scholarships/{scholarship.id}' style='color: #1f2937; text-decoration: none; font-weight: 700; font-size: 15px; display: block; margin-bottom: 4px;'>
+                                        {scholarship.title}
+                                    </a>
+                                    <p style='margin: 0; color: #6b7280; font-size: 13px;'>{organization_name}</p>
+                                    <p style='margin: 6px 0 0 0;'>
+                                        <span style='display: inline-block; background-color: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-size: 11px;'>📅 {deadline}</span>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
                 """
             )
-            scholarships_text.append(
-                f"{idx}. {scholarship.title} - {organization_name} - {self.frontend_url}/scholarships/{scholarship.id}"
-            )
+            scholarships_text.append(f"{idx}. {scholarship.title} - {organization_name} - Deadline: {deadline} - {self.frontend_url}/scholarships/{scholarship.id}")
 
-        subject = "Weekly Digest: Jobs and scholarships for your weekend"
+        week_start_fmt = week_start.strftime('%b %d')
+        week_end_fmt = week_end.strftime('%b %d, %Y')
+        
+        subject = f"📊 Your Weekly Digest: {len(jobs)} new jobs & {len(scholarships)} scholarships"
+        
         html_body = f"""
+        <!DOCTYPE html>
         <html>
-            <body style='font-family: Arial, sans-serif; color: #111827;'>
-                <h2 style='margin-bottom: 8px;'>Hello {user.get_full_name()},</h2>
-                <p>
-                    Here is your weekly digest for opportunities added this week
-                    ({week_start.strftime('%B %d, %Y')} to {week_end.strftime('%B %d, %Y')})
-                    to help you plan weekend applications.
-                </p>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        </head>
+        <body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f9fafb;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                <!-- Header with gradient -->
+                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;'>
+                    <h1 style='margin: 0; color: white; font-size: 28px; font-weight: 700;'>📊 Weekly Digest</h1>
+                    <p style='margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 15px;'>{week_start_fmt} - {week_end_fmt}</p>
+                </div>
 
-                <h3 style='margin-bottom: 8px;'>Jobs ({len(jobs)})</h3>
-                <ol>{''.join(jobs_html) if jobs_html else '<li>No new jobs this week.</li>'}</ol>
+                <!-- Main content -->
+                <div style='padding: 40px 20px;'>
+                    <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 8px 0;'>
+                        Hi <strong>{user.get_full_name()}</strong>,
+                    </p>
+                    <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 32px 0;'>
+                        This week was exciting! We found <strong>{len(jobs)} new job opportunities</strong> and <strong>{len(scholarships)} scholarship</strong> that might interest you. Take some time this weekend to explore them.
+                    </p>
 
-                <h3 style='margin-bottom: 8px; margin-top: 18px;'>Scholarships ({len(scholarships)})</h3>
-                <ol>{''.join(scholarships_html) if scholarships_html else '<li>No new scholarships this week.</li>'}</ol>
+                    <!-- Stats Cards -->
+                    <table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom: 32px;'>
+                        <tr>
+                            <td style='padding-right: 8px; width: 50%;'>
+                                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; text-align: center;'>
+                                    <p style='margin: 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600;'>New Jobs</p>
+                                    <p style='margin: 8px 0 0 0; color: white; font-size: 32px; font-weight: 700;'>{len(jobs)}</p>
+                                </div>
+                            </td>
+                            <td style='padding-left: 8px; width: 50%;'>
+                                <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 8px; text-align: center;'>
+                                    <p style='margin: 0; color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600;'>Scholarships</p>
+                                    <p style='margin: 8px 0 0 0; color: white; font-size: 32px; font-weight: 700;'>{len(scholarships)}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
 
-                <p style='margin-top: 20px;'>
-                    Jobs: <a href='{self.frontend_url}/jobs'>Browse all jobs</a><br>
-                    Scholarships: <a href='{self.frontend_url}/scholarships'>Browse all scholarships</a>
-                </p>
-            </body>
+                    <!-- Jobs Section -->
+                    <div style='margin-bottom: 32px;'>
+                        <h2 style='color: #1f2937; font-size: 18px; font-weight: 700; margin: 0 0 16px 0;'>
+                            💼 New Jobs This Week
+                        </h2>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden;'>
+                            {''.join(jobs_html) if jobs_html else '<tr><td style="padding: 20px; text-align: center; color: #6b7280;">No new jobs this week. Check back next week!</td></tr>'}
+                        </table>
+                    </div>
+
+                    <!-- Scholarships Section -->
+                    <div style='margin-bottom: 32px;'>
+                        <h2 style='color: #1f2937; font-size: 18px; font-weight: 700; margin: 0 0 16px 0;'>
+                            🎓 New Scholarships This Week
+                        </h2>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden;'>
+                            {''.join(scholarships_html) if scholarships_html else '<tr><td style="padding: 20px; text-align: center; color: #6b7280;">No new scholarships this week. Check back next time!</td></tr>'}
+                        </table>
+                    </div>
+
+                    <!-- CTA Buttons -->
+                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                        <tr>
+                            <td style='text-align: center; padding-bottom: 32px;'>
+                                <a href='{self.frontend_url}/jobs' style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; margin-right: 10px; margin-bottom: 10px;'>
+                                    View All Jobs
+                                </a>
+                                <a href='{self.frontend_url}/scholarships' style='display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;'>
+                                    View All Scholarships
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Weekend Tips Section -->
+                    <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #0284c7; padding: 16px; border-radius: 4px; margin-bottom: 24px;'>
+                        <p style='margin: 0; color: #0c4a6e; font-size: 13px; font-weight: 700;'>💡 Pro Tips for This Weekend</p>
+                        <ul style='margin: 10px 0 0 0; padding-left: 20px; color: #0c4a6e; font-size: 12px; line-height: 1.6;'>
+                            <li>Read job descriptions carefully and customize your applications</li>
+                            <li>Check scholarship eligibility requirements before applying</li>
+                            <li>Save your favorites to apply them later</li>
+                            <li>Consider setting job alerts for your preferred fields</li>
+                        </ul>
+                    </div>
+
+                    <!-- Action needed callout -->
+                    <div style='background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; border-radius: 6px; margin-bottom: 24px;'>
+                        <p style='margin: 0; color: #b45309; font-size: 13px; font-weight: 700;'>⏰ Action Reminder</p>
+                        <p style='margin: 8px 0 0 0; color: #92400e; font-size: 12px; line-height: 1.5;'>
+                            Some opportunities may have early deadlines. Don't miss out—apply within the next few days to increase your chances!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style='background-color: #f9fafb; padding: 24px 20px; text-align: center; border-top: 1px solid #e5e7eb;'>
+                    <p style='margin: 0; color: #6b7280; font-size: 13px;'>
+                        Get weekly digests delivered to your inbox every Friday
+                    </p>
+                    <p style='margin: 12px 0 0 0; color: #9ca3af; font-size: 12px;'>
+                        <a href='{self.frontend_url}/settings/notifications' style='color: #3b82f6; text-decoration: none;'>Manage Preferences</a> •
+                        <a href='{self.frontend_url}/account' style='color: #3b82f6; text-decoration: none;'>Account Settings</a> •
+                        <a href='{self.frontend_url}/help' style='color: #3b82f6; text-decoration: none;'>Get Help</a>
+                    </p>
+                    <p style='margin: 12px 0 0 0; color: #d1d5db; font-size: 11px;'>
+                        © 2026 TalentSphere. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
         </html>
         """
+        
         jobs_text_block = "\n".join(jobs_text) if jobs_text else "No new jobs this week."
         scholarships_text_block = (
             "\n".join(scholarships_text) if scholarships_text else "No new scholarships this week."
         )
         text_body = (
             f"Hello {user.get_full_name()},\n\n"
-            f"Weekly digest ({week_start.strftime('%B %d, %Y')} to {week_end.strftime('%B %d, %Y')})\n\n"
-            f"Jobs ({len(jobs)}):\n"
+            f"Weekly Digest: {week_start_fmt} - {week_end_fmt}\n\n"
+            f"This week we found {len(jobs)} new job opportunities and {len(scholarships)} scholarships for you!\n\n"
+            f"New Jobs ({len(jobs)}):\n"
             f"{jobs_text_block}\n\n"
-            f"Scholarships ({len(scholarships)}):\n"
+            f"New Scholarships ({len(scholarships)}):\n"
             f"{scholarships_text_block}\n\n"
-            f"Jobs: {self.frontend_url}/jobs\n"
-            f"Scholarships: {self.frontend_url}/scholarships"
+            f"View all jobs: {self.frontend_url}/jobs\n"
+            f"View all scholarships: {self.frontend_url}/scholarships\n\n"
+            f"Manage preferences: {self.frontend_url}/settings/notifications"
         )
 
         return email_service._send_brevo_email(

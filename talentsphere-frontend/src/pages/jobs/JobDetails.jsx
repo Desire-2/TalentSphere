@@ -504,8 +504,9 @@ ${user.name || user.email}`);
                 getJobLocation={getJobLocation}
                 getSalaryDisplay={getSalaryDisplay}
                 trigger={
-                  <Button variant="outline" size="sm" className="hover:bg-[#17a2b8]/10 hover:text-[#17a2b8] hover:border-[#17a2b8] transition-all duration-200">
-                    <Share2 className="w-5 h-5 text-[#003366]/30" />
+                  <Button size="sm" className="bg-gradient-to-r from-[#17a2b8] to-[#17a2b8] hover:from-[#17a2b8] hover:to-[#003366] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 px-4 py-2 rounded-full border-0 flex items-center gap-2">
+                    <Share2 className="w-5 h-5" />
+                    <span className="hidden sm:inline">Share</span>
                   </Button>
                 }
               />
@@ -845,9 +846,8 @@ ${user.name || user.email}`);
                       
                       <div className="flex items-center space-x-2">
                         <Button 
-                          variant="ghost" 
                           size="sm" 
-                          className="text-gray-500 hover:text-[#17a2b8]"
+                          className="bg-gradient-to-r from-[#FF6B35]/80 to-[#FF6B35] hover:from-[#FF6B35] hover:to-[#FF6B35] text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 rounded-full"
                           onClick={() => {
                             navigator.clipboard.writeText(job.description);
                             // Add toast notification here if available

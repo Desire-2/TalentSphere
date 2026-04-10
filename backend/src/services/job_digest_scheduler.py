@@ -8,8 +8,11 @@ import time
 import threading
 from datetime import datetime
 import os
+import hashlib
+from sqlalchemy import text
 
 from src.services.job_notification_service import job_notification_service
+from src.models.user import db
 
 
 class JobDigestScheduler:
@@ -85,7 +88,10 @@ class JobDigestScheduler:
         """Run daily digest task"""
         try:
             print(f"📧 Running morning top jobs update at {datetime.now()}")
-            result = self._execute_in_app_context(job_notification_service.send_morning_top_jobs_update)
+            result = self._execute_with_distributed_lock(
+                lock_name='morning_top_jobs_update',
+                task=job_notification_service.send_morning_top_jobs_update
+            )
             print(f"✅ Morning update complete: {result}")
             return result
         except Exception as e:
@@ -96,12 +102,44 @@ class JobDigestScheduler:
         """Run weekly digest task"""
         try:
             print(f"📧 Running weekly jobs/scholarships digest at {datetime.now()}")
-            result = self._execute_in_app_context(job_notification_service.send_weekly_jobs_scholarships_digest)
+            result = self._execute_with_distributed_lock(
+                lock_name='weekly_jobs_scholarships_digest',
+                task=job_notification_service.send_weekly_jobs_scholarships_digest
+            )
             print(f"✅ Weekly digest complete: {result}")
             return result
         except Exception as e:
             print(f"❌ Weekly digest failed: {e}")
             return None
+
+    def _execute_with_distributed_lock(self, lock_name: str, task):
+        """Execute task with a Postgres advisory lock to prevent multi-worker duplicates."""
+        lock_id = int(hashlib.md5(f"talentsphere:{lock_name}".encode('utf-8')).hexdigest()[:8], 16)
+
+        def run_locked():
+            backend_name = db.engine.url.get_backend_name()
+            if backend_name != 'postgresql':
+                # Fallback for non-Postgres environments (e.g. local sqlite).
+                return task()
+
+            acquired = db.session.execute(
+                text("SELECT pg_try_advisory_lock(:lock_id)"),
+                {'lock_id': lock_id}
+            ).scalar()
+
+            if not acquired:
+                print(f"⏭️  Skipping {lock_name}: lock held by another worker")
+                return {'success': True, 'skipped': True, 'reason': 'lock_held'}
+
+            try:
+                return task()
+            finally:
+                db.session.execute(
+                    text("SELECT pg_advisory_unlock(:lock_id)"),
+                    {'lock_id': lock_id}
+                )
+
+        return self._execute_in_app_context(run_locked)
 
     def _execute_in_app_context(self, task):
         """Execute a scheduled task within Flask app context when available."""

@@ -6,10 +6,12 @@ Handles batched and scheduled notification delivery
 import asyncio
 import logging
 import json
+import hashlib
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import threading
 import time
+from sqlalchemy import text
 
 from src.models.user import db
 from src.models.notification import Notification
@@ -26,6 +28,62 @@ class NotificationScheduler:
         self.scheduler_thread = None
         self.check_interval = 60  # Check every minute
         self.batch_size = 50
+        self._last_daily_run_slot = None
+        self._last_weekly_run_slot = None
+
+    def _build_daily_digest_key(self, run_time: datetime) -> str:
+        return f"daily:{run_time.strftime('%Y-%m-%d')}"
+
+    def _build_weekly_digest_key(self, run_time: datetime) -> str:
+        iso_year, iso_week, _ = run_time.isocalendar()
+        return f"weekly:{iso_year}-W{iso_week:02d}"
+
+    def _has_digest_marker(self, user_id: int, digest_key: str) -> bool:
+        marker_title = f"DIGEST_MARKER:{digest_key}"
+        return Notification.query.filter_by(
+            user_id=user_id,
+            notification_type='system',
+            title=marker_title
+        ).first() is not None
+
+    def _create_digest_marker(self, user_id: int, digest_key: str):
+        marker_title = f"DIGEST_MARKER:{digest_key}"
+        marker = Notification(
+            user_id=user_id,
+            title=marker_title,
+            message='Digest send marker to prevent duplicate email delivery.',
+            notification_type='system',
+            is_sent=True,
+            send_email=False,
+            send_push=False,
+            priority='low'
+        )
+        db.session.add(marker)
+
+    def _digest_lock_id(self, lock_name: str) -> int:
+        return int(hashlib.md5(f"talentsphere:{lock_name}".encode('utf-8')).hexdigest()[:8], 16)
+
+    def _try_acquire_pg_lock(self, lock_name: str) -> bool:
+        if db.engine.url.get_backend_name() != 'postgresql':
+            return True
+
+        lock_id = self._digest_lock_id(lock_name)
+        return bool(
+            db.session.execute(
+                text("SELECT pg_try_advisory_lock(:lock_id)"),
+                {'lock_id': lock_id}
+            ).scalar()
+        )
+
+    def _release_pg_lock(self, lock_name: str):
+        if db.engine.url.get_backend_name() != 'postgresql':
+            return
+
+        lock_id = self._digest_lock_id(lock_name)
+        db.session.execute(
+            text("SELECT pg_advisory_unlock(:lock_id)"),
+            {'lock_id': lock_id}
+        )
         
     def start(self):
         """Start the notification scheduler"""
@@ -334,13 +392,22 @@ class NotificationScheduler:
             current_time = datetime.utcnow()
             current_day = current_time.strftime('%A').lower()
             current_hour = current_time.hour
+            current_minute = current_time.minute
+            run_slot = current_time.replace(second=0, microsecond=0).isoformat()
+
+            # Gate digest processing to the first minute of the hour to avoid
+            # repeated sends on each scheduler loop iteration.
+            if current_minute != 0:
+                return
             
             # Process weekly digests
-            if current_day == 'monday' and current_hour == 9:  # Monday 9 AM
+            if current_day == 'monday' and current_hour == 9 and self._last_weekly_run_slot != run_slot:  # Monday 9 AM
+                self._last_weekly_run_slot = run_slot
                 self._send_weekly_digests()
             
             # Process daily digests
-            if current_hour == 9:  # 9 AM
+            if current_hour == 9 and self._last_daily_run_slot != run_slot:  # 9 AM
+                self._last_daily_run_slot = run_slot
                 self._send_daily_digests()
                 
         except Exception as e:
@@ -348,7 +415,17 @@ class NotificationScheduler:
     
     def _send_weekly_digests(self):
         """Send weekly digest emails to users who have it enabled"""
+        lock_name = 'notification_scheduler_weekly_digest'
+        lock_acquired = False
         try:
+            lock_acquired = self._try_acquire_pg_lock(lock_name)
+            if not lock_acquired:
+                self.logger.info("Skipping weekly digest run: advisory lock held by another worker")
+                return
+
+            run_time = datetime.utcnow()
+            digest_key = self._build_weekly_digest_key(run_time)
+
             # Get users with weekly digest enabled
             preferences = NotificationPreference.query.filter_by(
                 weekly_digest_enabled=True
@@ -359,6 +436,10 @@ class NotificationScheduler:
                     from src.models.user import User
                     user = User.query.get(pref.user_id)
                     if not user:
+                        continue
+
+                    if self._has_digest_marker(user.id, digest_key):
+                        self.logger.info(f"Skipping duplicate weekly digest for user {user.id} ({digest_key})")
                         continue
                     
                     # Calculate digest data
@@ -386,17 +467,35 @@ class NotificationScheduler:
                     }
                     
                     # Send digest
-                    email_service.send_digest_email(user.id, digest_data)
+                    success = email_service.send_digest_email(user.id, digest_data)
+                    if success:
+                        self._create_digest_marker(user.id, digest_key)
+                        db.session.commit()
                     
                 except Exception as e:
+                    db.session.rollback()
                     self.logger.error(f"Error sending weekly digest to user {pref.user_id}: {str(e)}")
             
         except Exception as e:
+            db.session.rollback()
             self.logger.error(f"Error in weekly digest processing: {str(e)}")
+        finally:
+            if lock_acquired:
+                self._release_pg_lock(lock_name)
     
     def _send_daily_digests(self):
         """Send daily digest emails to users who have it enabled"""
+        lock_name = 'notification_scheduler_daily_digest'
+        lock_acquired = False
         try:
+            lock_acquired = self._try_acquire_pg_lock(lock_name)
+            if not lock_acquired:
+                self.logger.info("Skipping daily digest run: advisory lock held by another worker")
+                return
+
+            run_time = datetime.utcnow()
+            digest_key = self._build_daily_digest_key(run_time)
+
             # Get users with daily digest enabled
             preferences = NotificationPreference.query.filter_by(
                 daily_digest_enabled=True
@@ -411,6 +510,10 @@ class NotificationScheduler:
                     from src.models.user import User
                     user = User.query.get(pref.user_id)
                     if not user:
+                        continue
+
+                    if self._has_digest_marker(user.id, digest_key):
+                        self.logger.info(f"Skipping duplicate daily digest for user {user.id} ({digest_key})")
                         continue
                     
                     # Calculate digest data for the day
@@ -429,13 +532,21 @@ class NotificationScheduler:
                         }
                         
                         # Send daily digest (you can create a separate template for this)
-                        email_service.send_digest_email(user.id, digest_data)
+                        success = email_service.send_digest_email(user.id, digest_data)
+                        if success:
+                            self._create_digest_marker(user.id, digest_key)
+                            db.session.commit()
                     
                 except Exception as e:
+                    db.session.rollback()
                     self.logger.error(f"Error sending daily digest to user {pref.user_id}: {str(e)}")
             
         except Exception as e:
+            db.session.rollback()
             self.logger.error(f"Error in daily digest processing: {str(e)}")
+        finally:
+            if lock_acquired:
+                self._release_pg_lock(lock_name)
     
     def _cleanup_old_logs(self):
         """Clean up old delivery logs and completed queue entries"""

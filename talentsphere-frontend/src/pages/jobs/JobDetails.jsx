@@ -300,35 +300,35 @@ ${user.name || user.email}`);
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse">
           {/* Back button skeleton */}
-          <div className="h-10 bg-gray-200 rounded w-32 mb-6"></div>
+          <div className="h-10 bg-[#17a2b8]/20 rounded w-32 mb-6"></div>
           
           {/* Job header skeleton */}
           <Card className="mb-8">
             <CardHeader>
               <div className="flex items-start space-x-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                <div className="w-16 h-16 bg-[#17a2b8]/20 rounded-lg"></div>
                 <div className="flex-1">
-                  <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-8 bg-[#17a2b8]/20 rounded w-3/4 mb-2"></div>
+                  <div className="h-6 bg-[#17a2b8]/20 rounded w-1/2 mb-2"></div>
+                  <div className="h-4 bg-[#17a2b8]/20 rounded w-2/3"></div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-4 bg-[#17a2b8]/20 rounded"></div>
                 ))}
               </div>
               <div className="flex space-x-2 mb-6">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-6 bg-gray-200 rounded-full w-20"></div>
+                  <div key={i} className="h-6 bg-[#17a2b8]/20 rounded-full w-20"></div>
                 ))}
               </div>
-              <div className="h-12 bg-gray-200 rounded w-40"></div>
+              <div className="h-12 bg-[#17a2b8]/20 rounded w-40"></div>
             </CardContent>
           </Card>
 
@@ -338,13 +338,13 @@ ${user.name || user.email}`);
               {[...Array(3)].map((_, i) => (
                 <Card key={i}>
                   <CardHeader>
-                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-6 bg-[#17a2b8]/20 rounded w-1/3"></div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                      <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+                      <div className="h-4 bg-[#17a2b8]/20 rounded w-full"></div>
+                      <div className="h-4 bg-[#17a2b8]/20 rounded w-5/6"></div>
+                      <div className="h-4 bg-[#17a2b8]/20 rounded w-4/6"></div>
                     </div>
                   </CardContent>
                 </Card>
@@ -354,12 +354,12 @@ ${user.name || user.email}`);
               {[...Array(3)].map((_, i) => (
                 <Card key={i}>
                   <CardHeader>
-                    <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                    <div className="h-6 bg-[#17a2b8]/20 rounded w-2/3"></div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-[#17a2b8]/20 rounded w-full"></div>
+                      <div className="h-4 bg-[#17a2b8]/20 rounded w-3/4"></div>
                     </div>
                   </CardContent>
                 </Card>
@@ -373,15 +373,15 @@ ${user.name || user.email}`);
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Failed to Load Job</h1>
-          <p className="text-gray-600 mb-8">{error}</p>
+          <h1 className="text-2xl font-bold text-[#003366] mb-4">Failed to Load Job</h1>
+          <p className="text-[#003366] mb-8">{error}</p>
           <div className="space-x-4">
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={() => window.location.reload()} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-bold">
               Try Again
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="text-[#17a2b8] border-[#17a2b8]">
               <Link to="/jobs">Browse All Jobs</Link>
             </Button>
           </div>
@@ -392,11 +392,11 @@ ${user.name || user.email}`);
 
   if (!job) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
-          <p className="text-gray-600 mb-8">The job you're looking for doesn't exist or has been removed.</p>
-          <Button asChild>
+          <h1 className="text-2xl font-bold text-[#003366] mb-4">Job Not Found</h1>
+          <p className="text-[#003366] mb-8">The job you're looking for doesn't exist or has been removed.</p>
+          <Button asChild className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-bold">
             <Link to="/jobs">Browse All Jobs</Link>
           </Button>
         </div>
@@ -405,7 +405,7 @@ ${user.name || user.email}`);
   }
 
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Google Ads - Leaderboard */}
         <div className="mb-6">
           <div className="flex justify-center">
@@ -425,23 +425,24 @@ ${user.name || user.email}`);
 
         {/* Expired Job Warning */}
         {job.is_expired && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
+          <Alert className="mb-6 border-[#FF6B35]/30 bg-[#FF6B35]/10">
+            <AlertCircle className="h-4 w-4 text-[#FF6B35]" />
+            <AlertDescription className="text-[#003366] font-medium">
               This job posting has expired and is no longer accepting applications.
             </AlertDescription>
           </Alert>
         )}      {/* Job Header */}
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-4">
-              <div className="w-16 h-16 bg-[#17a2b8]/10 rounded-lg flex items-center justify-center flex-shrink-0 border-2 border-[#17a2b8]/20">
+      <Card className="mb-8 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white">
+        <CardHeader className="pb-6 border-b border-[#17a2b8]/20">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex items-start space-x-5 flex-1">
+              <div className="w-20 h-20 bg-[#003366] rounded-2xl flex items-center justify-center flex-shrink-0 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 {(job.company?.logo_url || job.external_company_logo) ? (
                   <img 
                     src={job.company?.logo_url || job.external_company_logo} 
                     alt={`${getCompanyName(job)} logo`} 
-                    className="w-12 h-12 object-contain rounded"
+                    className="w-14 h-14 object-contain rounded-xl bg-white/90 p-2 relative z-10"
                     onError={(e) => {
                       console.log('Logo failed to load:', job.company?.logo_url || job.external_company_logo);
                       e.target.style.display = 'none';
@@ -449,50 +450,50 @@ ${user.name || user.email}`);
                     }}
                   />
                 ) : null}
-                <div className={`fallback-icon w-12 h-12 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
+                <div className={`fallback-icon w-14 h-14 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
                   {(job.job_source === 'external' || job.external_company_name) ? (
-                    <div className="flex flex-col items-center text-[#FF6B35]">
-                      <ExternalLink className="w-5 h-5 mb-1" />
-                      <Building className="w-4 h-4" />
+                    <div className="flex flex-col items-center text-white">
+                      <ExternalLink className="w-6 h-6 mb-1" />
+                      <Building className="w-5 h-5" />
                     </div>
                   ) : (
-                    <Building className="w-8 h-8 text-[#003366]" />
+                    <Building className="w-9 h-9 text-white" />
                   )}
                 </div>
               </div>
               <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <CardTitle className="text-2xl">{job.title}</CardTitle>
+                <div className="flex items-center space-x-3 mb-3 flex-wrap gap-y-2">
+                  <CardTitle className="text-3xl font-bold text-[#003366]">{job.title}</CardTitle>
                   {job.is_featured && (
-                    <Badge variant="secondary" className="bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20">
-                      <Star className="w-3 h-3 mr-1" />
+                    <Badge className="bg-[#FF6B35] text-white border-0 shadow-md hover:shadow-lg transition-shadow px-3 py-1 rounded-full">
+                      <Star className="w-3 h-3 mr-1.5 fill-current" />
                       Featured
                     </Badge>
                   )}
                   {job.is_urgent && (
-                    <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
-                      <Timer className="w-3 h-3 mr-1" />
+                    <Badge className="bg-[#FF6B35] text-white border-0 shadow-md hover:shadow-lg transition-shadow px-3 py-1 rounded-full">
+                      <Timer className="w-3 h-3 mr-1.5 fill-current" />
                       Urgent
                     </Badge>
                   )}
                 </div>
-                <CardDescription className="text-lg font-semibold text-[#003366] hover:text-[#17a2b8] transition-colors">
+                <CardDescription className="text-xl font-bold text-[#17a2b8] hover:text-[#003366] transition-colors mb-2">
                   {getCompanyName(job)}
                 </CardDescription>
-                <p className="text-sm text-gray-600 mt-1">{job.company?.description || ''}</p>
+                <p className="text-sm text-[#003366] mt-2 leading-relaxed">{job.company?.description || ''}</p>
                 {job.published_at && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Published {formatRelativeTime(job.published_at)}
+                  <p className="text-xs bg-[#17a2b8] text-white px-3 py-1 rounded-full mt-3 inline-block font-medium">
+                    📅 Published {formatRelativeTime(job.published_at)}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={toggleBookmark}>
+            <div className="flex space-x-2 flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={toggleBookmark} className="hover:bg-[#17a2b8]/10 hover:text-[#17a2b8] hover:border-[#17a2b8] transition-all duration-200">
                 {isBookmarked ? (
-                  <BookmarkCheck className="w-4 h-4 text-[#17a2b8]" />
+                  <BookmarkCheck className="w-5 h-5 text-[#17a2b8]" />
                 ) : (
-                  <Bookmark className="w-4 h-4" />
+                  <Bookmark className="w-5 h-5 text-[#003366]/30" />
                 )}
               </Button>
               <ShareJob 
@@ -503,21 +504,21 @@ ${user.name || user.email}`);
                 getJobLocation={getJobLocation}
                 getSalaryDisplay={getSalaryDisplay}
                 trigger={
-                  <Button variant="outline" size="sm">
-                    <Share2 className="w-4 h-4" />
+                  <Button variant="outline" size="sm" className="hover:bg-[#17a2b8]/10 hover:text-[#17a2b8] hover:border-[#17a2b8] transition-all duration-200">
+                    <Share2 className="w-5 h-5 text-[#003366]/30" />
                   </Button>
                 }
               />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="flex items-center text-sm">
-              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-              <span>
+        <CardContent className="pt-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="flex items-center text-sm p-4 rounded-xl bg-white border border-[#17a2b8]/20 hover:border-[#17a2b8] hover:shadow-md transition-all duration-200 hover:bg-[#17a2b8]/5">
+              <MapPin className="w-5 h-5 mr-3 text-[#17a2b8] flex-shrink-0" />
+              <span className="font-medium text-[#003366]">
                 {job.location?.is_remote 
-                  ? 'Remote' 
+                  ? '🌍 Remote' 
                   : (typeof job.location?.display === 'string' 
                       ? job.location.display 
                       : job.location?.city && job.location?.state 
@@ -527,9 +528,9 @@ ${user.name || user.email}`);
                 }
               </span>
             </div>
-            <div className="flex items-center text-sm">
-              <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
-              <span>
+            <div className="flex items-center text-sm p-4 rounded-xl bg-white border border-[#FF6B35]/20 hover:border-[#FF6B35] hover:shadow-md transition-all duration-200 hover:bg-[#FF6B35]/5">
+              <DollarSign className="w-5 h-5 mr-3 text-[#FF6B35] flex-shrink-0" />
+              <span className="font-medium text-[#003366]">
                 {job.salary?.show_salary && job.salary?.min && job.salary?.max 
                   ? `${formatCurrency(job.salary.min)} - ${formatCurrency(job.salary.max)}`
                   : (typeof job.salary?.display === 'string' 
@@ -539,27 +540,27 @@ ${user.name || user.email}`);
                 }
               </span>
             </div>
-            <div className="flex items-center text-sm">
-              <Clock className="w-4 h-4 mr-2 text-gray-400" />
-              <span>{formatRelativeTime(job.created_at)}</span>
+            <div className="flex items-center text-sm p-4 rounded-xl bg-white border border-[#17a2b8]/20 hover:border-[#17a2b8] hover:shadow-md transition-all duration-200 hover:bg-[#17a2b8]/5">
+              <Clock className="w-5 h-5 mr-3 text-[#17a2b8] flex-shrink-0" />
+              <span className="font-medium text-[#003366]">⏱️ {formatRelativeTime(job.created_at)}</span>
             </div>
-            <div className="flex items-center text-sm">
-              <Users className="w-4 h-4 mr-2 text-gray-400" />
-              <span>{job.statistics?.application_count || job.applications_count || 0} applicants</span>
+            <div className="flex items-center text-sm p-4 rounded-xl bg-white border border-[#FF6B35]/20 hover:border-[#FF6B35] hover:shadow-md transition-all duration-200 hover:bg-[#FF6B35]/5">
+              <Users className="w-5 h-5 mr-3 text-[#FF6B35] flex-shrink-0" />
+              <span className="font-medium text-[#003366]">👥 {job.statistics?.application_count || job.applications_count || 0}</span>
             </div>
           </div>
 
           {/* Additional Info Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {job.statistics?.view_count && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Eye className="w-4 h-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-[#003366]">
+                <Eye className="w-4 h-4 mr-2 text-[#17a2b8]" />
                 <span>{job.statistics.view_count} views</span>
               </div>
             )}
             {job.years_experience_min !== undefined && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-[#003366]">
+                <Briefcase className="w-4 h-4 mr-2 text-[#FF6B35]" />
                 <span>
                   {job.years_experience_min === 0 && !job.years_experience_max 
                     ? 'No experience required'
@@ -571,14 +572,14 @@ ${user.name || user.email}`);
               </div>
             )}
             {job.application_deadline && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-[#003366]">
+                <Calendar className="w-4 h-4 mr-2 text-[#17a2b8]" />
                 <span>Deadline: {new Date(job.application_deadline).toLocaleDateString()}</span>
               </div>
             )}
             {job.expires_at && job.days_until_expiry !== null && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Timer className="w-4 h-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-[#003366]">
+                <Timer className="w-4 h-4 mr-2 text-[#FF6B35]" />
                 <span>
                   {job.days_until_expiry === 0 
                     ? 'Expires today' 
@@ -589,31 +590,31 @@ ${user.name || user.email}`);
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-6">
-            <Badge variant="outline">{snakeToTitle(job.employment_type)}</Badge>
-            <Badge variant="outline">{snakeToTitle(job.experience_level)}</Badge>
-            <Badge variant="outline">{job.category?.name || 'Unknown Category'}</Badge>
-            {job.location?.is_remote && <Badge variant="outline">Remote OK</Badge>}
-            {job.location?.type === 'hybrid' && <Badge variant="outline">Hybrid</Badge>}
-            {job.visa_sponsorship && <Badge variant="outline">Visa Sponsorship</Badge>}
-            {job.salary?.negotiable && <Badge variant="outline">Salary Negotiable</Badge>}
+          <div className="flex flex-wrap gap-3 mb-8">
+            <Badge className="bg-[#003366] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">💼 {snakeToTitle(job.employment_type)}</Badge>
+            <Badge className="bg-[#17a2b8] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">📊 {snakeToTitle(job.experience_level)}</Badge>
+            <Badge className="bg-[#003366] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">🏷️ {job.category?.name || 'Unknown Category'}</Badge>
+            {job.location?.is_remote && <Badge className="bg-[#17a2b8] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">🌍 Remote OK</Badge>}
+            {job.location?.type === 'hybrid' && <Badge className="bg-[#FF6B35] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">🔄 Hybrid</Badge>}
+            {job.visa_sponsorship && <Badge className="bg-[#17a2b8] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">🛂 Visa Sponsorship</Badge>}
+            {job.salary?.negotiable && <Badge className="bg-[#FF6B35] text-white border-0 shadow-md hover:shadow-lg px-4 py-2 rounded-full font-medium transition-all duration-200">💰 Salary Negotiable</Badge>}
           </div>
 
           {/* Application Method Info */}
           {job.application_type && job.application_type !== 'internal' && (
-            <Alert className="mb-6">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="mb-8 border-0 bg-[#17a2b8]/10 shadow-lg hover:shadow-xl transition-shadow duration-200">
+              <Info className="h-5 w-5 text-[#17a2b8]" />
+              <AlertDescription className="text-[#003366] font-medium">
                 {job.application_type === 'external' && (
                   <div className="flex items-center">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Applications are handled externally via the company's website
+                    <ExternalLink className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span>Applications are handled externally via the company's website</span>
                   </div>
                 )}
                 {job.application_type === 'email' && (
                   <div className="flex items-center">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Applications should be sent via email to: {job.application_email}
+                    <Mail className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span>Applications should be sent via email to: <strong className="ml-1">{job.application_email}</strong></span>
                   </div>
                 )}
               </AlertDescription>
@@ -621,44 +622,44 @@ ${user.name || user.email}`);
           )}
 
           {/* Apply Button */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-wrap gap-y-3">
             {hasApplied ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center text-green-600 mb-2">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  <span className="font-medium">You have already applied to this job</span>
+              <div className="w-full bg-[#17a2b8]/10 border-2 border-[#17a2b8] rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-200">
+                <div className="flex items-center text-[#17a2b8] mb-4">
+                  <CheckCircle className="w-6 h-6 mr-3 flex-shrink-0" />
+                  <span className="font-bold text-lg text-[#003366]">✅ You have already applied to this job</span>
                 </div>
                 {applicationData && (
-                  <div className="text-sm text-green-700">
-                    <div className="mb-1">
+                  <div className="text-sm text-[#003366] space-y-3">
+                    <div className="flex items-center space-x-2">
                       <strong>Application Status:</strong> 
-                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                        applicationData.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                        applicationData.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
-                        applicationData.status === 'shortlisted' ? 'bg-green-100 text-green-800' :
-                        applicationData.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-bold ${
+                        applicationData.status === 'submitted' ? 'bg-[#17a2b8] text-white' :
+                        applicationData.status === 'under_review' ? 'bg-[#FF6B35] text-white' :
+                        applicationData.status === 'shortlisted' ? 'bg-[#003366] text-white' :
+                        applicationData.status === 'rejected' ? 'bg-[#FF6B35]/80 text-white' :
+                        'bg-[#17a2b8]/60 text-white'
                       }`}>
                         {applicationData.status_display || applicationData.status}
                       </span>
                     </div>
-                    <div className="mb-2">
-                      <strong>Applied on:</strong> {new Date(applicationData.created_at).toLocaleDateString()}
+                    <div>
+                      <strong>📅 Applied on:</strong> {new Date(applicationData.created_at).toLocaleDateString()}
                     </div>
-                    <div className="flex space-x-2 flex-wrap gap-y-2">
+                    <div className="flex space-x-3 flex-wrap gap-y-2 pt-3 border-t border-[#17a2b8]/30">
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => navigate('/my-applications')}
-                        className="text-green-600 border-green-600 hover:bg-green-50"
+                        className="text-[#17a2b8] border-[#17a2b8] hover:bg-[#17a2b8]/10 font-semibold"
                       >
-                        View Application
+                        📋 View Application
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => navigate(`/jobseeker/cv-builder?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company?.name || job.company_name || '')}&description=${encodeURIComponent((job.description || '').slice(0, 500))}&requirements=${encodeURIComponent((job.requirements || job.required_skills || []).toString().slice(0, 500))}`)}
-                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        className="text-[#FF6B35] border-[#FF6B35] hover:bg-[#FF6B35]/10 font-semibold"
                       >
                         <FileText className="w-4 h-4 mr-1" />
                         Generate CV for this Job
@@ -667,61 +668,61 @@ ${user.name || user.email}`);
                         variant="outline" 
                         size="sm" 
                         onClick={() => navigate('/jobs')}
-                        className="text-gray-600 border-gray-300"
+                        className="text-[#003366] border-[#003366] hover:bg-[#003366]/10 font-semibold"
                       >
-                        Browse More Jobs
+                        🔍 Browse More Jobs
                       </Button>
                     </div>
                   </div>
                 )}
               </div>
             ) : isAuthenticated && user?.role === 'job_seeker' ? (
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-4 flex-wrap">
                 <Button 
                   size="lg" 
                   onClick={handleApply}
                   disabled={applying || job.is_expired}
-                  className="min-w-[150px]"
+                  className="min-w-[180px] bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                 >
-                  {applying ? 'Processing...' : job.is_expired ? 'Expired' : getApplyButtonText()}
+                  {applying ? '⏳ Processing...' : job.is_expired ? '⏰ Expired' : '🚀 ' + getApplyButtonText()}
                 </Button>
                 {!job.is_expired && (
                   <Button 
                     size="lg" 
                     variant="outline"
                     onClick={() => navigate(`/jobseeker/cv-builder?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company?.name || job.company_name || '')}&description=${encodeURIComponent((job.description || '').slice(0, 500))}&requirements=${encodeURIComponent((job.requirements || job.required_skills || []).toString().slice(0, 500))}`)}
-                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    className="text-[#17a2b8] border-[#17a2b8] hover:bg-[#17a2b8]/10 font-bold shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <FileText className="w-5 h-5 mr-2" />
-                    Generate CV
+                    💼 Generate CV
                   </Button>
                 )}
               </div>
             ) : isAuthenticated && user?.role !== 'job_seeker' ? (
-              <div className="flex items-center text-amber-600">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <span className="text-sm">Only job seekers can apply for jobs</span>
+              <div className="flex items-center text-[#FF6B35] bg-[#FF6B35]/10 px-6 py-4 rounded-xl border border-[#FF6B35]/30 shadow-md">
+                <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                <span className="font-semibold">⚠️ Only job seekers can apply for jobs</span>
               </div>
             ) : (
               <Button 
                 size="lg" 
                 onClick={handleApply}
-                className="min-w-[150px]"
+                className="min-w-[180px] bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                 disabled={job.is_expired}
               >
-                {job.is_expired ? 'Expired' : getApplyButtonText()}
+                {job.is_expired ? '⏰ Expired' : '🚀 ' + getApplyButtonText()}
               </Button>
             )}
             {!isAuthenticated && (
-              <div className="flex items-center text-amber-600">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <span className="text-sm">Sign in to apply</span>
+              <div className="flex items-center text-[#17a2b8] bg-[#17a2b8]/10 px-6 py-4 rounded-xl border border-[#17a2b8]/30 shadow-md">
+                <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                <span className="font-semibold">🔐 Sign in to apply</span>
               </div>
             )}
             {job.is_expired && (
-              <div className="flex items-center text-red-600">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                <span className="text-sm">This job posting has expired</span>
+              <div className="flex items-center text-[#FF6B35] bg-[#FF6B35]/10 px-6 py-4 rounded-xl border border-[#FF6B35]/30 shadow-md">
+                <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                <span className="font-semibold">❌ This job posting has expired</span>
               </div>
             )}
           </div>
@@ -739,8 +740,8 @@ ${user.name || user.email}`);
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Enhanced Job Description */}
-          <Card className="enhanced-card shadow-xl border-0 bg-gradient-to-br from-white via-gray-50/30 to-blue-50/20">
-            <CardHeader className="pb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-t-lg">
+          <Card className="enhanced-card shadow-xl border-0 bg-white">
+            <CardHeader className="pb-4 bg-gradient-to-r from-[#003366] to-[#17a2b8] text-white rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -748,7 +749,7 @@ ${user.name || user.email}`);
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold">Job Description</CardTitle>
-                    <CardDescription className="text-blue-100 mt-1">
+                    <CardDescription className="text-white/90 mt-1">
                       Detailed overview of the role and responsibilities
                     </CardDescription>
                   </div>
@@ -760,23 +761,23 @@ ${user.name || user.email}`);
               </div>
             </CardHeader>
             
-            <CardContent className="p-0 bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-0 bg-white">
               {/* Enhanced Summary Section */}
               {job.summary && (
-                <div className="relative p-6 border-b border-gray-100">
+                <div className="relative p-6 border-b border-[#17a2b8]/20">
                   {/* Decorative Background */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 opacity-60"></div>
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600 rounded-r"></div>
+                  <div className="absolute inset-0 bg-[#17a2b8]/5"></div>
+                  <div className="absolute top-0 left-0 w-1 h-full bg-[#17a2b8] rounded-r"></div>
                   
                   <div className="relative">
                     <div className="flex items-center space-x-2 mb-4">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-[#17a2b8] rounded-lg flex items-center justify-center">
                         <Info className="w-4 h-4 text-white" />
                       </div>
-                      <h4 className="font-bold text-lg text-gray-900">Position Overview</h4>
-                      <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent"></div>
+                      <h4 className="font-bold text-lg text-[#003366]">Position Overview</h4>
+                      <div className="flex-1 h-px bg-gradient-to-r from-[#17a2b8] to-transparent"></div>
                     </div>
-                    <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-blue-100 shadow-sm">
+                    <div className="bg-white rounded-xl p-4 border border-[#17a2b8]/20 shadow-sm">
                       <SmartTextRenderer 
                         content={job.summary}
                         className="text-gray-700 leading-relaxed text-base"
@@ -789,11 +790,11 @@ ${user.name || user.email}`);
               {/* Enhanced Description Content */}
               <div className="p-6">
                 <div className="flex items-center space-x-2 mb-6">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[#FF6B35] rounded-lg flex items-center justify-center">
                     <Briefcase className="w-4 h-4 text-white" />
                   </div>
-                  <h4 className="font-bold text-lg text-gray-900">Complete Job Details</h4>
-                  <div className="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent"></div>
+                  <h4 className="font-bold text-lg text-[#003366]">Complete Job Details</h4>
+                  <div className="flex-1 h-px bg-gradient-to-r from-[#FF6B35] to-transparent"></div>
                 </div>
 
                 {job.description ? (
@@ -802,17 +803,17 @@ ${user.name || user.email}`);
                     <div className="enhanced-job-description prose prose-lg max-w-none 
                                   prose-headings:text-gray-900 prose-headings:font-bold 
                                   prose-h1:text-2xl prose-h1:mb-4 prose-h1:mt-6 prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2
-                                  prose-h2:text-xl prose-h2:mb-3 prose-h2:mt-5 prose-h2:text-indigo-700
-                                  prose-h3:text-lg prose-h3:mb-2 prose-h3:mt-4 prose-h3:text-purple-600
+                                  prose-h2:text-xl prose-h2:mb-3 prose-h2:mt-5 prose-h2:text-[#17a2b8]
+                                  prose-h3:text-lg prose-h3:mb-2 prose-h3:mt-4 prose-h3:text-[#FF6B35]
                                   prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
                                   prose-ul:my-4 prose-li:my-2 prose-li:text-gray-700
                                   prose-ol:my-4 prose-ol:list-decimal
                                   prose-strong:text-gray-900 prose-strong:font-semibold
-                                  prose-em:text-indigo-600 prose-em:italic
-                                  prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-purple-700
+                                  prose-em:text-[#17a2b8] prose-em:italic
+                                  prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-[#FF6B35]
                                   prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-lg prose-pre:p-4
-                                  prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50 prose-blockquote:p-4 prose-blockquote:my-4 prose-blockquote:rounded-r-lg
-                                  prose-a:text-indigo-600 prose-a:hover:text-indigo-800 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                                  prose-blockquote:border-l-4 prose-blockquote:border-[#17a2b8] prose-blockquote:bg-[#17a2b8]/10 prose-blockquote:p-4 prose-blockquote:my-4 prose-blockquote:rounded-r-lg
+                                  prose-a:text-[#17a2b8] prose-a:hover:text-[#17a2b8] prose-a:font-medium prose-a:no-underline hover:prose-a:underline
                                   ">
                       
                       {/* Smart content rendering with enhanced markdown support */}
@@ -846,7 +847,7 @@ ${user.name || user.email}`);
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-gray-500 hover:text-indigo-600"
+                          className="text-gray-500 hover:text-[#17a2b8]"
                           onClick={() => {
                             navigator.clipboard.writeText(job.description);
                             // Add toast notification here if available
@@ -886,12 +887,12 @@ ${user.name || user.email}`);
                   </h4>
                   <div className="space-y-2">
                     <div className="flex items-center">
-                      <CheckCircle className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 flex-shrink-0" />
                       <span className="text-gray-700">{snakeToTitle(job.experience_level)} level position</span>
                     </div>
                     {job.years_experience_min !== undefined && (
                       <div className="flex items-center">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 flex-shrink-0" />
                         <span className="text-gray-700">
                           {job.years_experience_min === 0 && !job.years_experience_max 
                             ? 'No prior experience required'
@@ -914,7 +915,7 @@ ${user.name || user.email}`);
                     Education
                   </h4>
                   <div className="flex items-start">
-                    <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{job.education_requirement}</span>
                   </div>
                 </div>
@@ -941,19 +942,19 @@ ${user.name || user.email}`);
                   <ul className="space-y-2">
                     {job.requirements.resume && (
                       <li className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">Resume/CV required</span>
                       </li>
                     )}
                     {job.requirements.cover_letter && (
                       <li className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">Cover letter required</span>
                       </li>
                     )}
                     {job.requirements.portfolio && (
                       <li className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-[#17a2b8] mr-3 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">Portfolio required</span>
                       </li>
                     )}
@@ -984,8 +985,8 @@ ${user.name || user.email}`);
 
           {/* Enhanced Application Instructions */}
           {job.application_instructions && (
-            <Card className="overflow-hidden border-0 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 shadow-lg ring-1 ring-emerald-200/50">
-              <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white relative">
+            <Card className="overflow-hidden border-0 bg-gradient-to-br from-[#17a2b8]/5 to-white shadow-lg ring-1 ring-[#17a2b8]/20">
+              <CardHeader className="bg-gradient-to-r from-[#003366] to-[#17a2b8] text-white relative">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-20">
                   <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:15px_15px]"></div>
@@ -997,13 +998,13 @@ ${user.name || user.email}`);
                       <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/20">
                         <FileText className="w-6 h-6 text-white" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <Info className="w-2.5 h-2.5 text-yellow-900" />
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF6B35] rounded-full flex items-center justify-center">
+                        <Info className="w-2.5 h-2.5 text-[#FF6B35]-900" />
                       </div>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold mb-1">Application Instructions</h3>
-                      <p className="text-emerald-100 text-sm font-medium">
+                      <p className="text-white/90 text-sm font-medium">
                         Follow these guidelines for the best application experience
                       </p>
                     </div>
@@ -1018,10 +1019,10 @@ ${user.name || user.email}`);
               <CardContent className="p-0 bg-white/80 backdrop-blur-sm">
                 <div className="p-6 space-y-4">
                   {/* Instructions Content with Enhanced Bullet Design */}
-                  <div className="bg-white/70 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+                  <div className="bg-white/70 rounded-2xl p-6 border border-[#17a2b8]/20 shadow-sm">
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-emerald-600" />
+                      <div className="w-10 h-10 bg-gradient-to-br [#17a2b8]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-[#17a2b8]" />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-4">How to Apply</h4>
@@ -1034,15 +1035,15 @@ ${user.name || user.email}`);
                             return (
                               <div key={index} className="flex items-start gap-3 group">
                                 <div className="flex-shrink-0 mt-1.5">
-                                  <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-[#FF6B35] to-[#FF6B35] rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200">
                                     <span className="text-white font-bold text-xs">{index + 1}</span>
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 rounded-xl p-4 border border-emerald-100/50 group-hover:border-emerald-200 transition-all duration-200">
+                                  <div className="bg-gradient-to-r from-[#17a2b8]/5 to-white rounded-xl p-4 border border-[#17a2b8]/20 group-hover:border-[#17a2b8]/40 transition-all duration-200">
                                     <SmartTextRenderer 
                                       content={trimmedInstruction.replace(/^[-•*]\s*/, '')}
-                                      className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed"
+                                      className="prose prose-sm prose max-w-none text-gray-700 leading-relaxed"
                                     />
                                   </div>
                                 </div>
@@ -1054,15 +1055,15 @@ ${user.name || user.email}`);
                           {!job.application_instructions.includes('\n') && (
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-1.5">
-                                <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+                                <div className="w-6 h-6 bg-gradient-to-br from-[#FF6B35] to-[#FF6B35] rounded-full flex items-center justify-center shadow-sm">
                                   <CheckCircle className="w-3 h-3 text-white" />
                                 </div>
                               </div>
                               <div className="flex-1">
-                                <div className="bg-gradient-to-r from-emerald-50/50 to-teal-50/50 rounded-xl p-4 border border-emerald-100/50">
+                                <div className="bg-gradient-to-r from-[#17a2b8]/5 to-white rounded-xl p-4 border border-[#17a2b8]/20">
                                   <SmartTextRenderer 
                                     content={job.application_instructions}
-                                    className="prose prose-sm prose-emerald max-w-none text-gray-700 leading-relaxed"
+                                    className="prose prose-sm prose max-w-none text-gray-700 leading-relaxed"
                                   />
                                 </div>
                               </div>
@@ -1074,35 +1075,35 @@ ${user.name || user.email}`);
                   </div>
 
                   {/* Application Type Specific Guidelines */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                  <div className="bg-gradient-to-r from-[#17a2b8]/5 to-white rounded-2xl p-6 border border-[#17a2b8]/20">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#17a2b8]/10 to-[#17a2b8]/5 rounded-xl flex items-center justify-center flex-shrink-0">
                         {job.application_type === 'external' ? (
-                          <ExternalLink className="w-5 h-5 text-blue-600" />
+                          <ExternalLink className="w-5 h-5 text-[#17a2b8]" />
                         ) : job.application_type === 'email' ? (
-                          <Mail className="w-5 h-5 text-blue-600" />
+                          <Mail className="w-5 h-5 text-[#17a2b8]" />
                         ) : (
-                          <FileText className="w-5 h-5 text-blue-600" />
+                          <FileText className="w-5 h-5 text-[#17a2b8]" />
                         )}
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-2">Application Method</h4>
                         <div className="text-sm text-gray-700">
                           {job.application_type === 'external' && (
-                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
-                              <ExternalLink className="w-4 h-4 text-blue-600" />
+                            <div className="flex items-center gap-2 p-3 bg-[#17a2b8]/10 rounded-xl border border-[#17a2b8]/20">
+                              <ExternalLink className="w-4 h-4 text-[#17a2b8]" />
                               <span>Apply directly on the company's website using the "Apply on Company Site" button below.</span>
                             </div>
                           )}
                           {job.application_type === 'email' && (
-                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
-                              <Mail className="w-4 h-4 text-blue-600" />
+                            <div className="flex items-center gap-2 p-3 bg-[#17a2b8]/10 rounded-xl border border-[#17a2b8]/20">
+                              <Mail className="w-4 h-4 text-[#17a2b8]" />
                               <span>Send your application via email using the "Apply via Email" button below.</span>
                             </div>
                           )}
                           {(!job.application_type || job.application_type === 'internal') && (
-                            <div className="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl">
-                              <FileText className="w-4 h-4 text-blue-600" />
+                            <div className="flex items-center gap-2 p-3 bg-[#17a2b8]/10 rounded-xl border border-[#17a2b8]/20">
+                              <FileText className="w-4 h-4 text-[#17a2b8]" />
                               <span>Apply directly through our platform using the "Apply Now" button below.</span>
                             </div>
                           )}
@@ -1112,28 +1113,28 @@ ${user.name || user.email}`);
                   </div>
 
                   {/* Quick Tips Section */}
-                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-6 border border-amber-100">
+                  <div className="bg-gradient-to-r from-[#FF6B35]/5 to-white rounded-2xl p-6 border border-[#FF6B35]/20">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Star className="w-5 h-5 text-amber-600" />
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B35]/10 to-[#FF6B35]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Star className="w-5 h-5 text-[#FF6B35]" />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-3">Application Tips</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                           <div className="flex items-center gap-2 text-gray-700">
-                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <CheckCircle className="w-4 h-4 text-[#17a2b8]" />
                             <span>Tailor your resume to match job requirements</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-700">
-                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <CheckCircle className="w-4 h-4 text-[#17a2b8]" />
                             <span>Write a compelling cover letter</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-700">
-                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <CheckCircle className="w-4 h-4 text-[#17a2b8]" />
                             <span>Highlight relevant experience</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-700">
-                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <CheckCircle className="w-4 h-4 text-[#17a2b8]" />
                             <span>Follow all application instructions</span>
                           </div>
                         </div>
@@ -1143,16 +1144,16 @@ ${user.name || user.email}`);
 
                   {/* Contact Information if Email Application */}
                   {job.application_type === 'email' && job.application_email && (
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                    <div className="bg-gradient-to-r from-[#FF6B35]/5 to-white rounded-2xl p-6 border border-[#FF6B35]/20">
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Mail className="w-5 h-5 text-purple-600" />
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B35]/10 to-[#FF6B35]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Mail className="w-5 h-5 text-[#FF6B35]" />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
-                          <div className="flex items-center gap-2 p-3 bg-purple-100/50 rounded-xl">
-                            <Mail className="w-4 h-4 text-purple-600" />
-                            <span className="font-medium text-purple-900">{job.application_email}</span>
+                          <div className="flex items-center gap-2 p-3 bg-[#17a2b8]/10 rounded-xl">
+                            <Mail className="w-4 h-4 text-[#FF6B35]" />
+                            <span className="font-medium text-[#003366]">{job.application_email}</span>
                             <Button
                               size="sm"
                               variant="outline"
@@ -1169,16 +1170,16 @@ ${user.name || user.email}`);
 
                   {/* Application Deadline if Available */}
                   {job.application_deadline && (
-                    <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-2xl p-6 border border-red-100">
+                    <div className="bg-gradient-to-r from-[#FF6B35]/5 to-white rounded-2xl p-6 border border-[#FF6B35]/20">
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-5 h-5 text-red-600" />
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B35]/10 to-[#FF6B35]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-5 h-5 text-[#FF6B35]" />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900 mb-2">Application Deadline</h4>
-                          <div className="flex items-center gap-2 p-3 bg-red-100/50 rounded-xl">
-                            <Clock className="w-4 h-4 text-red-600" />
-                            <span className="font-medium text-red-900">
+                          <div className="flex items-center gap-2 p-3 bg-[#FF6B35]/10 rounded-xl">
+                            <Clock className="w-4 h-4 text-[#FF6B35]" />
+                            <span className="font-medium text-[#FF6B35]">
                               {new Date(job.application_deadline).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
@@ -1235,7 +1236,7 @@ ${user.name || user.email}`);
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-[#17a2b8]/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   {(job.company?.logo_url || job.external_company_logo) ? (
                     <img 
                       src={job.company?.logo_url || job.external_company_logo} 
@@ -1250,12 +1251,12 @@ ${user.name || user.email}`);
                   ) : null}
                   <div className={`sidebar-fallback-icon w-8 h-8 flex items-center justify-center ${(job.company?.logo_url || job.external_company_logo) ? 'hidden' : 'flex'}`}>
                     {(job.job_source === 'external' || job.external_company_name) ? (
-                      <div className="flex flex-col items-center text-blue-600">
+                      <div className="flex flex-col items-center text-[#17a2b8]">
                         <ExternalLink className="w-3 h-3 mb-1" />
                         <Building className="w-3 h-3" />
                       </div>
                     ) : (
-                      <Building className="w-5 h-5 text-blue-600" />
+                      <Building className="w-5 h-5 text-[#17a2b8]" />
                     )}
                   </div>
                 </div>
@@ -1269,7 +1270,7 @@ ${user.name || user.email}`);
                               prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-3
                               prose-ul:my-3 prose-li:my-1 prose-li:text-gray-700
                               prose-strong:text-gray-900 prose-strong:font-semibold
-                              bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-xl p-4 border border-blue-100">
+                              bg-gradient-to-r [#17a2b8]/5 rounded-xl p-4 border border-[#17a2b8]/20">
                   {(job.company?.description || job.external_company_description).includes('##') || 
                    (job.company?.description || job.external_company_description).includes('**') || 
                    (job.company?.description || job.external_company_description).includes('*') ? (
@@ -1312,7 +1313,7 @@ ${user.name || user.email}`);
                       href={job.company?.website || job.external_company_website} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                      className="text-sm text-[#17a2b8] hover:text-[#003366] flex items-center"
                     >
                       {job.company?.website || job.external_company_website}
                       <ExternalLink className="w-3 h-3 ml-1" />
@@ -1396,8 +1397,8 @@ ${user.name || user.email}`);
           )}
 
           {/* Enhanced Similar Jobs with Premium Visual Design */}
-          <Card className="overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 shadow-xl border-0 ring-1 ring-slate-200/50">
-            <CardHeader className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white">
+          <Card className="overflow-hidden from-white to-white shadow-xl border-0 ring-1 ring-[#17a2b8]/20">
+            <CardHeader className="relative bg-gradient-to-r from-[#003366] via-[#17a2b8] to-[#FF6B35] text-white">
               {/* Background Pattern */}
               <div className="absolute inset-0 opacity-30">
                 <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px]"></div>
@@ -1409,13 +1410,13 @@ ${user.name || user.email}`);
                     <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/20">
                       <Briefcase className="w-6 h-6 text-white" />
                     </div>
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <Star className="w-2.5 h-2.5 text-yellow-900" />
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF6B35] rounded-full flex items-center justify-center">
+                      <Star className="w-2.5 h-2.5 text-white" />
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold mb-1">Similar Opportunities</h3>
-                    <p className="text-indigo-100 text-sm font-medium">
+                    <h3 className="text-xl font-bold text-white mb-1">Similar Opportunities</h3>
+                    <p className="text-white/80 text-sm font-medium">
                       AI-powered job matching • Tailored for you
                     </p>
                   </div>
@@ -1433,14 +1434,14 @@ ${user.name || user.email}`);
               {similarJobsLoading ? (
                 <div className="p-8">
                   <div className="text-center mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-pulse">
-                      <Briefcase className="w-6 h-6 text-indigo-500" />
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF6B35]/10 to-[#FF6B35]/5 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-pulse">
+                      <Briefcase className="w-6 h-6 text-[#17a2b8]" />
                     </div>
                     <p className="text-gray-600 font-medium">Finding your perfect matches...</p>
                   </div>
                   <div className="space-y-6">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-2xl animate-pulse">
+                      <div key={i} className="from-white to-white p-6 rounded-2xl animate-pulse">
                         <div className="flex items-start gap-4">
                           <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
                           <div className="flex-1">
@@ -1459,13 +1460,13 @@ ${user.name || user.email}`);
                 </div>
               ) : similarJobsError ? (
                 <div className="p-8 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-10 h-10 text-red-500" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#FF6B35]/10 to-[#FF6B35]/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-10 h-10 text-[#FF6B35]" />
                   </div>
                   <h4 className="text-lg font-bold text-gray-900 mb-2">Oops! Something went wrong</h4>
                   <p className="text-gray-600 mb-6 max-w-md mx-auto">{similarJobsError}</p>
                   <Button 
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#003366] hover:to-[#17a2b8] text-white px-6 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
                     onClick={() => window.location.reload()}
                   >
                     <AlertCircle className="w-4 h-4 mr-2" />
@@ -1477,21 +1478,21 @@ ${user.name || user.email}`);
                   {similarJobs.map((similarJob, index) => (
                     <div 
                       key={similarJob.id} 
-                      className="relative group hover:shadow-lg transition-all duration-300 bg-white/70 hover:bg-white border-b border-slate-100 last:border-b-0"
+                      className="relative group hover:shadow-lg transition-all duration-300 bg-white hover:bg-white border-b border-[#003366]/10 last:border-b-0"
                     >
                       {/* Hover Effect Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/0 via-purple-50/0 to-blue-50/0 group-hover:from-indigo-50/50 group-hover:via-purple-50/30 group-hover:to-blue-50/50 transition-all duration-300 rounded-lg"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#003366]/0 via-[#17a2b8]/0 to-[#FF6B35]/0 group-hover:from-[#17a2b8]/5 group-hover:via-[#17a2b8]/10 group-hover:to-[#FF6B35]/5 transition-all duration-300 rounded-lg"></div>
                       
                       <div className="relative p-6">
                         {/* Job Header with Enhanced Match Score */}
                         <div className="flex items-start gap-4 mb-4">
                           {/* Company Logo Placeholder */}
-                          <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:shadow-md transition-all duration-200">
-                            <Building className="w-6 h-6 text-slate-600" />
+                          <div className="w-14 h-14 bg-gradient-to-br from-[#003366]/10 to-[#003366]/5 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:shadow-md transition-all duration-200">
+                            <Building className="w-6 h-6 text-[#003366]/70" />
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-700 transition-colors duration-200">
+                            <h4 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-[#17a2b8] transition-colors duration-200">
                               <Link 
                                 to={`/jobs/${similarJob.id}`} 
                                 className="hover:underline line-clamp-2"
@@ -1529,9 +1530,9 @@ ${user.name || user.email}`);
                                       <div 
                                         className={`h-full transition-all duration-500 rounded-full ${
                                           similarJob.similarity_score >= 80 
-                                            ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                            ? 'bg-gradient-to-r from-[#17a2b8] to-[#17a2b8]' 
                                             : similarJob.similarity_score >= 60 
-                                            ? 'bg-gradient-to-r from-yellow-500 to-orange-500' 
+                                            ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF6B35]' 
                                             : 'bg-gradient-to-r from-gray-400 to-gray-500'
                                         }`}
                                         style={{ width: `${similarJob.similarity_score}%` }}
@@ -1540,10 +1541,10 @@ ${user.name || user.email}`);
                                   </div>
                                   <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
                                     similarJob.similarity_score >= 80 
-                                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200' 
+                                      ? 'bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#003366] border border-[#17a2b8]/30' 
                                       : similarJob.similarity_score >= 60 
-                                      ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-700 border border-orange-200' 
-                                      : 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 border border-gray-200'
+                                      ? 'bg-gradient-to-r from-[#FF6B35]/10 to-[#FF6B35]/5 text-[#FF6B35] border border-[#FF6B35]/30' 
+                                      : 'bg-gradient-to-r from-[#003366]/5 to-[#17a2b8]/5 text-[#003366] border border-[#003366]/20'
                                   }`}>
                                     {similarJob.similarity_score >= 80 ? 'Excellent' : similarJob.similarity_score >= 60 ? 'Good' : 'Fair'}
                                   </div>
@@ -1561,7 +1562,7 @@ ${user.name || user.email}`);
                               {similarJob.match_reasons.slice(0, 3).map((reason, i) => (
                                 <span 
                                   key={i}
-                                  className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 text-xs font-medium rounded-full border border-indigo-200 shadow-sm"
+                                  className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#17a2b8] text-xs font-medium rounded-full border border-[#17a2b8]/20 shadow-sm"
                                 >
                                   <CheckCircle className="w-3 h-3 mr-1.5" />
                                   {reason}
@@ -1580,14 +1581,14 @@ ${user.name || user.email}`);
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                           <div className="flex items-center gap-3">
                             {/* Employment Type */}
-                            <Badge className="bg-gradient-to-r from-slate-100 to-gray-100 text-slate-700 border-slate-200 hover:from-slate-200 hover:to-gray-200 px-3 py-1">
+                            <Badge className="bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#17a2b8] border-[#17a2b8]/30 hover:from-[#17a2b8]/15 hover:to-[#17a2b8]/10 px-3 py-1">
                               <Clock className="w-3 h-3 mr-1" />
                               {snakeToTitle(similarJob.employment_type)}
                             </Badge>
                             
                             {/* Experience Level */}
                             {similarJob.experience_level && (
-                              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200 hover:from-blue-200 hover:to-indigo-200 px-3 py-1">
+                              <Badge className="bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#17a2b8] border-[#17a2b8]/20 hover:from-[#17a2b8]/20 hover:to-[#17a2b8]/20 px-3 py-1">
                                 <GraduationCap className="w-3 h-3 mr-1" />
                                 {snakeToTitle(similarJob.experience_level)}
                               </Badge>
@@ -1595,7 +1596,7 @@ ${user.name || user.email}`);
                             
                             {/* Featured Badge with Animation */}
                             {similarJob.is_featured && (
-                              <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200 px-3 py-1 animate-pulse">
+                              <Badge className="bg-gradient-to-r from-[#FF6B35]/10 to-[#FF6B35]/5 text-[#FF6B35] border-[#FF6B35]/30 px-3 py-1 animate-pulse">
                                 <Star className="w-3 h-3 mr-1 fill-current" />
                                 Featured
                               </Badge>
@@ -1605,7 +1606,7 @@ ${user.name || user.email}`);
                           {/* Salary and Posted Date */}
                           <div className="text-right">
                             {getSalaryDisplay(similarJob) !== 'Salary not disclosed' && (
-                              <p className="text-sm font-bold text-green-600 mb-1">
+                              <p className="text-sm font-bold text-[#17a2b8] mb-1">
                                 {getSalaryDisplay(similarJob)}
                               </p>
                             )}
@@ -1623,13 +1624,13 @@ ${user.name || user.email}`);
                         {(similarJob.is_bookmarked || similarJob.has_applied) && (
                           <div className="flex gap-2 pt-3 border-t border-gray-100 mt-3">
                             {similarJob.has_applied && (
-                              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200 px-3 py-1">
+                              <Badge className="bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#003366] border-[#17a2b8]/30 px-3 py-1">
                                 <CheckCircle className="w-3 h-3 mr-1" />
                                 Applied
                               </Badge>
                             )}
                             {similarJob.is_bookmarked && (
-                              <Badge className="bg-gradient-to-r from-blue-100 to-sky-100 text-blue-700 border-blue-200 px-3 py-1">
+                              <Badge className="bg-gradient-to-r from-[#17a2b8]/10 to-[#17a2b8]/5 text-[#17a2b8] border-[#17a2b8]/20 px-3 py-1">
                                 <BookmarkCheck className="w-3 h-3 mr-1" />
                                 Bookmarked
                               </Badge>
@@ -1641,11 +1642,11 @@ ${user.name || user.email}`);
                   ))}
                   
                   {/* Enhanced Action Buttons */}
-                  <div className="p-6 bg-gradient-to-r from-slate-50 to-gray-50 border-t border-slate-200">
+                  <div className="p-6 bg-gradient-to-r from-[#003366]/5 to-white border-t border-[#003366]/10">
                     <div className="flex gap-3">
                       <Button 
                         variant="outline" 
-                        className="flex-1 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm hover:shadow-md transition-all duration-200" 
+                        className="flex-1 bg-white hover:bg-white border-[#003366]/20 text-[#003366] shadow-sm hover:shadow-md transition-all duration-200" 
                         asChild
                       >
                         <Link to={`/jobs?category=${job.category?.id || ''}`}>
@@ -1655,7 +1656,7 @@ ${user.name || user.email}`);
                       </Button>
                       {isAuthenticated && user?.role === 'job_seeker' && (
                         <Button 
-                          className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200" 
+                          className="flex-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#003366] hover:to-[#17a2b8] text-white shadow-lg hover:shadow-xl transition-all duration-200" 
                           asChild
                         >
                           <Link to="/recommendations">
@@ -1669,9 +1670,9 @@ ${user.name || user.email}`);
                 </div>
               ) : (
                 <div className="p-12 text-center">
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                    <Briefcase className="w-12 h-12 text-slate-400" />
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-[#003366]/10 via-white to-[#003366]/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Briefcase className="w-12 h-12 text-[#003366]/40" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-[#FF6B35] to-[#FF6B35] rounded-full flex items-center justify-center shadow-lg">
                       <Star className="w-4 h-4 text-white" />
                     </div>
                   </div>
@@ -1685,7 +1686,7 @@ ${user.name || user.email}`);
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button 
                       variant="outline" 
-                      className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 px-6 py-3 rounded-full shadow-sm hover:shadow-md transition-all duration-200" 
+                      className="bg-white hover:bg-white border-[#003366]/20 text-[#003366] px-6 py-3 rounded-full shadow-sm hover:shadow-md transition-all duration-200" 
                       asChild
                     >
                       <Link to={`/jobs?category=${job.category?.id || ''}`}>
@@ -1695,7 +1696,7 @@ ${user.name || user.email}`);
                     </Button>
                     {isAuthenticated && user?.role === 'job_seeker' && (
                       <Button 
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200" 
+                        className="bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#003366] hover:to-[#17a2b8] text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200" 
                         asChild
                       >
                         <Link to="/recommendations">

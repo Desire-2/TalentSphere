@@ -4,6 +4,7 @@ export { default as JobManagement } from './JobManagement';
 export { default as CompanyManagement } from './CompanyManagement';
 export { default as AdminScholarshipManagement } from './AdminScholarshipManagement';
 export { default as AdminCleanupManagement } from './AdminCleanupManagement';
+export { default as NotificationManagement } from './NotificationManagement';
 export { default as RevenueAnalytics } from './RevenueAnalytics';
 export { default as SystemHealth } from './SystemHealth';
 export { default as AdminProfile } from './AdminProfile';

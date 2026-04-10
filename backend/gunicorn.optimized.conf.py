@@ -90,21 +90,26 @@ def post_fork(server, worker):
     import setproctitle
     setproctitle.setproctitle(f"talentsphere-worker-{worker.pid}")
 
-    # Start background schedulers only in the primary worker.
-    if worker.age <= 1:
+    # Use environment flag to ensure scheduler starts only once, survives worker recycling
+    if not os.getenv('TALENTSPHERE_SCHEDULER_STARTED'):
+        os.environ['TALENTSPHERE_SCHEDULER_STARTED'] = 'true'
+        os.environ['TALENTSPHERE_SCHEDULER_WORKER_PID'] = str(worker.pid)
+        
         try:
             from src.main import app
             from src.services.job_digest_scheduler import job_digest_scheduler
             job_digest_scheduler.start(app)
-            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (primary worker)")
+            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (scheduler process)")
         except Exception as e:
             server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
+            # Clear flag on failure so another worker can try
+            del os.environ['TALENTSPHERE_SCHEDULER_STARTED']
 
         try:
             from src.services.cleanup_service import start_cleanup_service
             service = start_cleanup_service(app)
             if service and service.is_running:
-                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (primary worker)")
+                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
             else:
                 server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
         except Exception as e:

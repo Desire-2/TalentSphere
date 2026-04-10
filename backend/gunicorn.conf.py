@@ -65,21 +65,26 @@ def post_fork(server, worker):
     """Called just after a worker has been forked."""
     server.log.info(f"Worker {worker.pid} booted")
     
-    # Only start background schedulers in primary worker (age 0) to avoid duplicates.
-    if worker.age <= 1:
+    # Use environment flag to ensure scheduler starts only once, even across worker recycling
+    if not os.getenv('TALENTSPHERE_SCHEDULER_STARTED'):
+        os.environ['TALENTSPHERE_SCHEDULER_STARTED'] = 'true'
+        os.environ['TALENTSPHERE_SCHEDULER_WORKER_PID'] = str(worker.pid)
+        
         try:
             from src.main import app
             from src.services.job_digest_scheduler import job_digest_scheduler
             job_digest_scheduler.start(app)
-            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (primary worker)")
+            server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (scheduler process)")
         except Exception as e:
             server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
+            # Clear flag on failure so another worker can try
+            del os.environ['TALENTSPHERE_SCHEDULER_STARTED']
 
         try:
             from src.services.cleanup_service import start_cleanup_service
             service = start_cleanup_service(app)
             if service and service.is_running:
-                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (primary worker)")
+                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
             else:
                 server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
         except Exception as e:
@@ -87,8 +92,9 @@ def post_fork(server, worker):
             import traceback
             traceback.print_exc()
     else:
-        # Other workers acknowledge schedulers/services are running elsewhere.
-        server.log.info(f"Worker {worker.pid} - background schedulers run in primary worker")
+        # Scheduler already running in another worker process
+        scheduler_pid = os.getenv('TALENTSPHERE_SCHEDULER_WORKER_PID', 'unknown')
+        server.log.info(f"Worker {worker.pid} - background schedulers running in worker {scheduler_pid}")
 
 def worker_abort(worker):
     """Called when a worker received the SIGABRT signal."""

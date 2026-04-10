@@ -12,6 +12,7 @@ from src.models.featured_ad import FeaturedAd, Payment
 from src.models.notification import Review
 from src.routes.auth import token_required, role_required
 from src.services.job_scheduler import job_scheduler
+from src.services.job_notification_service import job_notification_service
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -1783,6 +1784,48 @@ def manual_job_cleanup(current_user):
             
     except Exception as e:
         return jsonify({'error': 'Failed to run job cleanup', 'details': str(e)}), 500
+
+
+@admin_bp.route('/admin/notifications/send-morning-update', methods=['POST'])
+@token_required
+@role_required('admin')
+def send_morning_update_to_all(current_user):
+    """Manually trigger morning update emails to all users"""
+    try:
+        result = job_notification_service.send_morning_top_jobs_update()
+        
+        return jsonify({
+            'message': 'Morning update completed',
+            'timestamp': datetime.utcnow().isoformat(),
+            'details': result
+        }), 200
+            
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to send morning update',
+            'details': str(e)
+        }), 500
+
+
+@admin_bp.route('/admin/notifications/send-weekly-digest', methods=['POST'])
+@token_required
+@role_required('admin')
+def send_weekly_digest_to_all(current_user):
+    """Manually trigger weekly digest emails to all users"""
+    try:
+        result = job_notification_service.send_weekly_jobs_scholarships_digest()
+        
+        return jsonify({
+            'message': 'Weekly digest completed',
+            'timestamp': datetime.utcnow().isoformat(),
+            'details': result
+        }), 200
+            
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to send weekly digest',
+            'details': str(e)
+        }), 500
 
 
 @admin_bp.route('/admin/jobs/scheduler/config', methods=['GET', 'PUT'])

@@ -171,5 +171,16 @@ export const adminService = {
   getSystemHealth: async () => {
     const response = await api.get('/admin/system-health');
     return response;
+  },
+
+  // Notification Management
+  sendMorningUpdate: async () => {
+    const response = await api.post('/admin/notifications/send-morning-update');
+    return response;
+  },
+
+  sendWeeklyDigest: async () => {
+    const response = await api.post('/admin/notifications/send-weekly-digest');
+    return response;
   }
 };

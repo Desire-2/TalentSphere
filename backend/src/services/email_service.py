@@ -66,7 +66,11 @@ class EmailService:
         self.brevo_api_key = os.getenv('BREVO_API_KEY')
         self.sender_email = os.getenv('SENDER_EMAIL', 'noreply@afritechbridge.online')
         self.sender_name = os.getenv('SENDER_NAME', 'AfriTech Bridge')
-        self.frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        self.frontend_url = (
+            os.getenv('FRONTEND_URL')
+            or os.getenv('SITE_URL')
+            or 'https://talentsphere.com'
+        ).rstrip('/')
         
         # Setup logging
         self.logger = logging.getLogger(__name__)

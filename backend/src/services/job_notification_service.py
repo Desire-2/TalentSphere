@@ -23,7 +23,11 @@ class JobNotificationService:
     
     def __init__(self):
         self.enhanced_notification_service = EnhancedNotificationService(email_service)
-        self.frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        self.frontend_url = (
+            os.getenv('FRONTEND_URL')
+            or os.getenv('SITE_URL')
+            or 'https://talentsphere.com'
+        ).rstrip('/')
         self.local_tz = self._get_local_timezone()
         self.local_tz_name = os.getenv('APP_TIMEZONE', 'system-local')
     

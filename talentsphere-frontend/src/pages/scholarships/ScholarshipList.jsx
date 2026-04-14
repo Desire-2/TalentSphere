@@ -27,6 +27,7 @@ import { useAuthStore } from '../../stores/authStore';
 import SEOHelmet from '../../components/seo/SEOHelmet';
 import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
+import AdSlot from '../../components/ads/AdSlot';
 
 // Sample data for demonstration when API is not available
 const getSampleCategories = () => [
@@ -559,10 +560,15 @@ const ScholarshipList = () => {
               </div>
             </div>
 
-            {/* Google Ads - Responsive before scholarships */}
+            {/* Ad Slot - Scholarship Feed */}
             <div className="mb-8">
               <div className="flex justify-center">
-                <ResponsiveAd className="rounded-lg shadow-sm" />
+                <AdSlot 
+                  placement="scholarship_feed_mid" 
+                  context="scholarship_listing" 
+                  format="CARD"
+                  limit={1}
+                />
               </div>
             </div>
 

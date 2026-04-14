@@ -125,9 +125,10 @@ const CompanySettings = () => {
       
       // Load company profile
       const companyResponse = await apiService.getMyCompanyProfile();
-      setCompany(companyResponse.data);
+      const company = companyResponse?.data || companyResponse;
+      setCompany(company);
       
-      // Load various settings
+      // Load various settings - handle both wrapped and raw responses
       const [
         accountResponse,
         securityResponse,
@@ -140,14 +141,28 @@ const CompanySettings = () => {
         apiService.getCompanyBillingSettings()
       ]);
 
-      setAccountSettings(accountResponse || {});
-      setSecuritySettings(securityResponse || {});
-      setPrivacySettings(privacyResponse || {});
-      setBillingSettings(billingResponse || {});
+      // Extract data properly from wrapped or raw responses
+      const accountSettings = accountResponse?.data || accountResponse || {};
+      const securitySettings = securityResponse?.data || securityResponse || {};
+      const privacySettings = privacyResponse?.data || privacyResponse || {};
+      const billingSettings = billingResponse?.data || billingResponse || {};
+      
+      setAccountSettings(accountSettings);
+      setSecuritySettings(securitySettings);
+      setPrivacySettings(privacySettings);
+      setBillingSettings(billingSettings);
+      
+      // Set billing email from user if not provided
+      if (billingSettings && !billingSettings.invoice_email) {
+        setBillingSettings(prev => ({
+          ...prev,
+          invoice_email: user?.email || ''
+        }));
+      }
       
     } catch (error) {
       console.error('Error loading settings:', error);
-      toast.error('Failed to load settings');
+      toast.error(error.response?.data?.error || error.message || 'Failed to load settings');
     } finally {
       setLoading(false);
     }

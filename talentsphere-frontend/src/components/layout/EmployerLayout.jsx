@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -14,7 +14,8 @@ import {
   ChevronDown,
   LogOut,
   Bell,
-  Plus
+  Plus,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,8 +35,10 @@ import { useSessionManager } from '../../hooks/useSessionManager';
 const EmployerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const dashboardTab = searchParams.get('tab');
 
   // Initialize session manager for employer panel
   useSessionManager({
@@ -53,25 +56,39 @@ const EmployerLayout = () => {
       name: 'Dashboard', 
       href: '/employer/dashboard', 
       icon: LayoutDashboard, 
-      current: location.pathname === '/employer/dashboard' || location.pathname === '/dashboard'
+      current:
+        location.pathname === '/dashboard' ||
+        (location.pathname === '/employer/dashboard' && (!dashboardTab || dashboardTab === 'overview'))
     },
     { 
       name: 'My Jobs', 
-      href: '/employer/jobs', 
+      href: '/employer/dashboard?tab=jobs', 
       icon: Briefcase, 
-      current: location.pathname.startsWith('/employer/jobs') 
+      current:
+        location.pathname.startsWith('/employer/jobs') ||
+        (location.pathname === '/employer/dashboard' && dashboardTab === 'jobs')
     },
     { 
       name: 'Applications', 
-      href: '/employer/applications', 
+      href: '/employer/dashboard?tab=applications', 
       icon: FileText, 
-      current: location.pathname.startsWith('/employer/applications') 
+      current:
+        location.pathname.startsWith('/employer/applications') ||
+        (location.pathname === '/employer/dashboard' && dashboardTab === 'applications')
     },
     { 
       name: 'Candidates', 
-      href: '/employer/candidates', 
+      href: '/employer/dashboard?tab=candidates', 
       icon: Users, 
-      current: location.pathname.startsWith('/employer/candidates') 
+      current:
+        location.pathname.startsWith('/employer/candidates') ||
+        (location.pathname === '/employer/dashboard' && dashboardTab === 'candidates')
+    },
+    { 
+      name: 'Ads', 
+      href: '/employer/ads', 
+      icon: TrendingUp, 
+      current: location.pathname.startsWith('/employer/ads') 
     },
     { 
       name: 'Company Profile', 
@@ -81,9 +98,11 @@ const EmployerLayout = () => {
     },
     { 
       name: 'Analytics', 
-      href: '/employer/analytics', 
+      href: '/employer/dashboard?tab=analytics', 
       icon: BarChart3, 
-      current: location.pathname.startsWith('/employer/analytics') 
+      current:
+        location.pathname.startsWith('/employer/analytics') ||
+        (location.pathname === '/employer/dashboard' && dashboardTab === 'analytics')
     },
     { 
       name: 'Settings', 

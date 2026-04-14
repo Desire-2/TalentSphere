@@ -17,7 +17,8 @@ import {
   Shield,
   GraduationCap,
   Trash2,
-  Mail
+  Mail,
+  Megaphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ const AdminLayout = () => {
     { name: 'Jobs', href: '/admin/jobs-enhanced', icon: Briefcase, current: location.pathname === '/admin/jobs' },
     { name: 'Scholarships', href: '/admin/scholarships', icon: GraduationCap, current: location.pathname.startsWith('/admin/scholarships') },
     { name: 'Companies', href: '/admin/companies', icon: Building, current: location.pathname === '/admin/companies' },
+    { name: 'Ads Management', href: '/admin/ads', icon: Megaphone, current: location.pathname === '/admin/ads' },
     { name: 'Cleanup', href: '/admin/cleanup', icon: Trash2, current: location.pathname === '/admin/cleanup' },
     { name: 'Notifications', href: '/admin/notifications', icon: Mail, current: location.pathname === '/admin/notifications' },
     { name: 'Revenue Analytics', href: '/admin/analytics', icon: BarChart3, current: location.pathname === '/admin/analytics' },

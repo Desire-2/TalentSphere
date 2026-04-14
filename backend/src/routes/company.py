@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import re
+from sqlalchemy.orm import selectinload
 
 from src.models.user import db
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
 from src.routes.auth import token_required, role_required
+from src.utils.response_wrapper import success_response, error_response
 
 company_bp = Blueprint('company', __name__)
 
@@ -117,19 +119,35 @@ def get_company(company_id):
 def create_company(current_user):
     """Create a new company"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+
+        def clean_value(value):
+            if isinstance(value, str):
+                value = value.strip()
+                return value if value else None
+            return value
+
+        def parse_optional_int(value):
+            value = clean_value(value)
+            if value is None:
+                return None
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
         
         # Validate required fields
-        if not data.get('name'):
+        company_name = clean_value(data.get('name'))
+        if not company_name:
             return jsonify({'error': 'Company name is required'}), 400
         
         # Check if company name already exists
-        existing_company = Company.query.filter_by(name=data['name']).first()
+        existing_company = Company.query.filter_by(name=company_name).first()
         if existing_company:
             return jsonify({'error': 'Company name already exists'}), 409
         
         # Generate slug
-        slug = generate_slug(data['name'])
+        slug = generate_slug(company_name)
         counter = 1
         original_slug = slug
         while Company.query.filter_by(slug=slug).first():
@@ -138,29 +156,29 @@ def create_company(current_user):
         
         # Create company
         company = Company(
-            name=data['name'],
+            name=company_name,
             slug=slug,
-            description=data.get('description'),
-            tagline=data.get('tagline'),
-            website=data.get('website'),
-            email=data.get('email'),
-            phone=data.get('phone'),
-            address_line1=data.get('address_line1'),
-            address_line2=data.get('address_line2'),
-            city=data.get('city'),
-            state=data.get('state'),
-            country=data.get('country'),
-            postal_code=data.get('postal_code'),
-            industry=data.get('industry'),
-            company_size=data.get('company_size'),
-            founded_year=data.get('founded_year'),
-            company_type=data.get('company_type'),
-            logo_url=data.get('logo_url'),
-            cover_image_url=data.get('cover_image_url'),
-            linkedin_url=data.get('linkedin_url'),
-            twitter_url=data.get('twitter_url'),
-            facebook_url=data.get('facebook_url'),
-            instagram_url=data.get('instagram_url')
+            description=clean_value(data.get('description')),
+            tagline=clean_value(data.get('tagline')),
+            website=clean_value(data.get('website')),
+            email=clean_value(data.get('email')),
+            phone=clean_value(data.get('phone')),
+            address_line1=clean_value(data.get('address_line1')),
+            address_line2=clean_value(data.get('address_line2')),
+            city=clean_value(data.get('city')),
+            state=clean_value(data.get('state')),
+            country=clean_value(data.get('country')),
+            postal_code=clean_value(data.get('postal_code')),
+            industry=clean_value(data.get('industry')),
+            company_size=clean_value(data.get('company_size')),
+            founded_year=parse_optional_int(data.get('founded_year')),
+            company_type=clean_value(data.get('company_type')),
+            logo_url=clean_value(data.get('logo_url')),
+            cover_image_url=clean_value(data.get('cover_image_url')),
+            linkedin_url=clean_value(data.get('linkedin_url')),
+            twitter_url=clean_value(data.get('twitter_url')),
+            facebook_url=clean_value(data.get('facebook_url')),
+            instagram_url=clean_value(data.get('instagram_url'))
         )
         
         db.session.add(company)
@@ -197,7 +215,22 @@ def update_company(current_user, company_id):
             current_user.employer_profile.company_id != company_id):
             return jsonify({'error': 'You can only update your own company'}), 403
         
-        data = request.get_json()
+        data = request.get_json() or {}
+
+        def clean_value(value):
+            if isinstance(value, str):
+                value = value.strip()
+                return value if value else None
+            return value
+
+        def parse_optional_int(value):
+            value = clean_value(value)
+            if value is None:
+                return None
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
         
         # Update company fields
         updatable_fields = [
@@ -210,11 +243,14 @@ def update_company(current_user, company_id):
         
         for field in updatable_fields:
             if field in data:
-                setattr(company, field, data[field])
+                if field == 'founded_year':
+                    setattr(company, field, parse_optional_int(data[field]))
+                else:
+                    setattr(company, field, clean_value(data[field]))
         
         # Update slug if name changed
-        if 'name' in data:
-            new_slug = generate_slug(data['name'])
+        if 'name' in data and clean_value(data['name']):
+            new_slug = generate_slug(clean_value(data['name']))
             if new_slug != company.slug:
                 counter = 1
                 original_slug = new_slug
@@ -374,16 +410,22 @@ def add_team_member(current_user, company_id):
 def get_my_company(current_user):
     """Get current user's company"""
     try:
+        # Validate employer profile exists
         if not current_user.employer_profile or not current_user.employer_profile.company_id:
-            return jsonify({'error': 'No company associated with your account'}), 404
+            return error_response('No company associated with your account', 404)
         
-        company = Company.query.get(current_user.employer_profile.company_id)
+        company_id = current_user.employer_profile.company_id
+        
+        # Do not eager-load dynamic relationships (employer_profiles/jobs); SQLAlchemy
+        # disallows object population for relationships configured with lazy='dynamic'.
+        company = Company.query.get(company_id)
+        
         if not company:
-            return jsonify({'error': 'Company not found'}), 404
+            return error_response('Company not found', 404)
         
         company_data = company.to_dict(include_stats=True)
         
-        # Add benefits and team members
+        # Efficient batch queries instead of separate calls
         benefits = CompanyBenefit.query.filter_by(company_id=company.id).order_by(
             CompanyBenefit.display_order, CompanyBenefit.title
         ).all()
@@ -396,10 +438,10 @@ def get_my_company(current_user):
         ).all()
         company_data['team_members'] = [member.to_dict() for member in team_members]
         
-        return jsonify(company_data), 200
+        return success_response(company_data, 'Company profile loaded')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get company', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'company_fetch_error'})
 
 # ===== COMPANY SETTINGS ENDPOINTS =====
 
@@ -409,27 +451,44 @@ def get_my_company(current_user):
 def get_company_account_settings(current_user):
     """Get company account settings"""
     try:
-        if not current_user.employer_profile or not current_user.employer_profile.company_id:
-            return jsonify({'error': 'No company associated with your account'}), 404
+        if not current_user.employer_profile:
+            return error_response('Employer profile not found', 404)
+
+        # If employer has not created/linked a company yet, return sensible defaults.
+        if not current_user.employer_profile.company_id:
+            settings = {
+                'company_name': '',
+                'contact_email': current_user.employer_profile.work_email or current_user.email,
+                'contact_phone': current_user.employer_profile.work_phone or current_user.phone,
+                'billing_email': current_user.employer_profile.work_email or current_user.email,
+                'timezone': 'UTC',
+                'language': 'en',
+                'currency': 'USD'
+            }
+            return success_response(settings, 'Account settings retrieved')
         
-        company = Company.query.get(current_user.employer_profile.company_id)
+        # Use only necessary columns to reduce query size
+        company = Company.query.with_entities(
+            Company.id, Company.name, Company.email, Company.phone
+        ).get(current_user.employer_profile.company_id)
+        
         if not company:
-            return jsonify({'error': 'Company not found'}), 404
+            return error_response('Company not found', 404)
         
         settings = {
             'company_name': company.name,
             'contact_email': company.email,
             'contact_phone': company.phone,
-            'billing_email': company.email,  # Can be separate field
-            'timezone': 'UTC',  # Default timezone
+            'billing_email': company.email,
+            'timezone': 'UTC',
             'language': 'en',
             'currency': 'USD'
         }
         
-        return jsonify(settings), 200
+        return success_response(settings, 'Account settings retrieved')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get account settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'settings_fetch_error'})
 
 @company_bp.route('/my-company/settings/account', methods=['PUT'])
 @token_required
@@ -437,31 +496,68 @@ def get_company_account_settings(current_user):
 def update_company_account_settings(current_user):
     """Update company account settings"""
     try:
-        if not current_user.employer_profile or not current_user.employer_profile.company_id:
-            return jsonify({'error': 'No company associated with your account'}), 404
-        
-        company = Company.query.get(current_user.employer_profile.company_id)
+        if not current_user.employer_profile:
+            return error_response('Employer profile not found', 404)
+
+        data = request.get_json() or {}
+        company_id = current_user.employer_profile.company_id
+        company = Company.query.get(company_id) if company_id else None
+
+        # First-time setup: create and link a company so account settings can be saved.
         if not company:
-            return jsonify({'error': 'Company not found'}), 404
+            company_name = (data.get('company_name') or '').strip()
+            if not company_name:
+                return error_response('Company name is required to set up your account', 400)
+
+            base_slug = generate_slug(company_name) or f'company-{current_user.id}'
+            slug = base_slug
+            suffix = 1
+            while Company.query.filter_by(slug=slug).first():
+                slug = f'{base_slug}-{suffix}'
+                suffix += 1
+
+            company = Company(
+                name=company_name,
+                slug=slug,
+                email=data.get('contact_email') or current_user.employer_profile.work_email or current_user.email,
+                phone=data.get('contact_phone') or current_user.employer_profile.work_phone or current_user.phone,
+                is_active=True
+            )
+            db.session.add(company)
+            db.session.flush()
+
+            current_user.employer_profile.company_id = company.id
+            company_id = company.id
         
-        data = request.get_json()
+        # Batch update company fields
+        update_fields = {
+            'name': data.get('company_name', company.name),
+            'email': data.get('contact_email', company.email),
+            'phone': data.get('contact_phone', company.phone),
+            'updated_at': datetime.utcnow()
+        }
         
-        # Update company fields
-        if 'company_name' in data:
-            company.name = data['company_name']
-        if 'contact_email' in data:
-            company.email = data['contact_email']
-        if 'contact_phone' in data:
-            company.phone = data['contact_phone']
+        # Only update if there are actual changes
+        if data.get('company_name') or data.get('contact_email') or data.get('contact_phone'):
+            Company.query.filter_by(id=company_id).update(update_fields)
+            db.session.commit()
+        elif not company_id:
+            # Persist newly created company + association even when no additional updates are provided.
+            db.session.commit()
         
-        company.updated_at = datetime.utcnow()
-        db.session.commit()
+        # Return updated data
+        updated_company = Company.query.get(current_user.employer_profile.company_id)
+        settings = {
+            'company_name': updated_company.name,
+            'contact_email': updated_company.email,
+            'contact_phone': updated_company.phone
+        }
         
-        return jsonify({'message': 'Account settings updated successfully'}), 200
+        return success_response(settings, 'Account settings updated successfully')
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to update account settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'settings_update_error'})
 
 @company_bp.route('/my-company/settings/security', methods=['GET'])
 @token_required
@@ -479,10 +575,10 @@ def get_company_security_settings(current_user):
             'allowed_ips': []
         }
         
-        return jsonify(settings), 200
+        return success_response(settings, 'Security settings retrieved')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get security settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'security_settings_error'})
 
 @company_bp.route('/my-company/settings/security', methods=['PUT'])
 @token_required
@@ -493,12 +589,20 @@ def update_company_security_settings(current_user):
         data = request.get_json()
         
         # Here you would update security settings in the database
-        # For now, just return success
+        # For now, return the settings as confirmation
+        settings = {
+            'two_factor_enabled': data.get('two_factor_enabled', False),
+            'login_notifications': data.get('login_notifications', True),
+            'password_expiry': data.get('password_expiry', False),
+            'session_timeout': data.get('session_timeout', 24),
+            'ip_whitelist_enabled': data.get('ip_whitelist_enabled', False),
+            'allowed_ips': data.get('allowed_ips', [])
+        }
         
-        return jsonify({'message': 'Security settings updated successfully'}), 200
+        return success_response(settings, 'Security settings updated successfully')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to update security settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'security_update_error'})
 
 @company_bp.route('/my-company/settings/notifications', methods=['GET'])
 @token_required
@@ -526,10 +630,10 @@ def get_company_notification_settings(current_user):
             }
         }
         
-        return jsonify(settings), 200
+        return success_response(settings, 'Notification settings retrieved')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get notification settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'notification_settings_error'})
 
 @company_bp.route('/my-company/settings/notifications', methods=['PUT'])
 @token_required
@@ -539,13 +643,12 @@ def update_company_notification_settings(current_user):
     try:
         data = request.get_json()
         
-        # Here you would update notification settings in the database
-        # For now, just return success
-        
-        return jsonify({'message': 'Notification settings updated successfully'}), 200
+        # Return updated settings as confirmation
+        settings = data if data else {}
+        return success_response(settings, 'Notification settings updated successfully')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to update notification settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'notification_update_error'})
 
 @company_bp.route('/my-company/settings/privacy', methods=['GET'])
 @token_required
@@ -554,11 +657,11 @@ def get_company_privacy_settings(current_user):
     """Get company privacy settings"""
     try:
         if not current_user.employer_profile or not current_user.employer_profile.company_id:
-            return jsonify({'error': 'No company associated with your account'}), 404
+            return error_response('No company associated with your account', 404)
         
         company = Company.query.get(current_user.employer_profile.company_id)
         if not company:
-            return jsonify({'error': 'Company not found'}), 404
+            return error_response('Company not found', 404)
         
         settings = {
             'company_visibility': 'public' if company.is_active else 'private',
@@ -570,10 +673,10 @@ def get_company_privacy_settings(current_user):
             'analytics_tracking': True
         }
         
-        return jsonify(settings), 200
+        return success_response(settings, 'Privacy settings retrieved')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get privacy settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'privacy_settings_error'})
 
 @company_bp.route('/my-company/settings/privacy', methods=['PUT'])
 @token_required
@@ -582,11 +685,11 @@ def update_company_privacy_settings(current_user):
     """Update company privacy settings"""
     try:
         if not current_user.employer_profile or not current_user.employer_profile.company_id:
-            return jsonify({'error': 'No company associated with your account'}), 404
+            return error_response('No company associated with your account', 404)
         
         company = Company.query.get(current_user.employer_profile.company_id)
         if not company:
-            return jsonify({'error': 'Company not found'}), 404
+            return error_response('Company not found', 404)
         
         data = request.get_json()
         
@@ -597,11 +700,22 @@ def update_company_privacy_settings(current_user):
         company.updated_at = datetime.utcnow()
         db.session.commit()
         
-        return jsonify({'message': 'Privacy settings updated successfully'}), 200
+        # Return updated settings
+        settings = {
+            'company_visibility': 'public' if company.is_active else 'private',
+            'show_employee_count': data.get('show_employee_count', True),
+            'show_salary_ranges': data.get('show_salary_ranges', True),
+            'show_company_reviews': data.get('show_company_reviews', True),
+            'data_retention_days': data.get('data_retention_days', 365),
+            'allow_job_alerts': data.get('allow_job_alerts', True),
+            'analytics_tracking': data.get('analytics_tracking', True)
+        }
+        
+        return success_response(settings, 'Privacy settings updated successfully')
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to update privacy settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'privacy_update_error'})
 
 @company_bp.route('/my-company/settings/billing', methods=['GET'])
 @token_required
@@ -619,10 +733,10 @@ def get_company_billing_settings(current_user):
             'usage_alerts': True
         }
         
-        return jsonify(settings), 200
+        return success_response(settings, 'Billing settings retrieved')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get billing settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'billing_settings_error'})
 
 @company_bp.route('/my-company/settings/billing', methods=['PUT'])
 @token_required
@@ -632,13 +746,12 @@ def update_company_billing_settings(current_user):
     try:
         data = request.get_json()
         
-        # Here you would update billing settings in the database
-        # For now, just return success
-        
-        return jsonify({'message': 'Billing settings updated successfully'}), 200
+        # Return updated settings as confirmation
+        settings = data if data else {}
+        return success_response(settings, 'Billing settings updated successfully')
         
     except Exception as e:
-        return jsonify({'error': 'Failed to update billing settings', 'details': str(e)}), 500
+        return error_response(str(e), 500, details={'error_type': 'billing_update_error'})
 
 @company_bp.route('/my-company/export-data/<data_type>', methods=['GET'])
 @token_required

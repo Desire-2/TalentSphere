@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import apiService from '../services/api';
+import AdSlot from '../components/ads/AdSlot';
 import {
   Building2,
   Search,
@@ -400,6 +401,15 @@ const Companies = () => {
                 </Button>
               </div>
             )}
+
+            {/* Ad Slot - Companies Feed */}
+            <div className="mt-12 mb-8">
+              <AdSlot 
+                placement="companies_feed" 
+                context="companies_listing" 
+                limit={1}
+              />
+            </div>
           </>
         ) : (
           <div className="text-center py-16 sm:py-20">

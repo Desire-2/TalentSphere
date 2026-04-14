@@ -130,7 +130,6 @@ class Job(db.Model):
     poster = db.relationship('User', backref='posted_jobs')
     applications = db.relationship('Application', backref='job', lazy='dynamic', cascade='all, delete-orphan')
     bookmarks = db.relationship('JobBookmark', backref='job', lazy='dynamic', cascade='all, delete-orphan')
-    featured_ads = db.relationship('FeaturedAd', backref='job', lazy='dynamic', cascade='all, delete-orphan')
     
     def is_expired(self):
         """Check if job posting has expired"""

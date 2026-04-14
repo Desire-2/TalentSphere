@@ -37,6 +37,7 @@ import ShareJob from '../../components/jobs/ShareJob';
 import MarkdownRenderer from '../../components/ui/MarkdownRenderer';
 import SmartTextRenderer from '../../components/ui/SmartTextRenderer';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
+import AdSlot from '../../components/ads/AdSlot';
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -730,10 +731,15 @@ ${user.name || user.email}`);
         </CardContent>
       </Card>
 
-      {/* Google Ads - Responsive between sections */}
+      {/* Ad Slot - Job Detail */}
       <div className="mb-8">
         <div className="flex justify-center">
-          <ResponsiveAd className="rounded-lg shadow-sm" />
+          <AdSlot 
+            placement="job_detail_sidebar" 
+            context="job_detail" 
+            format="CARD"
+            limit={1}
+          />
         </div>
       </div>
 

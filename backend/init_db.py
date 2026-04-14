@@ -8,6 +8,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
+from decimal import Decimal
 import json
 
 # Add src directory to path
@@ -18,8 +19,11 @@ from models.user import db, User, JobSeekerProfile, EmployerProfile
 from models.company import Company, CompanyBenefit, CompanyTeamMember
 from models.job import Job, JobCategory, JobBookmark, JobAlert
 from models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
-from models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
 from models.notification import Notification, NotificationTemplate, Review, ReviewVote, Message
+from models.ads import (
+    AdCampaign, AdCreative, AdPlacement, AdCampaignPlacement,
+    AdImpression, AdClick, AdAnalyticsDaily, AdCredit, AdReview
+)
 
 def create_tables():
     """Create all database tables"""
@@ -198,49 +202,6 @@ def seed_sample_data():
         
         db.session.commit()
         
-        # Create featured ad packages
-        packages_data = [
-            {
-                'name': 'Basic Promotion',
-                'description': 'Basic job promotion for 7 days',
-                'duration_days': 7,
-                'priority_level': 1,
-                'price': Decimal('29.99'),
-                'includes_homepage': False,
-                'includes_category_top': True,
-                'includes_search_boost': True
-            },
-            {
-                'name': 'Premium Promotion',
-                'description': 'Premium job promotion for 14 days',
-                'duration_days': 14,
-                'priority_level': 2,
-                'price': Decimal('59.99'),
-                'includes_homepage': True,
-                'includes_category_top': True,
-                'includes_search_boost': True,
-                'includes_social_media': True,
-                'is_popular': True
-            },
-            {
-                'name': 'Enterprise Promotion',
-                'description': 'Enterprise job promotion for 30 days',
-                'duration_days': 30,
-                'priority_level': 3,
-                'price': Decimal('99.99'),
-                'includes_homepage': True,
-                'includes_category_top': True,
-                'includes_search_boost': True,
-                'includes_social_media': True,
-                'includes_newsletter': True
-            }
-        ]
-        
-        for pkg_data in packages_data:
-            if not FeaturedAdPackage.query.filter_by(name=pkg_data['name']).first():
-                package = FeaturedAdPackage(**pkg_data)
-                db.session.add(package)
-        
         # Create sample jobs
         software_category = JobCategory.query.filter_by(name='Software Development').first()
         data_category = JobCategory.query.filter_by(name='Data Science').first()
@@ -294,6 +255,161 @@ def seed_sample_data():
             if not Job.query.filter_by(title=job_data['title']).first():
                 job = Job(**job_data)
                 db.session.add(job)
+        
+        # Create all Ad Placements from configuration
+        placements_data = [
+            {
+                'name': 'Home Page Top Banner',
+                'placement_key': 'home_page_banner',
+                'page_context': 'HOMEPAGE',
+                'allowed_formats': json.dumps(['BANNER_HORIZONTAL', 'BANNER_VERTICAL']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            },
+            {
+                'name': 'Home Page Mid Section',
+                'placement_key': 'home_page_mid',
+                'page_context': 'HOMEPAGE',
+                'allowed_formats': json.dumps(['CARD', 'INLINE_FEED', 'SPONSORED_JOB']),
+                'max_ads_per_load': 2,
+                'is_active': True
+            },
+            {
+                'name': 'Job Feed Top Banner',
+                'placement_key': 'job_feed_top',
+                'page_context': 'JOB_LISTING',
+                'allowed_formats': json.dumps(['BANNER_HORIZONTAL', 'BANNER_VERTICAL']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            },
+            {
+                'name': 'Job Feed Middle',
+                'placement_key': 'job_feed_mid',
+                'page_context': 'JOB_LISTING',
+                'allowed_formats': json.dumps(['CARD', 'INLINE_FEED', 'SPONSORED_JOB']),
+                'max_ads_per_load': 2,
+                'is_active': True
+            },
+            {
+                'name': 'Job Detail Sidebar',
+                'placement_key': 'job_detail_sidebar',
+                'page_context': 'JOB_DETAIL',
+                'allowed_formats': json.dumps(['CARD', 'BANNER_VERTICAL']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            },
+            {
+                'name': 'Scholarship Feed',
+                'placement_key': 'scholarship_feed_mid',
+                'page_context': 'SCHOLARSHIP_LISTING',
+                'allowed_formats': json.dumps(['CARD', 'INLINE_FEED']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            },
+            {
+                'name': 'Companies Feed',
+                'placement_key': 'companies_feed',
+                'page_context': 'COMPANIES_LISTING',
+                'allowed_formats': json.dumps(['CARD', 'INLINE_FEED', 'BANNER_HORIZONTAL']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            },
+            {
+                'name': 'Dashboard Spotlight',
+                'placement_key': 'dashboard_spotlight',
+                'page_context': 'DASHBOARD',
+                'allowed_formats': json.dumps(['SPOTLIGHT']),
+                'max_ads_per_load': 1,
+                'is_active': True
+            }
+        ]
+        
+        placement_dict = {}
+        for placement_data in placements_data:
+            if not AdPlacement.query.filter_by(placement_key=placement_data['placement_key']).first():
+                placement = AdPlacement(**placement_data)
+                db.session.add(placement)
+                db.session.flush()
+                placement_dict[placement_data['placement_key']] = placement.id
+            else:
+                existing = AdPlacement.query.filter_by(placement_key=placement_data['placement_key']).first()
+                placement_dict[placement_data['placement_key']] = existing.id
+        
+        db.session.commit()
+        
+        # Create sample ad campaigns set to ACTIVE status so they display
+        employer1 = User.query.filter_by(email='hr@techcorp.com').first()
+        employer2 = User.query.filter_by(email='recruiter@dataflow.com').first()
+        
+        campaigns_data = [
+            {
+                'employer': employer1,
+                'name': 'Senior Developer Positions - Q1 2024',
+                'description': 'We are hiring experienced developers for our growing team',
+                'objective': 'TRAFFIC',
+                'billing_type': 'CPC',
+                'budget_total': 2500,
+                'bid_amount': Decimal('0.50'),
+                'placements': ['job_feed_top', 'job_feed_mid'],
+                'format': 'CARD'
+            },
+            {
+                'employer': employer2,
+                'name': 'Data Science Opportunities',
+                'description': 'Join our data science team and work on cutting-edge ML projects',
+                'objective': 'LEADS',
+                'billing_type': 'CPM',
+                'budget_total': 1500,
+                'bid_amount': Decimal('5.00'),
+                'placements': ['job_feed_mid', 'home_page_mid'],
+                'format': 'INLINE_FEED'
+            }
+        ]
+        
+        for campaign_data in campaigns_data:
+            if not AdCampaign.query.filter_by(name=campaign_data['name']).first():
+                start_date = datetime.utcnow()
+                end_date = start_date + timedelta(days=90)
+                
+                campaign = AdCampaign(
+                    employer_id=campaign_data['employer'].id if campaign_data['employer'] else None,
+                    name=campaign_data['name'],
+                    objective=campaign_data['objective'],
+                    billing_type=campaign_data['billing_type'],
+                    budget_total=campaign_data['budget_total'],
+                    budget_spent=0,
+                    bid_amount=campaign_data['bid_amount'],
+                    start_date=start_date,
+                    end_date=end_date,
+                    status='ACTIVE',  # ✅ ACTIVE status so ads will display
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(campaign)
+                db.session.flush()
+                
+                # Create a creative for the campaign
+                creative = AdCreative(
+                    campaign_id=campaign.id,
+                    title=campaign_data['name'],
+                    body_text=campaign_data['description'],
+                    cta_text='View Positions',
+                    cta_url='https://talentsphere.com/careers',
+                    ad_format=campaign_data['format'],  # Use specified format
+                    image_url='https://via.placeholder.com/600x400?text=Career+Opportunity',
+                    is_active=True,
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(creative)
+                db.session.flush()
+                
+                # ✅ Link campaign to its placements via AdCampaignPlacement
+                for placement_key in campaign_data['placements']:
+                    if placement_key in placement_dict:
+                        campaign_placement = AdCampaignPlacement(
+                            campaign_id=campaign.id,
+                            placement_id=placement_dict[placement_key]
+                        )
+                        db.session.add(campaign_placement)
         
         db.session.commit()
         

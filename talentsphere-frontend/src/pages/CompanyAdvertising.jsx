@@ -21,7 +21,8 @@ import {
   Settings,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  Save
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -36,6 +37,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { useNavigate } from 'react-router-dom';
+import { adManagerService } from '../services/adManager';
 
 const CompanyAdvertising = () => {
   const navigate = useNavigate();
@@ -70,6 +72,8 @@ const CompanyAdvertising = () => {
     link: '',
     callToAction: 'Apply Now'
   });
+
+  const [adCreateLoading, setAdCreateLoading] = useState(false);
 
   useEffect(() => {
     loadAdvertisingData();
@@ -248,15 +252,100 @@ const CompanyAdvertising = () => {
     return Math.max(0, diffDays);
   };
 
-  const handleCreateAd = async () => {
+  const handleCreateAd = async (action = 'draft') => {
     try {
-      // Mock API call to create advertisement
-      console.log('Creating ad:', newAd);
+      setAdCreateLoading(true);
+      // Validate required fields
+      if (!newAd.title || !newAd.description || !newAd.budget) {
+        alert('Please fill in all required fields: Title, Description, and Budget');
+        setAdCreateLoading(false);
+        return;
+      }
+
+      // Calculate start and end dates
+      const now = new Date();
+      const startDate = now.toISOString();
+      const endDate = new Date(now.getTime() + parseInt(newAd.duration) * 24 * 60 * 60 * 1000).toISOString();
+
+      // Create campaign data with dates
+      const campaignData = {
+        name: newAd.title,
+        description: newAd.description,
+        objective: 'AWARENESS', // Default objective
+        billing_type: 'FLAT_RATE', // Default billing type
+        budget_total: parseFloat(newAd.budget),
+        bid_amount: parseFloat(newAd.budget) / parseInt(newAd.duration),
+        start_date: startDate,
+        end_date: endDate
+      };
+
+      console.log(`${action === 'review' ? 'Submitting' : 'Saving'} ad:`, campaignData);
+      
+      // Create the campaign (saves as DRAFT initially)
+      const response = await adManagerService.createCampaign(campaignData);
+      const campaignId = response.campaign?.id || response.id;
+
+      if (!campaignId) {
+        throw new Error('Failed to create campaign: no ID returned');
+      }
+
+      // Create a default creative for the campaign
+      if (!campaignId) {
+        throw new Error('Campaign creation successful but no ID returned. Please refresh and try again.');
+      }
+
+      const creativeData = {
+        title: newAd.title || 'Untitled Ad',
+        body_text: newAd.description || 'Ad content',
+        cta_text: newAd.callToAction || 'Learn More',
+        cta_url: newAd.link || 'https://talentsphere.afritechbridge.online',
+        ad_format: 'CARD',
+        is_active: true
+      };
+
+      console.log('Creating creative with data:', creativeData);
+      await adManagerService.createCreative(campaignId, creativeData);
+      console.log('Creative created successfully');
+
+      // If action is 'review', submit for review
+      if (action === 'review' && campaignId) {
+        console.log('Submitting campaign for review:', campaignId);
+        try {
+          const submitResponse = await adManagerService.submitCampaign(campaignId);
+          console.log('Campaign submitted successfully:', submitResponse);
+          alert('Ad submitted for review successfully! Admin will review and approve it shortly.');
+        } catch (submitError) {
+          console.error('Submit error:', submitError);
+          throw new Error(`Failed to submit for review: ${submitError.message || submitError}`);
+        }
+      } else {
+        alert('Ad saved as draft successfully! You can edit it anytime before submitting for review.');
+      }
+
+      // Reset form
       setShowCreateAdDialog(false);
+      setNewAd({
+        type: 'job_promotion',
+        title: '',
+        description: '',
+        image: null,
+        targetAudience: '',
+        budget: '',
+        duration: '30',
+        locations: [],
+        keywords: [],
+        link: '',
+        callToAction: 'Apply Now'
+      });
+
       // Refresh data
       await loadAdvertisingData();
     } catch (error) {
       console.error('Error creating ad:', error);
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to create ad. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setAdCreateLoading(false);
     }
   };
 
@@ -311,6 +400,18 @@ const CompanyAdvertising = () => {
                   Create compelling ads to promote your jobs, company brand, or products
                 </DialogDescription>
               </DialogHeader>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="flex gap-2">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Two ways to create ads:</p>
+                    <ul className="list-disc list-inside space-y-1 pl-0">
+                      <li><strong>Save as Draft:</strong> Save your ad and edit it later before publishing</li>
+                      <li><strong>Request Review:</strong> Submit your ad for admin approval before it goes live</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-6 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="ad-type">Advertisement Type</Label>
@@ -402,11 +503,43 @@ const CompanyAdvertising = () => {
                 </div>
 
                 <div className="flex justify-end gap-3">
-                  <Button variant="outline" onClick={() => setShowCreateAdDialog(false)}>
+                  <Button variant="outline" onClick={() => setShowCreateAdDialog(false)} disabled={adCreateLoading}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateAd}>
-                    Create Advertisement
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleCreateAd('draft')}
+                    disabled={adCreateLoading}
+                    className="border-gray-300"
+                  >
+                    {adCreateLoading ? (
+                      <>
+                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save as Draft
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={() => handleCreateAd('review')}
+                    disabled={adCreateLoading}
+                    className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  >
+                    {adCreateLoading ? (
+                      <>
+                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Request Review
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

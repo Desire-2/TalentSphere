@@ -32,6 +32,7 @@ import UserAnalytics from './pages/admin/UserAnalytics';
 import SystemHealth from './pages/admin/SystemHealth';
 import AdminProfile from './pages/admin/AdminProfile';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminAdsManagement from './pages/admin/AdminAdsManagement';
 
 // External Admin Pages
 import ExternalAdminDashboard from './pages/external-admin/ExternalAdminDashboard';
@@ -71,13 +72,21 @@ import CVBuilder from './pages/jobseeker/CVBuilder';
 import CompanyProfileManagement from './pages/company/CompanyProfileManagement';
 import CompanySettings from './pages/company/CompanySettings';
 
+// Ads/Advertising Pages
+import AdsDashboard from './pages/ads/AdsDashboard';
+import CreateCampaignWizard from './pages/ads/CreateCampaignWizard';
+import CampaignDetail from './pages/ads/CampaignDetail';
+import CreditsBilling from './pages/ads/CreditsBilling';
+
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import ExternalAdminRoute from './components/auth/ExternalAdminRoute';
 import AnyAdminRoute from './components/auth/AnyAdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
+import EmployerOnboardingRoute from './components/auth/EmployerOnboardingRoute';
 import TestEmployerComponents from './pages/TestEmployerComponents';
+import EmployerOnboarding from './pages/employer/EmployerOnboarding';
 
 // Analytics
 import GoogleAnalytics from './components/analytics/GoogleAnalytics';
@@ -164,9 +173,12 @@ function App() {
           {/* Employer Routes with EmployerLayout */}
           <Route path="/employer" element={
             <ProtectedRoute requiredRole="employer">
-              <EmployerLayout />
+              <EmployerOnboardingRoute>
+                <EmployerLayout />
+              </EmployerOnboardingRoute>
             </ProtectedRoute>
           }>
+            <Route path="onboarding" element={<EmployerOnboarding />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="company-profile" element={<CompanyProfile />} />
             <Route path="company/profile" element={<CompanyProfileManagement />} />
@@ -185,6 +197,12 @@ function App() {
                 <p className="text-muted-foreground">Payment integration coming soon!</p>
               </div>
             } />
+            {/* Advertising Routes */}
+            <Route path="ads" element={<AdsDashboard />} />
+            <Route path="ads/new" element={<CreateCampaignWizard />} />
+            <Route path="ads/:campaignId" element={<CampaignDetail />} />
+            <Route path="ads/billing/credits" element={<CreditsBilling />} />
+            <Route path="*" element={<Navigate to="/employer/dashboard" replace />} />
           </Route>
 
           {/* Job Seeker Routes with JobSeekerLayout */}
@@ -216,6 +234,7 @@ function App() {
             <Route path="companies" element={<CompanyManagement />} />
             <Route path="cleanup" element={<AdminCleanupManagement />} />
             <Route path="notifications" element={<NotificationManagement />} />
+            <Route path="ads" element={<AdminAdsManagement />} />
             <Route path="analytics" element={<RevenueAnalytics />} />
             <Route path="user-analytics" element={<UserAnalytics />} />
             <Route path="system-health" element={<SystemHealth />} />

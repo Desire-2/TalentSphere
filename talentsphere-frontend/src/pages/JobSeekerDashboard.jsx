@@ -40,6 +40,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
+import AdSlot from '../components/ads/AdSlot';
 import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
@@ -616,7 +617,8 @@ const JobSeekerDashboard = () => {
       if (!ads || ads.length === 0) {
         try {
           const response = await apiService.getPublicFeaturedAds(3);
-          ads = response.featured_ads || [];
+          // Handle new ads system format from backend
+          ads = response.ads || response.featured_ads || [];
         } catch (fetchError) {
           console.warn('Could not fetch featured ads:', fetchError);
           ads = [];
@@ -628,50 +630,53 @@ const JobSeekerDashboard = () => {
         return;
       }
 
-      // Transform backend featured ads into relevant ads format
-      const transformedAds = ads.map((ad, index) => {
-        // Process skills
+      // Transform backend campaign data into relevant ads format
+      const transformedAds = ads.map((campaign, index) => {
+        // Get first creative from campaign
+        const creative = campaign.creatives?.[0] || {};
+        
+        // Extract skills from job if available
         let skillsList = [];
-        if (ad.required_skills) {
-          if (typeof ad.required_skills === 'string') {
+        if (campaign.job?.required_skills) {
+          if (typeof campaign.job.required_skills === 'string') {
             try {
-              skillsList = JSON.parse(ad.required_skills);
+              skillsList = JSON.parse(campaign.job.required_skills);
             } catch {
-              skillsList = ad.required_skills.split(',').map(s => s.trim());
+              skillsList = campaign.job.required_skills.split(',').map(s => s.trim());
             }
-          } else if (Array.isArray(ad.required_skills)) {
-            skillsList = ad.required_skills;
+          } else if (Array.isArray(campaign.job.required_skills)) {
+            skillsList = campaign.job.required_skills;
           }
         }
         
         // Default tags if no skills
         if (skillsList.length === 0) {
-          skillsList = ['React', 'JavaScript', 'Remote', 'Full-time'];
+          skillsList = ['Technology', 'Opportunity', 'Growth', 'Career'];
         }
 
         return {
-          id: ad.id || index + 1,
+          id: campaign.id || index + 1,
           type: 'job_promotion',
-          title: ad.title || 'Featured Opportunity',
-          description: ad.summary || ad.description || 'Exciting opportunity in a growing company.',
-          image: ad.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22200%22 viewBox=%220 0 400 200%22%3E%3Crect width=%22400%22 height=%22200%22 fill=%22%23d1d5db%22/%3E%3Ctext x=%22200%22 y=%22100%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22%3EFeatured Opportunity%3C/text%3E%3C/svg%3E',
+          title: creative.title || campaign.name,
+          description: creative.body_text || campaign.name,
+          image: creative.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22200%22 viewBox=%220 0 400 200%22%3E%3Crect width=%22400%22 height=%22200%22 fill=%22%23d1d5db%22/%3E%3Ctext x=%22200%22 y=%22100%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22%3EFeatured Ad%3C/text%3E%3C/svg%3E',
           company: {
-            name: ad.company_name || ad.company?.name || 'Tech Company',
-            logo: ad.company_logo || ad.company?.logo_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%239ca3af%22/%3E%3Ctext x=%2230%22 y=%2230%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-weight=%22bold%22%3ECo%3C/text%3E%3C/svg%3E',
-            rating: 4.5 + (Math.random() * 0.5), // Generate rating between 4.5-5.0
+            name: campaign.employer?.name || 'Company',
+            logo: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%239ca3af%22/%3E%3Ctext x=%2230%22 y=%2230%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-weight=%22bold%22%3ECo%3C/text%3E%3C/svg%3E',
+            rating: 4.5 + (Math.random() * 0.5),
             size: `${Math.floor(Math.random() * 500) + 50}-${Math.floor(Math.random() * 500) + 500} employees`
           },
-          matchScore: Math.floor(Math.random() * 15) + 85, // 85-100% match
-          callToAction: 'Apply Now',
-          link: `/jobs/${ad.id}`,
+          matchScore: Math.floor(Math.random() * 15) + 85,
+          callToAction: creative.cta_text || 'Learn More',
+          link: creative.cta_url || `#`,
           status: 'active',
-          relevanceReason: 'Matches your skills and experience level',
+          relevanceReason: 'Sponsored opportunity from industry leaders',
           tags: skillsList.slice(0, 5),
-          salary: ad.salary_min && ad.salary_max ? 
-            `$${formatSalary(ad.salary_min)} - $${formatSalary(ad.salary_max)}` : 
+          salary: campaign.job?.salary_min && campaign.job?.salary_max ? 
+            `$${formatSalary(campaign.job.salary_min)} - $${formatSalary(campaign.job.salary_max)}` : 
             '$80k - $120k',
-          location: ad.location || (ad.city ? `${ad.city}, ${ad.state || ''}` : 'Remote'),
-          benefits: ['Health', 'Dental', 'Stock Options', 'Remote Work'],
+          location: campaign.job?.city ? `${campaign.job.city}, ${campaign.job.state || ''}` : 'Remote',
+          benefits: ['Featured Opportunity', 'Quality Match', 'Active Employer'],
           stats: {
             views: Math.floor(Math.random() * 2000) + 500,
             applications: Math.floor(Math.random() * 100) + 20,
@@ -686,9 +691,9 @@ const JobSeekerDashboard = () => {
         transformedAds[1] = {
           ...transformedAds[1],
           type: 'company_branding',
-          title: `${transformedAds[1].company.name} - Growing Tech Innovation`,
-          callToAction: 'Explore Careers',
-          relevanceReason: 'Fast-growing company in your industry',
+          title: `${transformedAds[1].company.name} - Growing Opportunity`,
+          callToAction: 'Explore',
+          relevanceReason: 'Featured company in your industry',
           openRoles: Math.floor(Math.random() * 20) + 5
         };
       }
@@ -1191,10 +1196,15 @@ const JobSeekerDashboard = () => {
         </Card>
       )}
 
-      {/* Google Ads - Leaderboard */}
+      {/* Ad Slot - Dashboard Spotlight */}
       <section className="mb-8">
         <div className="flex justify-center">
-          <LeaderboardAd className="rounded-lg shadow-sm" />
+          <AdSlot 
+            placement="dashboard_spotlight" 
+            context="jobseeker_dashboard" 
+            format="SPOTLIGHT"
+            limit={1}
+          />
         </div>
       </section>
 

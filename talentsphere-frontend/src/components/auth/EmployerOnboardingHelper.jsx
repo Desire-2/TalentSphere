@@ -14,13 +14,17 @@ import {
   Briefcase,
   Star,
   ArrowRight,
-  Info
+  Info,
+  Loader2,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
 
 const EmployerOnboardingHelper = ({ onComplete }) => {
   const [onboardingData, setOnboardingData] = useState(null);
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const { user } = useAuthStore();
@@ -32,17 +36,41 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
   const loadOnboardingGuide = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/auth/employer/onboarding-guide');
-      setOnboardingData(response);
+      setLoadError('');
+
+      const [guideResponse, statusResponse] = await Promise.all([
+        apiService.get('/auth/employer/onboarding-guide'),
+        apiService.getEmployerOnboardingStatus()
+      ]);
+
+      setOnboardingData(guideResponse);
+      setOnboardingStatus(statusResponse);
       
       // Find current step based on completion
-      const incompleteStepIndex = response.onboarding_steps.findIndex(step => !step.completed);
-      setCurrentStep(incompleteStepIndex >= 0 ? incompleteStepIndex : response.onboarding_steps.length - 1);
+      const steps = guideResponse?.onboarding_steps || [];
+      const incompleteStepIndex = steps.findIndex(step => !step.completed);
+      setCurrentStep(incompleteStepIndex >= 0 ? incompleteStepIndex : Math.max(steps.length - 1, 0));
     } catch (error) {
       console.error('Failed to load onboarding guide:', error);
+      setLoadError(error?.message || 'Unable to load onboarding data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const unlockThreshold = 50;
+  const companyProfileCompletion = onboardingStatus?.company_profile_completion || 0;
+  const unlockProgress = Math.min(Math.max(companyProfileCompletion, 0), unlockThreshold);
+  const unlockProgressPercent = Math.round((unlockProgress / unlockThreshold) * 100);
+  const remainingToUnlock = Math.max(unlockThreshold - companyProfileCompletion, 0);
+  const canProceedToUsualActivities = !!onboardingStatus?.onboarding_complete;
+
+  const verificationStateLabel = {
+    company_required: 'Company profile required',
+    profile_incomplete: 'Profile incomplete',
+    minimum_profile_complete_pending_verification: 'Unlocked, verification pending',
+    pending_verification: 'Verification pending',
+    verified: 'Verified'
   };
 
   const getStepIcon = (step) => {
@@ -81,19 +109,19 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
     // Navigate to appropriate page based on step
     switch (step.id) {
       case 'profile_setup':
-        window.location.href = '/profile';
+        window.location.href = '/employer/company/settings';
         break;
       case 'company_setup':
-        window.location.href = '/employer/company';
+        window.location.href = '/employer/company/profile';
         break;
       case 'verification':
-        window.location.href = '/employer/verification';
+        window.location.href = '/employer/company/profile';
         break;
       case 'first_job':
-        window.location.href = '/employer/jobs/new';
+        window.location.href = '/employer/jobs/create';
         break;
       case 'premium_features':
-        window.location.href = '/employer/premium';
+        window.location.href = '/employer/ads';
         break;
       default:
         break;
@@ -102,10 +130,14 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
 
   if (loading) {
     return (
-      <div className="animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-        <div className="h-32 bg-gray-200 rounded mb-4"></div>
-        <div className="space-y-3">
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-8 flex items-center justify-center gap-3 text-gray-600">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading onboarding and verification status...</span>
+          </CardContent>
+        </Card>
+        <div className="animate-pulse space-y-3">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-20 bg-gray-200 rounded"></div>
           ))}
@@ -114,12 +146,15 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
     );
   }
 
-  if (!onboardingData) {
+  if (!onboardingData || !onboardingStatus) {
     return (
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Unable to load onboarding guide. Please refresh the page.
+          {loadError || 'Unable to load onboarding guide. Please refresh the page.'}
+          <Button variant="link" className="ml-1 p-0 h-auto" onClick={loadOnboardingGuide}>
+            Retry
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -135,26 +170,61 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
             Welcome to TalentSphere!
           </CardTitle>
           <CardDescription>
-            Complete these steps to optimize your employer experience
+            Complete setup and reach at least {unlockThreshold}% company profile completion to unlock normal employer activities.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Access Unlock Progress</span>
+              <span className="text-sm font-semibold text-blue-700">
+                {companyProfileCompletion}% / {unlockThreshold}%
+              </span>
+            </div>
+            <Progress
+              value={unlockProgressPercent}
+              className="h-3"
+            />
+
+            {canProceedToUsualActivities ? (
+              <Alert className="border-green-200 bg-green-50">
+                <ShieldCheck className="h-4 w-4 text-green-700" />
+                <AlertDescription className="text-green-800">
+                  Your account has reached the minimum completion threshold. You can now proceed to usual employer activities.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-800">
+                  <strong>{remainingToUnlock}% remaining</strong> to unlock normal employer activities.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">
-                Profile Completion
+                Company Profile Completion
               </span>
               <span className="text-sm font-medium text-blue-600">
-                {onboardingData.completion_percentage}%
+                {companyProfileCompletion}%
               </span>
             </div>
             <Progress 
-              value={onboardingData.completion_percentage} 
+              value={companyProfileCompletion} 
               className="h-3"
             />
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Clock className="w-4 h-4" />
               Estimated completion time: {onboardingData.estimated_completion_time}
+            </div>
+
+            <div className="flex items-center gap-2 text-sm">
+              <Shield className="w-4 h-4 text-indigo-600" />
+              <span className="text-gray-700">Verification status:</span>
+              <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-800">
+                {verificationStateLabel[onboardingStatus.verification_state] || onboardingStatus.verification_state}
+              </Badge>
             </div>
           </div>
         </CardContent>
@@ -165,7 +235,7 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            <strong>Action Required:</strong> Complete these steps to unlock all features:
+            <strong>Action Required:</strong> Complete these steps to continue improving your onboarding status:
             <ul className="list-disc list-inside mt-2 space-y-1">
               {onboardingData.required_actions.map((action, index) => (
                 <li key={index}>{action.description}</li>
@@ -268,7 +338,7 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
       </Card>
 
       {/* Complete Button */}
-      {onboardingData.completion_percentage >= 80 && (
+      {canProceedToUsualActivities && (
         <div className="text-center">
           <Button 
             onClick={onComplete}

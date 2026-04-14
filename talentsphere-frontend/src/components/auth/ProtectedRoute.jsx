@@ -11,12 +11,16 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  if (user?.role === 'employer' && location.pathname === '/dashboard') {
+    return <Navigate to="/employer/dashboard" replace />;
+  }
+
   if (requiredRole && user?.role !== requiredRole) {
     // If specific role required but user doesn't have it, redirect to appropriate dashboard
     const dashboardMap = {
       'admin': '/admin',
       'external_admin': '/external-admin',
-      'employer': '/dashboard',
+      'employer': '/employer/onboarding',
       'job_seeker': '/dashboard'
     };
     

@@ -110,13 +110,7 @@ class ApiService {
           console.log('🌐 Response text length:', responseText.length);
           console.log('🌐 Response preview:', responseText.substring(0, 200));
         }
-        
-        // Handle 404s early before attempting JSON parsing
-        if (response.status === 404) {
-          console.warn('⚠️ API endpoint not found (404):', url);
-          throw new Error(`API endpoint not found: ${url}`);
-        }
-        
+
         const trimmedText = responseText.trim();
         
         // Check if response is HTML (error page) instead of JSON
@@ -439,13 +433,13 @@ class ApiService {
     return this.get(`/payments${queryString ? `?${queryString}` : ''}`);
   }
 
-  // Public endpoints (no authentication required)
+  // Public endpoints (no authentication required) - connects to real ad system
   async getPublicFeaturedAds(limit = 10) {
-    return this.get(`/public/featured-ads?limit=${limit}`);
+    return this.get(`/ads/public/featured-ads?limit=${limit}`);
   }
 
   async getPublicFeaturedJobs(limit = 10) {
-    return this.get(`/public/featured-jobs?limit=${limit}`);
+    return this.get(`/ads/public/ads?limit=${limit}`);
   }
 
   async getMessages(params = {}) {
@@ -684,6 +678,14 @@ class ApiService {
   async searchCandidates(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.get(`/employer/candidate-search${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getEmployerVerificationStatus() {
+    return this.get('/auth/employer/verification-status');
+  }
+
+  async getEmployerOnboardingStatus() {
+    return this.get('/auth/employer/onboarding-status');
   }
 
   async bulkJobAction(actionData) {

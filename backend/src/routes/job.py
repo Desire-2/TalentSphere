@@ -976,9 +976,13 @@ def get_employer_applications(current_user):
         status = request.args.get('status')
         job_id = request.args.get('job_id', type=int)
         
-        # Base query - get applications for jobs posted by current user
+        # Optimize: Add eager loading to avoid N+1 queries
         from src.models.application import Application
-        query = db.session.query(Application).join(Job).filter(
+        query = db.session.query(Application).options(
+            joinedload(Application.applicant),
+            joinedload(Application.job),
+            joinedload(Application.applicant).joinedload(Application.applicant.job_seeker_profile)
+        ).join(Job).filter(
             Job.posted_by == current_user.id
         )
         
@@ -1008,15 +1012,17 @@ def get_employer_applications(current_user):
             
             application_list.append(app_data)
         
-        # Get summary statistics
-        total_applications = db.session.query(Application).join(Job).filter(
+        # Optimize: Use aggregation for statistics instead of separate COUNT queries
+        from sqlalchemy import func
+        stats = db.session.query(
+            func.count(Application.id).label('total'),
+            func.sum((Application.status == 'submitted').cast(db.Integer)).label('new')
+        ).join(Job).filter(
             Job.posted_by == current_user.id
-        ).count()
+        ).first()
         
-        new_applications = db.session.query(Application).join(Job).filter(
-            Job.posted_by == current_user.id,
-            Application.status == 'submitted'
-        ).count()
+        total_applications = stats.total or 0
+        new_applications = stats.new or 0
         
         return jsonify({
             'applications': application_list,
@@ -1049,7 +1055,11 @@ def get_my_jobs(current_user):
         company_id = request.args.get('company_id', type=int)
         job_source = request.args.get('job_source')  # internal, external
         
-        query = Job.query
+        # Optimize: Add eager loading to avoid N+1 queries
+        query = Job.query.options(
+            joinedload(Job.company),
+            joinedload(Job.category)
+        )
         
         if current_user.role in ['employer', 'external_admin']:
             query = query.filter_by(posted_by=current_user.id)
@@ -1074,17 +1084,23 @@ def get_my_jobs(current_user):
             job_data['category'] = job.category.to_dict() if job.category else None
             job_list.append(job_data)
         
-        # Get summary statistics
+        # Optimize: Use aggregation for statistics instead of multiple COUNT queries
+        from sqlalchemy import func
+        stat_filters = []
         if current_user.role in ['employer', 'external_admin']:
-            total_jobs = Job.query.filter_by(posted_by=current_user.id).count()
-            published_jobs = Job.query.filter_by(posted_by=current_user.id, status='published').count()
-            draft_jobs = Job.query.filter_by(posted_by=current_user.id, status='draft').count()
-            external_jobs = Job.query.filter_by(posted_by=current_user.id, job_source='external').count() if current_user.role == 'external_admin' else 0
-        else:
-            total_jobs = Job.query.count()
-            published_jobs = Job.query.filter_by(status='published').count()
-            draft_jobs = Job.query.filter_by(status='draft').count()
-            external_jobs = Job.query.filter_by(job_source='external').count()
+            stat_filters.append(Job.posted_by == current_user.id)
+        
+        stats = db.session.query(
+            func.count(Job.id).label('total'),
+            func.sum((Job.status == 'published').cast(db.Integer)).label('published'),
+            func.sum((Job.status == 'draft').cast(db.Integer)).label('draft'),
+            func.sum((Job.job_source == 'external').cast(db.Integer)).label('external')
+        ).filter(*stat_filters).first()
+        
+        total_jobs = stats.total or 0
+        published_jobs = stats.published or 0
+        draft_jobs = stats.draft or 0
+        external_jobs = (stats.external or 0) if current_user.role in ['admin', 'external_admin'] else 0
         
         summary = {
             'total_jobs': total_jobs,

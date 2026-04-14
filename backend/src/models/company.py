@@ -65,7 +65,6 @@ class Company(db.Model):
     # Relationships
     employer_profiles = db.relationship('EmployerProfile', backref='company', lazy='dynamic')
     jobs = db.relationship('Job', backref='company', lazy='dynamic', cascade='all, delete-orphan')
-    featured_ads = db.relationship('FeaturedAd', backref='company', lazy='dynamic', cascade='all, delete-orphan')
     reviews = db.relationship('Review', foreign_keys='Review.company_id', backref='company', lazy='dynamic')
     
     def get_active_jobs_count(self):

@@ -94,7 +94,7 @@ export const getPostLoginRedirect = (user, intendedDestination = null, defaultPa
   } else if (user.role === 'external_admin') {
     redirectPath = '/external-admin';
   } else if (user.role === 'employer') {
-    redirectPath = '/dashboard';
+    redirectPath = '/employer/onboarding';
   } else if (user.role === 'job_seeker') {
     redirectPath = '/dashboard';
   }

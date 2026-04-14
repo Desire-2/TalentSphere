@@ -38,6 +38,7 @@ import { scholarshipService } from '../services/scholarship';
 import SEOHelmet from '../components/seo/SEOHelmet';
 import { generateWebsiteStructuredData, generateKeywords } from '../utils/seoUtils';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
+import AdSlot from '../components/ads/AdSlot';
 import { useAdTracking } from '../utils/adTracking';
 
 // Helper function to convert snake_case to Title Case
@@ -360,10 +361,15 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Google Ads - Leaderboard */}
+      {/* Ad Slot - Home Top Banner */}
       <section className="max-w-7xl mx-auto px-4 mb-8">
         <div className="flex justify-center">
-          <LeaderboardAd className="rounded-lg shadow-sm" />
+          <AdSlot 
+            placement="home_page_banner" 
+            context="homepage" 
+            format="BANNER_HORIZONTAL"
+            limit={1}
+          />
         </div>
       </section>
 
@@ -684,10 +690,14 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Google Ads - Responsive between sections */}
+      {/* Ad Slot - Home Mid Section */}
       <section className="max-w-7xl mx-auto px-4 mb-12">
         <div className="flex justify-center">
-          <ResponsiveAd className="rounded-lg shadow-sm" />
+          <AdSlot 
+            placement="home_page_mid" 
+            context="homepage" 
+            limit={2}
+          />
         </div>
       </section>
 

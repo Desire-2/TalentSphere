@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Activity,
   Briefcase,
@@ -20,7 +20,35 @@ import AnalyticsDashboard from '../components/employer/AnalyticsDashboard';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const normalizeTab = (tab) => {
+    const allowedTabs = ['overview', 'jobs', 'applications', 'candidates', 'analytics'];
+    return allowedTabs.includes(tab) ? tab : 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState(() => normalizeTab(searchParams.get('tab')));
+
+  useEffect(() => {
+    const nextTab = normalizeTab(searchParams.get('tab'));
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (nextTab) => {
+    const normalized = normalizeTab(nextTab);
+    setActiveTab(normalized);
+
+    if (normalized === 'overview') {
+      const params = new URLSearchParams(searchParams);
+      params.delete('tab');
+      setSearchParams(params, { replace: true });
+      return;
+    }
+
+    setSearchParams({ tab: normalized }, { replace: true });
+  };
   
   // Use the custom hook for all dashboard data and operations
   const {
@@ -211,7 +239,7 @@ const EmployerDashboard = () => {
         <p className="text-gray-600 mt-2">Manage your jobs, review applications, and track hiring performance</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">
             <Activity className="w-4 h-4 mr-2" />

@@ -17,6 +17,30 @@ from src.services.email_service import email_service
 
 auth_bp = Blueprint('auth', __name__)
 
+# Employer endpoints that must remain accessible before onboarding is complete.
+EMPLOYER_ONBOARDING_ALLOWED_EXACT_PATHS = {
+    '/api/auth/profile',
+    '/api/auth/verify-employer',
+    '/api/auth/employer/verification-status',
+    '/api/auth/employer/onboarding-status',
+    '/api/auth/employer/onboarding-guide',
+    '/api/my-company',
+    '/api/companies'
+}
+
+EMPLOYER_ONBOARDING_ALLOWED_PATH_PREFIXES = [
+    '/api/my-company/settings',
+    '/api/companies/'
+]
+
+
+def is_employer_onboarding_allowed_path(request_path):
+    """Allow only onboarding and company-setup related endpoints before verification."""
+    if request_path in EMPLOYER_ONBOARDING_ALLOWED_EXACT_PATHS:
+        return True
+
+    return any(request_path.startswith(prefix) for prefix in EMPLOYER_ONBOARDING_ALLOWED_PATH_PREFIXES)
+
 # Notification services
 enhanced_notification_service = EnhancedNotificationService(email_service)
 
@@ -128,9 +152,122 @@ def role_required(*allowed_roles):
         def decorated(current_user, *args, **kwargs):
             if current_user.role not in allowed_roles:
                 return jsonify({'error': 'Insufficient permissions'}), 403
+
+            # Enforce employer onboarding/verification before accessing restricted features.
+            if current_user.role == 'employer':
+                request_path = request.path or ''
+                is_allowed_during_onboarding = is_employer_onboarding_allowed_path(request_path)
+
+                if not is_allowed_during_onboarding:
+                    onboarding_status = build_employer_onboarding_status(current_user)
+                    if not onboarding_status.get('onboarding_complete', False):
+                        return jsonify({
+                            'error': 'Complete company onboarding and verification before using this feature',
+                            'code': 'EMPLOYER_ONBOARDING_REQUIRED',
+                            'onboarding_status': onboarding_status
+                        }), 403
+
             return f(current_user, *args, **kwargs)
         return decorated
     return decorator
+
+
+def _company_profile_missing_fields(company):
+    """Return missing required company profile fields for onboarding."""
+    if not company:
+        return ['name', 'industry', 'company_size', 'company_type', 'description', 'website', 'country', 'city']
+
+    required_fields = {
+        'name': company.name,
+        'industry': company.industry,
+        'company_size': company.company_size,
+        'company_type': company.company_type,
+        'description': company.description,
+        'website': company.website,
+        'country': company.country,
+        'city': company.city
+    }
+
+    missing = []
+    for field_name, field_value in required_fields.items():
+        if field_value is None:
+            missing.append(field_name)
+            continue
+
+        if isinstance(field_value, str) and not field_value.strip():
+            missing.append(field_name)
+
+    return missing
+
+
+def _company_profile_completion(company):
+    """Calculate company profile completion percentage based on required onboarding fields."""
+    required_count = 8
+    missing_count = len(_company_profile_missing_fields(company))
+    completed_count = max(required_count - missing_count, 0)
+    return int((completed_count / required_count) * 100)
+
+
+def build_employer_onboarding_status(user):
+    """Build normalized onboarding/verification status for employer access control."""
+    status = {
+        'has_employer_profile': False,
+        'company_linked': False,
+        'company_profile_complete': False,
+        'company_profile_completion': 0,
+        'company_verified': False,
+        'employer_verified': False,
+        'profile_completion': 0,
+        'missing_company_fields': [],
+        'required_actions': [],
+        'onboarding_complete': False,
+        'verification_state': 'not_started'
+    }
+
+    if not user or user.role != 'employer' or not user.employer_profile:
+        status['required_actions'] = [
+            {'action': 'create_profile', 'description': 'Complete employer profile'}
+        ]
+        return status
+
+    profile = user.employer_profile
+    status['has_employer_profile'] = True
+    status['employer_verified'] = bool(profile.is_verified_employer)
+    status['profile_completion'] = calculate_employer_profile_completion(user)
+    status['required_actions'] = get_employer_required_actions(user)
+
+    company = None
+    if profile.company_id:
+        from src.models.company import Company
+        company = Company.query.get(profile.company_id)
+
+    status['company_linked'] = bool(company)
+    if company:
+        missing_company_fields = _company_profile_missing_fields(company)
+        status['missing_company_fields'] = missing_company_fields
+        status['company_profile_completion'] = _company_profile_completion(company)
+        status['company_profile_complete'] = len(missing_company_fields) == 0
+        status['company_verified'] = bool(company.is_verified)
+
+    # Access threshold: once company profile reaches at least 50%, employer can use normal features.
+    minimum_profile_threshold_met = (
+        status['company_linked'] and status['company_profile_completion'] >= 50
+    )
+
+    status['onboarding_complete'] = (
+        status['has_employer_profile'] and minimum_profile_threshold_met
+    )
+
+    if not status['company_linked']:
+        status['verification_state'] = 'company_required'
+    elif status['company_profile_completion'] < 50:
+        status['verification_state'] = 'profile_incomplete'
+    elif not status['company_verified']:
+        status['verification_state'] = 'minimum_profile_complete_pending_verification'
+    else:
+        status['verification_state'] = 'verified'
+
+    return status
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -148,7 +285,8 @@ def register():
         
         # Role-specific validation
         if data['role'] == 'employer':
-            employer_required = ['job_title', 'company_name', 'industry', 'company_size', 'company_type']
+            # Employers can complete company setup during onboarding after account creation.
+            employer_required = ['job_title']
             for field in employer_required:
                 if not data.get(field) or (isinstance(data.get(field), str) and not data.get(field).strip()):
                     return jsonify({'error': f'{field} is required for employers'}), 400
@@ -384,21 +522,39 @@ def get_verification_status(current_user):
     try:
         if not current_user.employer_profile:
             return jsonify({'error': 'Employer profile not found'}), 404
-        
+
         profile = current_user.employer_profile
-        
+        onboarding_status = build_employer_onboarding_status(current_user)
+
         status_info = {
             'is_verified': profile.is_verified_employer,
             'has_submitted_docs': bool(profile.verification_documents),
-            'profile_completion': calculate_employer_profile_completion(current_user),
-            'company_linked': bool(profile.company_id),
-            'required_actions': get_employer_required_actions(current_user)
+            'profile_completion': onboarding_status.get('profile_completion', 0),
+            'company_profile_completion': onboarding_status.get('company_profile_completion', 0),
+            'company_linked': onboarding_status.get('company_linked', False),
+            'company_profile_complete': onboarding_status.get('company_profile_complete', False),
+            'company_verified': onboarding_status.get('company_verified', False),
+            'onboarding_complete': onboarding_status.get('onboarding_complete', False),
+            'verification_state': onboarding_status.get('verification_state', 'not_started'),
+            'missing_company_fields': onboarding_status.get('missing_company_fields', []),
+            'required_actions': onboarding_status.get('required_actions', [])
         }
-        
+
         return jsonify(status_info), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get verification status', 'details': str(e)}), 500
+
+
+@auth_bp.route('/employer/onboarding-status', methods=['GET'])
+@token_required
+@role_required('employer')
+def get_employer_onboarding_status(current_user):
+    """Get normalized employer onboarding status used by route and API guards."""
+    try:
+        return jsonify(build_employer_onboarding_status(current_user)), 200
+    except Exception as e:
+        return jsonify({'error': 'Failed to get onboarding status', 'details': str(e)}), 500
 
 def calculate_employer_profile_completion(user):
     """Calculate employer profile completion percentage"""
@@ -440,12 +596,28 @@ def get_employer_required_actions(user):
         actions.append({'action': 'add_work_email', 'description': 'Add work email address'})
     
     if not profile.company_id:
-        actions.append({'action': 'link_company', 'description': 'Link or create company profile'})
-    
+        actions.append({'action': 'link_company', 'description': 'Create and link your company profile'})
+        return actions
+
+    from src.models.company import Company
+    company = Company.query.get(profile.company_id)
+
+    if not company:
+        actions.append({'action': 'link_company', 'description': 'Link a valid company profile'})
+        return actions
+
+    missing_company_fields = _company_profile_missing_fields(company)
+    if missing_company_fields:
+        actions.append({
+            'action': 'complete_company_profile',
+            'description': f"Complete company profile fields: {', '.join(missing_company_fields)}"
+        })
+
+    if not company.is_verified:
+        actions.append({'action': 'await_company_verification', 'description': 'Company verification is pending admin approval'})
+
     if not profile.verification_documents:
-        actions.append({'action': 'submit_verification', 'description': 'Submit verification documents'})
-    elif not profile.is_verified_employer:
-        actions.append({'action': 'await_verification', 'description': 'Verification in progress'})
+        actions.append({'action': 'submit_verification_docs', 'description': 'Submit employer verification documents'})
     
     return actions
 
@@ -455,8 +627,9 @@ def get_employer_required_actions(user):
 def get_employer_onboarding_guide(current_user):
     """Get personalized onboarding guide for employers"""
     try:
-        completion = calculate_employer_profile_completion(current_user)
-        required_actions = get_employer_required_actions(current_user)
+        onboarding_status = build_employer_onboarding_status(current_user)
+        completion = onboarding_status.get('company_profile_completion', 0)
+        required_actions = onboarding_status.get('required_actions', [])
         
         # Onboarding steps
         steps = [
@@ -471,14 +644,14 @@ def get_employer_onboarding_guide(current_user):
                 'id': 'company_setup',
                 'title': 'Set Up Company Profile',
                 'description': 'Create or link your company profile with detailed information',
-                'completed': bool(current_user.employer_profile.company_id),
+                'completed': bool(onboarding_status.get('company_profile_complete')),
                 'priority': 'high'
             },
             {
                 'id': 'verification',
                 'title': 'Verify Your Account',
                 'description': 'Submit verification documents to build trust with candidates',
-                'completed': current_user.employer_profile.is_verified_employer,
+                'completed': bool(onboarding_status.get('company_verified')),
                 'priority': 'medium'
             },
             {

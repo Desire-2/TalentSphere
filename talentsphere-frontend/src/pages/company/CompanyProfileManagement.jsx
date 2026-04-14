@@ -163,22 +163,34 @@ const CompanyProfileManagement = () => {
   }, [isAuthenticated, user, navigate]);
 
   // Load company data
+  const normalizeCompanyResponse = useCallback((response) => {
+    // Support wrapped, legacy, and direct company payloads.
+    if (!response) return null;
+    return response?.data?.company || response?.company || response?.data || response;
+  }, []);
+
+  const isNoCompanyAssociatedError = useCallback((error) => {
+    const msg = (error?.message || '').toLowerCase();
+    return msg.includes('no company associated with your account') || msg.includes('company not found');
+  }, []);
+
   const loadCompanyData = async () => {
     try {
       setLoading(true);
       const response = await apiService.getMyCompanyProfile();
+      const companyPayload = normalizeCompanyResponse(response);
       
-      if (response) {
-        setCompany(response);
-        setCompanyData(response);
-        setBenefits(response.benefits || []);
-        setTeamMembers(response.team_members || []);
-        setGalleryImages(response.gallery_images || []);
-        calculateProfileCompletion(response);
+      if (companyPayload) {
+        setCompany(companyPayload);
+        setCompanyData(prev => ({ ...prev, ...companyPayload }));
+        setBenefits(companyPayload.benefits || []);
+        setTeamMembers(companyPayload.team_members || []);
+        setGalleryImages(companyPayload.gallery_images || []);
+        calculateProfileCompletion(companyPayload);
       }
     } catch (error) {
       console.error('Error loading company:', error);
-      if (error.message.includes('404') || error.message.includes('not found')) {
+      if (isNoCompanyAssociatedError(error)) {
         // No company profile yet - show creation form
         setCompany(null);
       } else {
@@ -214,16 +226,45 @@ const CompanyProfileManagement = () => {
   const saveCompanyData = async () => {
     try {
       setSaving(true);
+
+      if (!companyData.name || !companyData.name.trim()) {
+        toast.error('Company name is required');
+        setSaving(false);
+        return;
+      }
+
+      const payload = Object.fromEntries(
+        Object.entries(companyData).map(([key, value]) => {
+          if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return [key, trimmed === '' ? null : trimmed];
+          }
+          return [key, value];
+        })
+      );
+
+      if (payload.founded_year !== null && payload.founded_year !== undefined) {
+        const parsedYear = Number.parseInt(payload.founded_year, 10);
+        payload.founded_year = Number.isNaN(parsedYear) ? null : parsedYear;
+      }
       
       let response;
       if (company?.id) {
-        response = await apiService.updateCompanyProfile(company.id, companyData);
+        response = await apiService.updateCompanyProfile(company.id, payload);
       } else {
-        response = await apiService.createCompanyProfile(companyData);
+        response = await apiService.createCompanyProfile(payload);
       }
-      
-      setCompany(response);
-      calculateProfileCompletion(response);
+
+      const companyPayload = normalizeCompanyResponse(response);
+      if (companyPayload) {
+        setCompany(companyPayload);
+        setCompanyData(prev => ({ ...prev, ...companyPayload }));
+        setBenefits(companyPayload.benefits || []);
+        setTeamMembers(companyPayload.team_members || []);
+        setGalleryImages(companyPayload.gallery_images || []);
+        calculateProfileCompletion(companyPayload);
+      }
+
       toast.success('Company profile saved successfully');
     } catch (error) {
       console.error('Error saving company:', error);
@@ -325,6 +366,40 @@ const CompanyProfileManagement = () => {
                 You need to create a company profile before you can post jobs or manage applications.
               </AlertDescription>
             </Alert>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <Label htmlFor="create-company-name">Company Name</Label>
+                <Input
+                  id="create-company-name"
+                  value={companyData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="Your Company Name"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="create-company-tagline">Tagline</Label>
+                <Input
+                  id="create-company-tagline"
+                  value={companyData.tagline}
+                  onChange={(e) => handleInputChange('tagline', e.target.value)}
+                  placeholder="Brief company tagline"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="create-company-description">Description</Label>
+                <Textarea
+                  id="create-company-description"
+                  value={companyData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder="Tell candidates about your company"
+                  rows={4}
+                />
+              </div>
+            </div>
+
             <Button onClick={saveCompanyData} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Company Profile

@@ -93,14 +93,14 @@ const employerSchema = baseSchema.extend({
   hiring_authority: z.boolean().optional().default(false),
   
   // Company Info
-  company_name: z.string().min(1, 'Company name is required'),
+  company_name: z.string().optional().or(z.literal('')),
   company_website: z.string().optional().or(z.literal('')),
   company_email: z.string().optional().or(z.literal('')),
   company_phone: z.string().optional().or(z.literal('')),
   company_description: z.string().optional().or(z.literal('')),
-  industry: z.string().min(1, 'Please select an industry'),
-  company_size: z.string().min(1, 'Please select company size'),
-  company_type: z.string().min(1, 'Please select company type'),
+  industry: z.string().optional().or(z.literal('')),
+  company_size: z.string().optional().or(z.literal('')),
+  company_type: z.string().optional().or(z.literal('')),
   founded_year: z.number().optional().or(z.literal('')),
   
   // Address
@@ -358,7 +358,7 @@ const Register = () => {
 
   const calculateProgress = () => {
     const requiredFields = selectedRole === 'employer' ? 
-      ['role', 'first_name', 'last_name', 'email', 'password', 'job_title', 'company_name', 'industry', 'company_size', 'company_type'] :
+      ['role', 'first_name', 'last_name', 'email', 'password', 'job_title'] :
       ['role', 'first_name', 'last_name', 'email', 'password'];
     
     const filledFields = requiredFields.filter(field => {
@@ -392,7 +392,7 @@ const Register = () => {
 
   const canSubmitForm = () => {
     if (selectedRole === 'employer') {
-      const employerFields = ['role', 'first_name', 'last_name', 'email', 'password', 'job_title', 'company_name', 'industry', 'company_size', 'company_type'];
+      const employerFields = ['role', 'first_name', 'last_name', 'email', 'password', 'job_title'];
       return employerFields.every(field => {
         const value = watch(field);
         return value !== undefined && value !== '' && value !== null;
@@ -461,8 +461,8 @@ const Register = () => {
           company_type: data.company_type
         });
         
-        // Check if any required fields are missing
-        const requiredFields = ['job_title', 'company_name', 'industry', 'company_size', 'company_type'];
+        // Company details are collected during onboarding, only job_title is required here.
+        const requiredFields = ['job_title'];
         const missingFields = requiredFields.filter(field => !data[field] || data[field] === '');
         
         if (missingFields.length > 0) {

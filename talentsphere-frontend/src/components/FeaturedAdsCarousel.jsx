@@ -40,39 +40,39 @@ const FeaturedAdsCarousel = () => {
     try {
       setLoading(true);
       const response = await apiService.getPublicFeaturedAds(5);
-      setFeaturedAds(response.featured_ads || []);
+      
+      // Transform backend ad campaign data to carousel format
+      const ads = response.ads || [];
+      const transformedAds = ads.map(campaign => {
+        const creative = campaign.creatives?.[0]; // Get first creative
+        return {
+          id: campaign.id,
+          type: 'campaign',
+          title: creative?.title || campaign.name,
+          description: creative?.body_text || campaign.name,
+          image: creative?.image_url || '/api/placeholder/800/400',
+          company: {
+            name: campaign.employer?.name || 'Company',
+            logo: '/api/placeholder/80/80',
+            location: 'Location'
+          },
+          job: null,
+          callToAction: creative?.cta_text || 'Learn More',
+          link: creative?.cta_url || '#',
+          stats: {
+            impressions: 0,
+            clicks: 0,
+            applications: 0
+          }
+        };
+      });
+      
+      setFeaturedAds(transformedAds);
     } catch (error) {
       console.error('Error loading featured ads:', error);
       setError(error.message);
-      // Fallback to mock data
-      setFeaturedAds([
-        {
-          id: 1,
-          type: 'job_promotion',
-          title: 'Senior React Developer - Remote Opportunity',
-          description: 'Build the next generation of web applications with cutting-edge technologies. Competitive salary, full benefits, and unlimited PTO.',
-          image: '/api/placeholder/800/400',
-          company: {
-            name: 'InnovateLabs',
-            logo: '/api/placeholder/80/80',
-            location: 'Remote'
-          },
-          job: {
-            id: 1,
-            salary_min: 120000,
-            salary_max: 160000,
-            salary_currency: 'USD',
-            employment_type: 'full-time'
-          },
-          callToAction: 'Apply Now',
-          link: '/jobs/1',
-          stats: {
-            impressions: 12450,
-            clicks: 734,
-            applications: 89
-          }
-        }
-      ]);
+      // Fallback to empty array - carousel will hide if no ads
+      setFeaturedAds([]);
     } finally {
       setLoading(false);
     }

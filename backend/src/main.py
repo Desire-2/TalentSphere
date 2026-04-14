@@ -16,10 +16,14 @@ from src.utils.db_optimization import create_optimized_engine
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
 from src.models.job import Job, JobCategory, JobBookmark, JobAlert, JobShare
 from src.models.job_template import JobTemplate
-from src.models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
-from src.models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
+#from src.models.application import Application, ApplicationActivity, ApplicationQuestion, ApplicationTemplate
+#from src.models.featured_ad import FeaturedAd, FeaturedAdPackage, Payment, Subscription
 from src.models.notification import Notification, NotificationTemplate, Review, ReviewVote, Message
 from src.models.notification_preferences import NotificationPreference, NotificationDeliveryLog, NotificationQueue
+from src.models.ads import (
+    AdCampaign, AdCreative, AdPlacement, AdCampaignPlacement,
+    AdImpression, AdClick, AdAnalyticsDaily, AdCredit, AdReview
+)
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.company import company_bp
@@ -27,7 +31,7 @@ from src.routes.job import job_bp
 from src.routes.job_template import job_template_bp
 from src.routes.template import template_bp
 from src.routes.application import application_bp
-from src.routes.featured_ad import featured_ad_bp
+#from src.routes.featured_ad import featured_ad_bp
 from src.routes.admin import admin_bp
 from src.routes.notification import notification_bp
 from src.routes.enhanced_notification import enhanced_notification_bp
@@ -38,6 +42,7 @@ from src.routes.share_routes import share_bp
 from src.routes.scholarship import scholarship_bp
 from src.routes.cv_builder import cv_builder_bp, limiter as cv_limiter
 from src.routes.cleanup_routes import cleanup_bp
+from src.routes.ads import ads_bp
 
 # Import optimized components
 from src.routes.optimized_api import optimized_api_bp
@@ -156,8 +161,8 @@ app.register_blueprint(company_bp, url_prefix='/api')
 app.register_blueprint(job_bp, url_prefix='/api')
 app.register_blueprint(job_template_bp, url_prefix='/api')
 app.register_blueprint(template_bp, url_prefix='/api')
-app.register_blueprint(application_bp, url_prefix='/api')
-app.register_blueprint(featured_ad_bp, url_prefix='/api')
+# app.register_blueprint(application_bp, url_prefix='/api')
+# app.register_blueprint(featured_ad_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
 app.register_blueprint(notification_bp, url_prefix='/api')
 app.register_blueprint(enhanced_notification_bp, url_prefix='/api/enhanced-notifications')
@@ -169,6 +174,7 @@ app.register_blueprint(scholarship_bp, url_prefix='/api')
 app.register_blueprint(cv_builder_bp)  # Already has /api/cv-builder prefix
 cv_limiter.init_app(app)  # Bind rate limiter to Flask app
 app.register_blueprint(cleanup_bp, url_prefix='/api')
+app.register_blueprint(ads_bp, url_prefix='/api/ads')
 
 # Register optimized API endpoints
 app.register_blueprint(optimized_api_bp, url_prefix='/api')

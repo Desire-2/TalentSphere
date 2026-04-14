@@ -1,7 +1,91 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import config from '../config/environment.js';
 
-// Google Ads tracking and utilities
+// Ad tracking module version - increment to force build cache invalidation
+export const AD_TRACKING_VERSION = '1.0.1';
+
+// ===========================
+// INTERNAL AD TRACKING
+// ===========================
+
+const API_BASE_URL = config.API.BASE_URL || '/api';
+
+let SESSION_ID = null;
+
+function getSessionId() {
+  if (!SESSION_ID) {
+    SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('adSessionId', SESSION_ID);
+  }
+  return SESSION_ID;
+}
+
+/**
+ * Track ad impression using sendBeacon (non-blocking)
+ * @param {number} campaignId
+ * @param {number} creativeId
+ * @param {string} placementKey
+ */
+export function trackAdImpression(campaignId, creativeId, placementKey) {
+  try {
+    const payload = {
+      campaign_id: campaignId,
+      creative_id: creativeId,
+      placement_id: placementKey,
+      session_id: getSessionId(),
+    };
+
+    // Use sendBeacon for non-blocking tracking
+    if (navigator.sendBeacon) {
+      const url = `${API_BASE_URL}/ads/impression`;
+      navigator.sendBeacon(url, JSON.stringify(payload));
+    } else {
+      // Fallback: async fetch without waiting
+      fetch(`${API_BASE_URL}/ads/impression`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {}); // Silently fail
+    }
+  } catch (error) {
+    console.debug('Ad impression tracking error:', error);
+  }
+}
+
+/**
+ * Get click tracking URL
+ * @param {number} campaignId
+ * @param {number} creativeId
+ * @param {string} placementKey
+ * @param {string} ctaUrl
+ * @returns {string} Click tracking URL
+ */
+export function getAdClickTrackingUrl(campaignId, creativeId, placementKey, ctaUrl) {
+  const sessionId = getSessionId();
+  const baseUrl = `${API_BASE_URL}/ads/click`;
+  const params = new URLSearchParams({
+    c: campaignId,
+    cr: creativeId,
+    p: placementKey,
+    s: sessionId,
+    cta_url: ctaUrl,
+  });
+  return `${baseUrl}?${params.toString()}`;
+}
+
+/**
+ * Initialize ad tracking on page load
+ */
+export function initializeAdTracking() {
+  // Ensure we have a session ID
+  getSessionId();
+}
+
+// ===========================
+// GOOGLE ADS TRACKING
+// ===========================
 
 // Initialize Google Ads conversion tracking
 export const initGoogleAds = () => {

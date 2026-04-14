@@ -1,6 +1,6 @@
 /**
  * AdCard Component - Default feed ad format
- * Displays sponsored content in card format
+ * Displays sponsored content in card format with tracked metrics
  */
 
 import React, { useEffect } from 'react';

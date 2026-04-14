@@ -5,7 +5,7 @@
 
 import React, { useEffect } from 'react';
 import { trackAdImpression, getAdClickTrackingUrl } from '../../utils/adTracking.js';
-import '../../../public/css/ads.css';
+import '../../styles/ads.css';
 
 export function AdSpotlight({ ad, placementKey }) {
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import GoogleAds from './GoogleAds';
+import GoogleAds from './GoogleAds.jsx';
 
 // Pre-configured ad components for different sections
 

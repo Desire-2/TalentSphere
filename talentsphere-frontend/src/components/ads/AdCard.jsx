@@ -1,0 +1,49 @@
+/**
+ * AdCard Component - Default feed ad format
+ * Displays sponsored content in card format
+ */
+
+import React, { useEffect } from 'react';
+import { trackAdImpression, getAdClickTrackingUrl } from '../../utils/adTracking.js';
+import '../../../public/css/ads.css';
+
+export function AdCard({ ad, placementKey }) {
+  useEffect(() => {
+    if (ad?.campaign_id && ad?.creative_id) {
+      trackAdImpression(ad.campaign_id, ad.creative_id, placementKey);
+    }
+  }, [ad, placementKey]);
+
+  if (!ad) return null;
+
+  const clickUrl = getAdClickTrackingUrl(ad.campaign_id, ad.creative_id, placementKey, ad.cta_url);
+
+  return (
+    <div className="ad-card ad-format-card">
+      <div className="ad-card-header">
+        <span className="ad-badge">Sponsored</span>
+        {ad.image_url && (
+          <img src={ad.image_url} alt={ad.title} className="ad-card-image" />
+        )}
+      </div>
+      
+      <div className="ad-card-content">
+        <h3 className="ad-card-title">{ad.title}</h3>
+        <p className="ad-card-body">{ad.body_text}</p>
+      </div>
+      
+      <div className="ad-card-footer">
+        <a
+          href={clickUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ad-card-cta"
+        >
+          {ad.cta_text || 'Learn More'}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export default AdCard;

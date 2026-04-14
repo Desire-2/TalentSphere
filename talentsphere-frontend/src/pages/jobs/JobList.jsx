@@ -13,9 +13,9 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import SEOHelmet from '../../components/seo/SEOHelmet';
 import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
-import { SquareAd, ResponsiveAd, JobSponsoredAd } from '../../components/ads/AdComponents';
-import AdSlot from '../../components/ads/AdSlot';
-import { useAdTracking } from '../../utils/adTracking';
+import { SquareAd, ResponsiveAd, JobSponsoredAd } from '../../components/ads/AdComponents.jsx';
+import AdSlot from '../../components/ads/AdSlot.jsx';
+import { useAdTracking } from '../../utils/adTracking.js';
 import { 
   Search, 
   MapPin, 

@@ -201,11 +201,40 @@ def _company_profile_missing_fields(company):
 
 
 def _company_profile_completion(company):
-    """Calculate company profile completion percentage based on required onboarding fields."""
-    required_count = 8
-    missing_count = len(_company_profile_missing_fields(company))
-    completed_count = max(required_count - missing_count, 0)
-    return int((completed_count / required_count) * 100)
+    """Calculate company profile completion using the same fields as Company Profile Management UI."""
+    if not company:
+        return 0
+
+    profile_fields = [
+        'name',
+        'description',
+        'tagline',
+        'website',
+        'email',
+        'phone',
+        'city',
+        'state',
+        'country',
+        'industry',
+        'company_size',
+        'founded_year',
+        'company_type',
+        'logo_url'
+    ]
+
+    completed_count = 0
+    for field_name in profile_fields:
+        field_value = getattr(company, field_name, None)
+        if field_value is None:
+            continue
+
+        if isinstance(field_value, str):
+            if field_value.strip():
+                completed_count += 1
+        else:
+            completed_count += 1
+
+    return int((completed_count / len(profile_fields)) * 100)
 
 
 def build_employer_onboarding_status(user):

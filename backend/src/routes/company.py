@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models.user import db
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
-from src.routes.auth import token_required, role_required
+from src.routes.auth import token_required, role_required, _company_profile_completion
 from src.utils.response_wrapper import success_response, error_response
 
 company_bp = Blueprint('company', __name__)
@@ -92,6 +92,7 @@ def get_company(company_id):
         db.session.commit()
         
         company_data = company.to_dict(include_stats=True)
+        company_data['company_profile_completion'] = _company_profile_completion(company)
         
         # Add benefits and team members
         benefits = CompanyBenefit.query.filter_by(company_id=company_id).order_by(
@@ -192,7 +193,10 @@ def create_company(current_user):
         
         return jsonify({
             'message': 'Company created successfully',
-            'company': company.to_dict()
+            'company': {
+                **company.to_dict(),
+                'company_profile_completion': _company_profile_completion(company)
+            }
         }), 201
         
     except Exception as e:
@@ -267,7 +271,10 @@ def update_company(current_user, company_id):
         
         return jsonify({
             'message': 'Company updated successfully',
-            'company': company.to_dict()
+            'company': {
+                **company.to_dict(),
+                'company_profile_completion': _company_profile_completion(company)
+            }
         }), 200
         
     except Exception as e:

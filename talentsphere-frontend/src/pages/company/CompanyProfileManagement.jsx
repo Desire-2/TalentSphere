@@ -203,6 +203,12 @@ const CompanyProfileManagement = () => {
 
   // Calculate profile completion percentage
   const calculateProfileCompletion = (data) => {
+    if (typeof data?.company_profile_completion === 'number' && Number.isFinite(data.company_profile_completion)) {
+      const completion = Math.max(0, Math.min(100, Math.round(data.company_profile_completion)));
+      setProfileCompletion(completion);
+      return;
+    }
+
     const fields = [
       'name', 'description', 'tagline', 'website', 'email', 'phone',
       'city', 'state', 'country', 'industry', 'company_size',

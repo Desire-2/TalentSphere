@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import SEOHelmet from '../../components/seo/SEOHelmet';
 import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
 import { SquareAd, ResponsiveAd, JobSponsoredAd } from '../../components/ads/AdComponents';
+import AdSlot from '../../components/ads/AdSlot';
 import { useAdTracking } from '../../utils/adTracking';
 import { 
   Search, 
@@ -551,9 +552,14 @@ const JobList = () => {
             </form>
           </motion.div>
 
-          {/* Google Ads - Responsive */}
+          {/* Ad Slot - Top Banner */}
           <div className="mb-6 sm:mb-8">
-            <ResponsiveAd className="rounded-lg shadow-sm" />
+            <AdSlot 
+              placement="job_feed_top" 
+              context="job_listing" 
+              format="BANNER_HORIZONTAL"
+              limit={1}
+            />
           </div>
 
           {/* Job Results */}
@@ -623,22 +629,39 @@ const JobList = () => {
                   : "space-y-2 sm:space-y-4"
                 }
               >
-                {jobs.map((job, index) => (
-                  <JobCard 
-                    key={job.id} 
-                    job={job} 
-                    index={index}
-                    viewMode={viewMode}
-                    isBookmarked={bookmarkedJobs.has(job.id)}
-                    onToggleBookmark={toggleBookmark}
-                    isAuthenticated={isAuthenticated}
-                    getCompanyName={getCompanyName}
-                    getCompanyLogo={getCompanyLogo}
-                    getJobDescription={getJobDescription}
-                    getJobLocation={getJobLocation}
-                    getSalaryDisplay={getSalaryDisplay}
-                  />
-                ))}
+                {jobs.map((job, index) => {
+                  const jobElements = [
+                    <JobCard 
+                      key={job.id} 
+                      job={job} 
+                      index={index}
+                      viewMode={viewMode}
+                      isBookmarked={bookmarkedJobs.has(job.id)}
+                      onToggleBookmark={toggleBookmark}
+                      isAuthenticated={isAuthenticated}
+                      getCompanyName={getCompanyName}
+                      getCompanyLogo={getCompanyLogo}
+                      getJobDescription={getJobDescription}
+                      getJobLocation={getJobLocation}
+                      getSalaryDisplay={getSalaryDisplay}
+                    />
+                  ];
+                  
+                  // Inject ad slot after every 4 jobs
+                  if ((index + 1) % 4 === 0 && index < jobs.length - 1) {
+                    jobElements.push(
+                      <div key={`ad-slot-${index}`} className="col-span-full">
+                        <AdSlot 
+                          placement="job_feed_mid" 
+                          context="job_listing" 
+                          limit={2}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  return jobElements;
+                }).flat()}
             </motion.div>
           )}
           </AnimatePresence>
@@ -755,7 +778,7 @@ const JobCard = ({
         animate="visible"
         className="group"
       >
-        <Card className="hover-lift bg-white/80 backdrop-blur-sm border border-white/20 transition-all duration-300 hover:bg-white hover:shadow-xl cursor-pointer" onClick={handleCardClick}>
+        <Card className="hover-lift bg-[#0a2847]/80 backdrop-blur-sm border border-[#FF6B35]/30 transition-all duration-300 hover:bg-[#0a2847]/95 hover:shadow-xl hover:border-[#FF6B35]/60 cursor-pointer" onClick={handleCardClick}>
           <CardContent className="p-6">
             <div className="flex items-start gap-6">
               {/* Company Avatar */}
@@ -818,12 +841,12 @@ const JobCard = ({
                       )}
                     </div>
                     <div className="flex items-center gap-2 mb-3">
-                      <p className="text-lg text-gray-800 font-semibold">{getCompanyName(job)}</p>
+                      <p className="text-lg text-gray-300 font-semibold">{getCompanyName(job)}</p>
                       {job.external_company_website && (
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                          className="h-6 px-2 text-xs text-[#1BA398] hover:text-[#FF6B35] hover:bg-[#0a2847]/40"
                           asChild
                         >
                           <a href={job.external_company_website} target="_blank" rel="noopener noreferrer">
@@ -833,8 +856,8 @@ const JobCard = ({
                         </Button>
                       )}
                     </div>
-                    <div className="mb-4 bg-gray-50 rounded-lg p-3">
-                      <p className="text-gray-700 leading-relaxed line-clamp-3">{getJobDescription(job)}</p>
+                    <div className="mb-4 bg-[#003366]/30 rounded-lg p-3">
+                      <p className="text-gray-300 leading-relaxed line-clamp-3">{getJobDescription(job)}</p>
                     </div>
                   </div>
                   
@@ -846,12 +869,12 @@ const JobCard = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => onToggleBookmark(job.id)}
-                          className="h-10 w-10 p-0 hover:bg-blue-50 group-hover:bg-blue-100 transition-colors"
+                          className="h-10 w-10 p-0 hover:bg-[#0a2847]/40 group-hover:bg-[#0a2847]/60 transition-colors"
                         >
                           {isBookmarked ? (
-                            <BookmarkCheck className="w-5 h-5 text-blue-600" />
+                            <BookmarkCheck className="w-5 h-5 text-[#FF6B35]" />
                           ) : (
-                            <Bookmark className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
+                            <Bookmark className="w-5 h-5 group-hover:text-[#FF6B35] transition-colors" />
                           )}
                         </Button>
                       </TooltipTrigger>
@@ -888,18 +911,18 @@ const JobCard = ({
                 {/* Skills */}
                 {job.required_skills && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="text-sm font-medium text-gray-600 mr-2 self-center">Required Skills:</span>
+                    <span className="text-sm font-medium text-gray-400 mr-2 self-center">Required Skills:</span>
                     {job.required_skills.split(',').slice(0, 5).map((skill, skillIndex) => (
                       <Badge 
                         key={skillIndex} 
                         variant="outline" 
-                        className="bg-blue-50/50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                        className="bg-[#1BA398]/10 text-[#1BA398] border-[#1BA398]/20 hover:bg-[#1BA398]/20 transition-colors"
                       >
                         {skill.trim()}
                       </Badge>
                     ))}
                     {job.required_skills.split(',').length > 5 && (
-                      <Badge variant="outline" className="bg-gray-50 text-gray-600">
+                      <Badge variant="outline" className="bg-[#0a2847]/40 text-gray-300 border-[#FF6B35]/10">
                         +{job.required_skills.split(',').length - 5} more skills
                       </Badge>
                     )}
@@ -909,26 +932,26 @@ const JobCard = ({
                 {/* Job Meta Information */}
                 <div className="flex items-center justify-between">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-                    <div className="flex items-center text-gray-600">
-                      <MapPin className="w-4 h-4 mr-2 text-blue-500" />
+                    <div className="flex items-center text-gray-400">
+                      <MapPin className="w-4 h-4 mr-2 text-[#1BA398]" />
                       <span className="font-medium">
                         {getJobLocation(job)}
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-600">
-                      <DollarSign className="w-4 h-4 mr-2 text-green-500" />
+                    <div className="flex items-center text-gray-400">
+                      <DollarSign className="w-4 h-4 mr-2 text-[#FF6B35]" />
                       <span className="font-medium">
                         {getSalaryDisplay(job)}
                       </span>
                     </div>
-                    <div className="flex items-center text-gray-600">
-                      <Clock className="w-4 h-4 mr-2 text-purple-500" />
+                    <div className="flex items-center text-gray-400">
+                      <Clock className="w-4 h-4 mr-2 text-[#1BA398]" />
                       <span className="font-medium">{formatRelativeTime(job.created_at)}</span>
                     </div>
                     <div className="flex items-center">
                       <Badge 
                         variant="outline" 
-                        className="bg-indigo-50/50 text-indigo-700 border-indigo-200"
+                        className="bg-[#1BA398]/10 text-[#1BA398] border-[#1BA398]/20"
                       >
                         {snakeToTitle(job.employment_type)}
                       </Badge>
@@ -943,7 +966,7 @@ const JobCard = ({
                     </div>
 
                     {/* View Job Button */}
-                    <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all">
+                    <Button asChild className="bg-gradient-to-r from-[#1BA398] to-[#FF6B35] hover:from-[#1BA398]/90 hover:to-[#FF6B35]/90 shadow-md hover:shadow-lg transition-all">
                       <Link to={`/jobs/${job.id}`} className="flex items-center">
                         View Details
                         <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -984,7 +1007,7 @@ const JobCard = ({
                       }
                     }}
                   />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-[#1BA398] to-[#FF6B35] text-white font-bold">
                     {job.job_source === 'external' ? (
                       <div className="flex items-center justify-center">
                         <ExternalLink className="w-4 h-4" />
@@ -995,7 +1018,7 @@ const JobCard = ({
                   </AvatarFallback>
                 </Avatar>
                 {job.job_source === 'external' && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-r from-[#FF6B35] to-orange-600 rounded-full flex items-center justify-center shadow-md">
                     <ExternalLink className="w-2 h-2 text-white" />
                   </div>
                 )}
@@ -1055,7 +1078,7 @@ const JobCard = ({
           {/* Badges */}
           <div className="flex flex-wrap gap-2 mb-3">
             {job.job_source === 'external' && (
-              <Badge className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
+              <Badge className="bg-gradient-to-r from-[#FF6B35] to-orange-600 text-white text-xs">
                 <ExternalLink className="w-3 h-3 mr-1" />
                 External
               </Badge>
@@ -1112,13 +1135,13 @@ const JobCard = ({
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center text-gray-300">
-                  <DollarSign className="w-3 h-3 mr-1 text-green-500" />
+                  <DollarSign className="w-3 h-3 mr-1 text-[#FF6B35]" />
                   <span className="font-medium">
                     {getSalaryDisplay(job)}
                   </span>
                 </div>
                 <div className="flex items-center text-gray-300">
-                  <Clock className="w-3 h-3 mr-1 text-purple-500" />
+                  <Clock className="w-3 h-3 mr-1 text-[#1BA398]" />
                   <span className="font-medium">{formatRelativeTime(job.created_at)}</span>
                 </div>
               </div>

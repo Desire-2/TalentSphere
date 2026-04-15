@@ -7,6 +7,32 @@ import axiosInstance from './api';
 
 const BASE_URL = '/ads';
 
+const normalizeServiceError = (error, fallbackMessage = 'Ad request failed') => {
+  const message =
+    error?.error ||
+    error?.message ||
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    (typeof error === 'string' ? error : null) ||
+    fallbackMessage;
+
+  return {
+    error: message,
+    message,
+    details: error,
+  };
+};
+
+const buildQuery = (filters = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, String(value));
+    }
+  });
+  return params.toString();
+};
+
 export const adManagerService = {
   // ========================
   // CAMPAIGN ENDPOINTS
@@ -20,7 +46,7 @@ export const adManagerService = {
       const response = await axiosInstance.post(`${BASE_URL}/campaigns`, campaignData);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to create campaign');
     }
   },
 
@@ -29,15 +55,13 @@ export const adManagerService = {
    */
   listCampaigns: async (filters = {}) => {
     try {
-      const params = new URLSearchParams();
-      if (filters.status) params.append('status', filters.status);
-      if (filters.limit) params.append('limit', filters.limit);
-      if (filters.offset) params.append('offset', filters.offset);
-      
-      const response = await axiosInstance.get(`${BASE_URL}/campaigns?${params}`);
+      const queryString = buildQuery(filters);
+      const response = await axiosInstance.get(
+        `${BASE_URL}/campaigns${queryString ? `?${queryString}` : ''}`
+      );
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to load campaigns');
     }
   },
 
@@ -49,7 +73,7 @@ export const adManagerService = {
       const response = await axiosInstance.get(`${BASE_URL}/campaigns/${campaignId}`);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to load campaign');
     }
   },
 
@@ -61,7 +85,19 @@ export const adManagerService = {
       const response = await axiosInstance.put(`${BASE_URL}/campaigns/${campaignId}`, updates);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to update campaign');
+    }
+  },
+
+  /**
+   * Delete campaign
+   */
+  deleteCampaign: async (campaignId) => {
+    try {
+      const response = await axiosInstance.delete(`${BASE_URL}/campaigns/${campaignId}`);
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to delete campaign');
     }
   },
 
@@ -73,7 +109,7 @@ export const adManagerService = {
       const response = await axiosInstance.post(`${BASE_URL}/campaigns/${campaignId}/submit`);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to submit campaign for review');
     }
   },
 
@@ -85,7 +121,7 @@ export const adManagerService = {
       const response = await axiosInstance.post(`${BASE_URL}/campaigns/${campaignId}/pause`);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to pause campaign');
     }
   },
 
@@ -97,7 +133,7 @@ export const adManagerService = {
       const response = await axiosInstance.post(`${BASE_URL}/campaigns/${campaignId}/resume`);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to resume campaign');
     }
   },
 
@@ -108,15 +144,33 @@ export const adManagerService = {
   /**
    * Create a creative for a campaign
    */
-  createCreative: async (campaignId, creativeData) => {
+  createCreative: async (campaignId, creativeData, imageFile = null) => {
     try {
-      const response = await axiosInstance.post(
-        `${BASE_URL}/campaigns/${campaignId}/creatives`,
-        creativeData
-      );
+      let response;
+
+      if (imageFile) {
+        const formData = new FormData();
+        Object.entries(creativeData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        });
+        formData.append('image', imageFile);
+
+        response = await axiosInstance.postForm(
+          `${BASE_URL}/campaigns/${campaignId}/creatives`,
+          formData
+        );
+      } else {
+        response = await axiosInstance.post(
+          `${BASE_URL}/campaigns/${campaignId}/creatives`,
+          creativeData
+        );
+      }
+
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to create creative');
     }
   },
 
@@ -131,7 +185,7 @@ export const adManagerService = {
       );
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to update creative');
     }
   },
 
@@ -145,7 +199,71 @@ export const adManagerService = {
       );
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to delete creative');
+    }
+  },
+
+  // ========================
+  // PLACEMENTS ENDPOINTS
+  // ========================
+
+  /**
+   * List available placements and selection state for a campaign.
+   */
+  listPlacements: async (campaignId = null) => {
+    try {
+      const queryString = buildQuery({ campaign_id: campaignId });
+      const response = await axiosInstance.get(
+        `${BASE_URL}/placements${queryString ? `?${queryString}` : ''}`
+      );
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to load placements');
+    }
+  },
+
+  /**
+   * Backward-compatible alias for older callers.
+   */
+  getPlacements: async (campaignId = null) => {
+    return adManagerService.listPlacements(campaignId);
+  },
+
+  /**
+   * Get campaign placements.
+   */
+  getCampaignPlacements: async (campaignId) => {
+    try {
+      const response = await axiosInstance.get(`${BASE_URL}/campaigns/${campaignId}/placements`);
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to load campaign placements');
+    }
+  },
+
+  /**
+   * Update campaign placements using placement IDs or keys.
+   */
+  updateCampaignPlacements: async (campaignId, placements) => {
+    try {
+      const response = await axiosInstance.put(`${BASE_URL}/campaigns/${campaignId}/placements`, {
+        placements,
+      });
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to update campaign placements');
+    }
+  },
+
+  /**
+   * Get employer ads dashboard summary metrics.
+   */
+  getDashboardSummary: async () => {
+    try {
+      const response = await axiosInstance.get(`${BASE_URL}/dashboard/summary`);
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to load dashboard summary');
     }
   },
 
@@ -164,7 +282,7 @@ export const adManagerService = {
       );
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to save targeting');
     }
   },
 
@@ -177,16 +295,13 @@ export const adManagerService = {
    */
   getAnalytics: async (campaignId, dateRange = {}) => {
     try {
-      const params = new URLSearchParams();
-      if (dateRange.start) params.append('start', dateRange.start);
-      if (dateRange.end) params.append('end', dateRange.end);
-      
+      const params = buildQuery(dateRange);
       const response = await axiosInstance.get(
-        `${BASE_URL}/analytics/${campaignId}?${params}`
+        `${BASE_URL}/analytics/${campaignId}${params ? `?${params}` : ''}`
       );
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to load analytics');
     }
   },
 
@@ -202,7 +317,7 @@ export const adManagerService = {
       const response = await axiosInstance.get(`${BASE_URL}/credits`);
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to load credits');
     }
   },
 
@@ -217,7 +332,7 @@ export const adManagerService = {
       });
       return response;
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw normalizeServiceError(error, 'Failed to purchase credits');
     }
   },
 };

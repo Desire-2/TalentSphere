@@ -478,3 +478,49 @@ class AdReview(db.Model):
     
     def __repr__(self):
         return f'<AdReview {self.id}: {self.decision}>'
+
+
+class AdReviewAudit(db.Model):
+    """Immutable audit trail for moderation actions."""
+    __tablename__ = 'ad_review_audits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('ad_campaigns.id'), nullable=False, index=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('ad_reviews.id'), nullable=True, index=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    action = db.Column(db.String(50), nullable=False)
+    from_status = db.Column(db.String(50))
+    to_status = db.Column(db.String(50))
+    from_decision = db.Column(db.String(50))
+    to_decision = db.Column(db.String(50))
+    note = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    campaign = db.relationship('AdCampaign', backref='review_audit_logs', foreign_keys=[campaign_id])
+    review = db.relationship('AdReview', backref='audit_logs', foreign_keys=[review_id])
+    admin = db.relationship('User', backref='ad_review_audit_logs', foreign_keys=[admin_id])
+
+    __table_args__ = (
+        Index('idx_ad_review_audit_campaign_created', 'campaign_id', 'created_at'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'campaign_id': self.campaign_id,
+            'review_id': self.review_id,
+            'admin_id': self.admin_id,
+            'admin_name': self.admin.get_full_name() if self.admin else None,
+            'action': self.action,
+            'from_status': self.from_status,
+            'to_status': self.to_status,
+            'from_decision': self.from_decision,
+            'to_decision': self.to_decision,
+            'note': self.note,
+            'created_at': self.created_at.isoformat(),
+        }
+
+    def __repr__(self):
+        return f'<AdReviewAudit {self.id}: {self.action}>'

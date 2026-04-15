@@ -6,7 +6,7 @@
  * Step 4: Review & Submit
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Target,
@@ -40,7 +40,57 @@ import {
   AlertDescription,
 } from '@/components/ui/alert';
 import adManagerService from '../../services/adManager';
+import apiService from '../../services/api';
 import { toast } from 'sonner';
+
+const isValidHttpUrl = (value) => {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const extractErrorMessage = (error, fallback = 'Request failed') => {
+  return error?.error || error?.message || fallback;
+};
+
+const normalizeFormats = (placement) => {
+  const raw = placement?.allowed_formats;
+
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v).trim().toUpperCase()).filter(Boolean);
+  }
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v).trim().toUpperCase()).filter(Boolean);
+      }
+    } catch {
+      // Fall through to CSV-style split.
+    }
+
+    return trimmed
+      .replace(/^\[|\]$/g, '')
+      .split(',')
+      .map((v) => v.replace(/["']/g, '').trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const placementSupportsFormat = (placement, format) => {
+  const expected = String(format || '').trim().toUpperCase();
+  return normalizeFormats(placement).includes(expected);
+};
 
 const CreateCampaignWizard = () => {
   const navigate = useNavigate();
@@ -49,6 +99,9 @@ const CreateCampaignWizard = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [availablePlacements, setAvailablePlacements] = useState([]);
+  const [selectedPlacementIds, setSelectedPlacementIds] = useState([]);
+  const [loadingPlacements, setLoadingPlacements] = useState(true);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -82,6 +135,57 @@ const CreateCampaignWizard = () => {
   // Validation errors
   const [errors, setErrors] = useState({});
 
+  const compatiblePlacements = availablePlacements.filter((placement) =>
+    placementSupportsFormat(placement, formData.adFormat)
+  );
+
+  const loadPlacements = useCallback(async () => {
+    try {
+      setLoadingPlacements(true);
+      let response;
+
+      if (typeof adManagerService?.listPlacements === 'function') {
+        response = await adManagerService.listPlacements();
+      } else if (typeof adManagerService?.getPlacements === 'function') {
+        response = await adManagerService.getPlacements();
+      } else {
+        // Last-resort fallback if a stale service module is loaded in the browser cache.
+        response = await apiService.get('/ads/placements');
+      }
+
+      const placements = response?.placements || [];
+      setAvailablePlacements(placements);
+      const defaults = placements
+        .filter((placement) => placementSupportsFormat(placement, formData.adFormat))
+        .slice(0, 2)
+        .map((placement) => placement.id);
+      setSelectedPlacementIds(defaults);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to load ad placements'));
+      setAvailablePlacements([]);
+    } finally {
+      setLoadingPlacements(false);
+    }
+  }, [formData.adFormat]);
+
+  useEffect(() => {
+    loadPlacements();
+  }, [loadPlacements]);
+
+  useEffect(() => {
+    const compatiblePlacementIds = new Set(compatiblePlacements.map((p) => p.id));
+    const filteredSelected = selectedPlacementIds.filter((id) => compatiblePlacementIds.has(id));
+    if (filteredSelected.length !== selectedPlacementIds.length) {
+      setSelectedPlacementIds(filteredSelected);
+    }
+  }, [compatiblePlacements, selectedPlacementIds]);
+
+  useEffect(() => {
+    if (selectedPlacementIds.length === 0 && compatiblePlacements.length > 0) {
+      setSelectedPlacementIds(compatiblePlacements.slice(0, 2).map((placement) => placement.id));
+    }
+  }, [compatiblePlacements, selectedPlacementIds.length]);
+
   // Step 1: Validate basics
   const validateStep1 = () => {
     const newErrors = {};
@@ -93,7 +197,22 @@ const CreateCampaignWizard = () => {
     if (new Date(formData.startDate) >= new Date(formData.endDate)) {
       newErrors.endDate = 'End date must be after start date';
     }
+    if (parseFloat(formData.budgetAmount || '0') <= 0) {
+      newErrors.budgetAmount = 'Budget must be greater than 0';
+    }
+    if (parseFloat(formData.bidAmount || '0') <= 0) {
+      newErrors.bidAmount = 'Bid amount must be greater than 0';
+    }
     setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors = {};
+    if (selectedPlacementIds.length === 0) {
+      newErrors.placements = 'Select at least one placement to run this campaign';
+    }
+    setErrors((prev) => ({ ...prev, ...newErrors }));
     return Object.keys(newErrors).length === 0;
   };
 
@@ -105,12 +224,16 @@ const CreateCampaignWizard = () => {
     if (!formData.bodyText.trim()) newErrors.bodyText = 'Body text is required';
     if (formData.bodyText.length > 200) newErrors.bodyText = 'Body text max 200 characters';
     if (!formData.destinationUrl.trim()) newErrors.destinationUrl = 'Destination URL is required';
+    if (formData.destinationUrl && !isValidHttpUrl(formData.destinationUrl.trim())) {
+      newErrors.destinationUrl = 'Destination URL must be a valid absolute http(s) URL';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNextStep = () => {
     if (step === 1 && !validateStep1()) return;
+    if (step === 2 && !validateStep2()) return;
     if (step === 3 && !validateStep3()) return;
     if (step < 4) setStep(step + 1);
   };
@@ -169,6 +292,18 @@ const CreateCampaignWizard = () => {
     handleInputChange('jobCategories', updated);
   };
 
+  const handlePlacementToggle = (placementId) => {
+    const updated = selectedPlacementIds.includes(placementId)
+      ? selectedPlacementIds.filter((id) => id !== placementId)
+      : [...selectedPlacementIds, placementId];
+    setSelectedPlacementIds(updated);
+    if (errors.placements) {
+      const nextErrors = { ...errors };
+      delete nextErrors.placements;
+      setErrors(nextErrors);
+    }
+  };
+
   const handleSubmit = async (submitFor = 'draft') => {
     try {
       setLoading(true);
@@ -189,13 +324,22 @@ const CreateCampaignWizard = () => {
           keywords: formData.keywords,
         },
       });
-
-      console.log('Campaign creation response:', campaignResponse);
       const campaignId = campaignResponse.campaign?.id;
       
       if (!campaignId) {
         throw new Error('Campaign created but no ID returned in response');
       }
+
+      const placementIdsToUse = selectedPlacementIds.length > 0
+        ? selectedPlacementIds
+        : compatiblePlacements.slice(0, 2).map((placement) => placement.id);
+
+      if (placementIdsToUse.length === 0) {
+        throw new Error(`No compatible placements available for format ${formData.adFormat}`);
+      }
+
+      // Assign placements before creating creatives to match backend creative format validation.
+      await adManagerService.updateCampaignPlacements(campaignId, placementIdsToUse);
 
       // Create creative
       const creativeData = {
@@ -206,10 +350,7 @@ const CreateCampaignWizard = () => {
         ad_format: formData.adFormat,
         is_active: true,
       };
-
-      console.log('Creating creative:', creativeData);
-      await adManagerService.createCreative(campaignId, creativeData);
-      console.log('Creative created successfully');
+      await adManagerService.createCreative(campaignId, creativeData, formData.image);
 
       // Set targeting
       await adManagerService.setTargeting(campaignId, {
@@ -222,12 +363,10 @@ const CreateCampaignWizard = () => {
       // If submitting for review, call the submit endpoint
       if (submitFor === 'review') {
         try {
-          console.log('Submitting campaign', campaignId, 'for review');
           await adManagerService.submitCampaign(campaignId);
           toast.success('Campaign submitted for review! Admin will review it shortly.');
         } catch (submitError) {
-          console.error('Submit for review failed:', submitError);
-          throw new Error(`Failed to submit for review: ${submitError.message || submitError}`);
+          throw new Error(`Failed to submit for review: ${extractErrorMessage(submitError)}`);
         }
       } else {
         toast.success('Campaign saved as draft!');
@@ -235,8 +374,7 @@ const CreateCampaignWizard = () => {
 
       navigate(`/employer/ads/${campaignId}`);
     } catch (error) {
-      console.error('Campaign operation failed:', error);
-      const errorMsg = error?.message || error?.error || 'Failed to create campaign';
+      const errorMsg = extractErrorMessage(error, 'Failed to create campaign');
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -496,6 +634,51 @@ const CreateCampaignWizard = () => {
               </div>
 
               <div>
+                <Label>Ad Placements</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select where this campaign can appear. Only placements compatible with {formData.adFormat} are shown.
+                </p>
+
+                {loadingPlacements ? (
+                  <div className="text-sm text-muted-foreground mt-3">Loading placements...</div>
+                ) : compatiblePlacements.length === 0 ? (
+                  <Alert className="mt-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      No active placements currently support {formData.adFormat}. Pick another format or ask admin to enable matching placements.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 mt-3">
+                    {compatiblePlacements.map((placement) => (
+                      <label
+                        key={placement.id}
+                        className="flex items-start gap-3 border rounded-md p-3 cursor-pointer hover:border-primary/40"
+                      >
+                        <Checkbox
+                          checked={selectedPlacementIds.includes(placement.id)}
+                          onCheckedChange={() => handlePlacementToggle(placement.id)}
+                        />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{placement.display_name || placement.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {placement.description || placement.placement_key}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Context: {placement.page_context || 'ALL'}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {errors.placements && (
+                  <p className="text-sm text-destructive mt-2">{errors.placements}</p>
+                )}
+              </div>
+
+              <div>
                 <Label>Keywords</Label>
                 <div className="flex gap-2 mt-2">
                   <Input
@@ -747,6 +930,21 @@ const CreateCampaignWizard = () => {
                       <span className="font-medium">{formData.bodyText}</span>
                     </p>
                   </div>
+                </div>
+
+                <div className="bg-secondary/50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3">Placements</h3>
+                  {selectedPlacementIds.length > 0 ? (
+                    <p className="text-sm font-medium">
+                      {selectedPlacementIds
+                        .map((id) =>
+                          availablePlacements.find((placement) => placement.id === id)?.display_name || id
+                        )
+                        .join(', ')}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No placements selected</p>
+                  )}
                 </div>
 
                 <Alert>

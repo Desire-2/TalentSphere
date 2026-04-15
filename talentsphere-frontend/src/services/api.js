@@ -44,14 +44,15 @@ class ApiService {
   }
 
   // Get authentication headers
-  getHeaders() {
+  getHeaders(includeJsonContentType = true) {
     // Always get fresh token from localStorage
     const token = localStorage.getItem('token');
     this.token = token;
     
-    const headers = {
-      'Content-Type': 'application/json',
-    };
+    const headers = {};
+    if (includeJsonContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
     
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
@@ -82,12 +83,21 @@ class ApiService {
     };
 
     if (ENABLE_API_LOGGING) {
+      let bodyParsed = null;
+      if (typeof options.body === 'string') {
+        try {
+          bodyParsed = JSON.parse(options.body);
+        } catch {
+          bodyParsed = options.body;
+        }
+      }
+
       console.log('🌐 API Request:', {
         method: options.method || 'GET',
         url: url,
         headers: config.headers,
         body: options.body || 'No body',
-        bodyParsed: options.body ? JSON.parse(options.body) : null
+        bodyParsed
       });
     }
 
@@ -252,6 +262,15 @@ class ApiService {
     return this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  // POST multipart/form-data request
+  async postForm(endpoint, formData) {
+    return this.request(endpoint, {
+      method: 'POST',
+      headers: this.getHeaders(false),
+      body: formData,
     });
   }
 

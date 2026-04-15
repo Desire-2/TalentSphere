@@ -1,9 +1,5 @@
 /**
- * File Upload Service
- * 
- * This service handles file uploads for resumes, portfolios, and other documents.
- * In a production environment, this would integrate with cloud storage services
- * like AWS S3, Google Cloud Storage, or Azure Blob Storage.
+ * File Upload Service backed by backend Vercel Blob uploads.
  */
 
 import config from '../config/environment.js';
@@ -11,6 +7,45 @@ import config from '../config/environment.js';
 class UploadService {
   constructor() {
     this.baseURL = config.API.API_URL;
+    this.uploadPath = '/api/uploads/documents';
+  }
+
+  getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  getUploadUrl() {
+    return `${this.baseURL.replace(/\/$/, '')}${this.uploadPath}`;
+  }
+
+  async uploadViaBackend(file, userId, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (userId) {
+      formData.append('userId', userId);
+    }
+    formData.append('type', type);
+
+    const response = await fetch(this.getUploadUrl(), {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+      },
+      body: formData,
+      credentials: 'include',
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || 'Upload failed');
+    }
+
+    if (!payload.url) {
+      throw new Error('Upload failed: missing file url');
+    }
+
+    return payload.url;
   }
 
   /**
@@ -37,29 +72,7 @@ class UploadService {
         throw new Error('File too large. Maximum size is 5MB.');
       }
 
-      // In a real implementation, you would upload to your backend or cloud storage
-      // For now, we'll simulate the upload and return a mock URL
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', userId);
-      formData.append('type', 'resume');
-
-      // Mock upload delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Generate mock URL (in production, this would come from your storage service)
-      const timestamp = Date.now();
-      const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const mockUrl = `https://storage.talentsphere.com/resumes/${userId}/${filename}`;
-
-      console.log('Mock resume upload:', {
-        originalName: file.name,
-        size: file.size,
-        type: file.type,
-        url: mockUrl
-      });
-
-      return mockUrl;
+      return await this.uploadViaBackend(file, userId, 'resume');
     } catch (error) {
       console.error('Resume upload failed:', error);
       throw error;
@@ -92,29 +105,7 @@ class UploadService {
         throw new Error('File too large. Maximum size is 10MB.');
       }
 
-      // Mock upload
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', userId);
-      formData.append('type', type);
-
-      // Mock upload delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Generate mock URL
-      const timestamp = Date.now();
-      const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const mockUrl = `https://storage.talentsphere.com/${type}s/${userId}/${filename}`;
-
-      console.log('Mock document upload:', {
-        originalName: file.name,
-        size: file.size,
-        type: file.type,
-        documentType: type,
-        url: mockUrl
-      });
-
-      return mockUrl;
+      return await this.uploadViaBackend(file, userId, type);
     } catch (error) {
       console.error('Document upload failed:', error);
       throw error;

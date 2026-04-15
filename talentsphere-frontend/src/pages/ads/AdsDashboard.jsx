@@ -3,23 +3,25 @@
  * Shows active campaigns, summary metrics, and campaign management
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TrendingUp,
   MousePointer,
   Eye,
   Percent,
   Zap,
   Plus,
-  Filter,
   Clock,
   Check,
   AlertCircle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -34,14 +36,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import adManagerService from '../../services/adManager';
 import { toast } from 'sonner';
 
@@ -50,54 +44,102 @@ const AdsDashboard = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total_pages: 1, has_next: false, has_prev: false });
+  const [statusCounts, setStatusCounts] = useState({});
+
+  const ACTIVE_FILTERS = ['ACTIVE', 'DRAFT', 'PAUSED', 'PENDING_REVIEW', 'NEEDS_CHANGES'];
 
   // Summary metrics
   const [metrics, setMetrics] = useState({
     activeCampaigns: 0,
     totalImpressions: 0,
+    monthlyImpressions: 0,
     totalClicks: 0,
     averageCtr: 0,
+    totalCampaigns: 0,
+    pendingReview: 0,
+    needsChanges: 0,
   });
 
-  useEffect(() => {
-    loadCampaigns();
-  }, [filter]);
-
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     try {
       setLoading(true);
       const filterParam = filter !== 'all' ? filter : undefined;
-      const response = await adManagerService.listCampaigns({
-        status: filterParam,
-        limit: 100,
-      });
+      const [response, summary] = await Promise.all([
+        adManagerService.listCampaigns({
+          status: filterParam,
+          q: debouncedSearchQuery || undefined,
+          page: pagination.page,
+          limit: pagination.limit,
+        }),
+        adManagerService.getDashboardSummary(),
+      ]);
 
-      setCampaigns(response.campaigns || []);
+      const campaignList = response?.campaigns || [];
+      const backendStatusCounts = response?.status_counts || {};
 
-      // Calculate metrics
-      const activeCampaigns = response.campaigns.filter((c) => c.status === 'ACTIVE').length;
-      const totalImpressions = response.campaigns.reduce(
-        (sum, c) => sum + (c.impressions || 0),
-        0
-      );
-      const totalClicks = response.campaigns.reduce((sum, c) => sum + (c.clicks || 0), 0);
-      const avgCtr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : 0;
+      // Fallback when backend is stale/missing status_counts.
+      const derivedStatusCounts = campaignList.reduce((acc, campaign) => {
+        const statusKey = String(campaign?.status || '').toUpperCase();
+        if (!statusKey) return acc;
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
+        return acc;
+      }, {});
+
+      const hasBackendStatusCounts = Object.keys(backendStatusCounts).length > 0;
+      const safeStatusCounts = hasBackendStatusCounts ? backendStatusCounts : derivedStatusCounts;
+
+      setCampaigns(campaignList);
+      setStatusCounts(safeStatusCounts);
+      setPagination((prev) => ({ ...prev, ...(response?.pagination || {}) }));
+
+      const activeCampaigns = Number(summary?.active_campaigns ?? 0);
+      const totalImpressions = Number(summary?.total_impressions ?? 0);
+      const monthlyImpressions = Number(summary?.monthly_impressions ?? 0);
+      const totalClicks = Number(summary?.total_clicks ?? 0);
+      const avgCtr = Number(summary?.average_ctr ?? 0);
 
       setMetrics({
         activeCampaigns,
         totalImpressions,
+        monthlyImpressions,
         totalClicks,
         averageCtr: avgCtr,
+        totalCampaigns: Number(
+          response?.total || Object.values(safeStatusCounts).reduce((sum, value) => sum + Number(value || 0), 0)
+        ),
+        pendingReview: Number(safeStatusCounts?.PENDING_REVIEW || 0),
+        needsChanges: Number(safeStatusCounts?.NEEDS_CHANGES || 0),
       });
     } catch (error) {
       console.error('Failed to load campaigns:', error);
-      toast.error('Failed to load campaigns');
+      toast.error(error?.error || error?.message || 'Failed to load campaigns');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, debouncedSearchQuery, pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [filter]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, [debouncedSearchQuery]);
 
   const handlePause = async (campaignId) => {
     try {
@@ -105,7 +147,7 @@ const AdsDashboard = () => {
       toast.success('Campaign paused');
       loadCampaigns();
     } catch (error) {
-      toast.error(error.error || 'Failed to pause campaign');
+      toast.error(error?.error || error?.message || 'Failed to pause campaign');
     }
   };
 
@@ -115,7 +157,7 @@ const AdsDashboard = () => {
       toast.success('Campaign resumed');
       loadCampaigns();
     } catch (error) {
-      toast.error(error.error || 'Failed to resume campaign');
+      toast.error(error?.error || error?.message || 'Failed to resume campaign');
     }
   };
 
@@ -125,8 +167,57 @@ const AdsDashboard = () => {
       toast.success('Campaign submitted for review! Admin will review it shortly.');
       loadCampaigns();
     } catch (error) {
-      toast.error(error.error || 'Failed to submit campaign for review');
+      toast.error(error?.error || error?.message || 'Failed to submit campaign for review');
     }
+  };
+
+  const handleEditCampaign = (campaign) => {
+    const campaignId = campaign?.id ?? campaign?.campaign_id;
+    if (!campaignId) {
+      toast.error('Unable to edit campaign: missing campaign ID');
+      return;
+    }
+    navigate(`/employer/ads/${campaignId}`);
+  };
+
+  const handleDeleteCampaign = async (campaign) => {
+    const campaignId = campaign?.id ?? campaign?.campaign_id;
+    if (!campaignId) {
+      toast.error('Unable to delete campaign: missing campaign ID');
+      return;
+    }
+
+    const campaignName = campaign?.name || `#${campaignId}`;
+    const confirmed = window.confirm(
+      `Delete campaign "${campaignName}"? This will permanently remove its creatives and analytics data.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await adManagerService.deleteCampaign(campaignId);
+      toast.success('Campaign deleted');
+
+      // If deleting the last item on page, move to previous page when possible.
+      if (campaigns.length === 1 && (pagination.page || 1) > 1) {
+        setPagination((prev) => ({ ...prev, page: Math.max(1, (prev.page || 1) - 1) }));
+      } else {
+        loadCampaigns();
+      }
+    } catch (error) {
+      toast.error(error?.error || error?.message || 'Failed to delete campaign');
+    }
+  };
+
+  const goToCampaignDetails = (campaign) => {
+    const campaignId = campaign?.id ?? campaign?.campaign_id;
+    if (!campaignId) {
+      toast.error('Unable to open campaign details: missing campaign ID');
+      return;
+    }
+    navigate(`/employer/ads/${campaignId}`);
   };
 
   const getStatusBadge = (status) => {
@@ -136,6 +227,7 @@ const AdsDashboard = () => {
       ACTIVE: 'default',
       PAUSED: 'secondary',
       REJECTED: 'destructive',
+      NEEDS_CHANGES: 'outline',
       COMPLETED: 'outline',
     };
 
@@ -145,6 +237,7 @@ const AdsDashboard = () => {
       ACTIVE: <Zap className="w-3 h-3 mr-1" />,
       PAUSED: <AlertCircle className="w-3 h-3 mr-1" />,
       REJECTED: <AlertCircle className="w-3 h-3 mr-1" />,
+      NEEDS_CHANGES: <AlertCircle className="w-3 h-3 mr-1" />,
       COMPLETED: <Check className="w-3 h-3 mr-1" />,
     };
 
@@ -157,9 +250,24 @@ const AdsDashboard = () => {
   };
 
   const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
+    const parsed = Number(num || 0);
+    if (Number.isNaN(parsed)) return '0';
+    if (parsed >= 1000000) return (parsed / 1000000).toFixed(1) + 'M';
+    if (parsed >= 1000) return (parsed / 1000).toFixed(1) + 'K';
+    return parsed.toString();
+  };
+
+  const formatCurrency = (value) => {
+    const parsed = Number(value || 0);
+    if (Number.isNaN(parsed)) return '0.00';
+    return parsed.toFixed(2);
+  };
+
+  const getBudgetProgress = (campaign) => {
+    const spent = Number(campaign?.budget_spent || 0);
+    const total = Number(campaign?.budget_total || 0);
+    if (!total || total <= 0) return 0;
+    return Math.min(100, Math.max(0, (spent / total) * 100));
   };
 
   return (
@@ -180,7 +288,20 @@ const AdsDashboard = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Total Campaigns
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.totalCampaigns}</div>
+            <p className="text-xs text-muted-foreground mt-1">Across all statuses</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -202,7 +323,7 @@ const AdsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(metrics.totalImpressions)}</div>
+            <div className="text-2xl font-bold">{formatNumber(metrics.monthlyImpressions)}</div>
             <p className="text-xs text-muted-foreground mt-1">This month</p>
           </CardContent>
         </Card>
@@ -234,38 +355,60 @@ const AdsDashboard = () => {
         </Card>
       </div>
 
+      {(metrics.pendingReview > 0 || metrics.needsChanges > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertDescription>
+              {metrics.pendingReview} campaign(s) pending admin review.
+            </AlertDescription>
+          </Alert>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {metrics.needsChanges} campaign(s) need changes before approval.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Filters and Table */}
       <Card>
         <CardHeader className="pb-4 border-b">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle>Campaigns</CardTitle>
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="w-4 h-4" />
-                    Filter
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setFilter('all')} className={filter === 'all' ? 'bg-accent' : ''}>
-                    All Campaigns
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilter('ACTIVE')} className={filter === 'ACTIVE' ? 'bg-accent' : ''}>
-                    Active
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilter('DRAFT')} className={filter === 'DRAFT' ? 'bg-accent' : ''}>
-                    Draft
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilter('PAUSED')} className={filter === 'PAUSED' ? 'bg-accent' : ''}>
-                    Paused
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilter('PENDING_REVIEW')} className={filter === 'PENDING_REVIEW' ? 'bg-accent' : ''}>
-                    Pending Review
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <CardTitle>Campaigns</CardTitle>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by campaign name, objective, or status..."
+                  className="w-full sm:w-80"
+                />
+                <Button variant="outline" size="sm" onClick={loadCampaigns}>Refresh</Button>
+              </div>
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('all')}
+              >
+                All ({Object.values(statusCounts).reduce((acc, count) => acc + Number(count || 0), 0)})
+              </Button>
+              {ACTIVE_FILTERS.map((statusKey) => (
+                <Button
+                  key={statusKey}
+                  variant={filter === statusKey ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter(statusKey)}
+                >
+                  {statusKey.replace('_', ' ')} ({statusCounts?.[statusKey] || 0})
+                </Button>
+              ))}
+            </div>
+
           </div>
         </CardHeader>
 
@@ -280,7 +423,7 @@ const AdsDashboard = () => {
                 <TableHead className="text-right">Impressions</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
                 <TableHead className="text-right">CTR</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead className="w-52">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -301,7 +444,7 @@ const AdsDashboard = () => {
                   <TableRow key={campaign.id}>
                     <TableCell>
                       <button
-                        onClick={() => navigate(`${campaign.id}`)}
+                        onClick={() => goToCampaignDetails(campaign)}
                         className="font-medium hover:underline text-primary"
                       >
                         {campaign.name}
@@ -314,15 +457,12 @@ const AdsDashboard = () => {
                           <div
                             className="h-full bg-primary rounded-full"
                             style={{
-                              width: `${
-                                (parseFloat(campaign.budget_spent) / parseFloat(campaign.budget_total)) * 100 || 0
-                              }%`,
+                              width: `${getBudgetProgress(campaign)}%`,
                             }}
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          ${parseFloat(campaign.budget_spent).toFixed(2)} / $
-                          {parseFloat(campaign.budget_total).toFixed(2)}
+                          ${formatCurrency(campaign.budget_spent)} / ${formatCurrency(campaign.budget_total)}
                         </p>
                       </div>
                     </TableCell>
@@ -330,58 +470,92 @@ const AdsDashboard = () => {
                     <TableCell className="text-right">{formatNumber(campaign.clicks)}</TableCell>
                     <TableCell className="text-right">{campaign.ctr}%</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">•••</Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`${campaign.id}`)}>
-                            View Details
-                          </DropdownMenuItem>
-                          {campaign.status === 'ACTIVE' && (
-                            <DropdownMenuItem onClick={() => handlePause(campaign.id)}>
-                              Pause
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => goToCampaignDetails(campaign)}>
+                          View
+                        </Button>
+                        {campaign.actions?.can_edit && (
+                          <Button variant="outline" size="sm" onClick={() => handleEditCampaign(campaign)}>
+                            <Pencil className="w-3 h-3 mr-1" />
+                            Edit
+                          </Button>
+                        )}
+                        {campaign.actions?.can_delete && (
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteCampaign(campaign)}>
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Delete
+                          </Button>
+                        )}
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">•••</Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => goToCampaignDetails(campaign)}>
+                              View Details
                             </DropdownMenuItem>
-                          )}
-                          {campaign.status === 'PAUSED' && (
-                            <DropdownMenuItem onClick={() => handleResume(campaign.id)}>
-                              Resume
-                            </DropdownMenuItem>
-                          )}
-                          {campaign.status === 'DRAFT' && (
-                            <>
-                              <DropdownMenuItem onClick={() => navigate(`${campaign.id}`)}>
-                                Edit
+                            {campaign.actions?.can_pause && (
+                              <DropdownMenuItem onClick={() => handlePause(campaign.id)}>
+                                Pause
                               </DropdownMenuItem>
+                            )}
+                            {campaign.actions?.can_resume && (
+                              <DropdownMenuItem onClick={() => handleResume(campaign.id)}>
+                                Resume
+                              </DropdownMenuItem>
+                            )}
+                            {campaign.actions?.can_submit_review && (
                               <DropdownMenuItem onClick={() => handleSubmitReview(campaign.id)} className="text-orange-600">
-                                Request Review
+                                {campaign.status === 'NEEDS_CHANGES' ? 'Resubmit for Review' : 'Request Review'}
                               </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
+
+          {campaigns.some((c) => c.status === 'NEEDS_CHANGES') && (
+            <div className="px-4 pb-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Some campaigns need updates before approval. Open the campaign and review admin feedback, then resubmit.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between px-4 pb-4 text-sm text-muted-foreground">
+          <p>
+            Page {pagination.page || 1} of {pagination.total_pages || 1}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_prev || loading}
+              onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, (prev.page || 1) - 1) }))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.has_next || loading}
+              onClick={() => setPagination((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete this campaign? This action cannot be undone.
-          </AlertDialogDescription>
-          <div className="flex justify-end gap-2">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive">Delete</AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

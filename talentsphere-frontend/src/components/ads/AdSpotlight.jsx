@@ -17,6 +17,7 @@ export function AdSpotlight({ ad, placementKey }) {
   if (!ad) return null;
 
   const clickUrl = getAdClickTrackingUrl(ad.campaign_id, ad.creative_id, placementKey, ad.cta_url);
+  const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
     <div className="ad-spotlight ad-format-spotlight">
@@ -32,6 +33,7 @@ export function AdSpotlight({ ad, placementKey }) {
           <span className="ad-badge ad-badge-spotlight">Spotlight</span>
           
           <h1 className="ad-spotlight-title">{ad.title}</h1>
+          {sponsorName && <p className="ad-sponsor ad-sponsor-spotlight">By {sponsorName}</p>}
           
           <p className="ad-spotlight-body">{ad.body_text}</p>
 

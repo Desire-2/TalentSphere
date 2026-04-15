@@ -17,6 +17,7 @@ export function AdInlineFeed({ ad, placementKey }) {
   if (!ad) return null;
 
   const clickUrl = getAdClickTrackingUrl(ad.campaign_id, ad.creative_id, placementKey, ad.cta_url);
+  const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
     <div className="ad-inline-feed ad-format-inline-feed job-card">
@@ -32,6 +33,7 @@ export function AdInlineFeed({ ad, placementKey }) {
 
       <div className="ad-inline-feed-content">
         <h3 className="ad-inline-feed-title">{ad.title}</h3>
+        {sponsorName && <p className="ad-sponsor">By {sponsorName}</p>}
         <p className="ad-inline-feed-body">{ad.body_text}</p>
 
         <div className="ad-inline-feed-footer">

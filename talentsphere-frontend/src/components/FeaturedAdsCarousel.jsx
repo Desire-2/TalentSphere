@@ -45,6 +45,11 @@ const FeaturedAdsCarousel = () => {
       const ads = response.ads || [];
       const transformedAds = ads.map(campaign => {
         const creative = campaign.creatives?.[0]; // Get first creative
+        const sponsor = campaign.sponsor || {};
+        const companyName = sponsor.company_name || sponsor.display_name || campaign.company_name || campaign.employer?.name || 'Company';
+        const companyLogo = sponsor.company_logo_url || '/api/placeholder/80/80';
+        const companyLocation = sponsor.company_location || 'Location';
+
         return {
           id: campaign.id,
           type: 'campaign',
@@ -52,9 +57,9 @@ const FeaturedAdsCarousel = () => {
           description: creative?.body_text || campaign.name,
           image: creative?.image_url || '/api/placeholder/800/400',
           company: {
-            name: campaign.employer?.name || 'Company',
-            logo: '/api/placeholder/80/80',
-            location: 'Location'
+            name: companyName,
+            logo: companyLogo,
+            location: companyLocation
           },
           job: null,
           callToAction: creative?.cta_text || 'Learn More',

@@ -17,6 +17,7 @@ export function AdCard({ ad, placementKey }) {
   if (!ad) return null;
 
   const clickUrl = getAdClickTrackingUrl(ad.campaign_id, ad.creative_id, placementKey, ad.cta_url);
+  const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
     <div className="ad-card ad-format-card">
@@ -29,6 +30,7 @@ export function AdCard({ ad, placementKey }) {
       
       <div className="ad-card-content">
         <h3 className="ad-card-title">{ad.title}</h3>
+        {sponsorName && <p className="ad-sponsor">By {sponsorName}</p>}
         <p className="ad-card-body">{ad.body_text}</p>
       </div>
       

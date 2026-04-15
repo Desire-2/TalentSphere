@@ -559,6 +559,7 @@ const JobList = () => {
               context="job_listing" 
               format="BANNER_HORIZONTAL"
               limit={1}
+              className="ad-slot-job-list-top"
             />
           </div>
 

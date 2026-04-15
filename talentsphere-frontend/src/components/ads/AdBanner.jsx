@@ -17,6 +17,7 @@ export function AdBanner({ ad, placementKey }) {
   if (!ad) return null;
 
   const clickUrl = getAdClickTrackingUrl(ad.campaign_id, ad.creative_id, placementKey, ad.cta_url);
+  const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
     <div className="ad-banner ad-format-banner-horizontal">
@@ -29,6 +30,7 @@ export function AdBanner({ ad, placementKey }) {
       <div className="ad-banner-content">
         <span className="ad-badge ad-badge-banner">Ad</span>
         <h2 className="ad-banner-title">{ad.title}</h2>
+        {sponsorName && <p className="ad-sponsor ad-sponsor-banner">By {sponsorName}</p>}
         <p className="ad-banner-body">{ad.body_text}</p>
         
         <a

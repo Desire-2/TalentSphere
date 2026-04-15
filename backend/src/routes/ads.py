@@ -82,7 +82,85 @@ DEFAULT_PLACEMENTS = [
         'allowed_formats': ['BANNER_HORIZONTAL', 'BANNER_VERTICAL', 'CARD', 'INLINE_FEED', 'SPONSORED_JOB', 'SPOTLIGHT'],
         'max_ads_per_load': 2,
     },
+    {
+        'name': 'Home Page Banner',
+        'display_name': 'Home Page Banner',
+        'description': 'Top banner placement on home page',
+        'placement_key': 'home_page_banner',
+        'page_context': 'ALL',
+        'allowed_formats': ['BANNER_HORIZONTAL', 'CARD'],
+        'max_ads_per_load': 1,
+    },
+    {
+        'name': 'Home Page Mid Section',
+        'display_name': 'Home Page Mid Section',
+        'description': 'Middle content placement on home page',
+        'placement_key': 'home_page_mid',
+        'page_context': 'ALL',
+        'allowed_formats': ['CARD', 'INLINE_FEED', 'BANNER_HORIZONTAL'],
+        'max_ads_per_load': 2,
+    },
+    {
+        'name': 'Job Feed Mid',
+        'display_name': 'Job Feed Mid',
+        'description': 'Inline placement inside job feed results',
+        'placement_key': 'job_feed_mid',
+        'page_context': 'JOB_LISTING',
+        'allowed_formats': ['CARD', 'INLINE_FEED', 'BANNER_HORIZONTAL'],
+        'max_ads_per_load': 2,
+    },
+    {
+        'name': 'Job Detail Sidebar',
+        'display_name': 'Job Detail Sidebar',
+        'description': 'Sidebar placement on job detail page',
+        'placement_key': 'job_detail_sidebar',
+        'page_context': 'JOB_DETAIL',
+        'allowed_formats': ['CARD', 'BANNER_VERTICAL', 'INLINE_FEED'],
+        'max_ads_per_load': 1,
+    },
+    {
+        'name': 'Scholarship Feed Mid',
+        'display_name': 'Scholarship Feed Mid',
+        'description': 'Inline placement in scholarship listings',
+        'placement_key': 'scholarship_feed_mid',
+        'page_context': 'SCHOLARSHIP_LISTING',
+        'allowed_formats': ['CARD', 'INLINE_FEED', 'BANNER_HORIZONTAL'],
+        'max_ads_per_load': 2,
+    },
+    {
+        'name': 'Companies Feed',
+        'display_name': 'Companies Feed',
+        'description': 'Placement for companies listing page',
+        'placement_key': 'companies_feed',
+        'page_context': 'ALL',
+        'allowed_formats': ['CARD', 'BANNER_HORIZONTAL', 'INLINE_FEED'],
+        'max_ads_per_load': 1,
+    },
 ]
+
+# Backward-compatible aliases used by existing frontend slots.
+PLACEMENT_ALIASES = {
+    'home_page_banner': 'global_sponsored_slot',
+    'home_page_mid': 'global_sponsored_slot',
+    'job_feed_mid': 'job_feed_top',
+    'job_detail_sidebar': 'job_detail_inline',
+    'scholarship_feed_mid': 'scholarship_feed_top',
+    'companies_feed': 'global_sponsored_slot',
+}
+
+CONTEXT_ALIASES = {
+    'home': 'ALL',
+    'homepage': 'ALL',
+    'home_page': 'ALL',
+    'job_listing': 'JOB_LISTING',
+    'jobs_listing': 'JOB_LISTING',
+    'job_detail': 'JOB_DETAIL',
+    'dashboard': 'DASHBOARD',
+    'jobseeker_dashboard': 'DASHBOARD',
+    'scholarship_listing': 'SCHOLARSHIP_LISTING',
+    'companies_listing': 'ALL',
+    'company_listing': 'ALL',
+}
 
 # ========================
 # UTILITY FUNCTIONS
@@ -137,6 +215,61 @@ def _resolve_placement(value):
         return AdPlacement.query.get(int(raw))
 
     return AdPlacement.query.filter_by(placement_key=raw).first()
+
+
+def _resolve_placement_with_alias(value):
+    placement = _resolve_placement(value)
+    if placement:
+        return placement
+
+    raw = str(value or '').strip().lower()
+    if not raw:
+        return None
+
+    alias_key = PLACEMENT_ALIASES.get(raw)
+    if not alias_key:
+        return None
+
+    return AdPlacement.query.filter_by(placement_key=alias_key).first()
+
+
+def _normalize_context(raw_context):
+    if raw_context is None:
+        return None
+
+    normalized = str(raw_context).strip()
+    if not normalized:
+        return None
+
+    normalized = normalized.replace('-', '_').replace(' ', '_').upper()
+    return CONTEXT_ALIASES.get(normalized.lower(), normalized)
+
+
+def _build_sponsor_data(campaign):
+    employer = campaign.employer
+    company = None
+
+    if employer and employer.employer_profile:
+        company = employer.employer_profile.company
+
+    company_name = company.name if company and company.name else None
+    company_logo = company.logo_url if company and company.logo_url else None
+    company_location = company.get_full_address() if company else None
+
+    employer_name = None
+    if employer:
+        employer_name = employer.get_full_name() or employer.email
+
+    display_name = company_name or employer_name or 'Company'
+
+    return {
+        'display_name': display_name,
+        'company_name': company_name,
+        'company_logo_url': company_logo,
+        'company_location': company_location,
+        'employer_name': employer_name,
+        'employer_email': employer.email if employer else None,
+    }
 
 
 def _sync_campaign_placements(campaign_id, placement_ids):
@@ -1270,7 +1403,7 @@ def serve_ads():
     """Core ad serving endpoint - called on page load"""
     try:
         placement_key = request.args.get('placement')
-        context = request.args.get('context')
+        context = _normalize_context(request.args.get('context'))
         limit = request.args.get('limit', 2, type=int)
         
         # Validate inputs
@@ -1280,12 +1413,16 @@ def serve_ads():
         limit = min(limit, 10)  # Cap at 10
         
         # Get placement
-        placement = AdPlacement.query.filter_by(placement_key=placement_key).first()
+        placement = _resolve_placement_with_alias(placement_key)
         if not placement or not placement.is_active:
             return jsonify({'ads': []}), 200
 
         if placement.page_context and placement.page_context not in ('ALL', context):
             return jsonify({'ads': []}), 200
+
+        # Honor placement max while respecting caller's limit.
+        placement_limit = placement.max_ads_per_load or 10
+        limit = min(limit, placement_limit, 10)
         
         # Get current time for active campaign check
         now = datetime.utcnow()
@@ -1355,6 +1492,7 @@ def serve_ads():
         for ad in ads_to_serve:
             campaign = ad['campaign']
             creative = ad['creative']
+            sponsor = _build_sponsor_data(campaign)
             
             ads_response.append({
                 'id': f"{campaign.id}_{creative.id}",
@@ -1367,6 +1505,9 @@ def serve_ads():
                 'cta_url': creative.cta_url,
                 'ad_format': creative.ad_format,
                 'placement_id': placement.id,
+                'sponsor': sponsor,
+                'company_name': sponsor['company_name'] or sponsor['display_name'],
+                'employer_name': sponsor['employer_name'],
                 'tracking': {
                     'impression_url': f'/api/ads/impression?c={campaign.id}&cr={creative.id}&p={placement.placement_key}',
                     'click_url': f'/api/ads/click?c={campaign.id}&cr={creative.id}&p={placement.placement_key}'
@@ -2758,6 +2899,7 @@ def get_public_featured_ads():
             
             # Get employer info
             employer = User.query.get(campaign.employer_id)
+            sponsor = _build_sponsor_data(campaign)
             
             campaign_data = {
                 'id': campaign.id,
@@ -2773,6 +2915,8 @@ def get_public_featured_ads():
                     'name': employer.get_full_name() if employer else 'Unknown',
                     'email': employer.email if employer else None
                 } if employer else None,
+                'sponsor': sponsor,
+                'company_name': sponsor['company_name'] or sponsor['display_name'],
                 'creatives': [
                     {
                         'id': c.id,

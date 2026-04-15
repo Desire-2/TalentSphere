@@ -177,12 +177,35 @@ export const adManagerService = {
   /**
    * Update a creative
    */
-  updateCreative: async (campaignId, creativeId, updates) => {
+  updateCreative: async (campaignId, creativeId, updates, imageFile = null) => {
     try {
-      const response = await axiosInstance.put(
-        `${BASE_URL}/campaigns/${campaignId}/creatives/${creativeId}`,
-        updates
-      );
+      let response;
+
+      if (imageFile) {
+        const formData = new FormData();
+        Object.entries(updates || {}).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        });
+        formData.append('image', imageFile);
+
+        response = await axiosInstance.put(
+          `${BASE_URL}/campaigns/${campaignId}/creatives/${creativeId}`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+      } else {
+        response = await axiosInstance.put(
+          `${BASE_URL}/campaigns/${campaignId}/creatives/${creativeId}`,
+          updates
+        );
+      }
+
       return response;
     } catch (error) {
       throw normalizeServiceError(error, 'Failed to update creative');

@@ -51,6 +51,7 @@ REQUIRED_VARS=(
 OPTIONAL_VARS=(
     "FLASK_ENV"
     "JWT_SECRET_KEY"
+    "VERCEL_BLOB_READ_WRITE_TOKEN"
     "PORT"
     "CORS_ORIGINS"
     "REDIS_URL"
@@ -82,6 +83,12 @@ for var in "${REQUIRED_VARS[@]}"; do
         esac
     fi
 done
+
+if [[ -z "$VERCEL_BLOB_READ_WRITE_TOKEN" ]]; then
+    echo ""
+    echo "⚠️  VERCEL_BLOB_READ_WRITE_TOKEN is not set."
+    echo "   Ad creative image uploads to Vercel Blob will fail until this is configured."
+fi
 
 # Check optional variables
 echo ""

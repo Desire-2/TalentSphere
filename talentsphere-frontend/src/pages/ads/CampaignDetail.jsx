@@ -17,6 +17,11 @@ import {
   Eye,
   MousePointer,
   Percent,
+  ImagePlus,
+  Link2,
+  Type,
+  MessageSquare,
+  UploadCloud,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -75,6 +80,29 @@ const BILLING_TYPES = [
   'FLAT_RATE',
 ];
 
+const CTA_OPTIONS = [
+  'Learn More',
+  'Apply Now',
+  'Contact Us',
+  'Visit Website',
+];
+
+const INITIAL_CREATIVE_FORM = {
+  headline: '',
+  bodyText: '',
+  ctaButtonText: 'Learn More',
+  destinationUrl: '',
+  adFormat: 'BANNER_HORIZONTAL',
+};
+
+const buildCreativeFormFromCreative = (creative) => ({
+  headline: creative?.title || '',
+  bodyText: creative?.body_text || '',
+  ctaButtonText: creative?.cta_text || 'Learn More',
+  destinationUrl: creative?.cta_url || '',
+  adFormat: creative?.ad_format || 'BANNER_HORIZONTAL',
+});
+
 const buildTargetingForm = (targeting) => ({
   locations: targeting?.locations || [],
   job_categories: targeting?.job_categories || [],
@@ -114,6 +142,7 @@ const CampaignDetail = () => {
   const [loading, setLoading] = useState(true);
   const [editingSettings, setEditingSettings] = useState(false);
   const [creatingCreative, setCreatingCreative] = useState(false);
+  const [editingCreativeId, setEditingCreativeId] = useState(null);
   const [availablePlacements, setAvailablePlacements] = useState([]);
   const [selectedPlacementIds, setSelectedPlacementIds] = useState([]);
   const [savingPlacements, setSavingPlacements] = useState(false);
@@ -125,15 +154,14 @@ const CampaignDetail = () => {
 
   const [settingsForm, setSettingsForm] = useState({});
   const [targetingForm, setTargetingForm] = useState(buildTargetingForm(null));
-  const [creativeForm, setCreativeForm] = useState({
-    headline: '',
-    bodyText: '',
-    ctaButtonText: 'Learn More',
-    destinationUrl: '',
-    adFormat: 'BANNER_HORIZONTAL',
-  });
+  const [creativeForm, setCreativeForm] = useState({ ...INITIAL_CREATIVE_FORM });
+  const [editingCreativeForm, setEditingCreativeForm] = useState({ ...INITIAL_CREATIVE_FORM });
 
   const [creativeImageFile, setCreativeImageFile] = useState(null);
+  const [creativeImagePreviewUrl, setCreativeImagePreviewUrl] = useState('');
+  const [editingCreativeImageFile, setEditingCreativeImageFile] = useState(null);
+  const [editingCreativeImagePreviewUrl, setEditingCreativeImagePreviewUrl] = useState('');
+  const [removeEditingCreativeImage, setRemoveEditingCreativeImage] = useState(false);
 
   const [analytics, setAnalytics] = useState({
     totals: {},
@@ -158,6 +186,136 @@ const CampaignDetail = () => {
     'SPONSORED_JOB',
     'SPOTLIGHT',
   ];
+
+  const normalizedHeadline = creativeForm.headline.trim();
+  const normalizedBodyText = creativeForm.bodyText.trim();
+  const normalizedDestinationUrl = creativeForm.destinationUrl.trim();
+  const isDestinationUrlValid = !normalizedDestinationUrl || isValidHttpUrl(normalizedDestinationUrl);
+  const isFormatSupported =
+    selectedPlacementSupportedFormats.size === 0 ||
+    selectedPlacementSupportedFormats.has(creativeForm.adFormat);
+  const canSubmitCreative =
+    normalizedHeadline.length > 0 &&
+    normalizedBodyText.length > 0 &&
+    normalizedDestinationUrl.length > 0 &&
+    isDestinationUrlValid &&
+    isFormatSupported;
+
+  const normalizedEditHeadline = editingCreativeForm.headline.trim();
+  const normalizedEditBodyText = editingCreativeForm.bodyText.trim();
+  const normalizedEditDestinationUrl = editingCreativeForm.destinationUrl.trim();
+  const isEditDestinationUrlValid = !normalizedEditDestinationUrl || isValidHttpUrl(normalizedEditDestinationUrl);
+  const isEditFormatSupported =
+    selectedPlacementSupportedFormats.size === 0 ||
+    selectedPlacementSupportedFormats.has(editingCreativeForm.adFormat);
+  const canSaveEditedCreative =
+    normalizedEditHeadline.length > 0 &&
+    normalizedEditBodyText.length > 0 &&
+    normalizedEditDestinationUrl.length > 0 &&
+    isEditDestinationUrlValid &&
+    isEditFormatSupported;
+
+  const resetCreativeComposer = () => {
+    setCreativeForm({ ...INITIAL_CREATIVE_FORM });
+    setCreativeImageFile(null);
+    setCreatingCreative(false);
+  };
+
+  const resetEditingCreative = () => {
+    setEditingCreativeId(null);
+    setEditingCreativeForm({ ...INITIAL_CREATIVE_FORM });
+    setEditingCreativeImageFile(null);
+    setEditingCreativeImagePreviewUrl('');
+    setRemoveEditingCreativeImage(false);
+  };
+
+  const handleCreativeImageChange = (event) => {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setCreativeImageFile(null);
+      return;
+    }
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only PNG, JPG, or WEBP files are allowed');
+      event.target.value = '';
+      return;
+    }
+
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error('Image must be 2MB or smaller');
+      event.target.value = '';
+      return;
+    }
+
+    setCreativeImageFile(file);
+  };
+
+  const handleEditCreativeImageChange = (event) => {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setEditingCreativeImageFile(null);
+      return;
+    }
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only PNG, JPG, or WEBP files are allowed');
+      event.target.value = '';
+      return;
+    }
+
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error('Image must be 2MB or smaller');
+      event.target.value = '';
+      return;
+    }
+
+    setEditingCreativeImageFile(file);
+    setRemoveEditingCreativeImage(false);
+  };
+
+  const handleToggleRemoveEditingCreativeImage = (checked) => {
+    const shouldRemove = Boolean(checked);
+    setRemoveEditingCreativeImage(shouldRemove);
+    if (shouldRemove) {
+      setEditingCreativeImageFile(null);
+      setEditingCreativeImagePreviewUrl('');
+    }
+  };
+
+  useEffect(() => {
+    if (!creativeImageFile) {
+      setCreativeImagePreviewUrl('');
+      return;
+    }
+
+    const localObjectUrl = URL.createObjectURL(creativeImageFile);
+    setCreativeImagePreviewUrl(localObjectUrl);
+
+    return () => {
+      URL.revokeObjectURL(localObjectUrl);
+    };
+  }, [creativeImageFile]);
+
+  useEffect(() => {
+    if (!editingCreativeImageFile) {
+      setEditingCreativeImagePreviewUrl('');
+      return;
+    }
+
+    const localObjectUrl = URL.createObjectURL(editingCreativeImageFile);
+    setEditingCreativeImagePreviewUrl(localObjectUrl);
+
+    return () => {
+      URL.revokeObjectURL(localObjectUrl);
+    };
+  }, [editingCreativeImageFile]);
 
   const loadCampaignData = useCallback(async () => {
     try {
@@ -297,7 +455,7 @@ const CampaignDetail = () => {
       return;
     }
 
-    if (!selectedPlacementSupportedFormats.has(creativeForm.adFormat)) {
+    if (selectedPlacementSupportedFormats.size > 0 && !selectedPlacementSupportedFormats.has(creativeForm.adFormat)) {
       toast.error(`Selected placements do not support ${creativeForm.adFormat}`);
       return;
     }
@@ -312,18 +470,60 @@ const CampaignDetail = () => {
         is_active: true,
       }, creativeImageFile);
       toast.success('Creative created');
-      setCreatingCreative(false);
-      setCreativeForm({
-        headline: '',
-        bodyText: '',
-        ctaButtonText: 'Learn More',
-        destinationUrl: '',
-        adFormat: 'BANNER_HORIZONTAL',
-      });
-      setCreativeImageFile(null);
+      resetCreativeComposer();
       loadCampaignData();
     } catch (error) {
       toast.error(error?.error || error?.message || 'Failed to create creative');
+    }
+  };
+
+  const handleStartEditCreative = (creative) => {
+    setEditingCreativeId(creative.id);
+    setEditingCreativeForm(buildCreativeFormFromCreative(creative));
+    setEditingCreativeImageFile(null);
+    setEditingCreativeImagePreviewUrl('');
+    setRemoveEditingCreativeImage(false);
+    setCreatingCreative(false);
+  };
+
+  const handleSaveCreativeUpdates = async (creativeId) => {
+    if (!normalizedEditHeadline || !normalizedEditBodyText || !normalizedEditDestinationUrl) {
+      toast.error('Headline, body text, and destination URL are required');
+      return;
+    }
+
+    if (!isValidHttpUrl(normalizedEditDestinationUrl)) {
+      toast.error('Destination URL must be a valid absolute http(s) URL');
+      return;
+    }
+
+    if (selectedPlacementSupportedFormats.size > 0 && !selectedPlacementSupportedFormats.has(editingCreativeForm.adFormat)) {
+      toast.error(`Selected placements do not support ${editingCreativeForm.adFormat}`);
+      return;
+    }
+
+    try {
+      setCreativeActionBusyId(`save-${creativeId}`);
+      await adManagerService.updateCreative(
+        campaignId,
+        creativeId,
+        {
+          title: normalizedEditHeadline,
+          body_text: normalizedEditBodyText,
+          cta_text: editingCreativeForm.ctaButtonText,
+          cta_url: normalizedEditDestinationUrl,
+          ad_format: editingCreativeForm.adFormat,
+          image_url: removeEditingCreativeImage ? '' : undefined,
+        },
+        editingCreativeImageFile
+      );
+      toast.success('Creative updated');
+      resetEditingCreative();
+      await loadCampaignData();
+    } catch (error) {
+      toast.error(error?.error || error?.message || 'Failed to update creative');
+    } finally {
+      setCreativeActionBusyId(null);
     }
   };
 
@@ -704,113 +904,176 @@ const CampaignDetail = () => {
                   <CardHeader>
                     <CardTitle className="text-sm">Create New Creative</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Headline</Label>
-                      <Input
-                        maxLength={80}
-                        placeholder="Headline"
-                        value={creativeForm.headline}
-                        onChange={(e) =>
-                          setCreativeForm({ ...creativeForm, headline: e.target.value })
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {creativeForm.headline.length}/80
-                      </p>
-                    </div>
+                  <CardContent className="space-y-5">
+                    <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="flex items-center gap-2"><Type className="w-4 h-4" />Headline</Label>
+                          <Input
+                            maxLength={80}
+                            placeholder="Enter a strong headline"
+                            value={creativeForm.headline}
+                            onChange={(e) =>
+                              setCreativeForm({ ...creativeForm, headline: e.target.value })
+                            }
+                            className={!normalizedHeadline.length ? 'border-amber-300' : ''}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {creativeForm.headline.length}/80 characters
+                          </p>
+                        </div>
 
-                    <div>
-                      <Label>Body Text</Label>
-                      <Textarea
-                        maxLength={200}
-                        placeholder="Ad copy"
-                        value={creativeForm.bodyText}
-                        onChange={(e) =>
-                          setCreativeForm({ ...creativeForm, bodyText: e.target.value })
-                        }
-                        rows={3}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {creativeForm.bodyText.length}/200
-                      </p>
-                    </div>
+                        <div>
+                          <Label className="flex items-center gap-2"><MessageSquare className="w-4 h-4" />Body Text</Label>
+                          <Textarea
+                            maxLength={200}
+                            placeholder="Describe your offer in one concise message"
+                            value={creativeForm.bodyText}
+                            onChange={(e) =>
+                              setCreativeForm({ ...creativeForm, bodyText: e.target.value })
+                            }
+                            rows={4}
+                            className={!normalizedBodyText.length ? 'border-amber-300' : ''}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {creativeForm.bodyText.length}/200 characters
+                          </p>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>CTA Button</Label>
-                        <Select
-                          value={creativeForm.ctaButtonText}
-                          onValueChange={(v) =>
-                            setCreativeForm({ ...creativeForm, ctaButtonText: v })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Learn More">Learn More</SelectItem>
-                            <SelectItem value="Apply Now">Apply Now</SelectItem>
-                            <SelectItem value="Contact Us">Contact Us</SelectItem>
-                            <SelectItem value="Visit Website">Visit Website</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>CTA Button</Label>
+                            <Select
+                              value={creativeForm.ctaButtonText}
+                              onValueChange={(v) =>
+                                setCreativeForm({ ...creativeForm, ctaButtonText: v })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CTA_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Ad Format</Label>
+                            <Select
+                              value={creativeForm.adFormat}
+                              onValueChange={(v) =>
+                                setCreativeForm({ ...creativeForm, adFormat: v })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {creativeFormatOptions
+                                  .filter((fmt) => selectedPlacementSupportedFormats.size === 0 || selectedPlacementSupportedFormats.has(fmt))
+                                  .map((fmt) => (
+                                    <SelectItem key={fmt} value={fmt}>{fmt.replaceAll('_', ' ')}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            {!isFormatSupported && (
+                              <p className="text-xs text-red-600 mt-1">Selected placements do not support this format.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="flex items-center gap-2"><Link2 className="w-4 h-4" />Destination URL</Label>
+                          <Input
+                            placeholder="https://example.com/landing-page"
+                            value={creativeForm.destinationUrl}
+                            onChange={(e) =>
+                              setCreativeForm({
+                                ...creativeForm,
+                                destinationUrl: e.target.value,
+                              })
+                            }
+                            className={!isDestinationUrlValid ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                          />
+                          <p className={`text-xs mt-1 ${isDestinationUrlValid ? 'text-muted-foreground' : 'text-red-600'}`}>
+                            {isDestinationUrlValid
+                              ? 'Use an absolute URL with http:// or https://'
+                              : 'Please enter a valid absolute URL (http/https).'}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="creativeImage" className="flex items-center gap-2"><ImagePlus className="w-4 h-4" />Creative Image (optional)</Label>
+                          <div className="rounded-lg border border-dashed p-3 bg-muted/20">
+                            <Input
+                              id="creativeImage"
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              onChange={handleCreativeImageChange}
+                            />
+                            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                              <UploadCloud className="w-3 h-3" /> PNG/JPG/WEBP up to 2MB.
+                            </p>
+                            {creativeImageFile && (
+                              <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between gap-2">
+                                <span className="truncate">{creativeImageFile.name}</span>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setCreativeImageFile(null)}>
+                                  Remove
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <Label>Ad Format</Label>
-                        <Select
-                          value={creativeForm.adFormat}
-                          onValueChange={(v) =>
-                            setCreativeForm({ ...creativeForm, adFormat: v })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {creativeFormatOptions
-                              .filter((fmt) => selectedPlacementSupportedFormats.size === 0 || selectedPlacementSupportedFormats.has(fmt))
-                              .map((fmt) => (
-                                <SelectItem key={fmt} value={fmt}>{fmt}</SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+
+                      <div className="space-y-3">
+                        <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Live Preview</p>
+                          <div className="rounded-md border bg-background p-3 space-y-2">
+                            {creativeImagePreviewUrl ? (
+                              <img
+                                src={creativeImagePreviewUrl}
+                                alt="Creative preview"
+                                className="w-full h-28 object-cover rounded-md"
+                              />
+                            ) : (
+                              <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                                No image selected
+                              </div>
+                            )}
+                            <Badge variant="outline" className="text-[10px]">
+                              {creativeForm.adFormat.replaceAll('_', ' ')}
+                            </Badge>
+                            <p className="font-medium text-sm leading-snug">
+                              {normalizedHeadline || 'Your headline will appear here'}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {normalizedBodyText || 'Your ad body copy preview appears here.'}
+                            </p>
+                            <Button size="sm" className="mt-1 pointer-events-none" disabled>
+                              {creativeForm.ctaButtonText}
+                            </Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p>Selected format must match allowed formats for selected placements.</p>
+                            <p>Current placements support: {selectedPlacementSupportedFormats.size ? Array.from(selectedPlacementSupportedFormats).join(', ') : 'all formats until a placement is selected'}.</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <Label>Destination URL</Label>
-                      <Input
-                        placeholder="https://..."
-                        value={creativeForm.destinationUrl}
-                        onChange={(e) =>
-                          setCreativeForm({
-                            ...creativeForm,
-                            destinationUrl: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="creativeImage">Creative Image (optional)</Label>
-                      <Input
-                        id="creativeImage"
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={(e) => setCreativeImageFile(e.target.files?.[0] || null)}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP up to 2MB.</p>
                     </div>
 
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
-                        onClick={() => setCreatingCreative(false)}
+                        onClick={resetCreativeComposer}
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateCreative}>Create Creative</Button>
+                      <Button onClick={handleCreateCreative} disabled={!canSubmitCreative}>
+                        Create Creative
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -820,44 +1083,206 @@ const CampaignDetail = () => {
                 <div className="space-y-3">
                   {campaign.creatives.map((creative) => (
                     <Card key={creative.id}>
-                      <CardContent className="pt-6 flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium">{creative.title}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {creative.body_text}
-                          </p>
-                          <div className="flex gap-2 mt-3">
-                            <Badge variant="outline" className="text-xs">
-                              {creative.ad_format}
-                            </Badge>
-                            {creative.is_active ? (
-                              <Badge className="text-xs">Active</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs">
-                                Inactive
-                              </Badge>
-                            )}
+                      <CardContent className="pt-6">
+                        {editingCreativeId === creative.id ? (
+                          <div className="space-y-4">
+                            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                              <div className="space-y-3">
+                                <div>
+                                  <Label>Headline</Label>
+                                  <Input
+                                    maxLength={80}
+                                    value={editingCreativeForm.headline}
+                                    onChange={(e) =>
+                                      setEditingCreativeForm({ ...editingCreativeForm, headline: e.target.value })
+                                    }
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">{editingCreativeForm.headline.length}/80</p>
+                                </div>
+
+                                <div>
+                                  <Label>Body Text</Label>
+                                  <Textarea
+                                    maxLength={200}
+                                    rows={3}
+                                    value={editingCreativeForm.bodyText}
+                                    onChange={(e) =>
+                                      setEditingCreativeForm({ ...editingCreativeForm, bodyText: e.target.value })
+                                    }
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">{editingCreativeForm.bodyText.length}/200</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div>
+                                    <Label>CTA Text</Label>
+                                    <Select
+                                      value={editingCreativeForm.ctaButtonText}
+                                      onValueChange={(value) =>
+                                        setEditingCreativeForm({ ...editingCreativeForm, ctaButtonText: value })
+                                      }
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {CTA_OPTIONS.map((option) => (
+                                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label>Ad Format</Label>
+                                    <Select
+                                      value={editingCreativeForm.adFormat}
+                                      onValueChange={(value) =>
+                                        setEditingCreativeForm({ ...editingCreativeForm, adFormat: value })
+                                      }
+                                    >
+                                      <SelectTrigger><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {creativeFormatOptions
+                                          .filter((fmt) => selectedPlacementSupportedFormats.size === 0 || selectedPlacementSupportedFormats.has(fmt))
+                                          .map((fmt) => (
+                                            <SelectItem key={fmt} value={fmt}>{fmt.replaceAll('_', ' ')}</SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                    {!isEditFormatSupported && (
+                                      <p className="text-xs text-red-600 mt-1">Selected placements do not support this format.</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Label>Destination URL</Label>
+                                  <Input
+                                    value={editingCreativeForm.destinationUrl}
+                                    onChange={(e) =>
+                                      setEditingCreativeForm({ ...editingCreativeForm, destinationUrl: e.target.value })
+                                    }
+                                    className={!isEditDestinationUrlValid ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                                  />
+                                  <p className={`text-xs mt-1 ${isEditDestinationUrlValid ? 'text-muted-foreground' : 'text-red-600'}`}>
+                                    {isEditDestinationUrlValid
+                                      ? 'Use an absolute URL with http:// or https://'
+                                      : 'Please enter a valid absolute URL (http/https).'}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <Label>Replace Image (optional)</Label>
+                                  <div className="flex items-center gap-2 mt-2 mb-2">
+                                    <Checkbox
+                                      id={`remove-creative-image-${creative.id}`}
+                                      checked={removeEditingCreativeImage}
+                                      onCheckedChange={handleToggleRemoveEditingCreativeImage}
+                                    />
+                                    <Label
+                                      htmlFor={`remove-creative-image-${creative.id}`}
+                                      className="text-sm font-normal cursor-pointer"
+                                    >
+                                      Remove current image
+                                    </Label>
+                                  </div>
+                                  <Input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    onChange={handleEditCreativeImageChange}
+                                    disabled={removeEditingCreativeImage}
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP up to 2MB.</p>
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Preview</p>
+                                {(editingCreativeImagePreviewUrl || (creative.image_url && !removeEditingCreativeImage)) ? (
+                                  <img
+                                    src={editingCreativeImagePreviewUrl || creative.image_url}
+                                    alt="Creative preview"
+                                    className="w-full h-28 object-cover rounded-md"
+                                  />
+                                ) : (
+                                  <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                                    No image selected
+                                  </div>
+                                )}
+                                <Badge variant="outline" className="text-[10px]">
+                                  {editingCreativeForm.adFormat.replaceAll('_', ' ')}
+                                </Badge>
+                                <p className="font-medium text-sm leading-snug">
+                                  {normalizedEditHeadline || 'Your headline will appear here'}
+                                </p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                  {normalizedEditBodyText || 'Your ad body copy preview appears here.'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={resetEditingCreative} className="gap-1">
+                                <X className="w-4 h-4" />
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={() => handleSaveCreativeUpdates(creative.id)}
+                                disabled={!canSaveEditedCreative || creativeActionBusyId === `save-${creative.id}`}
+                                className="gap-1"
+                              >
+                                <Save className="w-4 h-4" />
+                                Save Changes
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        {canEditCampaign && (
-                          <div className="flex flex-col md:flex-row gap-2 ml-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={creativeActionBusyId === `toggle-${creative.id}`}
-                              onClick={() => handleToggleCreativeStatus(creative)}
-                            >
-                              {creative.is_active ? 'Deactivate' : 'Activate'}
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              disabled={creativeActionBusyId === `delete-${creative.id}`}
-                              onClick={() => handleDeleteCreative(creative.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete
-                            </Button>
+                        ) : (
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium">{creative.title}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {creative.body_text}
+                              </p>
+                              <div className="flex gap-2 mt-3">
+                                <Badge variant="outline" className="text-xs">
+                                  {creative.ad_format}
+                                </Badge>
+                                {creative.is_active ? (
+                                  <Badge className="text-xs">Active</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Inactive
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {canEditCampaign && (
+                              <div className="flex flex-col md:flex-row gap-2 ml-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStartEditCreative(creative)}
+                                >
+                                  <Edit className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={creativeActionBusyId === `toggle-${creative.id}`}
+                                  onClick={() => handleToggleCreativeStatus(creative)}
+                                >
+                                  {creative.is_active ? 'Deactivate' : 'Activate'}
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={creativeActionBusyId === `delete-${creative.id}`}
+                                  onClick={() => handleDeleteCreative(creative.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </CardContent>

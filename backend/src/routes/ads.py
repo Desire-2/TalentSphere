@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 import hashlib
 import json
-import os
 from urllib.parse import urlparse
 from sqlalchemy import and_, or_, desc, func
 from sqlalchemy.orm import joinedload
@@ -991,23 +990,15 @@ def create_creative(current_user, campaign_id):
                     upload_result = upload_ad_creative_image(image_file, campaign_id)
                     image_url = upload_result['url']
                 except VercelBlobStorageError as storage_err:
-                    current_app.logger.warning(
-                        'Vercel Blob upload failed for campaign %s (%s). Falling back to local storage.',
+                    current_app.logger.error(
+                        'Vercel Blob upload failed for campaign %s: %s',
                         campaign_id,
                         storage_err,
                     )
-
-                    # Fallback for resilience when cloud storage is unavailable.
-                    upload_dir = os.path.join(current_app.static_folder, 'ad_creatives')
-                    os.makedirs(upload_dir, exist_ok=True)
-
-                    timestamp = int(datetime.utcnow().timestamp())
-                    filename = f"creative_{campaign_id}_{timestamp}.{file_ext}"
-                    filepath = os.path.join(upload_dir, filename)
-
-                    image_file.seek(0)
-                    image_file.save(filepath)
-                    image_url = f'/static/ad_creatives/{filename}'
+                    return jsonify({
+                        'error': 'Failed to upload image to Vercel Blob storage',
+                        'details': str(storage_err),
+                    }), 502
                 except Exception as upload_err:
                     current_app.logger.exception(
                         'Unexpected upload error for campaign %s: %s',
@@ -1064,7 +1055,10 @@ def update_creative(current_user, campaign_id, creative_id):
         if not creative:
             return jsonify({'error': 'Creative not found'}), 404
         
+        # Accept both JSON and multipart/form-data payloads.
         data = request.get_json(silent=True) or {}
+        if request.form:
+            data.update(request.form.to_dict())
         
         if 'title' in data:
             creative.title = data['title'][:80]
@@ -1085,8 +1079,48 @@ def update_creative(current_user, campaign_id, creative_id):
             creative.ad_format = new_format
         if 'image_url' in data:
             creative.image_url = data['image_url']
+        if 'image' in request.files:
+            image_file = request.files['image']
+            if image_file and image_file.filename:
+                allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+                file_ext = image_file.filename.split('.')[-1].lower()
+                if file_ext not in allowed_extensions:
+                    return jsonify({'error': 'Only jpg, png, webp allowed'}), 400
+
+                image_file.seek(0, 2)
+                file_size = image_file.tell()
+                image_file.seek(0)
+                if file_size > 2 * 1024 * 1024:
+                    return jsonify({'error': 'Image must be < 2MB'}), 400
+
+                try:
+                    upload_result = upload_ad_creative_image(image_file, campaign_id)
+                    creative.image_url = upload_result['url']
+                except VercelBlobStorageError as storage_err:
+                    current_app.logger.error(
+                        'Vercel Blob upload failed while updating creative %s for campaign %s: %s',
+                        creative_id,
+                        campaign_id,
+                        storage_err,
+                    )
+                    return jsonify({
+                        'error': 'Failed to upload image to Vercel Blob storage',
+                        'details': str(storage_err),
+                    }), 502
+                except Exception as upload_err:
+                    current_app.logger.exception(
+                        'Unexpected upload error while updating creative %s for campaign %s: %s',
+                        creative_id,
+                        campaign_id,
+                        upload_err,
+                    )
+                    return jsonify({'error': 'Failed to upload creative image'}), 500
         if 'is_active' in data:
-            creative.is_active = data['is_active']
+            raw_is_active = data.get('is_active')
+            if isinstance(raw_is_active, str):
+                creative.is_active = raw_is_active.lower() in {'1', 'true', 'yes', 'on'}
+            else:
+                creative.is_active = bool(raw_is_active)
         
         db.session.commit()
         
@@ -1463,28 +1497,35 @@ def serve_ads():
         if frequency_impressions >= 5:
             return jsonify({'ads': []}), 200
         
-        # Get active creatives for each campaign
+        # Pick one eligible creative per campaign so a single campaign/format
+        # does not monopolize small slot limits.
         ads_to_serve = []
         allowed_formats = set(placement.get_allowed_formats())
+        import random
+
         for campaign in active_campaigns:
             creatives = campaign.creatives.filter_by(is_active=True).all()
-            for creative in creatives:
-                # Check if format is allowed
-                if creative.ad_format not in allowed_formats:
-                    continue
-                
-                ads_to_serve.append({
-                    'campaign': campaign,
-                    'creative': creative,
-                    'bid_amount': float(campaign.bid_amount)
-                })
+            eligible_creatives = [
+                creative
+                for creative in creatives
+                if creative.ad_format in allowed_formats
+            ]
+
+            if not eligible_creatives:
+                continue
+
+            selected_creative = random.choice(eligible_creatives)
+            ads_to_serve.append({
+                'campaign': campaign,
+                'creative': selected_creative,
+                'bid_amount': float(campaign.bid_amount),
+            })
         
         if not ads_to_serve:
             return jsonify({'ads': []}), 200
         
-        # Sort by bid amount (highest first), then random
-        import random
-        ads_to_serve.sort(key=lambda x: x['bid_amount'], reverse=True)
+        # Sort by bid amount (highest first), randomizing ties for fairness.
+        ads_to_serve.sort(key=lambda x: (-x['bid_amount'], random.random()))
         ads_to_serve = ads_to_serve[:limit]
         
         # Build response

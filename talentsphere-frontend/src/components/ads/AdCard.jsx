@@ -20,7 +20,13 @@ export function AdCard({ ad, placementKey }) {
   const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
-    <div className="ad-card ad-format-card">
+    <a
+      href={clickUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ad-card ad-format-card"
+      aria-label={`Open sponsored ad: ${ad.title}`}
+    >
       <div className="ad-card-header">
         <span className="ad-badge">Sponsored</span>
         {ad.image_url && (
@@ -35,16 +41,11 @@ export function AdCard({ ad, placementKey }) {
       </div>
       
       <div className="ad-card-footer">
-        <a
-          href={clickUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ad-card-cta"
-        >
+        <span className="ad-card-cta" aria-hidden="true">
           {ad.cta_text || 'Learn More'}
-        </a>
+        </span>
       </div>
-    </div>
+    </a>
   );
 }
 

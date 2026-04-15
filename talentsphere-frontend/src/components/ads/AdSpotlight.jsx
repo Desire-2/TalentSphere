@@ -20,7 +20,13 @@ export function AdSpotlight({ ad, placementKey }) {
   const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
-    <div className="ad-spotlight ad-format-spotlight">
+    <a
+      href={clickUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ad-spotlight ad-format-spotlight"
+      aria-label={`Open sponsored ad: ${ad.title}`}
+    >
       <div className="ad-spotlight-container">
         {ad.image_url && (
           <div className="ad-spotlight-image-container">
@@ -37,18 +43,13 @@ export function AdSpotlight({ ad, placementKey }) {
           
           <p className="ad-spotlight-body">{ad.body_text}</p>
 
-          <a
-            href={clickUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ad-spotlight-cta"
-          >
+          <span className="ad-spotlight-cta" aria-hidden="true">
             {ad.cta_text || 'Explore Now'}
             <span className="ad-spotlight-cta-arrow">→</span>
-          </a>
+          </span>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 

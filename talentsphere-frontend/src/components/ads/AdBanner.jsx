@@ -20,7 +20,13 @@ export function AdBanner({ ad, placementKey }) {
   const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
-    <div className="ad-banner ad-format-banner-horizontal">
+    <a
+      href={clickUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ad-banner ad-format-banner-horizontal"
+      aria-label={`Open sponsored ad: ${ad.title}`}
+    >
       {ad.image_url && (
         <div className="ad-banner-image">
           <img src={ad.image_url} alt={ad.title} />
@@ -33,16 +39,11 @@ export function AdBanner({ ad, placementKey }) {
         {sponsorName && <p className="ad-sponsor ad-sponsor-banner">By {sponsorName}</p>}
         <p className="ad-banner-body">{ad.body_text}</p>
         
-        <a
-          href={clickUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ad-banner-cta"
-        >
+        <span className="ad-banner-cta" aria-hidden="true">
           {ad.cta_text || 'Learn More'}
-        </a>
+        </span>
       </div>
-    </div>
+    </a>
   );
 }
 

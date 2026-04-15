@@ -20,7 +20,13 @@ export function AdInlineFeed({ ad, placementKey }) {
   const sponsorName = ad.sponsor?.company_name || ad.sponsor?.display_name || ad.company_name || ad.employer_name;
 
   return (
-    <div className="ad-inline-feed ad-format-inline-feed job-card">
+    <a
+      href={clickUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ad-inline-feed ad-format-inline-feed job-card"
+      aria-label={`Open sponsored ad: ${ad.title}`}
+    >
       <div className="ad-inline-feed-badge-container">
         <span className="ad-badge ad-badge-sponsored">Sponsored</span>
       </div>
@@ -37,17 +43,12 @@ export function AdInlineFeed({ ad, placementKey }) {
         <p className="ad-inline-feed-body">{ad.body_text}</p>
 
         <div className="ad-inline-feed-footer">
-          <a
-            href={clickUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ad-inline-feed-cta"
-          >
+          <span className="ad-inline-feed-cta" aria-hidden="true">
             {ad.cta_text || 'Learn More'}
-          </a>
+          </span>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 

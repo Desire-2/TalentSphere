@@ -13,6 +13,10 @@ import {
   Eye,
   Settings,
   CheckCircle,
+  Sparkles,
+  CalendarDays,
+  Wallet,
+  LayoutTemplate,
   ChevronRight,
   ChevronLeft,
   Upload,
@@ -35,10 +39,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  Alert,
-  AlertDescription,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import adManagerService from '../../services/adManager';
 import apiService from '../../services/api';
 import { toast } from 'sonner';
@@ -134,6 +135,59 @@ const CreateCampaignWizard = () => {
 
   // Validation errors
   const [errors, setErrors] = useState({});
+
+  const objectives = [
+    { value: 'AWARENESS', label: 'Awareness', description: 'Build brand recognition' },
+    { value: 'TRAFFIC', label: 'Traffic', description: 'Drive clicks to your site' },
+    { value: 'ENGAGEMENT', label: 'Engagement', description: 'Increase interactions' },
+    { value: 'LEADS', label: 'Leads', description: 'Collect leads' },
+  ];
+
+  const adFormats = [
+    { value: 'BANNER_HORIZONTAL', label: 'Horizontal Banner', icon: '▭' },
+    { value: 'BANNER_VERTICAL', label: 'Vertical Banner', icon: '▮' },
+    { value: 'CARD', label: 'Card', icon: '⬜' },
+    { value: 'INLINE_FEED', label: 'Inline Feed', icon: '☰' },
+    { value: 'SPONSORED_JOB', label: 'Sponsored Job', icon: '▤' },
+    { value: 'SPOTLIGHT', label: 'Spotlight', icon: '★' },
+  ];
+
+  const rwandaDistricts = [
+    'Kigali',
+    'Gasabo',
+    'Kicukiro',
+    'Nyarugenge',
+    'South Province',
+    'West Province',
+    'North Province',
+    'East Province',
+  ];
+
+  const jobCategories = [
+    'Technology',
+    'Finance',
+    'Healthcare',
+    'Marketing',
+    'Sales',
+    'Operations',
+    'Education',
+  ];
+
+  const ctaOptions = [
+    'Learn More',
+    'Apply Now',
+    'Shop Now',
+    'Contact Us',
+    'Visit Website',
+    'Sign Up',
+  ];
+
+  const stepConfig = [
+    { id: 1, label: 'Basics', icon: Settings },
+    { id: 2, label: 'Targeting', icon: Target },
+    { id: 3, label: 'Creative', icon: Eye },
+    { id: 4, label: 'Review', icon: CheckCircle },
+  ];
 
   const compatiblePlacements = availablePlacements.filter((placement) =>
     placementSupportsFormat(placement, formData.adFormat)
@@ -263,7 +317,7 @@ const CreateCampaignWizard = () => {
       }
       handleInputChange('image', file);
       const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target?.result);
+      reader.onload = (event) => setImagePreview(event.target?.result);
       reader.readAsDataURL(file);
     }
   };
@@ -325,7 +379,7 @@ const CreateCampaignWizard = () => {
         },
       });
       const campaignId = campaignResponse.campaign?.id;
-      
+
       if (!campaignId) {
         throw new Error('Campaign created but no ID returned in response');
       }
@@ -381,623 +435,750 @@ const CreateCampaignWizard = () => {
     }
   };
 
-  const objectives = [
-    { value: 'AWARENESS', label: 'Awareness', description: 'Build brand recognition' },
-    { value: 'TRAFFIC', label: 'Traffic', description: 'Drive clicks to your site' },
-    { value: 'ENGAGEMENT', label: 'Engagement', description: 'Increase interactions' },
-    { value: 'LEADS', label: 'Leads', description: 'Collect leads' },
-  ];
+  const progressPercentage = Math.round((step / stepConfig.length) * 100);
 
-  const adFormats = [
-    { value: 'BANNER_HORIZONTAL', label: 'Horizontal Banner', icon: '▭' },
-    { value: 'BANNER_VERTICAL', label: 'Vertical Banner', icon: '▮' },
-    { value: 'CARD', label: 'Card', icon: '⬜' },
-    { value: 'INLINE_FEED', label: 'Inline Feed', icon: '☰' },
-    { value: 'SPONSORED_JOB', label: 'Sponsored Job', icon: '▤' },
-    { value: 'SPOTLIGHT', label: 'Spotlight', icon: '★' },
-  ];
-
-  const rwandaDistricts = [
-    'Kigali',
-    'Gasabo',
-    'Kicukiro',
-    'Nyarugenge',
-    'South Province',
-    'West Province',
-    'North Province',
-    'East Province',
-  ];
-
-  const jobCategories = [
-    'Technology',
-    'Finance',
-    'Healthcare',
-    'Marketing',
-    'Sales',
-    'Operations',
-    'Education',
-  ];
-
-  const ctaOptions = [
-    'Learn More',
-    'Apply Now',
-    'Shop Now',
-    'Contact Us',
-    'Visit Website',
-    'Sign Up',
-  ];
-
-  // Steps indicator
   const StepIndicator = () => (
-    <div className="flex justify-between mb-8">
-      {[1, 2, 3, 4].map((s) => (
-        <div key={s} className="flex flex-col items-center flex-1">
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-              s < step
-                ? 'bg-primary text-primary-foreground'
-                : s === step
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground'
-            }`}
-          >
-            {s < step && <CheckCircle className="w-5 h-5" />}
-            {s >= step && s}
-          </div>
-          <p className="text-xs font-medium mt-2">
-            {['Basics', 'Targeting', 'Creative', 'Review'][s - 1]}
-          </p>
-          {s < 4 && <div className={`h-1 w-12 mt-2 ${s < step ? 'bg-primary' : 'bg-secondary'}`} />}
-        </div>
-      ))}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium text-slate-100">Step {step} of {stepConfig.length}</span>
+        <span className="font-semibold text-[#1BA398]">{progressPercentage}% complete</span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-[#1BA398] to-[#FF6B35] motion-safe:transition-all motion-safe:duration-500"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {stepConfig.map((s, index) => {
+          const Icon = s.icon;
+          const isComplete = s.id < step;
+          const isActive = s.id === step;
+
+          return (
+            <div key={s.id} className="flex min-w-[142px] flex-1 items-center gap-2">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 motion-safe:transition-all motion-safe:duration-300 ${
+                  isComplete || isActive
+                    ? 'border-[#001F3F] bg-gradient-to-br from-[#001F3F] to-[#0a2847] text-slate-100'
+                    : 'border-[#1b4f86] bg-[#123f6e]/70 text-slate-300'
+                }`}
+              >
+                {isComplete ? <CheckCircle className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+              </div>
+
+              <div className="min-w-0">
+                <p className={`truncate text-xs font-semibold ${isActive ? 'text-slate-100' : 'text-slate-300'}`}>
+                  {s.label}
+                </p>
+                <p className="text-[11px] text-slate-300/90">
+                  {isComplete ? 'Completed' : isActive ? 'In progress' : 'Pending'}
+                </p>
+              </div>
+
+              {index < stepConfig.length - 1 && (
+                <div className={`hidden h-0.5 flex-1 rounded-full md:block ${isComplete ? 'bg-[#1BA398]' : 'bg-border'}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 
+  const brandPrimaryButtonClass = 'bg-gradient-to-r from-[#1BA398] to-[#FF6B35] text-slate-100 hover:from-[#158b7e] hover:to-[#e55a24]';
+  const brandOutlineButtonClass = 'border-[#1BA398]/50 text-[#1BA398] hover:bg-[#1BA398]/15 hover:text-slate-100';
+  const brandSecondaryBadgeClass = 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-200';
+
   return (
-    <div className="max-w-2xl mx-auto py-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create Ad Campaign</h1>
-        <p className="text-muted-foreground mt-1">Set up your first ad campaign in 4 easy steps</p>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <StepIndicator />
-
-          {/* STEP 1: Basics */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Campaign Basics
-              </h2>
-
+    <div
+      className="min-h-full px-3 py-5 sm:px-6 sm:py-8 lg:px-8"
+      style={{
+        backgroundColor: '#002a5a',
+        backgroundImage:
+          'radial-gradient(circle at center, rgba(18, 63, 110, 0.45) 0, rgba(18, 63, 110, 0.45) 18px, transparent 20px)',
+        backgroundSize: '74px 74px',
+      }}
+    >
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="overflow-hidden rounded-2xl border border-[#1b4f86] bg-[#002a5a]/92 shadow-sm ring-1 ring-black/5">
+          <div className="flex flex-col gap-5 bg-gradient-to-r from-[#001F3F] via-[#0a2847] to-[#1BA398] px-5 py-6 text-slate-100 sm:px-7 sm:py-7 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <Badge className="w-fit border-[#1BA398]/40 bg-[#1BA398]/20 text-slate-100 backdrop-blur-sm">
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                Campaign Builder
+              </Badge>
               <div>
-                <Label htmlFor="campaignName">Campaign Name</Label>
-                <Input
-                  id="campaignName"
-                  placeholder="e.g., Summer Job Posting Campaign"
-                  value={formData.campaignName}
-                  onChange={(e) => handleInputChange('campaignName', e.target.value)}
-                  className={errors.campaignName ? 'border-destructive' : ''}
-                />
-                {errors.campaignName && (
-                  <p className="text-sm text-destructive mt-1">{errors.campaignName}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Campaign Objective</Label>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  {objectives.map((obj) => (
-                    <button
-                      key={obj.value}
-                      onClick={() => handleInputChange('objective', obj.value)}
-                      className={`p-4 rounded-lg border-2 transition text-left ${
-                        formData.objective === obj.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <p className="font-semibold text-sm">{obj.label}</p>
-                      <p className="text-xs text-muted-foreground">{obj.description}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="budgetType">Billing Type</Label>
-                  <Select value={formData.budgetType} onValueChange={(v) => handleInputChange('budgetType', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CPM">CPM (Cost Per 1K Impressions)</SelectItem>
-                      <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
-                      <SelectItem value="FLAT_RATE">Flat Rate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="bidAmount">Bid Amount ($)</Label>
-                  <Input
-                    id="bidAmount"
-                    type="number"
-                    placeholder="0.50"
-                    value={formData.bidAmount}
-                    onChange={(e) => handleInputChange('bidAmount', e.target.value)}
-                    className={errors.bidAmount ? 'border-destructive' : ''}
-                  />
-                  {errors.bidAmount && (
-                    <p className="text-sm text-destructive mt-1">{errors.bidAmount}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="budgetAmount">Total Budget ($)</Label>
-                <Input
-                  id="budgetAmount"
-                  type="number"
-                  placeholder="100.00"
-                  value={formData.budgetAmount}
-                  onChange={(e) => handleInputChange('budgetAmount', e.target.value)}
-                  className={errors.budgetAmount ? 'border-destructive' : ''}
-                />
-                {errors.budgetAmount && (
-                  <p className="text-sm text-destructive mt-1">{errors.budgetAmount}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleInputChange('startDate', e.target.value)}
-                    className={errors.startDate ? 'border-destructive' : ''}
-                  />
-                  {errors.startDate && (
-                    <p className="text-sm text-destructive mt-1">{errors.startDate}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleInputChange('endDate', e.target.value)}
-                    className={errors.endDate ? 'border-destructive' : ''}
-                  />
-                  {errors.endDate && (
-                    <p className="text-sm text-destructive mt-1">{errors.endDate}</p>
-                  )}
-                </div>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Create Ad Campaign</h1>
+                <p className="mt-1 text-sm text-slate-200 sm:text-base">
+                  Launch your campaign in minutes with guided targeting and creative setup.
+                </p>
               </div>
             </div>
-          )}
 
-          {/* STEP 2: Targeting */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                Audience Targeting
-              </h2>
-
-              <div>
-                <Label>Audience Type</Label>
-                <ToggleGroup
-                  type="single"
-                  value={formData.audienceType}
-                  onValueChange={(v) => v && handleInputChange('audienceType', v)}
-                  className="justify-start mt-2"
-                >
-                  <ToggleGroupItem value="all">All Users</ToggleGroupItem>
-                  <ToggleGroupItem value="jobseekers">Jobseekers Only</ToggleGroupItem>
-                </ToggleGroup>
+            <div className="grid grid-cols-3 gap-3 text-center text-xs sm:text-sm">
+              <div className="rounded-xl bg-[#001F3F]/35 px-3 py-2 backdrop-blur motion-safe:transition-transform motion-safe:duration-300 hover:-translate-y-0.5">
+                <p className="font-semibold">{formData.startDate || 'Not set'}</p>
+                <p className="mt-1 text-slate-300">Start</p>
               </div>
+              <div className="rounded-xl bg-[#001F3F]/35 px-3 py-2 backdrop-blur motion-safe:transition-transform motion-safe:duration-300 hover:-translate-y-0.5">
+                <p className="font-semibold">${formData.budgetAmount || '0'}</p>
+                <p className="mt-1 text-slate-300">Budget</p>
+              </div>
+              <div className="rounded-xl bg-[#001F3F]/35 px-3 py-2 backdrop-blur motion-safe:transition-transform motion-safe:duration-300 hover:-translate-y-0.5">
+                <p className="font-semibold">{selectedPlacementIds.length}</p>
+                <p className="mt-1 text-slate-300">Placements</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <div>
-                <Label>Locations (Rwanda)</Label>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  {rwandaDistricts.map((district) => (
-                    <label key={district} className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={formData.locations.includes(district)}
-                        onCheckedChange={() => handleLocationToggle(district)}
+        <div className="grid gap-6 lg:grid-cols-12">
+          <Card
+            className="lg:col-span-8 xl:col-span-9 shadow-sm ring-1 ring-black/5 border-[#123f6e]/80 overflow-hidden"
+            style={{
+              backgroundColor: '#002a5a',
+              backgroundImage:
+                'radial-gradient(circle at center, rgba(18, 63, 110, 0.4) 0, rgba(18, 63, 110, 0.4) 18px, transparent 20px)',
+              backgroundSize: '74px 74px',
+            }}
+          >
+            <CardContent className="space-y-6 p-4 sm:p-6 lg:p-8 bg-[#002a5a]/86 text-slate-100">
+              <StepIndicator />
+
+              {step === 1 && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Campaign Basics
+                  </h2>
+
+                  <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <Label htmlFor="campaignName" className="text-slate-100">Campaign Name</Label>
+                    <Input
+                      id="campaignName"
+                      placeholder="e.g., Summer Job Posting Campaign"
+                      value={formData.campaignName}
+                      onChange={(e) => handleInputChange('campaignName', e.target.value)}
+                      className={`mt-2 ${errors.campaignName ? 'border-destructive' : ''}`}
+                    />
+                    {errors.campaignName && (
+                      <p className="text-sm text-destructive mt-1">{errors.campaignName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-100">Campaign Objective</Label>
+                    <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-2">
+                      {objectives.map((obj) => (
+                        <button
+                          key={obj.value}
+                          type="button"
+                          onClick={() => handleInputChange('objective', obj.value)}
+                          className={`rounded-xl border-2 p-4 text-left motion-safe:transition-all motion-safe:duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1BA398]/40 ${
+                            formData.objective === obj.value
+                              ? 'border-[#1BA398] bg-gradient-to-r from-[#1BA398]/12 to-[#FF6B35]/12 shadow-sm'
+                              : 'border-[#1b4f86] bg-[#123f6e]/45 hover:border-[#1BA398]/50'
+                          }`}
+                        >
+                          <p className="font-semibold text-sm">{obj.label}</p>
+                          <p className="text-xs text-slate-300 mt-1">{obj.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="budgetType" className="text-slate-100">Billing Type</Label>
+                      <Select value={formData.budgetType} onValueChange={(v) => handleInputChange('budgetType', v)}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CPM">CPM (Cost Per 1K Impressions)</SelectItem>
+                          <SelectItem value="CPC">CPC (Cost Per Click)</SelectItem>
+                          <SelectItem value="FLAT_RATE">Flat Rate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="bidAmount" className="text-slate-100">Bid Amount ($)</Label>
+                      <Input
+                        id="bidAmount"
+                        type="number"
+                        placeholder="0.50"
+                        value={formData.bidAmount}
+                        onChange={(e) => handleInputChange('bidAmount', e.target.value)}
+                        className={`mt-2 ${errors.bidAmount ? 'border-destructive' : ''}`}
                       />
-                      <span className="text-sm">{district}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+                      {errors.bidAmount && (
+                        <p className="text-sm text-destructive mt-1">{errors.bidAmount}</p>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <Label>Job Categories</Label>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  {jobCategories.map((category) => (
-                    <label key={category} className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={formData.jobCategories.includes(category)}
-                        onCheckedChange={() => handleJobCategoryToggle(category)}
+                  <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5">
+                    <Label htmlFor="budgetAmount" className="text-slate-100">Total Budget ($)</Label>
+                    <Input
+                      id="budgetAmount"
+                      type="number"
+                      placeholder="100.00"
+                      value={formData.budgetAmount}
+                      onChange={(e) => handleInputChange('budgetAmount', e.target.value)}
+                      className={`mt-2 ${errors.budgetAmount ? 'border-destructive' : ''}`}
+                    />
+                    {errors.budgetAmount && (
+                      <p className="text-sm text-destructive mt-1">{errors.budgetAmount}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="startDate" className="text-slate-100">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={formData.startDate}
+                        onChange={(e) => handleInputChange('startDate', e.target.value)}
+                        className={`mt-2 ${errors.startDate ? 'border-destructive' : ''}`}
                       />
-                      <span className="text-sm">{category}</span>
-                    </label>
-                  ))}
+                      {errors.startDate && (
+                        <p className="text-sm text-destructive mt-1">{errors.startDate}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="endDate" className="text-slate-100">End Date</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={formData.endDate}
+                        onChange={(e) => handleInputChange('endDate', e.target.value)}
+                        className={`mt-2 ${errors.endDate ? 'border-destructive' : ''}`}
+                      />
+                      {errors.endDate && (
+                        <p className="text-sm text-destructive mt-1">{errors.endDate}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <Label>Ad Placements</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select where this campaign can appear. Only placements compatible with {formData.adFormat} are shown.
-                </p>
+              {step === 2 && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    Audience Targeting
+                  </h2>
 
-                {loadingPlacements ? (
-                  <div className="text-sm text-muted-foreground mt-3">Loading placements...</div>
-                ) : compatiblePlacements.length === 0 ? (
-                  <Alert className="mt-3">
+                  <div>
+                    <Label className="text-slate-100">Audience Type</Label>
+                    <ToggleGroup
+                      type="single"
+                      value={formData.audienceType}
+                      onValueChange={(v) => v && handleInputChange('audienceType', v)}
+                      className="mt-2 grid w-full grid-cols-1 justify-start gap-2 sm:inline-flex sm:w-auto"
+                    >
+                      <ToggleGroupItem value="all">All Users</ToggleGroupItem>
+                      <ToggleGroupItem value="jobseekers">Jobseekers Only</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                    <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5">
+                      <Label className="text-slate-100">Locations (Rwanda)</Label>
+                      <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-2">
+                        {rwandaDistricts.map((district) => (
+                          <label key={district} className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1 motion-safe:transition-colors hover:bg-accent/40">
+                            <Checkbox
+                              checked={formData.locations.includes(district)}
+                              onCheckedChange={() => handleLocationToggle(district)}
+                            />
+                            <span className="text-sm text-slate-100">{district}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {formData.locations.length === 0 && (
+                        <p className="mt-3 text-xs text-slate-300 border border-dashed border-[#2b5f92] rounded-lg px-3 py-2 bg-[#123f6e]/50">
+                          No locations selected yet. Leave empty to target broadly.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5">
+                      <Label className="text-slate-100">Job Categories</Label>
+                      <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-2">
+                        {jobCategories.map((category) => (
+                          <label key={category} className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1 motion-safe:transition-colors hover:bg-accent/40">
+                            <Checkbox
+                              checked={formData.jobCategories.includes(category)}
+                              onCheckedChange={() => handleJobCategoryToggle(category)}
+                            />
+                            <span className="text-sm text-slate-100">{category}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {formData.jobCategories.length === 0 && (
+                        <p className="mt-3 text-xs text-slate-300 border border-dashed border-[#2b5f92] rounded-lg px-3 py-2 bg-[#123f6e]/50">
+                          No categories selected yet. Your ad can match multiple interests.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-100">Ad Placements</Label>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Select where this campaign can appear. Only placements compatible with {formData.adFormat} are shown.
+                    </p>
+
+                    {loadingPlacements ? (
+                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {[1, 2, 3, 4].map((item) => (
+                          <div key={item} className="rounded-xl border p-3">
+                            <div className="h-4 w-1/2 rounded bg-[#2b5f92]/80 animate-pulse" />
+                            <div className="mt-2 h-3 w-5/6 rounded bg-[#2b5f92]/80 animate-pulse" />
+                            <div className="mt-2 h-3 w-1/3 rounded bg-[#2b5f92]/80 animate-pulse" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : compatiblePlacements.length === 0 ? (
+                      <Alert className="mt-3">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          No active placements currently support {formData.adFormat}. Pick another format or ask admin to enable matching placements.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-2">
+                        {compatiblePlacements.map((placement) => (
+                          <label
+                            key={placement.id}
+                            className="flex items-start gap-3 rounded-xl border p-3 cursor-pointer motion-safe:transition-all motion-safe:duration-200 hover:border-[#1BA398]/40 hover:bg-gradient-to-r hover:from-[#1BA398]/8 hover:to-[#FF6B35]/8 hover:-translate-y-0.5"
+                          >
+                            <Checkbox
+                              checked={selectedPlacementIds.includes(placement.id)}
+                              onCheckedChange={() => handlePlacementToggle(placement.id)}
+                            />
+                            <div className="space-y-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{placement.display_name || placement.name}</p>
+                              <p className="text-xs text-slate-300">
+                                {placement.description || placement.placement_key}
+                              </p>
+                              <p className="text-xs text-slate-300">
+                                Context: {placement.page_context || 'ALL'}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {errors.placements && (
+                      <p className="text-sm text-destructive mt-2">{errors.placements}</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5">
+                    <Label className="text-slate-100">Keywords</Label>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        placeholder="Add keyword"
+                        value={formData.keywordInput}
+                        onChange={(e) => handleInputChange('keywordInput', e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddKeyword();
+                          }
+                        }}
+                      />
+                      <Button onClick={handleAddKeyword} variant="outline" className={`w-full sm:w-auto ${brandOutlineButtonClass}`}>
+                        Add
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {formData.keywords.map((keyword, i) => (
+                        <Badge key={i} variant="secondary" className={`px-2.5 py-1 motion-safe:transition-colors hover:bg-[#123f6e]/85 ${brandSecondaryBadgeClass}`}>
+                          {keyword}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleInputChange(
+                                'keywords',
+                                formData.keywords.filter((_, idx) => idx !== i)
+                              )
+                            }
+                            className="ml-1"
+                          >
+                            ✕
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    {formData.keywords.length === 0 && (
+                      <p className="mt-3 text-xs text-slate-300 border border-dashed border-[#2b5f92] rounded-lg px-3 py-2 bg-[#123f6e]/50">
+                        Add optional keywords to improve relevance and ad matching quality.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    Create Ad Creative
+                  </h2>
+
+                  <div>
+                    <Label className="text-slate-100">Ad Format</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-3 lg:grid-cols-3">
+                      {adFormats.map((format) => (
+                        <button
+                          key={format.value}
+                          type="button"
+                          onClick={() => handleInputChange('adFormat', format.value)}
+                          className={`rounded-xl border-2 p-3 text-center motion-safe:transition-all motion-safe:duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1BA398]/40 ${
+                            formData.adFormat === format.value
+                              ? 'border-[#1BA398] bg-gradient-to-r from-[#1BA398]/12 to-[#FF6B35]/12 shadow-sm'
+                              : 'border-border hover:border-[#1BA398]/50'
+                          }`}
+                        >
+                          <p className="text-xl mb-1">{format.icon}</p>
+                          <p className="text-xs font-medium leading-tight">{format.label}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-[#1b4f86] bg-[#0a335f]/70 p-4 sm:p-5 space-y-4">
+                    <div>
+                      <Label htmlFor="headline" className="text-slate-100">Headline ({formData.headline.length}/80)</Label>
+                      <Input
+                        id="headline"
+                        placeholder="Attention-grabbing headline"
+                        value={formData.headline}
+                        onChange={(e) => handleInputChange('headline', e.target.value)}
+                        maxLength="80"
+                        className={`mt-2 ${errors.headline ? 'border-destructive' : ''}`}
+                      />
+                      {errors.headline && (
+                        <p className="text-sm text-destructive mt-1">{errors.headline}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="bodyText" className="text-slate-100">Body Text ({formData.bodyText.length}/200)</Label>
+                      <Textarea
+                        id="bodyText"
+                        placeholder="Compelling ad copy"
+                        value={formData.bodyText}
+                        onChange={(e) => handleInputChange('bodyText', e.target.value)}
+                        maxLength="200"
+                        rows={4}
+                        className={`mt-2 ${errors.bodyText ? 'border-destructive' : ''}`}
+                      />
+                      {errors.bodyText && (
+                        <p className="text-sm text-destructive mt-1">{errors.bodyText}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="ctaButtonText" className="text-slate-100">Call-to-Action</Label>
+                        <Select value={formData.ctaButtonText} onValueChange={(v) => handleInputChange('ctaButtonText', v)}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ctaOptions.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="destinationUrl" className="text-slate-100">Destination URL</Label>
+                        <Input
+                          id="destinationUrl"
+                          placeholder="https://example.com"
+                          value={formData.destinationUrl}
+                          onChange={(e) => handleInputChange('destinationUrl', e.target.value)}
+                          className={`mt-2 ${errors.destinationUrl ? 'border-destructive' : ''}`}
+                        />
+                        {errors.destinationUrl && (
+                          <p className="text-sm text-destructive mt-1">{errors.destinationUrl}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-100">Ad Image (Optional)</Label>
+                    <label className="mt-2 flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 motion-safe:transition-all motion-safe:duration-200 hover:bg-[#1BA398]/10 hover:border-[#1BA398]/40">
+                      <div className="flex flex-col items-center justify-center pt-2 pb-2 text-center">
+                        <Upload className="w-8 h-8 text-slate-300 mb-2" />
+                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                        <p className="text-xs text-slate-300">PNG, JPG, WebP up to 2MB</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+
+                    {imagePreview && (
+                      <div className="mt-4 overflow-hidden rounded-xl border shadow-sm">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full max-h-[320px] object-cover motion-safe:transition-transform motion-safe:duration-500 hover:scale-[1.01]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Review Your Campaign
+                  </h2>
+
+                  <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      No active placements currently support {formData.adFormat}. Pick another format or ask admin to enable matching placements.
+                      Review your campaign details below. You can edit any section by going back to the previous steps.
                     </AlertDescription>
                   </Alert>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 mt-3">
-                    {compatiblePlacements.map((placement) => (
-                      <label
-                        key={placement.id}
-                        className="flex items-start gap-3 border rounded-md p-3 cursor-pointer hover:border-primary/40"
-                      >
-                        <Checkbox
-                          checked={selectedPlacementIds.includes(placement.id)}
-                          onCheckedChange={() => handlePlacementToggle(placement.id)}
-                        />
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">{placement.display_name || placement.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {placement.description || placement.placement_key}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Context: {placement.page_context || 'ALL'}
-                          </p>
+
+                  <div className="rounded-xl border border-[#1BA398]/30 bg-gradient-to-r from-[#1BA398]/10 to-[#FF6B35]/10 p-4">
+                    <h3 className="font-semibold text-[#001F3F] mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5" />
+                      How to Publish Your Campaign
+                    </h3>
+                    <div className="space-y-2 text-sm text-[#0a2847]">
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#001F3F] text-slate-100 flex items-center justify-center text-xs font-semibold">1</div>
+                        <div>
+                          <p className="font-medium">Save as Draft</p>
+                          <p className="text-[#0a2847]">Save your campaign and edit it later. You can publish it anytime.</p>
                         </div>
-                      </label>
-                    ))}
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FF6B35] text-slate-100 flex items-center justify-center text-xs font-semibold">2</div>
+                        <div>
+                          <p className="font-medium">Request Review</p>
+                          <p className="text-[#0a2847]">Submit your campaign for admin approval. Once approved, it will go live automatically.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {errors.placements && (
-                  <p className="text-sm text-destructive mt-2">{errors.placements}</p>
-                )}
-              </div>
+                  <div className="space-y-4">
+                    <div className="bg-[#0a335f]/70 border border-[#1b4f86] p-4 rounded-lg">
+                      <h3 className="font-semibold mb-3">Campaign Details</h3>
+                      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-slate-300">Campaign Name</p>
+                          <p className="font-medium break-words">{formData.campaignName}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-300">Objective</p>
+                          <p className="font-medium">{formData.objective}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-300">Budget</p>
+                          <p className="font-medium">${formData.budgetAmount}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-300">Billing Type</p>
+                          <p className="font-medium">{formData.budgetType}</p>
+                        </div>
+                      </div>
+                    </div>
 
-              <div>
-                <Label>Keywords</Label>
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    placeholder="Add keyword"
-                    value={formData.keywordInput}
-                    onChange={(e) => handleInputChange('keywordInput', e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-                  />
-                  <Button onClick={handleAddKeyword} variant="outline">
-                    Add
+                    <div className="bg-[#0a335f]/70 border border-[#1b4f86] p-4 rounded-lg">
+                      <h3 className="font-semibold mb-3">Targeting</h3>
+                      <div className="text-sm space-y-2">
+                        <p>
+                          <span className="text-slate-300">Audience:</span>{' '}
+                          <span className="font-medium capitalize">{formData.audienceType}</span>
+                        </p>
+                        {formData.locations.length > 0 && (
+                          <p>
+                            <span className="text-slate-300">Locations:</span>{' '}
+                            <span className="font-medium">{formData.locations.join(', ')}</span>
+                          </p>
+                        )}
+                        {formData.jobCategories.length > 0 && (
+                          <p>
+                            <span className="text-slate-300">Categories:</span>{' '}
+                            <span className="font-medium">{formData.jobCategories.join(', ')}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0a335f]/70 border border-[#1b4f86] p-4 rounded-lg">
+                      <h3 className="font-semibold mb-3">Ad Creative Preview</h3>
+                      <div className="text-sm space-y-2">
+                        <p>
+                          <span className="text-slate-300">Format:</span>{' '}
+                          <span className="font-medium">{formData.adFormat}</span>
+                        </p>
+                        <p>
+                          <span className="text-slate-300">Headline:</span>{' '}
+                          <span className="font-medium">{formData.headline}</span>
+                        </p>
+                        <p>
+                          <span className="text-slate-300">Body:</span>{' '}
+                          <span className="font-medium">{formData.bodyText}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0a335f]/70 border border-[#1b4f86] p-4 rounded-lg">
+                      <h3 className="font-semibold mb-3">Placements</h3>
+                      {selectedPlacementIds.length > 0 ? (
+                        <p className="text-sm font-medium">
+                          {selectedPlacementIds
+                            .map((id) =>
+                              availablePlacements.find((placement) => placement.id === id)?.display_name || id
+                            )
+                            .join(', ')}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-slate-300">No placements selected</p>
+                      )}
+                    </div>
+
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Estimated reach: <strong>1,200-4,500 impressions/day</strong> (based on your targeting and bid)
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 border-t pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    onClick={handlePrevStep}
+                    variant="outline"
+                    disabled={step === 1 || loading}
+                    className={`gap-2 w-full sm:w-auto ${brandOutlineButtonClass}`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
                   </Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {formData.keywords.map((keyword, i) => (
-                    <Badge key={i} variant="secondary">
-                      {keyword}
-                      <button
-                        onClick={() =>
-                          handleInputChange(
-                            'keywords',
-                            formData.keywords.filter((_, idx) => idx !== i)
-                          )
-                        }
-                        className="ml-1"
+
+                  {step === 4 ? (
+                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                      <Button
+                        onClick={() => handleSubmit('draft')}
+                        disabled={loading}
+                        variant="outline"
+                        className={`gap-2 w-full sm:w-auto ${brandOutlineButtonClass}`}
                       >
-                        ✕
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+                        <Save className="w-4 h-4" />
+                        {loading ? 'Saving...' : 'Save as Draft'}
+                      </Button>
 
-          {/* STEP 3: Creative */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                Create Ad Creative
-              </h2>
-
-              <div>
-                <Label>Ad Format</Label>
-                <div className="grid grid-cols-3 gap-3 mt-3">
-                  {adFormats.map((format) => (
-                    <button
-                      key={format.value}
-                      onClick={() => handleInputChange('adFormat', format.value)}
-                      className={`p-3 rounded-lg border-2 text-center transition ${
-                        formData.adFormat === format.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <p className="text-xl mb-1">{format.icon}</p>
-                      <p className="text-xs font-medium">{format.label}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="headline">Headline ({formData.headline.length}/80)</Label>
-                <Input
-                  id="headline"
-                  placeholder="Attention-grabbing headline"
-                  value={formData.headline}
-                  onChange={(e) => handleInputChange('headline', e.target.value)}
-                  maxLength="80"
-                  className={errors.headline ? 'border-destructive' : ''}
-                />
-                {errors.headline && (
-                  <p className="text-sm text-destructive mt-1">{errors.headline}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="bodyText">Body Text ({formData.bodyText.length}/200)</Label>
-                <Textarea
-                  id="bodyText"
-                  placeholder="Compelling ad copy"
-                  value={formData.bodyText}
-                  onChange={(e) => handleInputChange('bodyText', e.target.value)}
-                  maxLength="200"
-                  rows={4}
-                  className={errors.bodyText ? 'border-destructive' : ''}
-                />
-                {errors.bodyText && (
-                  <p className="text-sm text-destructive mt-1">{errors.bodyText}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ctaButtonText">Call-to-Action</Label>
-                  <Select value={formData.ctaButtonText} onValueChange={(v) => handleInputChange('ctaButtonText', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ctaOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="destinationUrl">Destination URL</Label>
-                  <Input
-                    id="destinationUrl"
-                    placeholder="https://example.com"
-                    value={formData.destinationUrl}
-                    onChange={(e) => handleInputChange('destinationUrl', e.target.value)}
-                    className={errors.destinationUrl ? 'border-destructive' : ''}
-                  />
-                  {errors.destinationUrl && (
-                    <p className="text-sm text-destructive mt-1">{errors.destinationUrl}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label>Ad Image (Optional)</Label>
-                <label className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent transition">
-                  <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-sm">Click to upload or drag and drop</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG, WebP up to 2MB</p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-                </label>
-                {imagePreview && (
-                  <div className="mt-4">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full max-w-sm h-auto rounded-lg"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Review */}
-          {step === 4 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <CheckCircle className="w-5 h-5" />
-                Review Your Campaign
-              </h2>
-
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Review your campaign details below. You can edit any section by going back to the previous steps.
-                </AlertDescription>
-              </Alert>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  How to Publish Your Campaign
-                </h3>
-                <div className="space-y-2 text-sm text-blue-800">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">1</div>
-                    <div>
-                      <p className="font-medium">Save as Draft</p>
-                      <p className="text-blue-700">Save your campaign and edit it later. You can publish it anytime.</p>
+                      <Button
+                        onClick={() => handleSubmit('review')}
+                        disabled={loading}
+                        className={`gap-2 w-full sm:w-auto ${brandPrimaryButtonClass}`}
+                      >
+                        <Send className="w-4 h-4" />
+                        {loading ? 'Submitting...' : 'Request Review'}
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">2</div>
-                    <div>
-                      <p className="font-medium">Request Review</p>
-                      <p className="text-blue-700">Submit your campaign for admin approval. Once approved, it will go live automatically.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Campaign Details</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Campaign Name</p>
-                      <p className="font-medium">{formData.campaignName}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Objective</p>
-                      <p className="font-medium">{formData.objective}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Budget</p>
-                      <p className="font-medium">${formData.budgetAmount}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Billing Type</p>
-                      <p className="font-medium">{formData.budgetType}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Targeting</h3>
-                  <div className="text-sm space-y-2">
-                    <p>
-                      <span className="text-muted-foreground">Audience:</span>{' '}
-                      <span className="font-medium capitalize">{formData.audienceType}</span>
-                    </p>
-                    {formData.locations.length > 0 && (
-                      <p>
-                        <span className="text-muted-foreground">Locations:</span>{' '}
-                        <span className="font-medium">{formData.locations.join(', ')}</span>
-                      </p>
-                    )}
-                    {formData.jobCategories.length > 0 && (
-                      <p>
-                        <span className="text-muted-foreground">Categories:</span>{' '}
-                        <span className="font-medium">{formData.jobCategories.join(', ')}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Ad Creative Preview</h3>
-                  <div className="text-sm space-y-2">
-                    <p>
-                      <span className="text-muted-foreground">Format:</span>{' '}
-                      <span className="font-medium">{formData.adFormat}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Headline:</span>{' '}
-                      <span className="font-medium">{formData.headline}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Body:</span>{' '}
-                      <span className="font-medium">{formData.bodyText}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3">Placements</h3>
-                  {selectedPlacementIds.length > 0 ? (
-                    <p className="text-sm font-medium">
-                      {selectedPlacementIds
-                        .map((id) =>
-                          availablePlacements.find((placement) => placement.id === id)?.display_name || id
-                        )
-                        .join(', ')}
-                    </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No placements selected</p>
+                    <Button onClick={handleNextStep} className={`gap-2 w-full sm:w-auto ${brandPrimaryButtonClass}`}>
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                   )}
                 </div>
-
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Estimated reach: <strong>1,200–4,500 impressions/day</strong> (based on your targeting and bid)
-                  </AlertDescription>
-                </Alert>
               </div>
-            </div>
-          )}
+            </CardContent>
+          </Card>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t">
-            <Button
-              onClick={handlePrevStep}
-              variant="outline"
-              disabled={step === 1 || loading}
-              className="gap-2"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Previous
-            </Button>
-
-            {step === 4 ? (
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => handleSubmit('draft')}
-                  disabled={loading}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {loading ? 'Saving...' : 'Save as Draft'}
-                </Button>
-                <Button
-                  onClick={() => handleSubmit('review')}
-                  disabled={loading}
-                  className="gap-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
-                >
-                  <Send className="w-4 h-4" />
-                  {loading ? 'Submitting...' : 'Request Review'}
-                </Button>
+          <Card
+            className="hidden border-dashed border-[#1b4f86] lg:col-span-4 lg:block xl:col-span-3 lg:sticky lg:top-6 lg:h-fit shadow-sm ring-1 ring-black/5 bg-[#002a5a]/92"
+          >
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-slate-100">Live Campaign Snapshot</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-slate-100">
+              <div className="rounded-lg bg-[#123f6e]/60 p-3 motion-safe:transition-colors hover:bg-[#123f6e]/80">
+                <p className="text-xs uppercase tracking-wide text-slate-300">Campaign</p>
+                <p className="mt-1 font-semibold break-words">{formData.campaignName || 'Untitled campaign'}</p>
+                <Badge variant="secondary" className={`mt-2 ${brandSecondaryBadgeClass}`}>{formData.objective}</Badge>
               </div>
-            ) : (
-              <Button onClick={handleNextStep} className="gap-2">
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Wallet className="mt-0.5 h-4 w-4 text-slate-300" />
+                  <div>
+                    <p className="text-xs text-slate-300">Budget and Bid</p>
+                    <p className="font-medium">${formData.budgetAmount || '0'} total - ${formData.bidAmount || '0'} bid</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <CalendarDays className="mt-0.5 h-4 w-4 text-slate-300" />
+                  <div>
+                    <p className="text-xs text-slate-300">Schedule</p>
+                    <p className="font-medium">
+                      {formData.startDate || 'Start not set'} - {formData.endDate || 'End not set'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <LayoutTemplate className="mt-0.5 h-4 w-4 text-slate-300" />
+                  <div>
+                    <p className="text-xs text-slate-300">Ad Format</p>
+                    <p className="font-medium">{formData.adFormat}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#1b4f86] p-3 motion-safe:transition-colors hover:bg-[#123f6e]/60">
+                <p className="text-xs uppercase tracking-wide text-slate-300">Placement Coverage</p>
+                <p className="mt-1 text-lg font-bold leading-none">{selectedPlacementIds.length}</p>
+                <p className="mt-1 text-xs text-slate-300">Selected compatible placements</p>
+              </div>
+
+              <div className="rounded-lg border bg-gradient-to-r from-[#1BA398]/10 to-[#FF6B35]/10 p-3 motion-safe:transition-colors hover:from-[#1BA398]/15 hover:to-[#FF6B35]/15">
+                <p className="text-xs uppercase tracking-wide text-slate-300">Creative Readiness</p>
+                <p className="mt-1 font-medium">
+                  {formData.headline && formData.bodyText && formData.destinationUrl
+                    ? 'Ready for submission'
+                    : 'Add headline, body text and URL'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

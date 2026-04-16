@@ -3,7 +3,7 @@
  * Fetches ads from backend and renders appropriate format
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AdCard from './AdCard.jsx';
 import AdBanner from './AdBanner.jsx';
 import AdInlineFeed from './AdInlineFeed.jsx';
@@ -21,14 +21,9 @@ export function AdSlot({
 }) {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
 
   // Fetch ads from backend
-  useEffect(() => {
-    fetchAds();
-  }, [placement, context, limit]);
-
-  async function fetchAds() {
+  const fetchAds = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -39,13 +34,19 @@ export function AdSlot({
       });
 
       const apiBaseUrl = config.API.BASE_URL || '/api';
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(
         `${apiBaseUrl}/ads/serve?${params}`,
         {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+          headers,
         }
       );
 
@@ -67,7 +68,12 @@ export function AdSlot({
     } finally {
       setLoading(false);
     }
-  }
+  }, [placement, context, limit, format]);
+
+  // Fetch ads from backend
+  useEffect(() => {
+    fetchAds();
+  }, [fetchAds]);
 
   // Render nothing if no ads
   if (!loading && ads.length === 0) {

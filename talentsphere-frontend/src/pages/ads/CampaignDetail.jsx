@@ -663,13 +663,44 @@ const CampaignDetail = () => {
       NEEDS_CHANGES: 'outline',
       COMPLETED: 'outline',
     };
-    return <Badge variant={variants[status]}>{status.replace('_', ' ')}</Badge>;
+
+    const statusClasses = {
+      DRAFT: 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100',
+      PENDING_REVIEW: 'border border-[#FF6B35]/40 bg-[#FF6B35]/20 text-[#FF6B35]',
+      ACTIVE: 'border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]',
+      PAUSED: 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100',
+      REJECTED: 'border border-[#ef4444]/40 bg-[#ef4444]/20 text-[#fecaca]',
+      NEEDS_CHANGES: 'border border-[#FF6B35]/40 bg-[#FF6B35]/20 text-[#FF6B35]',
+      COMPLETED: 'border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]',
+    };
+
+    return (
+      <Badge
+        variant={variants[status]}
+        className={statusClasses[status] || 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100'}
+      >
+        {status.replace('_', ' ')}
+      </Badge>
+    );
   };
+
+  const pageBackgroundStyle = {
+    backgroundColor: '#002a5a',
+    backgroundImage:
+      'radial-gradient(circle at center, rgba(18, 63, 110, 0.45) 0, rgba(18, 63, 110, 0.45) 18px, transparent 20px)',
+    backgroundSize: '74px 74px',
+  };
+
+  const darkCardClass = 'border-[#1b4f86] bg-[#0a335f]/75 text-slate-100';
+  const brandPrimaryButtonClass = 'bg-gradient-to-r from-[#1BA398] to-[#FF6B35] text-slate-100 hover:from-[#158b7e] hover:to-[#e55a24]';
+  const brandOutlineButtonClass = 'border-[#1BA398]/50 text-[#1BA398] hover:bg-[#1BA398]/15 hover:text-slate-100';
+  const brandOutlineBadgeClass = 'border border-[#1BA398]/40 bg-[#1BA398]/15 text-[#1BA398]';
+  const brandSecondaryBadgeClass = 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-200';
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">Loading campaign...</p>
+        <p className="text-slate-300">Loading campaign...</p>
       </div>
     );
   }
@@ -677,7 +708,7 @@ const CampaignDetail = () => {
   if (!campaign) {
     return (
       <div className="space-y-4">
-        <Button onClick={() => navigate('/employer/ads')} variant="outline" className="gap-2">
+        <Button onClick={() => navigate('/employer/ads')} variant="outline" className={`gap-2 ${brandOutlineButtonClass}`}>
           <ArrowLeft className="w-4 h-4" />
           Back to Campaigns
         </Button>
@@ -690,30 +721,30 @@ const CampaignDetail = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 rounded-2xl p-4 sm:p-6 text-slate-100" style={pageBackgroundStyle}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <Button onClick={() => navigate('/employer/ads')} variant="outline" size="sm" className="gap-2 mb-4">
+          <Button onClick={() => navigate('/employer/ads')} variant="outline" size="sm" className={`gap-2 mb-4 ${brandOutlineButtonClass}`}>
             <ArrowLeft className="w-4 h-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold">{campaign.name}</h1>
+          <h1 className="text-3xl font-bold text-slate-100">{campaign.name}</h1>
           <div className="flex items-center gap-2 mt-2">
             {getStatusBadge(campaign.status)}
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-slate-300">
               {campaign.start_date && `Started ${new Date(campaign.start_date).toLocaleDateString()}`}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {campaign.status === 'ACTIVE' && (
-            <Button variant="outline" onClick={handlePauseCampaign} disabled={campaignActionBusy}>
+            <Button variant="outline" className={brandOutlineButtonClass} onClick={handlePauseCampaign} disabled={campaignActionBusy}>
               Pause Campaign
             </Button>
           )}
           {campaign.status === 'PAUSED' && (
-            <Button variant="outline" onClick={handleResumeCampaign} disabled={campaignActionBusy}>
+            <Button variant="outline" className={brandOutlineButtonClass} onClick={handleResumeCampaign} disabled={campaignActionBusy}>
               Resume Campaign
             </Button>
           )}
@@ -736,7 +767,7 @@ const CampaignDetail = () => {
               <p className="text-sm">
                 {campaign.review?.notes || 'Please update your creatives/campaign settings and resubmit for review.'}
               </p>
-              <Button size="sm" onClick={handleResubmitForReview} className="mt-1">
+              <Button size="sm" onClick={handleResubmitForReview} className={`mt-1 ${brandPrimaryButtonClass}`}>
                 Resubmit For Review
               </Button>
             </div>
@@ -745,52 +776,52 @@ const CampaignDetail = () => {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Impressions</p>
+                <p className="text-xs text-slate-300 uppercase tracking-wide">Impressions</p>
                 <p className="text-2xl font-bold mt-1">{analytics.totals?.impressions || 0}</p>
               </div>
-              <Eye className="w-8 h-8 text-primary/20" />
+              <Eye className="w-8 h-8 text-[#1BA398]/35" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Clicks</p>
+                <p className="text-xs text-slate-300 uppercase tracking-wide">Clicks</p>
                 <p className="text-2xl font-bold mt-1">{analytics.totals?.clicks || 0}</p>
               </div>
-              <MousePointer className="w-8 h-8 text-primary/20" />
+              <MousePointer className="w-8 h-8 text-[#FF6B35]/35" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">CTR</p>
+                <p className="text-xs text-slate-300 uppercase tracking-wide">CTR</p>
                 <p className="text-2xl font-bold mt-1">{analytics.totals?.ctr || 0}%</p>
               </div>
-              <Percent className="w-8 h-8 text-primary/20" />
+              <Percent className="w-8 h-8 text-[#1BA398]/35" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Budget</p>
+              <p className="text-xs text-slate-300 uppercase tracking-wide">Budget</p>
               <p className="text-sm font-medium mt-2">
                 ${formatCurrency(campaign.budget_spent)} / ${formatCurrency(campaign.budget_total)}
               </p>
-              <div className="w-full h-2 bg-secondary rounded-full mt-2 overflow-hidden">
+              <div className="w-full h-2 bg-[#123f6e]/80 rounded-full mt-2 overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full"
+                  className="h-full bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-full"
                   style={{
                     width: `${
                       Number(campaign.budget_total) > 0
@@ -806,30 +837,30 @@ const CampaignDetail = () => {
       </div>
 
       {/* Tabs */}
-      <Card>
+      <Card className={darkCardClass}>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full justify-start border-b bg-transparent p-0 h-auto rounded-none">
+          <TabsList className="w-full justify-start border-b border-[#1b4f86] bg-transparent p-0 h-auto rounded-none">
             <TabsTrigger
               value="overview"
-              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary"
+              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-[#1BA398] text-slate-300 data-[state=active]:text-slate-100"
             >
               Overview
             </TabsTrigger>
             <TabsTrigger
               value="creatives"
-              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary"
+              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-[#1BA398] text-slate-300 data-[state=active]:text-slate-100"
             >
               Creatives
             </TabsTrigger>
             <TabsTrigger
               value="targeting"
-              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary"
+              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-[#1BA398] text-slate-300 data-[state=active]:text-slate-100"
             >
               Targeting & Placements
             </TabsTrigger>
             <TabsTrigger
               value="settings"
-              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-primary"
+              className="rounded-none border-b-2 border-b-transparent data-[state=active]:border-b-[#1BA398] text-slate-300 data-[state=active]:text-slate-100"
             >
               Settings
             </TabsTrigger>
@@ -838,23 +869,23 @@ const CampaignDetail = () => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="p-6">
             {campaign.review && (
-              <Card className="mb-4">
+              <Card className={`mb-4 ${darkCardClass}`}>
                 <CardHeader>
                   <CardTitle className="text-sm">Review Feedback</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Decision:</span>{' '}
+                    <span className="text-slate-300">Decision:</span>{' '}
                     <span className="font-medium">{campaign.review.decision || 'PENDING'}</span>
                   </p>
                   {campaign.review.notes && (
                     <p>
-                      <span className="text-muted-foreground">Notes:</span> {campaign.review.notes}
+                      <span className="text-slate-300">Notes:</span> {campaign.review.notes}
                     </p>
                   )}
                   {campaign.review.reviewed_at && (
                     <p>
-                      <span className="text-muted-foreground">Reviewed At:</span>{' '}
+                      <span className="text-slate-300">Reviewed At:</span>{' '}
                       {new Date(campaign.review.reviewed_at).toLocaleString()}
                     </p>
                   )}
@@ -863,7 +894,7 @@ const CampaignDetail = () => {
             )}
 
             {campaign.review_audit_logs && campaign.review_audit_logs.length > 0 && (
-              <Card className="mb-4">
+              <Card className={`mb-4 ${darkCardClass}`}>
                 <CardHeader>
                   <CardTitle className="text-sm">Moderation History</CardTitle>
                 </CardHeader>
@@ -872,7 +903,7 @@ const CampaignDetail = () => {
                     {campaign.review_audit_logs.map((log) => (
                       <div key={log.id} className="text-sm border rounded p-2">
                         <p className="font-medium">{log.action.replace('_', ' ')}</p>
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-slate-300 text-xs">
                           {log.admin_name || 'Admin'} - {new Date(log.created_at).toLocaleString()}
                         </p>
                         {log.note && <p className="mt-1">{log.note}</p>}
@@ -892,7 +923,7 @@ const CampaignDetail = () => {
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold">Ad Creatives</h3>
                 {!creatingCreative && canEditCampaign && (
-                  <Button onClick={() => setCreatingCreative(true)} size="sm" className="gap-2">
+                  <Button onClick={() => setCreatingCreative(true)} size="sm" className={`gap-2 ${brandPrimaryButtonClass}`}>
                     <Plus className="w-4 h-4" />
                     Add Creative
                   </Button>
@@ -900,7 +931,7 @@ const CampaignDetail = () => {
               </div>
 
               {creatingCreative && (
-                <Card>
+                <Card className={darkCardClass}>
                   <CardHeader>
                     <CardTitle className="text-sm">Create New Creative</CardTitle>
                   </CardHeader>
@@ -918,7 +949,7 @@ const CampaignDetail = () => {
                             }
                             className={!normalizedHeadline.length ? 'border-amber-300' : ''}
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-slate-300 mt-1">
                             {creativeForm.headline.length}/80 characters
                           </p>
                         </div>
@@ -935,7 +966,7 @@ const CampaignDetail = () => {
                             rows={4}
                             className={!normalizedBodyText.length ? 'border-amber-300' : ''}
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-slate-300 mt-1">
                             {creativeForm.bodyText.length}/200 characters
                           </p>
                         </div>
@@ -997,7 +1028,7 @@ const CampaignDetail = () => {
                             }
                             className={!isDestinationUrlValid ? 'border-red-500 focus-visible:ring-red-500' : ''}
                           />
-                          <p className={`text-xs mt-1 ${isDestinationUrlValid ? 'text-muted-foreground' : 'text-red-600'}`}>
+                          <p className={`text-xs mt-1 ${isDestinationUrlValid ? 'text-slate-300' : 'text-red-600'}`}>
                             {isDestinationUrlValid
                               ? 'Use an absolute URL with http:// or https://'
                               : 'Please enter a valid absolute URL (http/https).'}
@@ -1006,20 +1037,20 @@ const CampaignDetail = () => {
 
                         <div className="space-y-2">
                           <Label htmlFor="creativeImage" className="flex items-center gap-2"><ImagePlus className="w-4 h-4" />Creative Image (optional)</Label>
-                          <div className="rounded-lg border border-dashed p-3 bg-muted/20">
+                          <div className="rounded-lg border border-dashed p-3 bg-[#123f6e]/40">
                             <Input
                               id="creativeImage"
                               type="file"
                               accept="image/png,image/jpeg,image/webp"
                               onChange={handleCreativeImageChange}
                             />
-                            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                            <p className="text-xs text-slate-300 mt-2 flex items-center gap-1">
                               <UploadCloud className="w-3 h-3" /> PNG/JPG/WEBP up to 2MB.
                             </p>
                             {creativeImageFile && (
-                              <div className="mt-2 text-xs text-muted-foreground flex items-center justify-between gap-2">
+                              <div className="mt-2 text-xs text-slate-300 flex items-center justify-between gap-2">
                                 <span className="truncate">{creativeImageFile.name}</span>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => setCreativeImageFile(null)}>
+                                <Button type="button" variant="ghost" size="sm" className="text-slate-300 hover:text-[#1BA398]" onClick={() => setCreativeImageFile(null)}>
                                   Remove
                                 </Button>
                               </div>
@@ -1029,9 +1060,9 @@ const CampaignDetail = () => {
                       </div>
 
                       <div className="space-y-3">
-                        <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Live Preview</p>
-                          <div className="rounded-md border bg-background p-3 space-y-2">
+                        <div className="rounded-lg border bg-[#123f6e]/40 p-4 space-y-3">
+                          <p className="text-xs uppercase tracking-wide text-slate-300">Live Preview</p>
+                          <div className="rounded-md border bg-[#0a335f]/80 p-3 space-y-2">
                             {creativeImagePreviewUrl ? (
                               <img
                                 src={creativeImagePreviewUrl}
@@ -1039,24 +1070,24 @@ const CampaignDetail = () => {
                                 className="w-full h-28 object-cover rounded-md"
                               />
                             ) : (
-                              <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                              <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-slate-300">
                                 No image selected
                               </div>
                             )}
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className={`text-[10px] ${brandOutlineBadgeClass}`}>
                               {creativeForm.adFormat.replaceAll('_', ' ')}
                             </Badge>
                             <p className="font-medium text-sm leading-snug">
                               {normalizedHeadline || 'Your headline will appear here'}
                             </p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
+                            <p className="text-xs text-slate-300 leading-relaxed">
                               {normalizedBodyText || 'Your ad body copy preview appears here.'}
                             </p>
-                            <Button size="sm" className="mt-1 pointer-events-none" disabled>
+                            <Button size="sm" className={`mt-1 pointer-events-none ${brandPrimaryButtonClass}`} disabled>
                               {creativeForm.ctaButtonText}
                             </Button>
                           </div>
-                          <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="text-xs text-slate-300 space-y-1">
                             <p>Selected format must match allowed formats for selected placements.</p>
                             <p>Current placements support: {selectedPlacementSupportedFormats.size ? Array.from(selectedPlacementSupportedFormats).join(', ') : 'all formats until a placement is selected'}.</p>
                           </div>
@@ -1067,11 +1098,12 @@ const CampaignDetail = () => {
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
+                        className={brandOutlineButtonClass}
                         onClick={resetCreativeComposer}
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateCreative} disabled={!canSubmitCreative}>
+                      <Button onClick={handleCreateCreative} disabled={!canSubmitCreative} className={brandPrimaryButtonClass}>
                         Create Creative
                       </Button>
                     </div>
@@ -1082,7 +1114,7 @@ const CampaignDetail = () => {
               {campaign.creatives && campaign.creatives.length > 0 ? (
                 <div className="space-y-3">
                   {campaign.creatives.map((creative) => (
-                    <Card key={creative.id}>
+                    <Card key={creative.id} className={darkCardClass}>
                       <CardContent className="pt-6">
                         {editingCreativeId === creative.id ? (
                           <div className="space-y-4">
@@ -1097,7 +1129,7 @@ const CampaignDetail = () => {
                                       setEditingCreativeForm({ ...editingCreativeForm, headline: e.target.value })
                                     }
                                   />
-                                  <p className="text-xs text-muted-foreground mt-1">{editingCreativeForm.headline.length}/80</p>
+                                  <p className="text-xs text-slate-300 mt-1">{editingCreativeForm.headline.length}/80</p>
                                 </div>
 
                                 <div>
@@ -1110,7 +1142,7 @@ const CampaignDetail = () => {
                                       setEditingCreativeForm({ ...editingCreativeForm, bodyText: e.target.value })
                                     }
                                   />
-                                  <p className="text-xs text-muted-foreground mt-1">{editingCreativeForm.bodyText.length}/200</p>
+                                  <p className="text-xs text-slate-300 mt-1">{editingCreativeForm.bodyText.length}/200</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1162,7 +1194,7 @@ const CampaignDetail = () => {
                                     }
                                     className={!isEditDestinationUrlValid ? 'border-red-500 focus-visible:ring-red-500' : ''}
                                   />
-                                  <p className={`text-xs mt-1 ${isEditDestinationUrlValid ? 'text-muted-foreground' : 'text-red-600'}`}>
+                                  <p className={`text-xs mt-1 ${isEditDestinationUrlValid ? 'text-slate-300' : 'text-red-600'}`}>
                                     {isEditDestinationUrlValid
                                       ? 'Use an absolute URL with http:// or https://'
                                       : 'Please enter a valid absolute URL (http/https).'}
@@ -1190,12 +1222,12 @@ const CampaignDetail = () => {
                                     onChange={handleEditCreativeImageChange}
                                     disabled={removeEditingCreativeImage}
                                   />
-                                  <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP up to 2MB.</p>
+                                  <p className="text-xs text-slate-300 mt-1">PNG/JPG/WEBP up to 2MB.</p>
                                 </div>
                               </div>
 
-                              <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">Preview</p>
+                              <div className="rounded-lg border bg-[#123f6e]/40 p-3 space-y-2">
+                                <p className="text-xs uppercase tracking-wide text-slate-300">Preview</p>
                                 {(editingCreativeImagePreviewUrl || (creative.image_url && !removeEditingCreativeImage)) ? (
                                   <img
                                     src={editingCreativeImagePreviewUrl || creative.image_url}
@@ -1203,31 +1235,31 @@ const CampaignDetail = () => {
                                     className="w-full h-28 object-cover rounded-md"
                                   />
                                 ) : (
-                                  <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                                  <div className="w-full h-28 rounded-md border border-dashed flex items-center justify-center text-xs text-slate-300">
                                     No image selected
                                   </div>
                                 )}
-                                <Badge variant="outline" className="text-[10px]">
+                                <Badge variant="outline" className={`text-[10px] ${brandOutlineBadgeClass}`}>
                                   {editingCreativeForm.adFormat.replaceAll('_', ' ')}
                                 </Badge>
                                 <p className="font-medium text-sm leading-snug">
                                   {normalizedEditHeadline || 'Your headline will appear here'}
                                 </p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                <p className="text-xs text-slate-300 leading-relaxed">
                                   {normalizedEditBodyText || 'Your ad body copy preview appears here.'}
                                 </p>
                               </div>
                             </div>
 
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline" onClick={resetEditingCreative} className="gap-1">
+                              <Button variant="outline" onClick={resetEditingCreative} className={`gap-1 ${brandOutlineButtonClass}`}>
                                 <X className="w-4 h-4" />
                                 Cancel
                               </Button>
                               <Button
                                 onClick={() => handleSaveCreativeUpdates(creative.id)}
                                 disabled={!canSaveEditedCreative || creativeActionBusyId === `save-${creative.id}`}
-                                className="gap-1"
+                                className={`gap-1 ${brandPrimaryButtonClass}`}
                               >
                                 <Save className="w-4 h-4" />
                                 Save Changes
@@ -1238,17 +1270,17 @@ const CampaignDetail = () => {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <p className="font-medium">{creative.title}</p>
-                              <p className="text-sm text-muted-foreground mt-1">
+                              <p className="text-sm text-slate-300 mt-1">
                                 {creative.body_text}
                               </p>
                               <div className="flex gap-2 mt-3">
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className={`text-xs ${brandOutlineBadgeClass}`}>
                                   {creative.ad_format}
                                 </Badge>
                                 {creative.is_active ? (
-                                  <Badge className="text-xs">Active</Badge>
+                                  <Badge className="text-xs border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]">Active</Badge>
                                 ) : (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className={`text-xs ${brandSecondaryBadgeClass}`}>
                                     Inactive
                                   </Badge>
                                 )}
@@ -1259,6 +1291,7 @@ const CampaignDetail = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className={brandOutlineButtonClass}
                                   onClick={() => handleStartEditCreative(creative)}
                                 >
                                   <Edit className="w-4 h-4 mr-1" />
@@ -1267,6 +1300,7 @@ const CampaignDetail = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className={brandOutlineButtonClass}
                                   disabled={creativeActionBusyId === `toggle-${creative.id}`}
                                   onClick={() => handleToggleCreativeStatus(creative)}
                                 >
@@ -1290,7 +1324,7 @@ const CampaignDetail = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No creatives yet. Add one to get started.</p>
+                <p className="text-sm text-slate-300">No creatives yet. Add one to get started.</p>
               )}
             </div>
           </TabsContent>
@@ -1307,7 +1341,7 @@ const CampaignDetail = () => {
                       return (
                         <label
                           key={placement.id}
-                          className="flex items-start gap-3 border rounded-md p-3 cursor-pointer hover:border-primary/40"
+                          className="flex items-start gap-3 border rounded-md p-3 cursor-pointer hover:border-[#1BA398]/40"
                         >
                           <Checkbox
                             checked={isChecked}
@@ -1316,10 +1350,10 @@ const CampaignDetail = () => {
                           />
                           <div className="space-y-1">
                             <p className="font-medium text-sm">{placement.display_name || placement.name}</p>
-                            <p className="text-xs text-muted-foreground">{placement.description || placement.placement_key}</p>
+                            <p className="text-xs text-slate-300">{placement.description || placement.placement_key}</p>
                             <div className="flex flex-wrap gap-1 pt-1">
                               {(placement.allowed_formats || []).map((fmt) => (
-                                <Badge key={`${placement.id}-${fmt}`} variant="outline" className="text-[10px]">
+                                <Badge key={`${placement.id}-${fmt}`} variant="outline" className={`text-[10px] ${brandOutlineBadgeClass}`}>
                                   {fmt}
                                 </Badge>
                               ))}
@@ -1330,14 +1364,14 @@ const CampaignDetail = () => {
                     })}
                     {canEditCampaign && (
                       <div className="flex justify-end">
-                        <Button onClick={handleSavePlacements} disabled={savingPlacements}>
+                        <Button onClick={handleSavePlacements} disabled={savingPlacements} className={brandPrimaryButtonClass}>
                           {savingPlacements ? 'Saving...' : 'Save Placements'}
                         </Button>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No active placements available.</p>
+                  <p className="text-sm text-slate-300">No active placements available.</p>
                 )}
               </div>
 
@@ -1347,7 +1381,7 @@ const CampaignDetail = () => {
                   {!editingTargeting && (
                     <Button
                       variant="outline"
-                      className="gap-2"
+                      className={`gap-2 ${brandOutlineButtonClass}`}
                       disabled={!canEditCampaign}
                       onClick={() => setEditingTargeting(true)}
                     >
@@ -1361,17 +1395,17 @@ const CampaignDetail = () => {
                   <div className="space-y-4">
                     {targetingForm.user_type && (
                       <div>
-                        <Label className="text-muted-foreground">Audience</Label>
+                        <Label className="text-slate-300">Audience</Label>
                         <p className="font-medium capitalize mt-2">{targetingForm.user_type}</p>
                       </div>
                     )}
 
                     {targetingForm.locations?.length > 0 && (
                       <div>
-                        <Label className="text-muted-foreground">Locations</Label>
+                        <Label className="text-slate-300">Locations</Label>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {targetingForm.locations.map((loc) => (
-                            <Badge key={loc}>{loc}</Badge>
+                            <Badge key={loc} className="border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]">{loc}</Badge>
                           ))}
                         </div>
                       </div>
@@ -1379,10 +1413,10 @@ const CampaignDetail = () => {
 
                     {targetingForm.job_categories?.length > 0 && (
                       <div>
-                        <Label className="text-muted-foreground">Job Categories</Label>
+                        <Label className="text-slate-300">Job Categories</Label>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {targetingForm.job_categories.map((cat) => (
-                            <Badge key={cat} variant="outline">
+                            <Badge key={cat} variant="outline" className={brandOutlineBadgeClass}>
                               {cat}
                             </Badge>
                           ))}
@@ -1392,10 +1426,10 @@ const CampaignDetail = () => {
 
                     {targetingForm.keywords?.length > 0 && (
                       <div>
-                        <Label className="text-muted-foreground">Keywords</Label>
+                        <Label className="text-slate-300">Keywords</Label>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {targetingForm.keywords.map((keyword) => (
-                            <Badge key={keyword} variant="secondary">
+                            <Badge key={keyword} variant="secondary" className={brandSecondaryBadgeClass}>
                               {keyword}
                             </Badge>
                           ))}
@@ -1405,7 +1439,7 @@ const CampaignDetail = () => {
 
                     {Number(targetingForm.min_experience_years) > 0 && (
                       <div>
-                        <Label className="text-muted-foreground">Minimum Experience</Label>
+                        <Label className="text-slate-300">Minimum Experience</Label>
                         <p className="font-medium mt-2">
                           {targetingForm.min_experience_years} years
                         </p>
@@ -1416,11 +1450,11 @@ const CampaignDetail = () => {
                       targetingForm.job_categories.length === 0 &&
                       targetingForm.keywords.length === 0 &&
                       Number(targetingForm.min_experience_years) === 0 && (
-                        <p className="text-sm text-muted-foreground">No targeting set yet.</p>
+                        <p className="text-sm text-slate-300">No targeting set yet.</p>
                       )}
                   </div>
                 ) : (
-                  <Card>
+                  <Card className={darkCardClass}>
                     <CardContent className="pt-6 space-y-6">
                       <div>
                         <Label>Audience Type</Label>
@@ -1503,13 +1537,13 @@ const CampaignDetail = () => {
                               }
                             }}
                           />
-                          <Button type="button" variant="outline" onClick={handleAddKeyword}>
+                          <Button type="button" variant="outline" className={brandOutlineButtonClass} onClick={handleAddKeyword}>
                             Add
                           </Button>
                         </div>
                         <div className="flex flex-wrap gap-2 mt-3">
                           {targetingForm.keywords.map((keyword) => (
-                            <Badge key={keyword} variant="secondary" className="gap-1">
+                            <Badge key={keyword} variant="secondary" className={`gap-1 ${brandSecondaryBadgeClass}`}>
                               {keyword}
                               <button
                                 type="button"
@@ -1525,10 +1559,10 @@ const CampaignDetail = () => {
                       </div>
 
                       <div className="flex gap-2 justify-end">
-                        <Button variant="outline" onClick={handleCancelTargeting}>
+                        <Button variant="outline" className={brandOutlineButtonClass} onClick={handleCancelTargeting}>
                           Cancel
                         </Button>
-                        <Button onClick={handleSaveTargeting} disabled={savingTargeting}>
+                        <Button onClick={handleSaveTargeting} disabled={savingTargeting} className={brandPrimaryButtonClass}>
                           {savingTargeting ? 'Saving...' : 'Save Targeting'}
                         </Button>
                       </div>
@@ -1544,21 +1578,21 @@ const CampaignDetail = () => {
             <div className="space-y-4">
               {!editingSettings ? (
                 <>
-                  <Card>
+                  <Card className={darkCardClass}>
                     <CardContent className="pt-6 space-y-3">
                       <div>
-                        <Label className="text-muted-foreground">Campaign Name</Label>
+                        <Label className="text-slate-300">Campaign Name</Label>
                         <p className="font-medium">{campaign.name}</p>
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">Budget</Label>
+                        <Label className="text-slate-300">Budget</Label>
                         <p className="font-medium">
                           ${formatCurrency(campaign.budget_total)}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-muted-foreground">Start Date</Label>
+                          <Label className="text-slate-300">Start Date</Label>
                           <p className="font-medium">
                             {campaign.start_date
                               ? new Date(campaign.start_date).toLocaleDateString()
@@ -1566,7 +1600,7 @@ const CampaignDetail = () => {
                           </p>
                         </div>
                         <div>
-                          <Label className="text-muted-foreground">End Date</Label>
+                          <Label className="text-slate-300">End Date</Label>
                           <p className="font-medium">
                             {campaign.end_date
                               ? new Date(campaign.end_date).toLocaleDateString()
@@ -1578,7 +1612,7 @@ const CampaignDetail = () => {
                   </Card>
                   <Button
                     onClick={() => setEditingSettings(true)}
-                    className="gap-2"
+                    className={`gap-2 ${brandPrimaryButtonClass}`}
                     disabled={!canEditCampaign}
                   >
                     <Edit className="w-4 h-4" />
@@ -1586,7 +1620,7 @@ const CampaignDetail = () => {
                   </Button>
                 </>
               ) : (
-                <Card>
+                <Card className={darkCardClass}>
                   <CardContent className="pt-6 space-y-4">
                     <div>
                       <Label htmlFor="campaignName">Campaign Name</Label>
@@ -1716,14 +1750,14 @@ const CampaignDetail = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button onClick={handleUpdateSettings} className="gap-2">
+                      <Button onClick={handleUpdateSettings} className={`gap-2 ${brandPrimaryButtonClass}`}>
                         <Save className="w-4 h-4" />
                         Save Changes
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setEditingSettings(false)}
-                        className="gap-2"
+                        className={`gap-2 ${brandOutlineButtonClass}`}
                       >
                         <X className="w-4 h-4" />
                         Cancel

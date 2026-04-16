@@ -241,8 +241,21 @@ const AdsDashboard = () => {
       COMPLETED: <Check className="w-3 h-3 mr-1" />,
     };
 
+    const badgeClasses = {
+      DRAFT: 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100',
+      PENDING_REVIEW: 'border border-[#FF6B35]/40 bg-[#FF6B35]/20 text-[#FF6B35]',
+      ACTIVE: 'border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]',
+      PAUSED: 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100',
+      REJECTED: 'border border-[#ef4444]/40 bg-[#ef4444]/20 text-[#fecaca]',
+      NEEDS_CHANGES: 'border border-[#FF6B35]/40 bg-[#FF6B35]/20 text-[#FF6B35]',
+      COMPLETED: 'border border-[#1BA398]/40 bg-[#1BA398]/20 text-[#1BA398]',
+    };
+
     return (
-      <Badge variant={variants[status]} className="flex w-fit">
+      <Badge
+        variant={variants[status]}
+        className={`flex w-fit ${badgeClasses[status] || 'border border-[#1b4f86] bg-[#123f6e]/70 text-slate-100'}`}
+      >
         {icons[status]}
         <span className="capitalize">{status.replace('_', ' ')}</span>
       </Badge>
@@ -263,6 +276,19 @@ const AdsDashboard = () => {
     return parsed.toFixed(2);
   };
 
+  const pageBackgroundStyle = {
+    backgroundColor: '#002a5a',
+    backgroundImage:
+      'radial-gradient(circle at center, rgba(18, 63, 110, 0.45) 0, rgba(18, 63, 110, 0.45) 18px, transparent 20px)',
+    backgroundSize: '74px 74px',
+  };
+
+  const darkCardClass = 'border-[#1b4f86] bg-[#0a335f]/75 text-slate-100';
+  const brandPrimaryButtonClass = 'bg-gradient-to-r from-[#1BA398] to-[#FF6B35] text-slate-100 hover:from-[#158b7e] hover:to-[#e55a24]';
+  const brandOutlineButtonClass = 'border-[#1BA398]/50 text-[#1BA398] hover:bg-[#1BA398]/15 hover:text-slate-100';
+  const brandDropdownContentClass = 'border-[#1b4f86] bg-[#0a335f] text-slate-100';
+  const brandDropdownItemClass = 'cursor-pointer text-slate-200 focus:bg-[#1BA398]/20 focus:text-slate-100 data-[highlighted]:bg-[#1BA398]/20 data-[highlighted]:text-slate-100';
+
   const getBudgetProgress = (campaign) => {
     const spent = Number(campaign?.budget_spent || 0);
     const total = Number(campaign?.budget_total || 0);
@@ -271,16 +297,16 @@ const AdsDashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 rounded-2xl p-4 sm:p-6" style={pageBackgroundStyle}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Ad Campaigns</h1>
-          <p className="text-muted-foreground mt-1">Manage and monitor your advertising campaigns</p>
+          <h1 className="text-3xl font-bold text-slate-100">Ad Campaigns</h1>
+          <p className="text-slate-300 mt-1">Manage and monitor your advertising campaigns</p>
         </div>
         <Button
           onClick={() => navigate('new')}
-          className="gap-2"
+          className="gap-2 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] hover:from-[#158b7e] hover:to-[#e55a24]"
         >
           <Plus className="w-4 h-4" />
           Create Campaign
@@ -289,81 +315,81 @@ const AdsDashboard = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
+        <Card className={darkCardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Total Campaigns
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalCampaigns}</div>
-            <p className="text-xs text-muted-foreground mt-1">Across all statuses</p>
+            <p className="text-xs text-slate-300 mt-1">Across all statuses</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <Zap className="w-4 h-4" />
               Active Campaigns
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.activeCampaigns}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently running</p>
+            <p className="text-xs text-slate-300 mt-1">Currently running</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <Eye className="w-4 h-4" />
               Total Impressions
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(metrics.monthlyImpressions)}</div>
-            <p className="text-xs text-muted-foreground mt-1">This month</p>
+            <p className="text-xs text-slate-300 mt-1">This month</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <MousePointer className="w-4 h-4" />
               Total Clicks
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(metrics.totalClicks)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total</p>
+            <p className="text-xs text-slate-300 mt-1">Total</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <Percent className="w-4 h-4" />
               Average CTR
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.averageCtr}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Click-through rate</p>
+            <p className="text-xs text-slate-300 mt-1">Click-through rate</p>
           </CardContent>
         </Card>
       </div>
 
       {(metrics.pendingReview > 0 || metrics.needsChanges > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Alert>
+          <Alert className="border-[#1b4f86] bg-[#0a335f]/75 text-slate-100">
             <Clock className="h-4 w-4" />
             <AlertDescription>
               {metrics.pendingReview} campaign(s) pending admin review.
             </AlertDescription>
           </Alert>
-          <Alert>
+          <Alert className="border-[#1b4f86] bg-[#0a335f]/75 text-slate-100">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               {metrics.needsChanges} campaign(s) need changes before approval.
@@ -373,19 +399,19 @@ const AdsDashboard = () => {
       )}
 
       {/* Filters and Table */}
-      <Card>
-        <CardHeader className="pb-4 border-b">
+      <Card className={darkCardClass}>
+        <CardHeader className="pb-4 border-b border-[#1b4f86]">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle>Campaigns</CardTitle>
+              <CardTitle className="text-slate-100">Campaigns</CardTitle>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by campaign name, objective, or status..."
-                  className="w-full sm:w-80"
+                  className="w-full sm:w-80 border-[#1b4f86] bg-[#123f6e]/60 text-slate-100 placeholder:text-slate-300"
                 />
-                <Button variant="outline" size="sm" onClick={loadCampaigns}>Refresh</Button>
+                <Button variant="outline" size="sm" onClick={loadCampaigns} className={brandOutlineButtonClass}>Refresh</Button>
               </div>
             </div>
 
@@ -393,6 +419,7 @@ const AdsDashboard = () => {
               <Button
                 variant={filter === 'all' ? 'default' : 'outline'}
                 size="sm"
+                className={filter === 'all' ? brandPrimaryButtonClass : brandOutlineButtonClass}
                 onClick={() => setFilter('all')}
               >
                 All ({Object.values(statusCounts).reduce((acc, count) => acc + Number(count || 0), 0)})
@@ -402,6 +429,7 @@ const AdsDashboard = () => {
                   key={statusKey}
                   variant={filter === statusKey ? 'default' : 'outline'}
                   size="sm"
+                  className={filter === statusKey ? brandPrimaryButtonClass : brandOutlineButtonClass}
                   onClick={() => setFilter(statusKey)}
                 >
                   {statusKey.replace('_', ' ')} ({statusCounts?.[statusKey] || 0})
@@ -417,25 +445,25 @@ const AdsDashboard = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Campaign Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead className="text-right">Impressions</TableHead>
-                <TableHead className="text-right">Clicks</TableHead>
-                <TableHead className="text-right">CTR</TableHead>
-                <TableHead className="w-52">Actions</TableHead>
+                <TableHead className="text-slate-300">Campaign Name</TableHead>
+                <TableHead className="text-slate-300">Status</TableHead>
+                <TableHead className="text-slate-300">Budget</TableHead>
+                <TableHead className="text-right text-slate-300">Impressions</TableHead>
+                <TableHead className="text-right text-slate-300">Clicks</TableHead>
+                <TableHead className="text-right text-slate-300">CTR</TableHead>
+                <TableHead className="w-52 text-slate-300">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan="7" className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan="7" className="text-center py-8 text-slate-300">
                     Loading campaigns...
                   </TableCell>
                 </TableRow>
               ) : campaigns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan="7" className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan="7" className="text-center py-8 text-slate-300">
                     No campaigns yet. Create one to get started!
                   </TableCell>
                 </TableRow>
@@ -445,7 +473,7 @@ const AdsDashboard = () => {
                     <TableCell>
                       <button
                         onClick={() => goToCampaignDetails(campaign)}
-                        className="font-medium hover:underline text-primary"
+                        className="font-medium hover:underline text-[#1BA398]"
                       >
                         {campaign.name}
                       </button>
@@ -453,15 +481,15 @@ const AdsDashboard = () => {
                     <TableCell>{getStatusBadge(campaign.status)}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="w-32 h-2 bg-[#123f6e]/80 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-primary rounded-full"
+                            className="h-full bg-gradient-to-r from-[#1BA398] to-[#FF6B35] rounded-full"
                             style={{
                               width: `${getBudgetProgress(campaign)}%`,
                             }}
                           />
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-slate-300">
                           ${formatCurrency(campaign.budget_spent)} / ${formatCurrency(campaign.budget_total)}
                         </p>
                       </div>
@@ -471,11 +499,11 @@ const AdsDashboard = () => {
                     <TableCell className="text-right">{campaign.ctr}%</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Button variant="outline" size="sm" onClick={() => goToCampaignDetails(campaign)}>
+                        <Button variant="outline" size="sm" className={brandOutlineButtonClass} onClick={() => goToCampaignDetails(campaign)}>
                           View
                         </Button>
                         {campaign.actions?.can_edit && (
-                          <Button variant="outline" size="sm" onClick={() => handleEditCampaign(campaign)}>
+                          <Button variant="outline" size="sm" className={brandOutlineButtonClass} onClick={() => handleEditCampaign(campaign)}>
                             <Pencil className="w-3 h-3 mr-1" />
                             Edit
                           </Button>
@@ -489,24 +517,27 @@ const AdsDashboard = () => {
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">•••</Button>
+                            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-[#1BA398]">•••</Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => goToCampaignDetails(campaign)}>
+                          <DropdownMenuContent align="end" className={brandDropdownContentClass}>
+                            <DropdownMenuItem className={brandDropdownItemClass} onSelect={() => goToCampaignDetails(campaign)}>
                               View Details
                             </DropdownMenuItem>
                             {campaign.actions?.can_pause && (
-                              <DropdownMenuItem onClick={() => handlePause(campaign.id)}>
+                              <DropdownMenuItem className={brandDropdownItemClass} onClick={() => handlePause(campaign.id)}>
                                 Pause
                               </DropdownMenuItem>
                             )}
                             {campaign.actions?.can_resume && (
-                              <DropdownMenuItem onClick={() => handleResume(campaign.id)}>
+                              <DropdownMenuItem className={brandDropdownItemClass} onClick={() => handleResume(campaign.id)}>
                                 Resume
                               </DropdownMenuItem>
                             )}
                             {campaign.actions?.can_submit_review && (
-                              <DropdownMenuItem onClick={() => handleSubmitReview(campaign.id)} className="text-orange-600">
+                              <DropdownMenuItem
+                                onClick={() => handleSubmitReview(campaign.id)}
+                                className={`${brandDropdownItemClass} text-[#FF6B35] focus:bg-[#FF6B35]/20 data-[highlighted]:bg-[#FF6B35]/20`}
+                              >
                                 {campaign.status === 'NEEDS_CHANGES' ? 'Resubmit for Review' : 'Request Review'}
                               </DropdownMenuItem>
                             )}
@@ -522,7 +553,7 @@ const AdsDashboard = () => {
 
           {campaigns.some((c) => c.status === 'NEEDS_CHANGES') && (
             <div className="px-4 pb-4">
-              <Alert>
+              <Alert className="border-[#1b4f86] bg-[#0a335f]/75 text-slate-100">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Some campaigns need updates before approval. Open the campaign and review admin feedback, then resubmit.
@@ -532,7 +563,7 @@ const AdsDashboard = () => {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-4 pb-4 text-sm text-muted-foreground">
+        <div className="flex items-center justify-between px-4 pb-4 text-sm text-slate-300">
           <p>
             Page {pagination.page || 1} of {pagination.total_pages || 1}
           </p>
@@ -540,6 +571,7 @@ const AdsDashboard = () => {
             <Button
               variant="outline"
               size="sm"
+              className={brandOutlineButtonClass}
               disabled={!pagination.has_prev || loading}
               onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, (prev.page || 1) - 1) }))}
             >
@@ -548,6 +580,7 @@ const AdsDashboard = () => {
             <Button
               variant="outline"
               size="sm"
+              className={brandOutlineButtonClass}
               disabled={!pagination.has_next || loading}
               onClick={() => setPagination((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
             >

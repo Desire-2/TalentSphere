@@ -3,7 +3,7 @@
  * Integrates Chart.js for visualization of performance metrics
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -17,8 +17,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -35,30 +33,36 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Eye, MousePointer, TrendingUp, DollarSign, Users, Activity } from 'lucide-react';
-import apiService from '../../services/api';
+import adManagerService from '../../services/adManager';
 
 const CampaignAnalyticsPanel = ({ campaignId, campaignName }) => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState(30);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [campaignId, dateRange]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await apiService.get(
-        `/campaigns/${campaignId}/analytics?days=${dateRange}`
-      );
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - dateRange);
+
+      const response = await adManagerService.getAnalytics(campaignId, {
+        start: start.toISOString().slice(0, 10),
+        end: end.toISOString().slice(0, 10),
+      });
       setAnalytics(response);
     } catch (error) {
       console.error('Failed to load analytics:', error);
+      setAnalytics(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, dateRange]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   if (loading) {
     return <div className="text-center py-8">Loading analytics...</div>;
@@ -69,7 +73,7 @@ const CampaignAnalyticsPanel = ({ campaignId, campaignName }) => {
   }
 
   const totals = analytics.totals || {};
-  const dailyData = analytics.daily_breakdown || [];
+  const dailyData = analytics.daily || analytics.daily_breakdown || [];
   const creativesData = analytics.creatives_breakdown || [];
   const placementsData = analytics.placements_breakdown || [];
 
@@ -153,7 +157,7 @@ const CampaignAnalyticsPanel = ({ campaignId, campaignName }) => {
       {/* Performance Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Performance Trend (Last {dateRange} Days)</CardTitle>
+          <CardTitle>{campaignName ? `${campaignName} Performance` : 'Performance Trend'} (Last {dateRange} Days)</CardTitle>
           <CardDescription>Daily impressions and clicks</CardDescription>
         </CardHeader>
         <CardContent>

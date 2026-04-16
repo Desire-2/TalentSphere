@@ -4,8 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   ExternalLink,
   Award,
-  Eye,
-  MousePointer,
   ChevronLeft,
   ChevronRight,
   Play,
@@ -187,19 +185,8 @@ const FeaturedAdsCarousel = () => {
                   </div>
                 )}
 
-                {/* Stats and CTA */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {ad.stats.impressions?.toLocaleString() || '0'} views
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MousePointer className="w-3 h-3" />
-                      {ad.stats.clicks || 0} clicks
-                    </span>
-                  </div>
-
+                {/* CTA */}
+                <div className="flex justify-end">
                   <Button
                     onClick={() => handleAdClick(ad)}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:shadow-lg group"

@@ -117,19 +117,19 @@ const CreditsBilling = () => {
 
   const getTransactionIcon = (type) => {
     if (type === 'PURCHASE' || type === 'BONUS') {
-      return <ArrowDownLeft className="w-4 h-4 text-green-600" />;
+      return <ArrowDownLeft className="w-4 h-4 text-[#1BA398]" />;
     }
-    return <ArrowUpRight className="w-4 h-4 text-red-600" />;
+    return <ArrowUpRight className="w-4 h-4 text-[#FF6B35]" />;
   };
 
   const getTransactionBadge = (type) => {
     const variants = {
-      PURCHASE: 'bg-green-100 text-green-800',
-      SPEND: 'bg-red-100 text-red-800',
-      REFUND: 'bg-blue-100 text-blue-800',
-      BONUS: 'bg-purple-100 text-purple-800',
+      PURCHASE: 'bg-[#1BA398]/20 text-[#1BA398] border border-[#1BA398]/40',
+      SPEND: 'bg-[#FF6B35]/20 text-[#FF6B35] border border-[#FF6B35]/40',
+      REFUND: 'bg-[#123f6e]/70 text-slate-200 border border-[#1b4f86]',
+      BONUS: 'bg-[#0a335f]/80 text-slate-200 border border-[#1b4f86]',
     };
-    return variants[type] || 'bg-gray-100 text-gray-800';
+    return variants[type] || 'bg-[#123f6e]/70 text-slate-200 border border-[#1b4f86]';
   };
 
   const formatCurrency = (amount) => {
@@ -141,40 +141,51 @@ const CreditsBilling = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const pageBackgroundStyle = {
+    backgroundColor: '#002a5a',
+    backgroundImage:
+      'radial-gradient(circle at center, rgba(18, 63, 110, 0.45) 0, rgba(18, 63, 110, 0.45) 18px, transparent 20px)',
+    backgroundSize: '74px 74px',
+  };
+
+  const darkCardClass = 'border-[#1b4f86] bg-[#0a335f]/75 text-slate-100';
+  const brandPrimaryButtonClass = 'bg-gradient-to-r from-[#1BA398] to-[#FF6B35] text-slate-100 hover:from-[#158b7e] hover:to-[#e55a24]';
+  const brandOutlineButtonClass = 'border-[#1BA398]/50 text-[#1BA398] hover:bg-[#1BA398]/15 hover:text-slate-100';
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">Loading credit information...</p>
+        <p className="text-slate-300">Loading credit information...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl rounded-2xl p-4 sm:p-6" style={pageBackgroundStyle}>
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Credits & Billing</h1>
-        <p className="text-muted-foreground mt-1">Manage your ad credits and billing information</p>
+        <h1 className="text-3xl font-bold text-slate-100">Credits & Billing</h1>
+        <p className="text-slate-300 mt-1">Manage your ad credits and billing information</p>
       </div>
 
       {/* Credit Balance Card - Large & Prominent */}
-      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+      <Card className={`${darkCardClass} bg-gradient-to-br from-[#001F3F]/90 via-[#0a2847]/85 to-[#1BA398]/30`}>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              <p className="text-sm font-medium text-slate-300 uppercase tracking-wide">
                 Current Balance
               </p>
               <h2 className="text-5xl font-bold mt-2">
                 {formatCurrency(credits?.balance || 0)}
               </h2>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-slate-300 mt-2">
                 Ready to spend on campaigns
               </p>
             </div>
             <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
               <DialogTrigger asChild>
-                <Button size="lg" className="gap-2">
+                <Button size="lg" className={`gap-2 ${brandPrimaryButtonClass}`}>
                   <Plus className="w-5 h-5" />
                   Purchase Credits
                 </Button>
@@ -202,7 +213,7 @@ const CreditsBilling = () => {
 
                   {/* Quick select amounts */}
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">
+                    <Label className="text-xs text-slate-300 mb-2 block">
                       Quick Select
                     </Label>
                     <div className="grid grid-cols-4 gap-2">
@@ -211,6 +222,7 @@ const CreditsBilling = () => {
                           key={amount}
                           variant={purchaseAmount === amount.toString() ? 'default' : 'outline'}
                           size="sm"
+                          className={purchaseAmount === amount.toString() ? brandPrimaryButtonClass : brandOutlineButtonClass}
                           onClick={() => setPurchaseAmount(amount.toString())}
                         >
                           ${amount}
@@ -229,6 +241,7 @@ const CreditsBilling = () => {
                   <div className="flex gap-2 justify-end">
                     <Button
                       variant="outline"
+                      className={brandOutlineButtonClass}
                       onClick={() => setShowPurchaseDialog(false)}
                     >
                       Cancel
@@ -236,6 +249,7 @@ const CreditsBilling = () => {
                     <Button
                       onClick={handlePurchaseCredits}
                       disabled={!purchaseAmount || processingPurchase}
+                      className={brandPrimaryButtonClass}
                     >
                       {processingPurchase ? 'Processing...' : `Pay ${formatCurrency(purchaseAmount || 0)}`}
                     </Button>
@@ -249,12 +263,12 @@ const CreditsBilling = () => {
 
       {/* Usage Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">Lifetime Purchased</p>
-                <TrendingUp className="w-4 h-4 text-green-600" />
+                <p className="text-sm font-medium text-slate-300">Lifetime Purchased</p>
+                <TrendingUp className="w-4 h-4 text-[#1BA398]" />
               </div>
               <p className="text-2xl font-bold">
                 {formatCurrency(
@@ -267,12 +281,12 @@ const CreditsBilling = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">Total Spent</p>
-                <TrendingDown className="w-4 h-4 text-red-600" />
+                <p className="text-sm font-medium text-slate-300">Total Spent</p>
+                <TrendingDown className="w-4 h-4 text-[#FF6B35]" />
               </div>
               <p className="text-2xl font-bold">
                 {formatCurrency(
@@ -285,12 +299,12 @@ const CreditsBilling = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={darkCardClass}>
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">Transactions</p>
-                <CreditCard className="w-4 h-4 text-primary" />
+                <p className="text-sm font-medium text-slate-300">Transactions</p>
+                <CreditCard className="w-4 h-4 text-[#1BA398]" />
               </div>
               <p className="text-2xl font-bold">
                 {credits?.transactions?.length || 0}
@@ -301,19 +315,19 @@ const CreditsBilling = () => {
       </div>
 
       {/* Transaction History */}
-      <Card>
-        <CardHeader className="pb-4 border-b">
-          <CardTitle>Transaction History</CardTitle>
+      <Card className={darkCardClass}>
+        <CardHeader className="pb-4 border-b border-[#1b4f86]">
+          <CardTitle className="text-slate-100">Transaction History</CardTitle>
         </CardHeader>
 
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead className="text-slate-300">Date</TableHead>
+                <TableHead className="text-slate-300">Type</TableHead>
+                <TableHead className="text-right text-slate-300">Amount</TableHead>
+                <TableHead className="text-slate-300">Reference</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -337,8 +351,8 @@ const CreditsBilling = () => {
                           transaction.transaction_type === 'PURCHASE' ||
                           transaction.transaction_type === 'BONUS' ||
                           transaction.transaction_type === 'REFUND'
-                            ? 'text-green-600'
-                            : 'text-red-600'
+                            ? 'text-[#1BA398]'
+                            : 'text-[#FF6B35]'
                         }
                       >
                         {transaction.transaction_type === 'PURCHASE' ||
@@ -349,14 +363,14 @@ const CreditsBilling = () => {
                         {formatCurrency(transaction.amount)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-slate-300">
                       {transaction.reference_id || transaction.note || '—'}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan="4" className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan="4" className="text-center py-8 text-slate-300">
                     No transactions yet. Purchase credits to get started!
                   </TableCell>
                 </TableRow>
@@ -367,9 +381,9 @@ const CreditsBilling = () => {
       </Card>
 
       {/* Billing Information */}
-      <Card>
+      <Card className={darkCardClass}>
         <CardHeader>
-          <CardTitle className="text-sm">Billing Information</CardTitle>
+          <CardTitle className="text-sm text-slate-100">Billing Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
@@ -380,24 +394,24 @@ const CreditsBilling = () => {
 
           <div className="space-y-4">
             <div>
-              <Label className="text-muted-foreground">Payment Methods</Label>
+              <Label className="text-slate-300">Payment Methods</Label>
               <p className="text-sm mt-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className={brandOutlineButtonClass}>
                   Add Payment Method
                 </Button>
               </p>
             </div>
 
             <div>
-              <Label className="text-muted-foreground">Billing Address</Label>
-              <p className="text-sm mt-2 text-muted-foreground">
+              <Label className="text-slate-300">Billing Address</Label>
+              <p className="text-sm mt-2 text-slate-300">
                 To update your billing address, please contact support
               </p>
             </div>
 
             <div>
-              <Label className="text-muted-foreground">Invoices</Label>
-              <p className="text-sm mt-2 text-muted-foreground">
+              <Label className="text-slate-300">Invoices</Label>
+              <p className="text-sm mt-2 text-slate-300">
                 All invoices are automatically emailed after each transaction
               </p>
             </div>
@@ -406,35 +420,35 @@ const CreditsBilling = () => {
       </Card>
 
       {/* FAQ Section */}
-      <Card>
+      <Card className={darkCardClass}>
         <CardHeader>
-          <CardTitle className="text-sm">Frequently Asked Questions</CardTitle>
+          <CardTitle className="text-sm text-slate-100">Frequently Asked Questions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div>
             <p className="font-medium mb-1">When will my credits be available?</p>
-            <p className="text-muted-foreground">
+            <p className="text-slate-300">
               Credits are available immediately after payment is processed.
             </p>
           </div>
 
           <div>
             <p className="font-medium mb-1">Can I request a refund?</p>
-            <p className="text-muted-foreground">
+            <p className="text-slate-300">
               Unused credits can be refunded within 30 days of purchase. Contact support for details.
             </p>
           </div>
 
           <div>
             <p className="font-medium mb-1">What payment methods do you accept?</p>
-            <p className="text-muted-foreground">
+            <p className="text-slate-300">
               We accept all major credit cards (Visa, Mastercard, Amex) and bank transfers.
             </p>
           </div>
 
           <div>
             <p className="font-medium mb-1">How do I know how much each campaign will cost?</p>
-            <p className="text-muted-foreground">
+            <p className="text-slate-300">
               When creating a campaign, you set your budget and bid amount. You only pay for actual impressions or clicks.
             </p>
           </div>

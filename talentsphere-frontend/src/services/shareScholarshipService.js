@@ -153,7 +153,7 @@ class ShareScholarshipService {
       : 'soon';
 
     const scholarshipLink = `${window.location.origin}/scholarships/${scholarship.id}`;
-    const applyLink = scholarship.application_url || scholarshipLink;
+    const applyLink = `https://jobs.afritechbridge.online/scholarships/${scholarship.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
     const linksBlock = `\n\n🔗 Apply Here: ${applyLink}\n🌍 Join Our Community: ${communityLink}`;
 
@@ -231,7 +231,7 @@ class ShareScholarshipService {
         })
       : 'Check scholarship page for details';
 
-    const applyLink = scholarship.application_url || scholarshipUrl;
+    const applyLink = `https://jobs.afritechbridge.online/scholarships/${scholarship.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
 
     return `Hi ${recipientName},

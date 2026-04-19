@@ -78,7 +78,7 @@ const ShareScholarship = ({
 
   // Generate scholarship URL
   const scholarshipUrl = `${window.location.origin}/scholarships/${scholarship.id}`;
-  const applyUrl = scholarship.application_url || scholarshipUrl;
+  const applyUrl = `https://jobs.afritechbridge.online/scholarships/${scholarship.id}`;
   const communityUrl = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
   
   // Scholarship preview data

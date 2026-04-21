@@ -193,9 +193,23 @@ const JobManagementContainer = () => {
       },
       analytics: () => window.open(`/jobs/${jobId}/analytics`, '_blank'),
       share: () => {
+        const selectedJob = jobs.find((item) => item.id === jobId);
         const shareUrl = `${window.location.origin}/jobs/${jobId}`;
-        navigator.clipboard.writeText(shareUrl);
-        alert('Job URL copied to clipboard!');
+        const companyName = selectedJob?.company?.name || selectedJob?.external_company_name || 'our company';
+        const requirements = (selectedJob?.required_skills || '')
+          .split(',')
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+          .slice(0, 4);
+
+        const shareMessage = [
+          `Job Opportunity: ${selectedJob?.title || 'Open Position'} at ${companyName}`,
+          requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+          `Apply: ${shareUrl}`
+        ].filter(Boolean).join('\n');
+
+        navigator.clipboard.writeText(shareMessage);
+        alert('Job share message copied to clipboard!');
       }
     };
 

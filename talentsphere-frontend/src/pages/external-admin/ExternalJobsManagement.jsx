@@ -182,11 +182,13 @@ const ExternalJobsManagement = () => {
   const handleCopyJobLink = async (jobId) => {
     try {
       setActionLoading(prev => ({ ...prev, [jobId]: 'copy' }));
+
+      const jobData = jobs.find((job) => job.id === jobId) || null;
       
-      const result = await externalAdminService.copyJobLink(jobId);
+      const result = await externalAdminService.copyJobLink(jobId, jobData);
       
       if (result.success) {
-        toast.success('Job link copied to clipboard!');
+        toast.success('Job share message copied to clipboard!');
         console.log('✅ Job link copied:', result.url);
       } else {
         throw new Error(result.error);

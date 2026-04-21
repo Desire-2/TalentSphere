@@ -93,7 +93,14 @@ const ShareJob = ({
   const salaryDisplay = getSalaryDisplay(job);
 
   // Default share message
-  const defaultMessage = `✨ New Opportunity: ${job.title} at ${companyName}\n${jobLocation ? `📍 Location: ${jobLocation}\n` : ''}${salaryDisplay !== 'Salary not specified' ? `💰 Salary: ${salaryDisplay}\n` : ''}\n🔗 Apply Here: ${applyUrl}\n🌍 Join Our Community: ${communityUrl}`;
+  const defaultMessage = shareJobService.buildShareMessage(job, companyName, {
+    includeLinks: true,
+    includeRequirements: true,
+    applyUrl,
+    communityUrl
+  });
+
+  const getCurrentMessage = () => customMessage || selectedTemplate?.template || defaultMessage;
 
   // Initialize analytics and suggestions
   const initializeShareData = () => {
@@ -173,7 +180,7 @@ const ShareJob = ({
 
   // Social media sharing URLs with tracking
   const getSocialShareUrl = (platform) => {
-    const message = customMessage || selectedTemplate?.template || defaultMessage;
+    const message = getCurrentMessage();
     const trackingUrl = shareJobService.generateTrackingUrl(job.id, platform);
     const encodedUrl = encodeURIComponent(trackingUrl);
     const encodedMessage = encodeURIComponent(message);
@@ -207,9 +214,9 @@ const ShareJob = ({
 
   // Email sharing with analytics
   const shareViaEmail = () => {
-    const message = customMessage || selectedTemplate?.template || defaultMessage;
+    const message = getCurrentMessage();
     const subject = encodeURIComponent(`Job Opportunity: ${job.title} at ${companyName}`);
-    const body = encodeURIComponent(`${message}\n\nApply Link: ${applyUrl}\nCommunity Link: ${communityUrl}`);
+    const body = encodeURIComponent(message);
     window.open(`mailto:?subject=${subject}&body=${body}`);
     
   shareJobService.recordShare(job.id, 'email_client', message);
@@ -558,14 +565,12 @@ const ShareJob = ({
                     <div>
                       <Label>Full Message Preview</Label>
                       <div className="bg-gray-50 rounded-lg p-3 mt-1 text-sm text-gray-700">
-                        {customMessage || defaultMessage}
-                        <br />
-                        <span className="text-blue-600 underline">{jobUrl}</span>
+                        {getCurrentMessage()}
                       </div>
                     </div>
 
                     <Button
-                      onClick={() => copyToClipboard(`${customMessage || defaultMessage}\n\n${jobUrl}`)}
+                      onClick={() => copyToClipboard(getCurrentMessage())}
                       className="w-full"
                       disabled={copying}
                     >
@@ -778,12 +783,10 @@ const ShareJob = ({
                         </Label>
                         <div className="bg-white rounded-md p-3 text-sm text-gray-700">
                           {selectedTemplate.template}
-                          <br />
-                          <span className="text-blue-600 underline">{jobUrl}</span>
                         </div>
                         <div className="flex gap-2 mt-3">
                           <Button
-                            onClick={() => copyToClipboard(`${selectedTemplate.template}\n\n${jobUrl}`, 'template')}
+                            onClick={() => copyToClipboard(selectedTemplate.template, 'template')}
                             className="flex-1"
                             disabled={copying}
                           >
@@ -844,7 +847,7 @@ const ShareJob = ({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => copyToClipboard(`${customMessage}\n\n${jobUrl}`, 'custom')}
+                            onClick={() => copyToClipboard(customMessage, 'custom')}
                             disabled={!customMessage || copying}
                           >
                             Copy

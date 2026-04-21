@@ -60,17 +60,29 @@ export const externalAdminService = {
   },
 
   // Copy job link to clipboard
-  copyJobLink: async (jobId) => {
+  copyJobLink: async (jobId, jobData = null) => {
     const baseUrl = window.location.origin;
     const jobUrl = `${baseUrl}/jobs/${jobId}`;
+    const requirements = (jobData?.required_skills || '')
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    const companyName = jobData?.external_company_name || jobData?.company?.name || 'our company';
+
+    const shareMessage = [
+      `Job Opportunity: ${jobData?.title || 'Open Position'} at ${companyName}`,
+      requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+      `Apply: ${jobUrl}`
+    ].filter(Boolean).join('\n');
     
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(jobUrl);
+        await navigator.clipboard.writeText(jobData ? shareMessage : jobUrl);
       } else {
         // Fallback for older browsers
         const textArea = document.createElement('textarea');
-        textArea.value = jobUrl;
+        textArea.value = jobData ? shareMessage : jobUrl;
         textArea.style.position = 'fixed';
         textArea.style.opacity = '0';
         document.body.appendChild(textArea);
@@ -79,7 +91,7 @@ export const externalAdminService = {
         document.execCommand('copy');
         document.body.removeChild(textArea);
       }
-      return { success: true, url: jobUrl };
+      return { success: true, url: jobUrl, message: jobData ? shareMessage : jobUrl };
     } catch (error) {
       console.error('Failed to copy job link:', error);
       return { success: false, error: error.message };

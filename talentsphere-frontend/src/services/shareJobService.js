@@ -12,6 +12,87 @@ class ShareJobService {
     this.loadAnalytics();
   }
 
+  // Convert different requirement formats to a clean list for sharing
+  normalizeRequirementItems(rawValue) {
+    if (!rawValue) return [];
+
+    if (Array.isArray(rawValue)) {
+      return rawValue
+        .map((item) => (typeof item === 'string' ? item : String(item || '')))
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    if (typeof rawValue === 'object') {
+      const flags = [];
+      if (rawValue.resume) flags.push('Resume required');
+      if (rawValue.cover_letter) flags.push('Cover letter required');
+      if (rawValue.portfolio) flags.push('Portfolio required');
+      return flags;
+    }
+
+    if (typeof rawValue === 'string') {
+      return rawValue
+        .split(/\n|,|;|\||•|\u2022/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }
+
+  getShareRequirements(job, maxItems = 4) {
+    const requirements = [
+      ...this.normalizeRequirementItems(job.required_skills),
+      ...this.normalizeRequirementItems(job.requirements),
+      ...(job.education_requirement ? [`Education: ${job.education_requirement}`] : []),
+      ...(
+        Number.isFinite(job.years_experience_min) && job.years_experience_min > 0
+          ? [`Experience: ${job.years_experience_min}+ years`]
+          : []
+      )
+    ];
+
+    return [...new Set(requirements)].slice(0, maxItems);
+  }
+
+  getSalaryText(job) {
+    if (job?.salary?.display) return job.salary.display;
+    if (job?.salary_min && job?.salary_max) {
+      return `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`;
+    }
+    if (job?.salary_min) return `From $${job.salary_min.toLocaleString()}`;
+    if (job?.salary_max) return `Up to $${job.salary_max.toLocaleString()}`;
+    return '';
+  }
+
+  buildShareMessage(job, companyName, options = {}) {
+    const {
+      includeLinks = true,
+      includeRequirements = true,
+      applyUrl = `https://jobs.afritechbridge.online/jobs/${job.id}`,
+      communityUrl = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl'
+    } = options;
+
+    const location = job?.location?.display || job?.location || '';
+    const salary = this.getSalaryText(job);
+    const requirements = includeRequirements ? this.getShareRequirements(job) : [];
+
+    const lines = [
+      `✨ New Opportunity: ${job.title} at ${companyName}`,
+      location ? `📍 Location: ${location}` : '',
+      salary ? `💰 Salary: ${salary}` : '',
+      requirements.length ? `🧩 Requirements: ${requirements.join(', ')}` : ''
+    ].filter(Boolean);
+
+    if (includeLinks) {
+      lines.push(`🔗 Apply Here: ${applyUrl}`);
+      lines.push(`🌍 Join Our Community: ${communityUrl}`);
+    }
+
+    return lines.join('\n');
+  }
+
   // Load share history from localStorage
   loadShareHistory() {
     try {
@@ -301,33 +382,37 @@ class ShareJobService {
   generateShareTemplates(job, companyName) {
     const applyLink = `https://jobs.afritechbridge.online/jobs/${job.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
+    const requirementItems = this.getShareRequirements(job);
+    const requirementsLine = requirementItems.length
+      ? `\n🧩 Requirements: ${requirementItems.join(', ')}`
+      : '';
 
     const linksBlock = `\n\n🔗 Apply Here: ${applyLink}\n🌍 Join Our Community: ${communityLink}`;
     
     const templates = [
       {
         name: '✨ Professional',
-        template: `🔍 Exciting opportunity alert!\n\n${companyName} is hiring a ${job.title}. This could be a perfect fit for someone in your network.${linksBlock}\n\n#JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
+        template: `🔍 Exciting opportunity alert!\n\n${companyName} is hiring a ${job.title}. This could be a perfect fit for someone in your network.${requirementsLine}${linksBlock}\n\n#JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '👋 Casual',
-        template: `Hey friends! 👋\n\nKnow anyone looking for a ${job.title} role? I found this opening at ${companyName}.${linksBlock}\n\nSharing is caring! 💼`
+        template: `Hey friends! 👋\n\nKnow anyone looking for a ${job.title} role? I found this opening at ${companyName}.${requirementsLine}${linksBlock}\n\nSharing is caring! 💼`
       },
       {
         name: '⚡ Urgent',
-        template: `⚡ URGENT HIRING\n\n${companyName} needs a ${job.title} ASAP. If you know someone perfect for this role, don't wait.${linksBlock}\n\n#UrgentHiring #${job.title.replace(/\s+/g, '')}`
+        template: `⚡ URGENT HIRING\n\n${companyName} needs a ${job.title} ASAP. If you know someone perfect for this role, don't wait.${requirementsLine}${linksBlock}\n\n#UrgentHiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '🤝 Network Helper',
-        template: `🤝 Helping our network grow\n\n${companyName} is looking for a talented ${job.title}. Tag someone who should see this.${linksBlock}\n\n#Networking #CareerOpportunity`
+        template: `🤝 Helping our network grow\n\n${companyName} is looking for a talented ${job.title}. Tag someone who should see this.${requirementsLine}${linksBlock}\n\n#Networking #CareerOpportunity`
       },
       {
         name: '🏢 Company Focused',
-        template: `🏢 ${companyName} is expanding!\n\nThey're looking for a skilled ${job.title}. Great company, great opportunity.${linksBlock}\n\n#CompanyGrowth #Hiring #TeamExpansion`
+        template: `🏢 ${companyName} is expanding!\n\nThey're looking for a skilled ${job.title}. Great company, great opportunity.${requirementsLine}${linksBlock}\n\n#CompanyGrowth #Hiring #TeamExpansion`
       },
       {
         name: '🎯 Detailed',
-        template: `📢 JOB ALERT\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n${job.location ? `📍 Location: ${job.location}\n` : ''}${linksBlock}\n\nDon't miss this opportunity to advance your career. #JobSearch #CareerGrowth`
+        template: `📢 JOB ALERT\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n${job.location ? `📍 Location: ${job.location}\n` : ''}${requirementItems.length ? `🧩 Requirements: ${requirementItems.join(', ')}\n` : ''}${linksBlock}\n\nDon't miss this opportunity to advance your career. #JobSearch #CareerGrowth`
       }
     ];
 

@@ -86,8 +86,21 @@ const JobViewModal = ({
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/jobs/${jobId}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Job URL copied to clipboard!');
+    const companyName = job?.company?.name || job?.external_company_name || 'our company';
+    const requirements = (job?.required_skills || '')
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+
+    const shareMessage = [
+      `Job Opportunity: ${job?.title || 'Open Position'} at ${companyName}`,
+      requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+      `Apply: ${shareUrl}`
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(shareMessage);
+    alert('Job share message copied to clipboard!');
   };
 
   const handleViewOnSite = () => {

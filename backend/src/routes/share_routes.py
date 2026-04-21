@@ -107,6 +107,21 @@ def send_job_share_email(job_id):
             company = Company.query.get(job.company_id)
         
         custom_message = data.get('custom_message', '')
+        requirement_items = []
+
+        if job.required_skills:
+            requirement_items.extend([
+                item.strip() for item in str(job.required_skills).replace(';', ',').split(',') if item.strip()
+            ])
+
+        if job.education_requirement:
+            requirement_items.append(f"Education: {job.education_requirement}")
+
+        if job.years_experience_min and job.years_experience_min > 0:
+            requirement_items.append(f"Experience: {job.years_experience_min}+ years")
+
+        requirement_items = list(dict.fromkeys(requirement_items))[:5]
+        requirements_section = f"\n**Requirements:**\n- " + "\n- ".join(requirement_items) + "\n" if requirement_items else ""
         
         # Prepare email content
         subject = f"Job Opportunity: {job.title}"
@@ -132,6 +147,7 @@ Hello!
 {f"Location: {job.location}" if job.location else ""}
 {f"Employment Type: {job.employment_type.replace('_', ' ').title()}" if job.employment_type else ""}
 {f"Salary: ${job.salary_min:,} - ${job.salary_max:,}" if job.salary_min and job.salary_max else ""}
+{requirements_section}
 {personal_message_section}
 
 **Job Description:**

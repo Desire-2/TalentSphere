@@ -201,10 +201,12 @@ const JobManagementContainer = () => {
           .map((skill) => skill.trim())
           .filter(Boolean)
           .slice(0, 4);
+        const education = selectedJob?.education_requirement?.trim();
 
         const shareMessage = [
           `Job Opportunity: ${selectedJob?.title || 'Open Position'} at ${companyName}`,
           requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+          education ? `Education: ${education}` : '',
           `Apply: ${shareUrl}`
         ].filter(Boolean).join('\n');
 

@@ -92,10 +92,12 @@ const JobViewModal = ({
       .map((skill) => skill.trim())
       .filter(Boolean)
       .slice(0, 4);
+    const education = job?.education_requirement?.trim();
 
     const shareMessage = [
       `Job Opportunity: ${job?.title || 'Open Position'} at ${companyName}`,
       requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+      education ? `Education: ${education}` : '',
       `Apply: ${shareUrl}`
     ].filter(Boolean).join('\n');
 

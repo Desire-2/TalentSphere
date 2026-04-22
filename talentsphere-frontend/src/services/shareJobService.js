@@ -41,19 +41,57 @@ class ShareJobService {
     return [];
   }
 
-  getShareRequirements(job, maxItems = 4) {
-    const requirements = [
-      ...this.normalizeRequirementItems(job.required_skills),
-      ...this.normalizeRequirementItems(job.requirements),
-      ...(job.education_requirement ? [`Education: ${job.education_requirement}`] : []),
-      ...(
-        Number.isFinite(job.years_experience_min) && job.years_experience_min > 0
-          ? [`Experience: ${job.years_experience_min}+ years`]
-          : []
-      )
-    ];
+  getExperienceRequirement(job) {
+    const min = Number.isFinite(job?.years_experience_min) ? job.years_experience_min : null;
+    const max = Number.isFinite(job?.years_experience_max) ? job.years_experience_max : null;
 
-    return [...new Set(requirements)].slice(0, maxItems);
+    if (min && max) return `${min}-${max} years`;
+    if (min) return `${min}+ years`;
+    if (max) return `Up to ${max} years`;
+    return '';
+  }
+
+  getApplicationRequirementItems(job) {
+    const applicationRequirements = [];
+
+    if (job?.requires_resume || job?.requirements?.resume) {
+      applicationRequirements.push('Resume');
+    }
+    if (job?.requires_cover_letter || job?.requirements?.cover_letter) {
+      applicationRequirements.push('Cover Letter');
+    }
+    if (job?.requires_portfolio || job?.requirements?.portfolio) {
+      applicationRequirements.push('Portfolio');
+    }
+
+    return applicationRequirements;
+  }
+
+  getShareRequirementSections(job) {
+    const skills = this.normalizeRequirementItems(job?.required_skills).slice(0, 6);
+    const education = job?.education_requirement ? String(job.education_requirement).trim() : '';
+    const experience = this.getExperienceRequirement(job);
+    const applicationRequirements = this.getApplicationRequirementItems(job);
+    const additional = typeof job?.requirements === 'string'
+      ? this.normalizeRequirementItems(job.requirements)
+          .filter((item) => !skills.includes(item))
+          .slice(0, 3)
+      : [];
+
+    const sections = [];
+    if (skills.length) sections.push(`Skills: ${skills.join(', ')}`);
+    if (education) sections.push(`Education: ${education}`);
+    if (experience) sections.push(`Experience: ${experience}`);
+    if (applicationRequirements.length) {
+      sections.push(`Application: ${applicationRequirements.join(', ')}`);
+    }
+    if (additional.length) sections.push(`Other: ${additional.join(', ')}`);
+
+    return sections;
+  }
+
+  getShareRequirements(job, maxItems = 4) {
+    return this.getShareRequirementSections(job).slice(0, maxItems);
   }
 
   getSalaryText(job) {
@@ -76,13 +114,13 @@ class ShareJobService {
 
     const location = job?.location?.display || job?.location || '';
     const salary = this.getSalaryText(job);
-    const requirements = includeRequirements ? this.getShareRequirements(job) : [];
+    const requirementSections = includeRequirements ? this.getShareRequirementSections(job) : [];
 
     const lines = [
       `✨ New Opportunity: ${job.title} at ${companyName}`,
       location ? `📍 Location: ${location}` : '',
       salary ? `💰 Salary: ${salary}` : '',
-      requirements.length ? `🧩 Requirements: ${requirements.join(', ')}` : ''
+      ...requirementSections.map((section) => `🧩 ${section}`)
     ].filter(Boolean);
 
     if (includeLinks) {
@@ -382,9 +420,9 @@ class ShareJobService {
   generateShareTemplates(job, companyName) {
     const applyLink = `https://jobs.afritechbridge.online/jobs/${job.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
-    const requirementItems = this.getShareRequirements(job);
-    const requirementsLine = requirementItems.length
-      ? `\n🧩 Requirements: ${requirementItems.join(', ')}`
+    const requirementSections = this.getShareRequirementSections(job);
+    const requirementsBlock = requirementSections.length
+      ? `\n${requirementSections.map((section) => `🧩 ${section}`).join('\n')}`
       : '';
 
     const linksBlock = `\n\n🔗 Apply Here: ${applyLink}\n🌍 Join Our Community: ${communityLink}`;
@@ -392,27 +430,27 @@ class ShareJobService {
     const templates = [
       {
         name: '✨ Professional',
-        template: `🔍 Exciting opportunity alert!\n\n${companyName} is hiring a ${job.title}. This could be a perfect fit for someone in your network.${requirementsLine}${linksBlock}\n\n#JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
+        template: `🔍 Exciting opportunity alert!\n\n${companyName} is hiring a ${job.title}. This could be a perfect fit for someone in your network.${requirementsBlock}${linksBlock}\n\n#JobOpportunity #Hiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '👋 Casual',
-        template: `Hey friends! 👋\n\nKnow anyone looking for a ${job.title} role? I found this opening at ${companyName}.${requirementsLine}${linksBlock}\n\nSharing is caring! 💼`
+        template: `Hey friends! 👋\n\nKnow anyone looking for a ${job.title} role? I found this opening at ${companyName}.${requirementsBlock}${linksBlock}\n\nSharing is caring! 💼`
       },
       {
         name: '⚡ Urgent',
-        template: `⚡ URGENT HIRING\n\n${companyName} needs a ${job.title} ASAP. If you know someone perfect for this role, don't wait.${requirementsLine}${linksBlock}\n\n#UrgentHiring #${job.title.replace(/\s+/g, '')}`
+        template: `⚡ URGENT HIRING\n\n${companyName} needs a ${job.title} ASAP. If you know someone perfect for this role, don't wait.${requirementsBlock}${linksBlock}\n\n#UrgentHiring #${job.title.replace(/\s+/g, '')}`
       },
       {
         name: '🤝 Network Helper',
-        template: `🤝 Helping our network grow\n\n${companyName} is looking for a talented ${job.title}. Tag someone who should see this.${requirementsLine}${linksBlock}\n\n#Networking #CareerOpportunity`
+        template: `🤝 Helping our network grow\n\n${companyName} is looking for a talented ${job.title}. Tag someone who should see this.${requirementsBlock}${linksBlock}\n\n#Networking #CareerOpportunity`
       },
       {
         name: '🏢 Company Focused',
-        template: `🏢 ${companyName} is expanding!\n\nThey're looking for a skilled ${job.title}. Great company, great opportunity.${requirementsLine}${linksBlock}\n\n#CompanyGrowth #Hiring #TeamExpansion`
+        template: `🏢 ${companyName} is expanding!\n\nThey're looking for a skilled ${job.title}. Great company, great opportunity.${requirementsBlock}${linksBlock}\n\n#CompanyGrowth #Hiring #TeamExpansion`
       },
       {
         name: '🎯 Detailed',
-        template: `📢 JOB ALERT\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n${job.location ? `📍 Location: ${job.location}\n` : ''}${requirementItems.length ? `🧩 Requirements: ${requirementItems.join(', ')}\n` : ''}${linksBlock}\n\nDon't miss this opportunity to advance your career. #JobSearch #CareerGrowth`
+        template: `📢 JOB ALERT\n\n🏢 Company: ${companyName}\n💼 Position: ${job.title}\n${job.location ? `📍 Location: ${job.location}\n` : ''}${requirementSections.length ? `${requirementSections.map((section) => `🧩 ${section}`).join('\n')}\n` : ''}${linksBlock}\n\nDon't miss this opportunity to advance your career. #JobSearch #CareerGrowth`
       }
     ];
 

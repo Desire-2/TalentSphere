@@ -68,11 +68,13 @@ export const externalAdminService = {
       .map((skill) => skill.trim())
       .filter(Boolean)
       .slice(0, 4);
+    const education = jobData?.education_requirement?.trim();
     const companyName = jobData?.external_company_name || jobData?.company?.name || 'our company';
 
     const shareMessage = [
       `Job Opportunity: ${jobData?.title || 'Open Position'} at ${companyName}`,
       requirements.length ? `Requirements: ${requirements.join(', ')}` : '',
+      education ? `Education: ${education}` : '',
       `Apply: ${jobUrl}`
     ].filter(Boolean).join('\n');
     

@@ -92,7 +92,14 @@ const ShareScholarship = ({
     : 'Open';
 
   // Default sharing message
-  const defaultMessage = `🎓 Scholarship Opportunity: ${scholarshipTitle}\n🏢 Provider: ${organizationName}\n💰 Award: ${amount}\n⏰ Deadline: ${deadline}\n\n🔗 Apply Here: ${applyUrl}\n🌍 Join Our Community: ${communityUrl}`;
+  const defaultMessage = shareScholarshipService.buildShareMessage(scholarship, organizationName, {
+    includeLinks: true,
+    includeEligibility: true,
+    applyUrl,
+    communityUrl
+  });
+
+  const getCurrentMessage = () => customMessage || selectedTemplate?.template || defaultMessage;
 
   // Load data when dialog opens
   useEffect(() => {
@@ -172,7 +179,7 @@ const ShareScholarship = ({
 
   // Social media sharing URLs with tracking
   const getSocialShareUrl = (platform) => {
-    const message = customMessage || selectedTemplate?.template || defaultMessage;
+    const message = getCurrentMessage();
     const trackingUrl = shareScholarshipService.generateTrackingUrl(scholarship.id, platform);
     const encodedUrl = encodeURIComponent(trackingUrl);
     const encodedMessage = encodeURIComponent(message);
@@ -250,7 +257,7 @@ const ShareScholarship = ({
     try {
       await navigator.share({
         title: scholarshipTitle,
-        text: customMessage || defaultMessage,
+        text: getCurrentMessage(),
         url: scholarshipUrl
       });
       shareScholarshipService.recordShare(scholarship.id, 'native_share', customMessage);
@@ -542,14 +549,12 @@ const ShareScholarship = ({
                     <div>
                       <Label>Full Message Preview</Label>
                       <div className="bg-gray-50 rounded-lg p-3 mt-1 text-sm text-gray-700">
-                        {customMessage || defaultMessage}
-                        <br />
-                        <span className="text-blue-600 underline">{scholarshipUrl}</span>
+                        {getCurrentMessage()}
                       </div>
                     </div>
 
                     <Button
-                      onClick={() => copyToClipboard(`${customMessage || defaultMessage}\n\n${scholarshipUrl}`)}
+                      onClick={() => copyToClipboard(getCurrentMessage())}
                       className="w-full"
                       disabled={copying}
                     >
@@ -687,12 +692,10 @@ const ShareScholarship = ({
                         </Label>
                         <div className="bg-white rounded-md p-3 text-sm text-gray-700">
                           {selectedTemplate.template}
-                          <br />
-                          <span className="text-blue-600 underline">{scholarshipUrl}</span>
                         </div>
                         <div className="flex gap-2 mt-3">
                           <Button
-                            onClick={() => copyToClipboard(`${selectedTemplate.template}\n\n${scholarshipUrl}`, 'template')}
+                            onClick={() => copyToClipboard(selectedTemplate.template, 'template')}
                             className="flex-1"
                             disabled={copying}
                           >
@@ -753,7 +756,7 @@ const ShareScholarship = ({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => copyToClipboard(`${customMessage}\n\n${scholarshipUrl}`, 'custom')}
+                            onClick={() => copyToClipboard(customMessage, 'custom')}
                             disabled={!customMessage || copying}
                           >
                             Copy

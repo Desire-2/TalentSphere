@@ -2751,7 +2751,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                     <FormField label="Employment Type" field="employment_type">
                       <Select value={formData.employment_type} onValueChange={(value) => stableInputChange('employment_type', value)}>
                         <SelectTrigger className="enhanced-input">
-                          <SelectValue />
+                          <SelectValue placeholder="Select employment type" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="full-time">
@@ -2791,7 +2791,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                     <FormField label="Experience Level" field="experience_level">
                       <Select value={formData.experience_level} onValueChange={(value) => stableInputChange('experience_level', value)}>
                         <SelectTrigger className="enhanced-input">
-                          <SelectValue />
+                          <SelectValue placeholder="Select experience level" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="entry">
@@ -2960,7 +2960,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                   <FormField label="Location Type" field="location_type">
                     <Select value={formData.location_type} onValueChange={(value) => stableInputChange('location_type', value)}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select location type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="remote">
@@ -3067,7 +3067,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                     <FormField label="Currency" field="salary_currency">
                       <Select value={formData.salary_currency} onValueChange={(value) => stableInputChange('salary_currency', value)}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="USD">🇺🇸 USD</SelectItem>
@@ -3080,7 +3080,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                     <FormField label="Period" field="salary_period">
                       <Select value={formData.salary_period} onValueChange={(value) => stableInputChange('salary_period', value)}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select salary period" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="yearly">📅 Yearly</SelectItem>
@@ -3206,7 +3206,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                   <FormField label="Application Type" field="application_type">
                     <Select value={formData.application_type} onValueChange={(value) => stableInputChange('application_type', value)}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select application type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="external">

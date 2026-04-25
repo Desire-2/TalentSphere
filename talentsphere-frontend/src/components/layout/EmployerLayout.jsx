@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -31,6 +31,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useSessionManager } from '../../hooks/useSessionManager';
+import apiService from '../../services/api';
 
 const EmployerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,6 +40,28 @@ const EmployerLayout = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const dashboardTab = searchParams.get('tab');
+  const [avatarImageSrc, setAvatarImageSrc] = useState('');
+
+  const resolveEmployerLogo = (profileData) => {
+    if (!profileData) return '';
+
+    return (
+      profileData?.employer_profile?.company_logo ||
+      profileData?.employer_profile?.logo_url ||
+      profileData?.company_logo ||
+      profileData?.company?.logo_url ||
+      profileData?.company?.logo ||
+      profileData?.profile_picture ||
+      ''
+    );
+  };
+
+  const getInitials = () => {
+    const first = user?.first_name?.[0] || '';
+    const last = user?.last_name?.[0] || '';
+    const initials = `${first}${last}`.toUpperCase();
+    return initials || 'EM';
+  };
 
   // Initialize session manager for employer panel
   useSessionManager({
@@ -122,6 +145,32 @@ const EmployerLayout = () => {
       navigate('/', { replace: true });
     }
   };
+
+  // Keep avatar source synced with store updates.
+  useEffect(() => {
+    setAvatarImageSrc(resolveEmployerLogo(user));
+  }, [user]);
+
+  // Fetch latest profile once so dashboard header can display updated company logo.
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshProfile = async () => {
+      try {
+        const profile = await apiService.getProfile();
+        if (!isMounted || !profile) return;
+        setAvatarImageSrc(resolveEmployerLogo(profile));
+      } catch (error) {
+        console.debug('Employer layout profile refresh skipped:', error?.message || error);
+      }
+    };
+
+    refreshProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/20 to-teal-50/20 flex">
@@ -216,9 +265,9 @@ const EmployerLayout = () => {
           <div className="border-t border-gray-200/70 p-4 bg-gradient-to-r from-gray-50 to-orange-50/50">
             <div className="flex items-center space-x-3 p-3 rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow duration-200">
               <Avatar className="h-10 w-10 ring-2 ring-orange-100 ring-offset-2">
-                <AvatarImage src={user?.profile_picture} />
+                <AvatarImage src={avatarImageSrc} alt={user?.full_name || 'Employer'} />
                 <AvatarFallback className="bg-gradient-to-br from-[#1e3a5f] to-[#00A19D] text-white font-bold">
-                  {user?.first_name?.[0]}{user?.last_name?.[0]}
+                  {getInitials()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -272,9 +321,9 @@ const EmployerLayout = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 hover:bg-orange-50 rounded-xl px-3">
                     <Avatar className="h-8 w-8 ring-2 ring-orange-100">
-                      <AvatarImage src={user?.profile_picture} />
+                      <AvatarImage src={avatarImageSrc} alt={user?.full_name || 'Employer'} />
                       <AvatarFallback className="bg-gradient-to-br from-[#1e3a5f] to-[#00A19D] text-white font-bold text-xs">
-                        {user?.first_name?.[0]}{user?.last_name?.[0]}
+                        {getInitials()}
                       </AvatarFallback>
                     </Avatar>
                     <ChevronDown className="h-4 w-4 text-gray-600" />

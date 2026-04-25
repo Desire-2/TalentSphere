@@ -120,17 +120,51 @@ def upload_user_profile_image(file_obj, user_id):
 
 def upload_company_logo_image(file_obj, owner_user_id, company_id=None):
     """Upload a company logo image to Vercel Blob."""
+    return upload_company_media_image(
+        file_obj=file_obj,
+        owner_user_id=owner_user_id,
+        company_id=company_id,
+        media_type="logo",
+    )
+
+
+def upload_company_cover_image(file_obj, owner_user_id, company_id=None):
+    """Upload a company cover image to Vercel Blob."""
+    return upload_company_media_image(
+        file_obj=file_obj,
+        owner_user_id=owner_user_id,
+        company_id=company_id,
+        media_type="cover",
+    )
+
+
+def upload_company_gallery_image(file_obj, owner_user_id, company_id=None):
+    """Upload a company gallery image to Vercel Blob."""
+    return upload_company_media_image(
+        file_obj=file_obj,
+        owner_user_id=owner_user_id,
+        company_id=company_id,
+        media_type="gallery",
+    )
+
+
+def upload_company_media_image(file_obj, owner_user_id, company_id=None, media_type="logo"):
+    """Upload a company media image (logo/cover/gallery) to Vercel Blob."""
     token = os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN")
     if not token:
         raise VercelBlobStorageError("VERCEL_BLOB_READ_WRITE_TOKEN is not configured")
 
-    filename = _sanitize_filename(getattr(file_obj, "filename", "company-logo.bin"))
+    safe_media_type = _sanitize_filename(media_type or "logo").lower()
+    if safe_media_type not in {"logo", "cover", "gallery"}:
+        raise VercelBlobStorageError("Unsupported company media type")
+
+    filename = _sanitize_filename(getattr(file_obj, "filename", f"company-{safe_media_type}.bin"))
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
     if company_id:
-        pathname = f"uploads/companies/{company_id}/logo/{timestamp}_{filename}"
+        pathname = f"uploads/companies/{company_id}/{safe_media_type}/{timestamp}_{filename}"
     else:
-        pathname = f"uploads/companies/employer_{owner_user_id}/logo/{timestamp}_{filename}"
+        pathname = f"uploads/companies/employer_{owner_user_id}/{safe_media_type}/{timestamp}_{filename}"
 
     content_type = getattr(file_obj, "mimetype", None) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
 

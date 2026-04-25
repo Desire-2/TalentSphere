@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+import json
 import re
 from sqlalchemy.orm import selectinload
 
@@ -136,6 +137,26 @@ def create_company(current_user):
                 return int(value)
             except (TypeError, ValueError):
                 return None
+
+        def parse_gallery_images(value):
+            if value is None:
+                return None
+
+            parsed = value
+            if isinstance(value, str):
+                stripped = value.strip()
+                if not stripped:
+                    return None
+                try:
+                    parsed = json.loads(stripped)
+                except ValueError:
+                    return None
+
+            if not isinstance(parsed, list):
+                return None
+
+            cleaned = [img.strip() for img in parsed if isinstance(img, str) and img.strip()]
+            return json.dumps(cleaned) if cleaned else None
         
         # Validate required fields
         company_name = clean_value(data.get('name'))
@@ -176,6 +197,7 @@ def create_company(current_user):
             company_type=clean_value(data.get('company_type')),
             logo_url=clean_value(data.get('logo_url')),
             cover_image_url=clean_value(data.get('cover_image_url')),
+            gallery_images=parse_gallery_images(data.get('gallery_images')),
             linkedin_url=clean_value(data.get('linkedin_url')),
             twitter_url=clean_value(data.get('twitter_url')),
             facebook_url=clean_value(data.get('facebook_url')),
@@ -235,13 +257,33 @@ def update_company(current_user, company_id):
                 return int(value)
             except (TypeError, ValueError):
                 return None
+
+        def parse_gallery_images(value):
+            if value is None:
+                return None
+
+            parsed = value
+            if isinstance(value, str):
+                stripped = value.strip()
+                if not stripped:
+                    return None
+                try:
+                    parsed = json.loads(stripped)
+                except ValueError:
+                    return None
+
+            if not isinstance(parsed, list):
+                return None
+
+            cleaned = [img.strip() for img in parsed if isinstance(img, str) and img.strip()]
+            return json.dumps(cleaned) if cleaned else None
         
         # Update company fields
         updatable_fields = [
             'name', 'description', 'tagline', 'website', 'email', 'phone',
             'address_line1', 'address_line2', 'city', 'state', 'country', 'postal_code',
             'industry', 'company_size', 'founded_year', 'company_type',
-            'logo_url', 'cover_image_url', 'linkedin_url', 'twitter_url',
+            'logo_url', 'cover_image_url', 'gallery_images', 'linkedin_url', 'twitter_url',
             'facebook_url', 'instagram_url'
         ]
         
@@ -249,6 +291,8 @@ def update_company(current_user, company_id):
             if field in data:
                 if field == 'founded_year':
                     setattr(company, field, parse_optional_int(data[field]))
+                elif field == 'gallery_images':
+                    setattr(company, field, parse_gallery_images(data[field]))
                 else:
                     setattr(company, field, clean_value(data[field]))
         

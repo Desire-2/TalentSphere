@@ -110,6 +110,7 @@ const CompanyProfileManagement = () => {
   const [galleryImages, setGalleryImages] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Constants
   const COMPANY_SIZES = [
@@ -254,6 +255,8 @@ const CompanyProfileManagement = () => {
         const parsedYear = Number.parseInt(payload.founded_year, 10);
         payload.founded_year = Number.isNaN(parsedYear) ? null : parsedYear;
       }
+
+      payload.gallery_images = galleryImages;
       
       let response;
       if (company?.id) {
@@ -378,6 +381,100 @@ const CompanyProfileManagement = () => {
     } finally {
       setUploadingLogo(false);
       event.target.value = '';
+    }
+  };
+
+  const handleCompanyCoverUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingCover(true);
+      const uploadResponse = await apiService.uploadImage(file, 'company_cover', {
+        companyId: company?.id,
+      });
+
+      if (!uploadResponse?.url) {
+        throw new Error('Upload failed: missing image URL');
+      }
+
+      handleInputChange('cover_image_url', uploadResponse.url);
+
+      if (company?.id) {
+        const updated = await apiService.updateCompanyProfile(company.id, { cover_image_url: uploadResponse.url });
+        const companyPayload = normalizeCompanyResponse(updated);
+        if (companyPayload) {
+          setCompany(companyPayload);
+          setCompanyData(prev => ({ ...prev, ...companyPayload }));
+          calculateProfileCompletion(companyPayload);
+        }
+      }
+
+      toast.success('Cover image uploaded successfully');
+    } catch (error) {
+      console.error('Cover image upload failed:', error);
+      toast.error(error.message || 'Failed to upload cover image');
+    } finally {
+      setUploadingCover(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleGalleryUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setUploadingImage(true);
+
+      const uploadedUrls = [];
+      for (const file of files) {
+        const uploadResponse = await apiService.uploadImage(file, 'company_gallery', {
+          companyId: company?.id,
+        });
+
+        if (!uploadResponse?.url) {
+          throw new Error('Upload failed: missing gallery image URL');
+        }
+
+        uploadedUrls.push(uploadResponse.url);
+      }
+
+      const nextImages = [...galleryImages, ...uploadedUrls];
+      setGalleryImages(nextImages);
+
+      if (company?.id) {
+        const updated = await apiService.updateCompanyProfile(company.id, { gallery_images: nextImages });
+        const companyPayload = normalizeCompanyResponse(updated);
+        if (companyPayload) {
+          setCompany(companyPayload);
+          setCompanyData(prev => ({ ...prev, ...companyPayload }));
+          setGalleryImages(companyPayload.gallery_images || nextImages);
+        }
+      }
+
+      toast.success(`${uploadedUrls.length} image${uploadedUrls.length > 1 ? 's' : ''} uploaded successfully`);
+    } catch (error) {
+      console.error('Gallery upload failed:', error);
+      toast.error(error.message || 'Failed to upload gallery images');
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const removeGalleryImage = async (indexToRemove) => {
+    const nextImages = galleryImages.filter((_, index) => index !== indexToRemove);
+
+    try {
+      if (company?.id) {
+        await apiService.updateCompanyProfile(company.id, { gallery_images: nextImages });
+      }
+      setGalleryImages(nextImages);
+      toast.success('Gallery image removed');
+    } catch (error) {
+      console.error('Failed to remove gallery image:', error);
+      toast.error(error.message || 'Failed to remove gallery image');
     }
   };
 
@@ -1164,6 +1261,28 @@ const CompanyProfileManagement = () => {
                 
                 <div>
                   <Label htmlFor="cover_image_url">Cover Image URL</Label>
+                  <div className="mt-2 mb-2">
+                    <input
+                      id="company-cover-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleCompanyCoverUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('company-cover-upload')?.click()}
+                      disabled={uploadingCover}
+                    >
+                      {uploadingCover ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-2 h-4 w-4" />
+                      )}
+                      {uploadingCover ? 'Uploading...' : 'Upload Cover'}
+                    </Button>
+                  </div>
                   <Input
                     id="cover_image_url"
                     value={companyData.cover_image_url}
@@ -1215,10 +1334,7 @@ const CompanyProfileManagement = () => {
                         variant="ghost"
                         size="sm"
                         className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-                        onClick={() => {
-                          const newImages = galleryImages.filter((_, i) => i !== index);
-                          setGalleryImages(newImages);
-                        }}
+                        onClick={() => removeGalleryImage(index)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -1228,7 +1344,20 @@ const CompanyProfileManagement = () => {
               )}
               
               <div className="mt-4">
-                <Button variant="outline" disabled={uploadingImage}>
+                <input
+                  id="company-gallery-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  onChange={handleGalleryUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingImage}
+                  onClick={() => document.getElementById('company-gallery-upload')?.click()}
+                >
                   {uploadingImage ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (

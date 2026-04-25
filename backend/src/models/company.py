@@ -1,5 +1,6 @@
 from src.models.user import db
 from datetime import datetime
+import json
 
 class Company(db.Model):
     __tablename__ = 'companies'
@@ -92,6 +93,15 @@ class Company(db.Model):
     
     def to_dict(self, include_stats=False):
         """Convert company to dictionary"""
+        gallery_images = []
+        if self.gallery_images:
+            try:
+                parsed_gallery = json.loads(self.gallery_images)
+                if isinstance(parsed_gallery, list):
+                    gallery_images = [img for img in parsed_gallery if isinstance(img, str) and img.strip()]
+            except (TypeError, ValueError):
+                gallery_images = []
+
         data = {
             'id': self.id,
             'name': self.name,
@@ -116,6 +126,7 @@ class Company(db.Model):
             'company_type': self.company_type,
             'logo_url': self.logo_url,
             'cover_image_url': self.cover_image_url,
+            'gallery_images': gallery_images,
             'social_media': {
                 'linkedin': self.linkedin_url,
                 'twitter': self.twitter_url,

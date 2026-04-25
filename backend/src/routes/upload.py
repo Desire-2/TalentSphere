@@ -3,6 +3,8 @@ from flask import Blueprint, jsonify, request
 from src.routes.auth import token_required
 from src.services.vercel_blob_storage_service import (
     VercelBlobStorageError,
+    upload_company_cover_image,
+    upload_company_gallery_image,
     upload_company_logo_image,
     upload_user_document,
     upload_user_profile_image,
@@ -76,7 +78,7 @@ def upload_image(current_user):
             return jsonify({'error': 'No file provided'}), 400
 
         image_type = (request.form.get('type') or 'profile_picture').strip().lower()
-        allowed_image_types = {'profile_picture', 'company_logo'}
+        allowed_image_types = {'profile_picture', 'company_logo', 'company_cover', 'company_gallery'}
         if image_type not in allowed_image_types:
             return jsonify({'error': 'Invalid image type'}), 400
 
@@ -106,11 +108,24 @@ def upload_image(current_user):
                 if not employer_profile or employer_profile.company_id != company_id:
                     return jsonify({'error': 'You can only upload logo for your own company'}), 403
 
-            upload_result = upload_company_logo_image(
-                file_obj,
-                owner_user_id=current_user.id,
-                company_id=company_id,
-            )
+            if image_type == 'company_logo':
+                upload_result = upload_company_logo_image(
+                    file_obj,
+                    owner_user_id=current_user.id,
+                    company_id=company_id,
+                )
+            elif image_type == 'company_cover':
+                upload_result = upload_company_cover_image(
+                    file_obj,
+                    owner_user_id=current_user.id,
+                    company_id=company_id,
+                )
+            else:
+                upload_result = upload_company_gallery_image(
+                    file_obj,
+                    owner_user_id=current_user.id,
+                    company_id=company_id,
+                )
 
         return jsonify({
             'message': 'Image uploaded successfully',

@@ -1,5 +1,5 @@
 """
-Vercel Blob storage helpers for ad creative uploads.
+Vercel Blob storage helpers for uploads (ads, user documents, and images).
 """
 
 from datetime import datetime, timezone
@@ -93,6 +93,45 @@ def upload_user_document(file_obj, user_id, document_type="document"):
     safe_type = _sanitize_filename(document_type or "document").lower()
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     pathname = f"uploads/users/{user_id}/{safe_type}/{timestamp}_{filename}"
+    content_type = getattr(file_obj, "mimetype", None) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    file_obj.seek(0)
+    payload = file_obj.read()
+    file_obj.seek(0)
+    return _upload_bytes_to_vercel_blob(payload, pathname, content_type, token)
+
+
+def upload_user_profile_image(file_obj, user_id):
+    """Upload a user's profile image to Vercel Blob."""
+    token = os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN")
+    if not token:
+        raise VercelBlobStorageError("VERCEL_BLOB_READ_WRITE_TOKEN is not configured")
+
+    filename = _sanitize_filename(getattr(file_obj, "filename", "profile-image.bin"))
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    pathname = f"uploads/users/{user_id}/profile-images/{timestamp}_{filename}"
+    content_type = getattr(file_obj, "mimetype", None) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    file_obj.seek(0)
+    payload = file_obj.read()
+    file_obj.seek(0)
+    return _upload_bytes_to_vercel_blob(payload, pathname, content_type, token)
+
+
+def upload_company_logo_image(file_obj, owner_user_id, company_id=None):
+    """Upload a company logo image to Vercel Blob."""
+    token = os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN")
+    if not token:
+        raise VercelBlobStorageError("VERCEL_BLOB_READ_WRITE_TOKEN is not configured")
+
+    filename = _sanitize_filename(getattr(file_obj, "filename", "company-logo.bin"))
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+    if company_id:
+        pathname = f"uploads/companies/{company_id}/logo/{timestamp}_{filename}"
+    else:
+        pathname = f"uploads/companies/employer_{owner_user_id}/logo/{timestamp}_{filename}"
+
     content_type = getattr(file_obj, "mimetype", None) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     file_obj.seek(0)

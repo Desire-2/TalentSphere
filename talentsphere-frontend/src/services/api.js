@@ -274,6 +274,19 @@ class ApiService {
     });
   }
 
+  // Upload image to backend (stored in Vercel Blob)
+  async uploadImage(file, type = 'profile_picture', options = {}) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    if (options.companyId) {
+      formData.append('company_id', String(options.companyId));
+    }
+
+    return this.postForm('/uploads/images', formData);
+  }
+
   // PUT request
   async put(endpoint, data) {
     return this.request(endpoint, {

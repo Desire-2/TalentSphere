@@ -24,7 +24,8 @@ import {
   GraduationCap,
   Award,
   Settings,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 
 const Profile = () => {
@@ -35,6 +36,7 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
   
   // Form data for editing
   const [formData, setFormData] = useState({
@@ -77,6 +79,47 @@ const Profile = () => {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfilePhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024;
+
+    if (!allowedImageTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Unsupported image type. Use PNG, JPG, WEBP, or GIF.' });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setMessage({ type: 'error', text: 'Image too large. Maximum size is 5MB.' });
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setUploadingProfilePhoto(true);
+      const uploadResponse = await api.uploadImage(file, 'profile_picture');
+
+      if (!uploadResponse?.url) {
+        throw new Error('Upload failed: missing image URL');
+      }
+
+      await api.updateProfile({ profile_picture: uploadResponse.url });
+
+      setFormData(prev => ({ ...prev, profile_picture: uploadResponse.url }));
+      setProfile(prev => ({ ...(prev || {}), profile_picture: uploadResponse.url }));
+      setMessage({ type: 'success', text: 'Profile photo uploaded successfully!' });
+    } catch (error) {
+      console.error('Failed to upload profile photo:', error);
+      setMessage({ type: 'error', text: error.message || 'Failed to upload profile photo' });
+    } finally {
+      setUploadingProfilePhoto(false);
+      event.target.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -210,10 +253,29 @@ const Profile = () => {
                       Upload a profile picture to personalize your account
                     </p>
                     {isEditing && (
-                      <Button variant="outline" size="sm">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Change Photo
-                      </Button>
+                      <>
+                        <input
+                          id="profile-photo-upload"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          onChange={handleProfilePhotoUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('profile-photo-upload')?.click()}
+                          disabled={uploadingProfilePhoto}
+                        >
+                          {uploadingProfilePhoto ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Camera className="w-4 h-4 mr-2" />
+                          )}
+                          {uploadingProfilePhoto ? 'Uploading...' : 'Change Photo'}
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

@@ -31,13 +31,42 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useSessionManager } from '../../hooks/useSessionManager';
+import apiService from '../../services/api';
 
 const JobSeekerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const userFullName = user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User';
+  const [profileImage, setProfileImage] = useState('');
+  const [profileName, setProfileName] = useState('');
+
+  const resolveUserName = (profileData) => {
+    if (!profileData) return 'User';
+    return profileData.full_name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'User';
+  };
+
+  const resolveProfileImage = (profileData) => {
+    if (!profileData) return '';
+    return (
+      profileData.profile_picture ||
+      profileData.avatar_url ||
+      profileData.avatar ||
+      profileData.image_url ||
+      ''
+    );
+  };
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length === 0) return 'U';
+    if (parts.length === 1) return parts[0][0]?.toUpperCase() || 'U';
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  };
+
+  const userFullName = profileName || resolveUserName(user);
+  const userProfileImage = profileImage || resolveProfileImage(user);
 
   // Initialize session manager for job seeker panel
   useSessionManager({
@@ -120,6 +149,38 @@ const JobSeekerLayout = () => {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // Keep layout identity details in sync with auth store updates.
+  useEffect(() => {
+    setProfileName(resolveUserName(user));
+    setProfileImage(resolveProfileImage(user));
+  }, [user]);
+
+  // Fetch latest profile details once so layout reflects newly uploaded avatar immediately.
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshLayoutProfile = async () => {
+      try {
+        const profile = await apiService.getProfile();
+        if (!isMounted || !profile) return;
+
+        const latestName = resolveUserName(profile);
+        const latestImage = resolveProfileImage(profile);
+
+        setProfileName(latestName);
+        setProfileImage(latestImage);
+      } catch (error) {
+        console.debug('Layout profile refresh skipped:', error?.message || error);
+      }
+    };
+
+    refreshLayoutProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Reset mobile sidebar when moving to desktop width.
   useEffect(() => {
@@ -279,9 +340,9 @@ const JobSeekerLayout = () => {
           <div className="border-t border-gray-200/70 p-4 bg-gradient-to-r from-gray-50 to-orange-50/50">
             <div className="flex items-center space-x-3 p-3 rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow duration-200">
               <Avatar className="h-10 w-10 ring-2 ring-orange-100 ring-offset-2">
-                <AvatarImage src={user?.profile_picture} />
+                <AvatarImage src={userProfileImage} />
                 <AvatarFallback className="bg-gradient-to-br from-[#1e3a5f] to-[#00A19D] text-white font-bold">
-                  <User className="h-5 w-5" />
+                  {getInitials(userFullName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -347,9 +408,9 @@ const JobSeekerLayout = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 hover:bg-orange-50 rounded-xl h-9 w-9 p-0 sm:h-auto sm:w-auto sm:px-3">
                     <Avatar className="h-8 w-8 ring-2 ring-orange-100">
-                      <AvatarImage src={user?.profile_picture} />
+                      <AvatarImage src={userProfileImage} />
                       <AvatarFallback className="bg-gradient-to-br from-[#1e3a5f] to-[#00A19D] text-white font-bold text-xs">
-                        <User className="h-4 w-4" />
+                        {getInitials(userFullName)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden md:flex flex-col items-start leading-tight text-left max-w-[140px]">

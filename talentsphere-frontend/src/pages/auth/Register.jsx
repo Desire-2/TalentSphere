@@ -54,6 +54,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import apiService from '../../services/api';
 import {
   getAndClearIntendedDestination,
   getPostLoginRedirect,
@@ -145,7 +146,7 @@ const Register = () => {
   const [showTooltips, setShowTooltips] = useState({});
   const [typingTimer, setTypingTimer] = useState(null);
   
-  const { register: registerUser, isLoading, error, clearError } = useAuthStore();
+  const { register: registerUser, updateProfile, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -427,11 +428,6 @@ const Register = () => {
         company_type: watch('company_type')
       });
       
-      // Add profile picture if uploaded
-      if (profilePicture) {
-        data.profile_picture = profilePictureUrl;
-      }
-      
       // Add marketing consent
       data.marketing_consent = agreedToMarketing;
       
@@ -480,10 +476,27 @@ const Register = () => {
           value === '' ? null : value
         ])
       );
+
+      // Profile picture file is uploaded to Vercel Blob after registration succeeds.
+      if (cleanedData.profile_picture) {
+        delete cleanedData.profile_picture;
+      }
       
       console.log('🧹 Cleaned data for submission:', cleanedData);
       
       const response = await registerUser(cleanedData);
+
+      if (profilePicture) {
+        try {
+          const uploadResponse = await apiService.uploadImage(profilePicture, 'profile_picture');
+          if (uploadResponse?.url) {
+            await updateProfile({ profile_picture: uploadResponse.url });
+          }
+        } catch (uploadError) {
+          console.error('Failed to upload profile picture after registration:', uploadError);
+        }
+      }
+
       const latestUser = response?.user || useAuthStore.getState().user;
 
       const redirectDestination = getRedirectDestination(latestUser);

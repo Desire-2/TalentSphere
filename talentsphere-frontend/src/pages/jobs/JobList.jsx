@@ -36,7 +36,6 @@ import {
   ChevronDown,
   Zap,
   Award,
-  Eye,
   Heart,
   Share2,
   ExternalLink,
@@ -869,7 +868,10 @@ const JobCard = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onToggleBookmark(job.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleBookmark(job.id);
+                          }}
                           className="h-10 w-10 p-0 hover:bg-[#0a2847]/40 group-hover:bg-[#0a2847]/60 transition-colors"
                         >
                           {isBookmarked ? (
@@ -892,18 +894,16 @@ const JobCard = ({
                       getJobLocation={getJobLocation}
                       getSalaryDisplay={getSalaryDisplay}
                       trigger={
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-10 w-10 p-0 hover:bg-gray-50 transition-colors"
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Share job</TooltipContent>
-                        </Tooltip>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-10 px-3 border-[#1BA398]/40 text-[#1BA398] hover:text-white hover:bg-gradient-to-r hover:from-[#1BA398] hover:to-[#17a2b8] transition-all shadow-sm"
+                          title="Share this job"
+                        >
+                          <Share2 className="w-4 h-4 mr-2" />
+                          <span>Share</span>
+                        </Button>
                       }
                     />
                   </div>
@@ -1064,7 +1064,10 @@ const JobCard = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onToggleBookmark(job.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleBookmark(job.id);
+                }}
                 className="h-9 w-9 p-0 hover:bg-[#0a2847]/60 transition-colors"
               >
                 {isBookmarked ? (
@@ -1153,14 +1156,7 @@ const JobCard = ({
                   <Users className="w-3 h-3 inline mr-1" />
                   {job.statistics?.application_count || 0} applied
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-[#0a2847]/40 transition-colors"
-                  >
-                    <Eye className="w-3 h-3 text-gray-400" />
-                  </Button>
+                <div className="flex items-center gap-2">
                   <ShareJob
                     job={job}
                     getCompanyName={getCompanyName}
@@ -1170,11 +1166,14 @@ const JobCard = ({
                     getSalaryDisplay={getSalaryDisplay}
                     trigger={
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-6 w-6 p-0 hover:bg-[#0a2847]/40 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-8 px-3 border-[#1BA398]/40 text-[#1BA398] hover:text-white hover:bg-gradient-to-r hover:from-[#1BA398] hover:to-[#17a2b8] transition-all"
+                        title="Share this job"
                       >
-                        <Share2 className="w-3 h-3 text-gray-400" />
+                        <Share2 className="w-3 h-3 mr-1" />
+                        <span className="text-xs">Share</span>
                       </Button>
                     }
                   />

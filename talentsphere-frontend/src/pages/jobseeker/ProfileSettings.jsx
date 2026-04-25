@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -131,6 +132,7 @@ const ProfileSettings = () => {
     phoneVerified: false,
     profileCompleted: 0
   });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -425,6 +427,50 @@ const ProfileSettings = () => {
       setMessage({ type: 'error', text: error.message || 'Failed to delete account. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const getInitials = (firstName, lastName) => {
+    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+  };
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024;
+
+    if (!allowedImageTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Unsupported image type. Use PNG, JPG, WEBP, or GIF.' });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setMessage({ type: 'error', text: 'Image too large. Maximum size is 5MB.' });
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+      const uploadResponse = await apiService.uploadImage(file, 'profile_picture');
+
+      if (!uploadResponse?.url) {
+        throw new Error('Upload failed: missing image URL');
+      }
+
+      await apiService.updateProfile({ profile_picture: uploadResponse.url });
+
+      setProfile(prev => ({ ...(prev || {}), profile_picture: uploadResponse.url }));
+      setMessage({ type: 'success', text: 'Avatar updated successfully!' });
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setMessage({ type: 'error', text: error.message || 'Failed to upload avatar' });
+    } finally {
+      setUploadingAvatar(false);
+      event.target.value = '';
     }
   };
 
@@ -1271,6 +1317,51 @@ const ProfileSettings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="min-w-0 space-y-6">
+              {/* Avatar Upload */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Profile Photo</h3>
+                <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage src={profile?.profile_picture} alt="Profile avatar" />
+                      <AvatarFallback>
+                        {getInitials(profile?.first_name, profile?.last_name) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">Your Avatar</p>
+                      <p className="text-sm text-gray-500">PNG, JPG, WEBP, or GIF up to 5MB</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      id="jobseeker-avatar-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('jobseeker-avatar-upload')?.click()}
+                      disabled={uploadingAvatar}
+                      className="w-full sm:w-auto"
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Account Status */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Account Status</h3>

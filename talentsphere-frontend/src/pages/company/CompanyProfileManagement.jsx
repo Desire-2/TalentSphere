@@ -109,6 +109,7 @@ const CompanyProfileManagement = () => {
   // Gallery and media
   const [galleryImages, setGalleryImages] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Constants
   const COMPANY_SIZES = [
@@ -341,6 +342,42 @@ const CompanyProfileManagement = () => {
       toast.success('Team member removed');
     } catch (error) {
       toast.error('Failed to remove team member');
+    }
+  };
+
+  const handleCompanyLogoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingLogo(true);
+      const uploadResponse = await apiService.uploadImage(file, 'company_logo', {
+        companyId: company?.id,
+      });
+
+      if (!uploadResponse?.url) {
+        throw new Error('Upload failed: missing image URL');
+      }
+
+      handleInputChange('logo_url', uploadResponse.url);
+
+      if (company?.id) {
+        const updated = await apiService.updateCompanyProfile(company.id, { logo_url: uploadResponse.url });
+        const companyPayload = normalizeCompanyResponse(updated);
+        if (companyPayload) {
+          setCompany(companyPayload);
+          setCompanyData(prev => ({ ...prev, ...companyPayload }));
+          calculateProfileCompletion(companyPayload);
+        }
+      }
+
+      toast.success('Company logo uploaded successfully');
+    } catch (error) {
+      console.error('Logo upload failed:', error);
+      toast.error(error.message || 'Failed to upload company logo');
+    } finally {
+      setUploadingLogo(false);
+      event.target.value = '';
     }
   };
 
@@ -1085,6 +1122,28 @@ const CompanyProfileManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="logo_url">Company Logo URL</Label>
+                  <div className="mt-2 mb-2">
+                    <input
+                      id="company-logo-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleCompanyLogoUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('company-logo-upload')?.click()}
+                      disabled={uploadingLogo}
+                    >
+                      {uploadingLogo ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-2 h-4 w-4" />
+                      )}
+                      {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                    </Button>
+                  </div>
                   <Input
                     id="logo_url"
                     value={companyData.logo_url}

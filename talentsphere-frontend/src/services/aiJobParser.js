@@ -96,6 +96,8 @@ Return ONLY a valid JSON object with these enhanced fields:
   "application_url": "🔗 Direct application URL if provided (string, must start with http:// or https://)",
   "application_email": "📧 Application email address if email application (string)",
   "application_instructions": "📝 Detailed application instructions in structured markdown format with steps, requirements, and tips (string). MUST be paraphrased/original, not copied from source",
+  "application_deadline": "📅 Application deadline in ISO date format YYYY-MM-DD when available (string)",
+  "expires_at": "⏳ Job expiration/closing date in ISO date format YYYY-MM-DD when available (string)",
   "source_url": "🔗 Original job posting URL if mentioned (string)",
   "benefits": "🎁 Company benefits and perks - extract from job posting (string). MUST be paraphrased/original, not copied from source",
   "remote_policy": "🏠 Remote work policy details if mentioned (string). MUST be paraphrased/original, not copied from source",
@@ -358,6 +360,8 @@ const validateAndCleanJobData = (data) => {
     application_url: toString(data.application_url),
     application_email: toString(data.application_email),
     application_instructions: toString(data.application_instructions),
+    application_deadline: toString(data.application_deadline ?? data.deadline ?? data.apply_by),
+    expires_at: toString(data.expires_at ?? data.expiration_date ?? data.end_date),
     
     // Source
     source_url: toString(data.source_url),

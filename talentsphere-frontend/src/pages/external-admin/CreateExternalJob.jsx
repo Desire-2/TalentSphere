@@ -108,6 +108,31 @@ const coerceToIdString = (value, fallback = '') => {
   return String(value);
 };
 
+const formatDateForInput = (dateValue) => {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+  const day = String(dateValue.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateInput = (value) => {
+  const raw = coerceToString(value, '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  return formatDateForInput(parsed);
+};
+
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
 const StableInput = React.memo(({ field, type, value, placeholder, required, className, rows, onInputChange }) => {
   // Create a stable onChange handler - this is the key to preventing focus loss
@@ -1394,6 +1419,20 @@ Tools: Git, Jest, Cypress
       // Dismiss loading toast
       toast.dismiss(loadingToast);
       
+      const aiApplicationDeadline = normalizeDateInput(
+        parsedData.application_deadline ??
+        parsedData.deadline ??
+        parsedData.apply_by ??
+        parsedData.applicationDeadline
+      );
+      const aiExpirationDate = normalizeDateInput(
+        parsedData.expires_at ??
+        parsedData.expiration_date ??
+        parsedData.expiry_date ??
+        parsedData.end_date ??
+        parsedData.expiresAt
+      );
+
       // Merge with existing form data (preserve any manually entered data)
       const mergedData = {
         ...formData,
@@ -1404,6 +1443,8 @@ Tools: Git, Jest, Cypress
         salary_max: parsedData.salary_max?.toString() || formData.salary_max || '',
         years_experience_min: parsedData.years_experience_min?.toString() || formData.years_experience_min || '0',
         years_experience_max: parsedData.years_experience_max?.toString() || formData.years_experience_max || '',
+        application_deadline: aiApplicationDeadline || formData.application_deadline || '',
+        expires_at: aiExpirationDate || formData.expires_at || '',
       };
       
       // Analyze which fields were auto-filled
@@ -1436,6 +1477,8 @@ Tools: Git, Jest, Cypress
         application_url: 'Application URL',
         application_email: 'Application Email',
         application_instructions: 'Application Instructions',
+        application_deadline: 'Application Deadline',
+        expires_at: 'Expiration Date',
         source_url: 'Source URL'
       };
       
@@ -1853,7 +1896,7 @@ Tools: Git, Jest, Cypress
 
   return (
     <div className="min-h-screen bg-gray-50/50 create-job-form">
-      <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <div className="max-w-7xl mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 space-y-6 sm:space-y-8">
         {/* Success Overlay */}
         {showSuccessMessage && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -1868,9 +1911,9 @@ Tools: Git, Jest, Cypress
         )}
 
         {/* Enhanced Header */}
-        <div className="enhanced-header p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="enhanced-header p-4 sm:p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/external-admin/jobs')}
@@ -1880,8 +1923,8 @@ Tools: Git, Jest, Cypress
                 Back to Jobs
               </Button>
               <Separator orientation="vertical" className="h-8" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-2">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center space-x-2">
                   <Sparkles className="h-8 w-8 text-blue-600 animate-pulse" />
                   <span>Create External Job</span>
                 </h1>
@@ -1891,7 +1934,7 @@ Tools: Git, Jest, Cypress
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:flex-nowrap">
               {/* AI Parser Button */}
               <Button
                 variant="outline"
@@ -2224,7 +2267,7 @@ Tools: Git, Jest, Cypress
                 )}
               </div>
               
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-sm text-gray-500">Completion</div>
                 <div className="flex items-center space-x-2">
                   <Progress value={formProgress.percentage} className="w-20 progress-indicator" />
@@ -2245,8 +2288,8 @@ Tools: Git, Jest, Cypress
           </div>
           
           {/* Progress indicators */}
-          <div className="mt-6 flex items-center justify-between text-sm">
-            <div className="flex items-center space-x-6">
+          <div className="mt-6 flex flex-col gap-4 text-sm xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
               {formSections.map((section, index) => {
                 const isCompleted = section.fields.some(field => formData[field]);
                 const isActive = currentStep === index;
@@ -2578,7 +2621,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
           </Alert>
         )}
 
-        <div className={`grid ${isPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-8`}>
+        <div className={`grid ${isPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-6 lg:gap-8`}>
           {/* Form Content */}
           <div className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">

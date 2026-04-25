@@ -18,6 +18,52 @@
   appearance: none;
 }
 
+/* Strong readability defaults for form controls */
+.create-job-form .enhanced-form-field,
+.create-job-form .enhanced-form-field > * {
+  min-width: 0;
+}
+
+.create-job-form [data-slot="input"],
+.create-job-form .enhanced-input,
+.create-job-form textarea,
+.create-job-form [data-slot="select-trigger"],
+.create-job-form .template-search-input,
+.create-job-form .json-textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  border-color: #d1d5db;
+}
+
+.create-job-form [data-slot="input"]::placeholder,
+.create-job-form textarea::placeholder,
+.create-job-form [data-slot="select-trigger"][data-placeholder],
+.create-job-form .template-search-input::placeholder,
+.create-job-form .json-textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1;
+}
+
+.create-job-form [data-slot="select-trigger"] {
+  width: 100% !important;
+  min-width: 0;
+}
+
+.create-job-form [data-slot="select-value"],
+.create-job-form [data-slot="select-content"],
+.create-job-form [data-slot="select-item"] {
+  color: #111827 !important;
+}
+
+.create-job-form [data-slot="input"]:focus,
+.create-job-form .enhanced-input:focus,
+.create-job-form textarea:focus,
+.create-job-form [data-slot="select-trigger"]:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
 /* Ultra-fast focus states for immediate feedback */
 .enhanced-input:focus {
   /* Instant focus feedback - no delays */

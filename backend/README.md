@@ -45,6 +45,9 @@ source venv/bin/activate
 
 # Install dependencies (already installed)
 pip install -r requirements.txt
+
+# OCR engine required for image CV extraction
+sudo apt-get install -y tesseract-ocr
 ```
 
 ### 2. Database Setup

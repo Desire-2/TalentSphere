@@ -16,7 +16,7 @@ import {
   User, Briefcase, GraduationCap, Award, FolderKanban, 
   Languages, Heart, Users, Settings, Download, Lightbulb,
   TrendingUp, CheckCircle2, AlertCircle, Save, ChevronRight,
-  Menu, X, Code2, Zap, Target
+  Menu, X, Code2, Zap, Target, Upload
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -41,6 +41,7 @@ import ReferencesSection from './sections/ReferencesSection';
 import PreferencesSection from './sections/PreferencesSection';
 import PrivacySection from './sections/PrivacySection';
 import ProfileOptimization from './sections/ProfileOptimization';
+import CVUploadModal from './components/CVUploadModal';
 
 const EnhancedJobSeekerProfile = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -52,6 +53,7 @@ const EnhancedJobSeekerProfile = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showMessageBadge, setShowMessageBadge] = useState(false);
+  const [cvModalOpen, setCvModalOpen] = useState(false);
   const hasFetchedRef = useRef(false);
   
   // Profile data state
@@ -472,28 +474,40 @@ const EnhancedJobSeekerProfile = () => {
           </div>
           
           {/* Export Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportText} className="gap-2">
-                <Download className="w-4 h-4" />
-                Export as Text
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportJSON} className="gap-2">
-                <Download className="w-4 h-4" />
-                Export as JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2"
+              onClick={() => setCvModalOpen(true)}
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Upload CV</span>
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportText} className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export as Text
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJSON} className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export as JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -791,6 +805,15 @@ const EnhancedJobSeekerProfile = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <CVUploadModal
+        open={cvModalOpen}
+        onOpenChange={setCvModalOpen}
+        onSuccess={async () => {
+          await loadCompleteProfile();
+          setMessage({ type: 'success', text: 'Profile updated using CV auto-fill.' });
+        }}
+      />
       </div>
     </div>
   );

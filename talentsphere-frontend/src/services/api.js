@@ -1068,6 +1068,21 @@ class ApiService {
     return this.put('/profile/complete-profile', data);
   }
 
+  // CV Auto-Fill
+  async cvExtractText(file) {
+    const formData = new FormData();
+    formData.append('cv_file', file);
+    return this.postForm('/profile/cv-extract', formData);
+  }
+
+  async cvParseWithAI(extractedText) {
+    return this.post('/profile/cv-parse', { extracted_text: extractedText });
+  }
+
+  async cvAutoFill(parsedProfile) {
+    return this.post('/profile/cv-autofill', { parsed_profile: parsedProfile });
+  }
+
   // Profile Analysis & Export
   async getProfileCompletenessAnalysis() {
     return this.get('/profile/completeness-analysis');

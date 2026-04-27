@@ -44,6 +44,7 @@ from src.routes.cv_builder import cv_builder_bp, limiter as cv_limiter
 from src.routes.cleanup_routes import cleanup_bp
 from src.routes.ads import ads_bp
 from src.routes.upload import upload_bp
+from src.routes.cv_upload import cv_upload_bp
 
 # Import optimized components
 from src.routes.optimized_api import optimized_api_bp
@@ -177,6 +178,7 @@ cv_limiter.init_app(app)  # Bind rate limiter to Flask app
 app.register_blueprint(cleanup_bp, url_prefix='/api')
 app.register_blueprint(ads_bp, url_prefix='/api/ads')
 app.register_blueprint(upload_bp, url_prefix='/api/uploads')
+app.register_blueprint(cv_upload_bp, url_prefix='/api/profile')
 
 # Register optimized API endpoints
 app.register_blueprint(optimized_api_bp, url_prefix='/api')

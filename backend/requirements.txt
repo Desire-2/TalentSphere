@@ -45,7 +45,7 @@ requests==2.32.3
 WeasyPrint==63.0
 pdfplumber==0.11.7
 pytesseract==0.3.13
-Pillow==11.3.0
+Pillow==10.4.0  # WeasyPrint 63.0 requires Pillow<11
 
 # Core Python Dependencies
 blinker==1.9.0

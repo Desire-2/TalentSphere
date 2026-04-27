@@ -63,11 +63,12 @@ function supportsSSE() {
  * Build the SSE URL from generation params.
  */
 function buildStreamURL(params) {
-  const { job_id, custom_job, style, sections } = params;
+  const { job_id, custom_job, style, sections, humanize } = params;
   const qs = new URLSearchParams();
   if (job_id) qs.set('job_id', String(job_id));
   if (style) qs.set('style', style);
   if (sections && sections.length) qs.set('sections', sections.join(','));
+  if (typeof humanize === 'boolean') qs.set('humanize', String(humanize));
   if (custom_job) {
     try {
       qs.set('custom_job', encodeURIComponent(JSON.stringify(custom_job)));
@@ -174,6 +175,7 @@ async function generateViaPOST(params, callbacks = {}) {
     style = 'professional',
     sections = ['summary', 'work', 'education', 'skills', 'projects', 'certifications', 'awards', 'references'],
     use_section_by_section = true,
+    humanize,
   } = params;
 
   const token = localStorage.getItem('token');
@@ -187,6 +189,7 @@ async function generateViaPOST(params, callbacks = {}) {
     const requestBody = { style, sections, use_section_by_section };
     if (job_id) requestBody.job_id = job_id;
     else if (custom_job) requestBody.custom_job = custom_job;
+    if (typeof humanize === 'boolean') requestBody.humanize = humanize;
 
     const response = await fetch(`${API_BASE}/quick-generate`, {
       method: 'POST',

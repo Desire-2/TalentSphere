@@ -86,6 +86,17 @@ def _profile_cache_key(user_id: int) -> str:
     return f'user_profile_{user_id}'
 
 
+def _parse_bool(value, default=True):
+    """Parse boolean-like values from body/query payloads."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+
+
 def invalidate_user_profile_cache(user_id: int):
     """
     Call this whenever a user updates their profile, work experience,
@@ -207,6 +218,7 @@ def generate_cv(current_user):
         cv_style = data.get('style', 'professional')
         sections = data.get('sections', ['work', 'education', 'skills', 'summary', 'projects', 'certifications'])
         use_incremental = data.get('incremental', True)  # Default to incremental generation
+        humanize = _parse_bool(data.get('humanize'), default=True)
         
         # Choose service based on preference
         if use_incremental:
@@ -216,7 +228,8 @@ def generate_cv(current_user):
                 user_data=user_data,
                 job_data=job_data,
                 cv_style=cv_style,
-                include_sections=sections
+                include_sections=sections,
+                humanize=humanize,
             )
         else:
             print(f"[CV Builder] Using V1 full generation")
@@ -225,7 +238,8 @@ def generate_cv(current_user):
                 user_data=user_data,
                 job_data=job_data,
                 cv_style=cv_style,
-                include_sections=sections
+                include_sections=sections,
+                humanize=humanize,
             )
         
         return jsonify({
@@ -393,6 +407,7 @@ def generate_cv_incremental(current_user):
         # Get preferences
         cv_style = data.get('style', 'professional')
         sections = data.get('sections', ['summary', 'experience', 'education', 'skills', 'projects', 'certifications'])
+        humanize = _parse_bool(data.get('humanize'), default=True)
         
         print(f"[CV Builder] Incremental generation: {len(sections)} sections")
         
@@ -401,7 +416,8 @@ def generate_cv_incremental(current_user):
             user_data=user_data,
             job_data=job_data,
             cv_style=cv_style,
-            include_sections=sections
+            include_sections=sections,
+            humanize=humanize,
         )
         
         generation_time = time_module.time() - start_time
@@ -484,6 +500,7 @@ def quick_generate_cv(current_user):
         cv_style = data.get('style', 'professional')
         sections = data.get('sections', ['summary', 'work', 'education', 'skills', 'projects', 'certifications'])
         use_section_by_section = data.get('use_section_by_section', True)
+        humanize = _parse_bool(data.get('humanize'), default=False)
         
         print(f"[CV Builder] Quick generate: {len(sections)} sections, section-by-section={use_section_by_section}")
         
@@ -494,7 +511,8 @@ def quick_generate_cv(current_user):
                 user_data=user_data,
                 job_data=job_data,
                 cv_style=cv_style,
-                include_sections=sections
+                include_sections=sections,
+                humanize=humanize,
             )
         else:
             # Use full generation
@@ -502,7 +520,8 @@ def quick_generate_cv(current_user):
                 user_data=user_data,
                 job_data=job_data,
                 cv_style=cv_style,
-                include_sections=sections
+                include_sections=sections,
+                humanize=humanize,
             )
         
         generation_time = time_module.time() - start_time
@@ -688,6 +707,7 @@ def generate_cv_stream(current_user):
     raw_sections = request.args.get('sections', 'summary,work,education,skills')
     sections = [s.strip() for s in raw_sections.split(',') if s.strip()]
     raw_custom_job = request.args.get('custom_job')
+    humanize = _parse_bool(request.args.get('humanize'), default=True)
 
     # Parse custom_job from query string if present
     custom_job = None
@@ -731,16 +751,20 @@ def generate_cv_stream(current_user):
                 job_data=job_data,
                 cv_style=style,
                 include_sections=sections,
+                humanize=humanize,
             )
 
-            # Phase 5 — Evaluating
+            # Phase 5 — Humanizing language
+            yield f"data: {json.dumps({'phase': 'humanizing', 'message': 'Refining natural language…'})}\n\n"
+
+            # Phase 6 — Evaluating
             yield f"data: {json.dumps({'phase': 'evaluating', 'message': 'Running ATS quality check…'})}\n\n"
 
             # Extract quality gate metadata
             agent_reasoning = cv_content.get('agent_reasoning')
             ats_self_eval = (agent_reasoning or {}).get('ats_self_evaluation', {})
 
-            # Phase 6 — Complete
+            # Phase 7 — Complete
             yield f"data: {json.dumps({'phase': 'complete', 'cv_data': cv_content, 'agent_reasoning': agent_reasoning, 'metadata': {'quality_gate_passed': ats_self_eval.get('passed_quality_gate', True), 'internal_revisions': ats_self_eval.get('internal_revisions', 0), 'ats_total_score': ats_self_eval.get('total_score', 0)}})}\n\n"
 
         except Exception as exc:

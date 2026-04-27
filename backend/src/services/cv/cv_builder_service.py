@@ -5,13 +5,16 @@ Simplified from 2667 lines to ~300 lines by using modular components
 """
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+import copy
+import json
+import re
 
 from src.services.cv_builder_enhancements import CVBuilderEnhancements
 from .api_client import CVAPIClient
 from .data_formatter import CVDataFormatter
 from .job_matcher import CVJobMatcher
 from .parser import CVParser
-from .prompt_builder import CVPromptBuilder
+from .prompt_builder import CVPromptBuilder, HUMANIZATION_BANNED_PHRASES
 from .validator import CVValidator
 
 
@@ -39,7 +42,8 @@ class CVBuilderService:
         user_data: Dict[str, Any],
         job_data: Optional[Dict[str, Any]] = None,
         cv_style: str = "professional",
-        include_sections: Optional[List[str]] = None
+        include_sections: Optional[List[str]] = None,
+        humanize: bool = True,
     ) -> Dict[str, Any]:
         """
         Generate AI-optimized CV content with deep job matching
@@ -98,6 +102,21 @@ class CVBuilderService:
             cv_content = self.parser.normalize_cv_structure(cv_content)
             print("[CV Builder] Data normalized")
 
+            # Ensure reasoning object includes writing style rationale for frontend explainability.
+            cv_content['agent_reasoning'] = self._extract_agent_reasoning(
+                cv_content,
+                user_data,
+                job_data,
+                cv_style,
+            )
+
+            # Optional second pass that rewrites AI-sounding phrasing while preserving structure.
+            if humanize:
+                cv_content = self._humanize_cv_content(cv_content)
+
+            # Keep summary person-centric by stripping target company mentions.
+            cv_content = self._sanitize_professional_summary(cv_content, job_data)
+
             # Always use profile references directly — bypasses AI which can
             # corrupt / lose the position field or add placeholder text.
             cv_content['references'] = user_data.get('references', [])
@@ -131,7 +150,8 @@ class CVBuilderService:
                 'sections_included': include_sections,
                 'user_id': user_data.get('id'),
                 'version': '5.0-enhanced',
-                'api_provider': self.api_client.current_provider
+                'api_provider': self.api_client.current_provider,
+                'humanized': bool(humanize),
             }
             
             # Add job matching data to metadata if available
@@ -161,6 +181,145 @@ class CVBuilderService:
         except Exception as e:
             print(f"[CV Builder] ❌ Generation failed: {str(e)}")
             raise Exception(f"CV generation failed: {str(e)}")
+
+    def _sanitize_professional_summary(
+        self,
+        cv_content: Dict[str, Any],
+        job_data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Remove target organization references from professional summary when present."""
+        summary = cv_content.get('professional_summary')
+        if not isinstance(summary, str) or not summary.strip():
+            return cv_content
+
+        cleaned = summary.strip()
+        company_name = (job_data or {}).get('company_name') if isinstance(job_data, dict) else None
+        if isinstance(company_name, str) and company_name.strip():
+            escaped = re.escape(company_name.strip())
+            # Remove patterns like "at Company", "for Company", "with Company"
+            cleaned = re.sub(rf"\b(at|for|with)\s+{escaped}\b", "", cleaned, flags=re.IGNORECASE)
+            # Remove possessive references like "Company's"
+            cleaned = re.sub(rf"\b{escaped}'s\b", "", cleaned, flags=re.IGNORECASE)
+
+        # Normalize whitespace and punctuation after removals
+        cleaned = re.sub(r"\s{2,}", " ", cleaned)
+        cleaned = re.sub(r"\s+([,.;:])", r"\1", cleaned)
+        cleaned = re.sub(r"([,.;:]){2,}", r"\1", cleaned)
+        cleaned = cleaned.strip(" ,;:")
+
+        if cleaned:
+            cv_content['professional_summary'] = cleaned
+
+        return cv_content
+
+    def _humanize_cv_content(self, cv_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Run a focused rewrite pass to reduce AI-signature phrasing.
+        If this pass fails, return the original content unchanged.
+        """
+        try:
+            original = copy.deepcopy(cv_data)
+            banned_list = ', '.join(HUMANIZATION_BANNED_PHRASES)
+            prompt = f"""You will receive a CV in JSON format. Your only job is to identify and rewrite any phrases or sentences that sound AI-generated.
+Do not change structure, facts, metrics, dates, names, section keys, or ordering.
+Only improve naturalness of language in textual content.
+
+Specific things to fix:
+- Replace banned power verbs (spearheaded, leveraged, orchestrated) with direct alternatives.
+- Break up any three or more consecutive bullets with identical grammatical structure.
+- Rewrite any summary sentence that could apply to any candidate in any industry.
+- Ensure no two bullets in the same role start with the same verb.
+
+Banned phrases list:
+{banned_list}
+
+Return the same JSON structure with only the text content improved. Return raw JSON only.
+
+CV JSON:
+{json.dumps(cv_data, ensure_ascii=True)}"""
+
+            response_text = self.api_client.make_request_with_retry(prompt, max_retries=2)
+            humanized_candidate = self.parser.parse_cv_response(response_text)
+            humanized_candidate = self.parser.normalize_cv_structure(humanized_candidate)
+
+            merged = self._merge_humanized_text(original, humanized_candidate)
+            merged['agent_reasoning'] = self._extract_agent_reasoning(
+                merged,
+                {},
+                None,
+                merged.get('metadata', {}).get('style', 'professional') if isinstance(merged.get('metadata'), dict) else 'professional',
+            )
+            print("[CV Builder] ✍️ Humanization pass applied")
+            return merged
+        except Exception as exc:
+            print(f"[CV Builder] ⚠️ Humanization pass skipped: {exc}")
+            return cv_data
+
+    def _merge_humanized_text(self, original: Dict[str, Any], candidate: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge only language fields that are safe to rewrite."""
+        merged = copy.deepcopy(original)
+
+        if isinstance(candidate.get('professional_summary'), str) and candidate['professional_summary'].strip():
+            merged['professional_summary'] = candidate['professional_summary'].strip()
+
+        original_exps = merged.get('professional_experience', [])
+        candidate_exps = candidate.get('professional_experience', [])
+        if isinstance(original_exps, list) and isinstance(candidate_exps, list):
+            for idx, exp in enumerate(original_exps):
+                if idx >= len(candidate_exps):
+                    continue
+                candidate_achievements = candidate_exps[idx].get('achievements', [])
+                if isinstance(exp.get('achievements'), list) and isinstance(candidate_achievements, list):
+                    for b_idx, bullet in enumerate(exp['achievements']):
+                        if b_idx < len(candidate_achievements) and isinstance(candidate_achievements[b_idx], str):
+                            exp['achievements'][b_idx] = candidate_achievements[b_idx].strip() or bullet
+
+        for section_name in ['projects', 'awards']:
+            original_items = merged.get(section_name, [])
+            candidate_items = candidate.get(section_name, [])
+            if not (isinstance(original_items, list) and isinstance(candidate_items, list)):
+                continue
+            for idx, item in enumerate(original_items):
+                if idx >= len(candidate_items):
+                    continue
+                for text_field in ['description', 'impact']:
+                    if text_field in item and isinstance(candidate_items[idx].get(text_field), str):
+                        item[text_field] = candidate_items[idx][text_field].strip() or item[text_field]
+
+        if isinstance(merged.get('agent_reasoning'), dict) and isinstance(candidate.get('agent_reasoning'), dict):
+            for key in ['candidate_analysis', 'job_decoding', 'strategy_chosen', 'writing_style']:
+                if isinstance(candidate['agent_reasoning'].get(key), str) and candidate['agent_reasoning'][key].strip():
+                    merged['agent_reasoning'][key] = candidate['agent_reasoning'][key].strip()
+            for key in ['key_decisions', 'gaps_bridged']:
+                if isinstance(candidate['agent_reasoning'].get(key), list) and candidate['agent_reasoning'][key]:
+                    merged['agent_reasoning'][key] = candidate['agent_reasoning'][key]
+
+        return merged
+
+    def _extract_agent_reasoning(
+        self,
+        cv_content: Dict[str, Any],
+        user_data: Dict[str, Any],
+        job_data: Optional[Dict[str, Any]],
+        cv_style: str,
+    ) -> Dict[str, Any]:
+        """Ensure reasoning payload exists and includes writing_style for frontend transparency."""
+        agent_reasoning = cv_content.get('agent_reasoning', {})
+        if not isinstance(agent_reasoning, dict):
+            agent_reasoning = {}
+
+        if not agent_reasoning.get('writing_style'):
+            profile = user_data.get('job_seeker_profile', {}) if isinstance(user_data, dict) else {}
+            title = profile.get('professional_title') or profile.get('desired_position') or 'the candidate'
+            years = profile.get('years_of_experience') or 0
+            target_role = (job_data or {}).get('title') if isinstance(job_data, dict) else None
+            target_text = f" for {target_role}" if target_role else ""
+            agent_reasoning['writing_style'] = (
+                f"Used a {cv_style} tone with role-specific language tailored to {title}{target_text}. "
+                f"Kept the voice aligned to approximately {years} years of experience and prioritized concrete phrasing over templates."
+            )
+
+        return agent_reasoning
     
     def generate_cv_section_by_section(
         self,

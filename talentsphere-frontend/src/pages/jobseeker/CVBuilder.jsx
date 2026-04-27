@@ -73,16 +73,14 @@ const SECTION_META = [
 
 // ─── Generation phases for animated steps ─────────────────────────────────────
 const GEN_PHASES = [
-  { key: 'init',        label: 'Initialising ARIA',       icon: Cpu },
-  { key: 'analysis',   label: 'Analysing profile',        icon: Brain },
-  { key: 'matching',   label: 'Job matching',             icon: Target },
-  { key: 'summary',    label: 'Writing summary',          icon: FileText },
-  { key: 'work',       label: 'Crafting experience',      icon: Briefcase },
-  { key: 'education',  label: 'Education section',        icon: GraduationCap },
-  { key: 'skills',     label: 'Skills & competencies',    icon: Zap },
-  { key: 'extra',      label: 'Additional sections',      icon: Layers },
-  { key: 'ats',        label: 'ATS optimisation',         icon: TrendingUp },
-  { key: 'complete',   label: 'Finalising',               icon: CheckCircle },
+  { key: 'init',         label: 'Initialising ARIA',          icon: Cpu },
+  { key: 'analyzing',    label: 'Analysing profile',          icon: Brain },
+  { key: 'decoding_job', label: 'Decoding job requirements',  icon: Target },
+  { key: 'strategizing', label: 'Planning CV strategy',       icon: Lightbulb },
+  { key: 'generating',   label: 'Writing CV draft',           icon: FileText },
+  { key: 'humanizing',   label: 'Refining natural language...', icon: Wand2 },
+  { key: 'evaluating',   label: 'ATS quality check',          icon: TrendingUp },
+  { key: 'complete',     label: 'Finalising',                 icon: CheckCircle },
 ];
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -263,9 +261,8 @@ const Toast = ({ error, onDismiss, onRetry }) => {
 };
 
 const GenerationProgress = ({ genPhaseIdx, ssePhase, isGenerating }) => {
-  const activeIdx = ssePhase
-    ? Math.max(genPhaseIdx, GEN_PHASES.findIndex(p => ssePhase.phase.includes(p.key)))
-    : genPhaseIdx;
+  const sseIdx = ssePhase ? GEN_PHASES.findIndex(p => p.key === ssePhase.phase) : -1;
+  const activeIdx = sseIdx >= 0 ? Math.max(genPhaseIdx, sseIdx) : genPhaseIdx;
 
   return (
     <div className="space-y-2">
@@ -1235,15 +1232,28 @@ const CVBuilder = () => {
                               )}
                             </div>
                           )}
-                          {ariaTabs === 'decisions' && agentReasoning.key_decisions?.length > 0 && (
-                            <ul className="space-y-2">
-                              {agentReasoning.key_decisions.map((d, i) => (
-                                <li key={i} className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-xl">
-                                  <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                                  <p className="text-xs text-gray-700">{d}</p>
-                                </li>
-                              ))}
-                            </ul>
+                          {ariaTabs === 'decisions' && (
+                            <div className="space-y-3">
+                              <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <p className="text-xs font-bold text-indigo-500 uppercase mb-1.5">Writing Style Decisions</p>
+                                <p className="text-xs text-gray-700 leading-relaxed">
+                                  {agentReasoning.writing_style || 'ARIA selected a voice based on the candidate profile and target role, then adjusted wording to sound natural and specific.'}
+                                </p>
+                              </div>
+
+                              {agentReasoning.key_decisions?.length > 0 ? (
+                                <ul className="space-y-2">
+                                  {agentReasoning.key_decisions.map((d, i) => (
+                                    <li key={i} className="flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-xl">
+                                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                                      <p className="text-xs text-gray-700">{d}</p>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-xs text-gray-500">No additional decision notes were provided for this run.</p>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

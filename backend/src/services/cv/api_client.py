@@ -98,7 +98,7 @@ class CVAPIClient:
         }
         
         payload = {
-            "model": "openai/gpt-4o-mini",
+            "model": "google/gemma-4-26b-a4b-it:free",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens

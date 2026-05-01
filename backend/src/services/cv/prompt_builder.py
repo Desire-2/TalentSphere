@@ -1,784 +1,765 @@
 """
-CV Builder Prompt Builder (Enhanced)
-Constructs deeply job-tailored AI prompts for CV generation
-with advanced matching analysis and strategic content guidance
+CV Builder Prompt Builder (v2 — Human-First Rewrite)
+
+Core philosophy changes from v1:
+- Removed agent persona theater (ARIA, phases) — causes meta-reasoning, not natural writing
+- Moved banned phrases to TOP of all prompts where they have maximum weight
+- Replaced "quantify everything" with selective metric guidance
+- Removed self-scoring rubric (model just claims 95/100 without real revision)
+- Removed contradictory instructions (banned phrases listed as "strong verbs" in same prompt)
+- Simplified bullet structure rules to let voice breathe naturally
+- Keyword mirroring is now contextual, not mechanical repetition
 """
+
 from typing import Dict, List, Optional, Any
 from .data_formatter import CVDataFormatter
 from .job_matcher import CVJobMatcher
 
 
-HUMANIZATION_BANNED_PHRASES = [
-  "spearheaded", "leveraged", "orchestrated", "synergy", "synergies",
-  "cross-functional", "results-driven", "dynamic professional", "passionate",
-  "detail-oriented", "proven track record", "thought leader", "go-to",
-  "best-in-class", "cutting-edge", "seamlessly", "robust", "transformative",
-  "scalable solutions", "innovative solutions", "fast-paced environment",
-  "exceeded expectations", "wore many hats", "hit the ground running",
-  "move the needle", "deep dive", "circle back", "bandwidth",
-  "impactful", "actionable", "deliverables", "stakeholders (when used vaguely)",
-  "collaborated with cross-functional teams to deliver",
+# ──────────────────────────────────────────────────────────────────────────────
+# HUMANIZATION CONFIG
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Tier 1: Never use — these are the most AI-detectable
+BANNED_HARD = [
+    "spearheaded", "leveraged", "orchestrated", "synergy", "synergies",
+    "results-driven", "dynamic professional", "passionate about", "detail-oriented",
+    "proven track record", "thought leader", "cutting-edge", "seamlessly",
+    "transformative", "scalable solutions", "innovative solutions",
+    "fast-paced environment", "exceeded expectations", "impactful",
+    "actionable insights", "move the needle", "deep dive", "circle back",
+    "bandwidth", "deliverables", "cross-functional teams to deliver",
+    "wore many hats", "hit the ground running", "go-to person",
+    "best-in-class", "robust", "best practices", "pain points",
 ]
 
+# Backwards-compatible alias — keeps existing imports working
+HUMANIZATION_BANNED_PHRASES = BANNED_HARD
+
+# Tier 2: Avoid unless used very sparingly — one per document maximum
+BANNED_SOFT = [
+    "collaborated", "partnered with", "drove", "championed", "pioneered",
+    "streamlined", "optimized", "oversaw", "facilitated", "executed",
+]
+
+# Preferred verb palette — concrete, active, varied
+PREFERRED_VERBS = [
+    "built", "wrote", "shipped", "fixed", "reduced", "grew", "cut",
+    "launched", "redesigned", "negotiated", "hired", "trained", "presented",
+    "analyzed", "proposed", "secured", "managed", "converted", "tested",
+    "deployed", "authored", "migrated", "automated", "documented",
+]
+
+def _banned_phrase_block() -> str:
+    hard = ", ".join(BANNED_HARD)
+    soft = ", ".join(BANNED_SOFT)
+    verbs = ", ".join(PREFERRED_VERBS)
+    return f"""
+LANGUAGE RULES (apply before writing a single word):
+
+NEVER USE — these will be detected as AI-written:
+{hard}
+
+USE AT MOST ONCE PER DOCUMENT (then find an alternative):
+{soft}
+
+PREFERRED ACTION VERBS — concrete and specific:
+{verbs}
+
+WRITING PATTERN TESTS — before finalising any bullet, ask:
+1. Could this sentence describe someone who works in a completely different industry? If yes, rewrite with specifics.
+2. Does this bullet start with the same verb structure as the one above it? If yes, vary it.
+3. Is there a number here? If not, is the qualitative impact still specific enough to be credible?
+4. Would a recruiter reading this think "I've seen this exact phrasing on 100 CVs"? If yes, rewrite.
+"""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MAIN PROMPT BUILDER
+# ──────────────────────────────────────────────────────────────────────────────
 
 class CVPromptBuilder:
-    """Builds comprehensive, job-optimized prompts for AI CV generation"""
-    
+    """Builds human-first, job-optimized prompts for AI CV generation"""
+
     def __init__(self):
         self.formatter = CVDataFormatter()
         self.matcher = CVJobMatcher()
-    
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # FULL CV PROMPT
+    # ──────────────────────────────────────────────────────────────────────────
+
     def build_full_cv_prompt(
         self,
         user_data: Dict,
         job_data: Optional[Dict],
         cv_style: str,
-        include_sections: List[str]
+        include_sections: List[str],
     ) -> str:
-        """Build deeply job-tailored prompt for full CV generation"""
-        
-        # Format all data sections
-        personal_info = self.formatter.format_personal_info(user_data)
-        profile = user_data.get('job_seeker_profile', {})
-        work_exp = self.formatter.format_work_experience(user_data.get('work_experiences', []))
-        education = self.formatter.format_education(user_data.get('educations', []))
-        skills = self.formatter.format_skills(profile)
-        certifications = self.formatter.format_certifications(user_data.get('certifications', []))
-        projects = self.formatter.format_projects(user_data.get('projects', []))
-        awards = self.formatter.format_awards(user_data.get('awards', []))
-        references = self.formatter.format_references(user_data.get('references', []))
-        languages = self.formatter.format_languages(profile)
+        """
+        Build a full CV generation prompt.
 
-        # Voice context for more human and role-appropriate writing
-        seniority_level = self._infer_seniority_level(user_data)
+        Key design decisions:
+        - Banned phrases appear FIRST so the model weights them throughout generation
+        - No self-scoring theater — instructions are precise enough that revision isn't needed
+        - Job matching context is factual, not prescriptive about exact repetition counts
+        - Style affects tone calibration, not just formatting labels
+        """
+        profile = user_data.get("job_seeker_profile", {})
+
+        personal_info   = self.formatter.format_personal_info(user_data)
+        work_exp        = self.formatter.format_work_experience(user_data.get("work_experiences", []))
+        education       = self.formatter.format_education(user_data.get("educations", []))
+        skills          = self.formatter.format_skills(profile)
+        certifications  = self.formatter.format_certifications(user_data.get("certifications", []))
+        projects        = self.formatter.format_projects(user_data.get("projects", []))
+        awards          = self.formatter.format_awards(user_data.get("awards", []))
+        references      = self.formatter.format_references(user_data.get("references", []))
+        languages       = self.formatter.format_languages(profile)
+
+        seniority_level  = self._infer_seniority_level(user_data)
         industry_vertical = self._infer_industry_vertical(user_data, job_data)
-        tone_preference = self._extract_tone_preference(profile)
-        banned_phrase_block = self._humanization_reference_block()
-        
-        # Build advanced job context with matching analysis
-        job_context = self._build_job_context(user_data, job_data) if job_data else self._build_general_context(profile)
-        
-        # Get style guidelines
-        style_guide = self._get_style_guidelines(cv_style)
-        
-        # Build section requirements
+        tone_guidance    = self._tone_guidance(cv_style, seniority_level)
+        job_context      = (
+            self._build_job_context(user_data, job_data)
+            if job_data
+            else self._build_general_context(profile)
+        )
         section_reqs = self._build_section_requirements(include_sections, user_data)
-        
-        # Build the prompt with AGENTIC strategic instructions
-        prompt = f"""You are ARIA (AI Resume Intelligence Agent), an autonomous CV/Resume strategist with 20+ years of experience in career consulting, executive recruiting, and ATS optimization. You are not a simple content generator — you are an intelligent agent that REASONS, ANALYZES, PLANS, DECIDES, and SELF-EVALUATES.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🤖 YOUR AUTONOMOUS AGENT WORKFLOW (FOLLOW THIS EXACTLY)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        prompt = f"""You are an expert CV writer. Your task is to write a CV that reads as if the candidate wrote it themselves — carefully, specifically, and without any corporate filler.
 
-**PHASE 1: ANALYZE THE CANDIDATE** (Think before writing)
-- Review their complete career trajectory, progression, and arc
-- Identify their 3 strongest achievements across all experience
-- Determine their seniority level and career narrative angle
-- Assess quantifiable impact patterns (what metrics do they naturally have?)
-- List their TRUE core strengths (not buzzwords)
+{_banned_phrase_block()}
 
-**PHASE 2: DECODE THE JOB POSTING** (Understand what they REALLY want)
-- Extract MUST-HAVE vs NICE-TO-HAVE skills (read between the lines)
-- Identify exact keywords and phrases to mirror (the recruiter's language)
-- Detect cultural tone (startup/corporate/academic/creative)
-- Determine what the hiring manager's pain points are
-- Score candidate fit: HIGH (70-100) | MEDIUM (40-69) | LOW (0-39)
-
-**PHASE 3: STRATEGIZE THE NARRATIVE** (Plan before generating)
-- Choose the narrative angle: "Career Progression", "Career Pivot", "Domain Expert", "Problem Solver", or "Rising Star"
-- Decide section ordering based on strengths (do they lead with skills or experience?)
-- Plan bullet depth per experience: 6 bullets for highly relevant roles, 2-3 for less relevant
-- Identify gaps to bridge with transferable skills
-- Choose which achievements to quantify and how
-
-**PHASE 4: GENERATE THE CV** (Execute your plan)
-- Use the strategy from Phase 3 to write every section
-- Mirror job posting language in high-relevance sections
-- Transform responsibilities into achievement statements
-- Quantify everything possible in top 2 experiences
-
-**PHASE 5: SELF-EVALUATE AGAINST ATS RUBRIC** (Judge your own work)
-Score your generated CV on this rubric (0-100):
-- Keyword Match (0-25): Are ALL critical job keywords present naturally?
-- Quantification (0-15): Are metrics used credibly and only where evidence exists?
-- ATS Formatting (0-15): Clean structure, no tables/graphics, standard headings?
-- Achievement Depth (0-15): Concrete actions, context, and outcome quality?
-- Completeness (0-10): All candidate experiences included, none skipped?
-- Human Writing Score (0-20): Does this read like a real professional wrote it?
-
-During self-review, flag and rewrite any AI-sounding bullet or phrase using the banned phrases list below.
-Before finalizing, read the CV aloud in your reasoning. If any sentence sounds like it came from a template, rewrite it.
-
-**IF YOUR SELF-SCORE < 80/100, YOU MUST REVISE INTERNALLY BEFORE OUTPUTTING.**
-Do NOT output anything until you achieve 80+/100.
-
-{job_context}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 CANDIDATE PROFILE DATA (Your raw materials)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+──────────────────────────────────────────────────────────────────
+CANDIDATE DATA
+──────────────────────────────────────────────────────────────────
 
 {personal_info}
 
-Professional Title: {profile.get('professional_title', 'Professional')}
-Years of Experience: {profile.get('years_of_experience', 0)}
-Career Level: {profile.get('career_level', 'Not specified')}
-Inferred Seniority Level: {seniority_level}
-Inferred Industry Vertical: {industry_vertical}
-Tone Preference: {tone_preference}
-Professional Summary: {profile.get('professional_summary', 'Not provided')}
-Desired Position: {profile.get('desired_position', 'Open to opportunities')}
+Professional title: {profile.get("professional_title", "Professional")}
+Years of experience: {profile.get("years_of_experience", 0)}
+Career level: {profile.get("career_level", "Not specified")}
+Seniority (inferred): {seniority_level}
+Industry vertical (inferred): {industry_vertical}
+Existing summary (reference only — do not copy): {profile.get("professional_summary", "Not provided")}
+Desired position: {profile.get("desired_position", "Open to opportunities")}
 
-📊 WORK EXPERIENCE:
+WORK EXPERIENCE:
 {work_exp}
 
-🎓 EDUCATION:
+EDUCATION:
 {education}
 
-💡 SKILLS:
+SKILLS:
 {skills}
-Soft Skills: {profile.get('soft_skills', 'Not specified')}
+Soft skills: {profile.get("soft_skills", "Not specified")}
 
-📜 CERTIFICATIONS:
+CERTIFICATIONS:
 {certifications}
 
-🔨 PROJECTS:
+PROJECTS:
 {projects}
 
-🏆 AWARDS:
+AWARDS:
 {awards}
 
-👤 REFERENCES:
+REFERENCES:
 {references}
 
-🌐 LANGUAGES:
+LANGUAGES:
 {languages}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 CV STYLE: {cv_style.upper()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{style_guide}
+──────────────────────────────────────────────────────────────────
+{job_context}
+──────────────────────────────────────────────────────────────────
+TONE & STYLE: {cv_style.upper()}
+──────────────────────────────────────────────────────────────────
+{tone_guidance}
 
-📋 REQUIRED SECTIONS TO GENERATE:
+──────────────────────────────────────────────────────────────────
+SECTIONS TO GENERATE
+──────────────────────────────────────────────────────────────────
 {section_reqs}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✍️ HUMAN WRITING DIRECTIVES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+──────────────────────────────────────────────────────────────────
+WRITING RULES
+──────────────────────────────────────────────────────────────────
 
-Voice & Authenticity:
-- Write each CV as if the candidate themselves wrote it with care.
-- Calibrate voice to seniority: entry-level = eager and concrete; senior = confident and strategic; executive = visionary but grounded.
-- Vary sentence openings radically. Do not start every bullet with a verb.
-- Intentionally mix bullet lengths: some punchy (<10 words), some rich (20-30 words).
+PROFESSIONAL SUMMARY
+- 3 to 5 sentences, 50–90 words.
+- Sentence 1: Position the candidate by domain, specialisation, or problem area. Be specific.
+  BAD:  "Results-driven software engineer with 8 years of experience."
+  GOOD: "Eight years building data pipelines for financial services firms, most recently at the intersection of real-time fraud detection and ML infrastructure."
+- Include one detail that is unique to this person — a niche, an unusual skill combination, a notable pivot.
+- Mention 1–2 concrete outcomes only where the data supports them. Do not force numbers.
+- Do not open with: "Passionate", "Results-driven", "Dynamic", "Dedicated", "I am", "With X years of".
+- Do not name any company or organisation in the summary.
+- Do not use "at [Company]" or "for [Organisation]".
 
-Metric Authenticity:
-- Do NOT force metrics into every bullet. Real CVs often have 30-50% bullets without hard numbers.
-- Use precise metrics only when supported by candidate data.
-- If no metric is available, use specific qualitative impact.
+WORK EXPERIENCE BULLETS
+Depth by relevance:
+- Highly relevant role (≥70% match): 5–6 bullets
+- Relevant role (50–69%): 4–5 bullets
+- Moderately relevant (30–49%): 3–4 bullets
+- Transferable only (<30%): 2–3 bullets
 
-Language Naturalness:
-- Avoid the banned phrases list below and any close paraphrase.
-- Use concrete language over buzzwords.
-- Use domain-appropriate terminology based on the candidate's industry vertical.
-- Contractions are acceptable in Creative summaries. Avoid contractions in Professional/Modern summaries.
+Every role MUST be included. Do not skip any position.
 
-Summary Section:
-- 3-5 sentences maximum.
-- First sentence must be a specific positioning statement.
-- Include at least one detail unique to this candidate (niche, technology, pivot, or unique skill combination).
-- Do NOT use generic openers like "passionate professional with X years".
-- Do NOT include company or organization names in the professional summary (e.g., avoid "at Company X").
-- Do NOT write the summary as "Job Title at Organization". Keep it person-centric, not employer-centric.
+Bullet construction — each bullet must:
+- Be written in plain English, not corporate speak.
+- Vary its opening: not every bullet should start with a verb. Mix:
+    → Verb openers:   "Reduced deployment time by 40% by switching from Jenkins to GitHub Actions."
+    → Context openers: "During a team of three's migration to AWS, handled infrastructure design and cost modelling."
+    → Result openers:  "Three-month backlog cleared after redesigning the ticket triage process."
+- Vary length: some punchy (under 10 words), some detailed (20–30 words). Do not make every bullet the same length.
+- Use metrics only where the candidate data implies them. A bullet with no number is better than a fabricated one.
+- Include at least one bullet per role that names a specific tool, technology, or methodology.
+- Include at least one bullet per role that shows collaboration or cross-team work — but do not use "collaborated with cross-functional teams."
 
-Work Experience Bullets:
-- Each role should have 3-6 bullets based on relevance; not every role needs 6.
-- Within each role include:
-  1) one challenge-focused bullet,
-  2) one collaboration/relationship bullet,
-  3) one concrete tool/system/methodology bullet.
-- Avoid repetitive grammar and rhythm within a role.
+SKILLS SECTION
+- Only list skills evidenced by the work history or projects — no aspirational padding.
+- Group into meaningful categories (e.g., Languages, Frameworks, Cloud & Infrastructure, Analytics, Design Tools).
+- List job-relevant skills first within each category.
+- Use the exact name format from the job posting (e.g., "React.js" not "React" if the posting says "React.js").
 
-Skills Section:
-- Include skills evidenced by work history or projects.
-- Group skills meaningfully by category (e.g., Languages, Frameworks, Analytics, Design Tools).
+KEYWORDS & JOB LANGUAGE
+- Use terminology from the job posting naturally throughout the CV.
+- Integrate keywords where they fit the candidate's real experience. Do not repeat any phrase more than twice.
+- If the job uses a specific term the candidate hasn't used yet, introduce it where it is genuinely applicable.
+- Do not stuff keywords — one well-placed match is worth more than five forced ones.
 
-You are writing for a human reader who has seen thousands of CVs. Your job is to make this one feel like it was written by a real person who cares about their work, not a machine optimizing for keywords.
+THINGS THAT WILL GET THIS CV REJECTED AS AI-GENERATED:
+- Any phrase from the NEVER USE list above.
+- Three or more bullets in the same role starting with the same verb.
+- Metrics that seem invented (e.g., "improved efficiency by 47%") with no supporting data.
+- Summary that could be swapped onto any other CV without changing.
+- Bullet points that describe responsibilities instead of outcomes.
 
-{banned_phrase_block}
+──────────────────────────────────────────────────────────────────
+OUTPUT FORMAT
+──────────────────────────────────────────────────────────────────
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 OUTPUT FORMAT (STRICT JSON WITH AGENT REASONING)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Return ONLY valid JSON. No markdown, no code blocks, no preamble.
 
-Return ONLY valid JSON with this exact structure (no markdown, no code blocks, just raw JSON):
 {{
-  "agent_reasoning": {{
-    "candidate_analysis": "2-3 sentence analysis of candidate's strongest attributes, career trajectory, and seniority level",
-    "job_decoding": "2-3 sentences on what the employer REALLY wants — must-haves vs nice-to-haves, cultural fit indicators",
-    "job_match_score": 75,
-    "match_level": "HIGH or MEDIUM or LOW",
-    "strategy_chosen": "One sentence: what narrative angle and approach you're taking (e.g., 'Career Progression narrative, leading with 8 years Python expertise')",
-    "writing_style": "2-3 sentences explaining chosen voice/tone and why it fits this candidate's background and target role",
+  "generation_notes": {{
+    "narrative_angle": "One sentence: the angle taken — e.g., 'Domain Expert in fintech payments, leading with 6 years of Python and SQL depth'",
     "key_decisions": [
-      "Decision 1: e.g., Emphasized cloud migration achievements due to 'AWS' appearing 7 times in posting",
-      "Decision 2: e.g., Reduced bullets for early retail role to 2, focusing on transferable leadership skills",
-      "Decision 3: e.g., Mirrored exact phrase 'stakeholder management' from job requirements 4 times across summary and bullets"
+      "e.g., Ordered roles by relevance to target job, not date — placed ML Engineer role first despite being 2 jobs ago",
+      "e.g., Used no metrics in the customer support role because no data was available — qualitative specifics used instead",
+      "e.g., Bridged gap in Kubernetes experience by highlighting Docker containerisation work in 3 bullets"
     ],
-    "gaps_bridged": [
-      "Gap 1: e.g., No direct Kubernetes experience — highlighted Docker containerization as adjacent skill",
-      "Gap 2: e.g., Lack of healthcare domain — emphasized transferable data privacy and compliance work"
-    ],
-    "confidence_score": 85,
-    "ats_self_evaluation": {{
-      "keyword_match_score": 23,
-      "quantification_score": 13,
-      "ats_formatting_score": 15,
-      "achievement_depth_score": 14,
-      "completeness_score": 9,
-      "human_writing_score": 18,
-      "total_score": 95,
-      "passed_quality_gate": true,
-      "internal_revisions": 1,
-      "revision_notes": "Initial score 78, revised summary to add 'DevOps' keyword and quantified project delivery metric to reach 95"
-    }}
+    "match_level": "HIGH | MEDIUM | LOW",
+    "match_score": 0
   }},
   "contact_information": {{
-    "full_name": "First Last",
-    "email": "email@example.com",
-    "phone": "+1234567890",
-    "location": "City, Country",
-    "linkedin": "linkedin.com/in/username",
-    "github": "github.com/username",
-    "portfolio": "portfolio.com"
+    "full_name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
   }},
-  "professional_summary": "3-5 sentence human-sounding summary with a specific opening, one candidate-unique detail, and concrete language tailored to target role. Keep it person-centric and do NOT include company/organization names.",
+  "professional_summary": "",
   "professional_experience": [
     {{
-      "company": "Company Name",
-      "position": "Job Title",
-      "location": "City, Country",
-      "start_date": "Jan 2020",
-      "end_date": "Present",
-      "achievements": [
-        "Challenge-focused bullet with concrete context and outcome",
-        "Collaboration-focused bullet showing who was involved and why",
-        "Tool/method-focused bullet with specific implementation detail"
-      ]
+      "company": "",
+      "position": "",
+      "location": "",
+      "start_date": "",
+      "end_date": "",
+      "achievements": []
     }}
   ],
   "education": [
     {{
-      "institution": "University Name",
-      "degree": "Degree Type",
-      "field": "Field of Study",
-      "graduation_date": "Year",
-      "gpa": "3.8/4.0",
-      "honors": "Magna Cum Laude",
-      "relevant_coursework": ["Course 1", "Course 2"]
+      "institution": "",
+      "degree": "",
+      "field": "",
+      "graduation_date": "",
+      "gpa": "",
+      "honors": "",
+      "relevant_coursework": []
     }}
   ],
   "technical_skills": {{
-    "programming_languages": ["Python", "JavaScript"],
-    "frameworks_tools": ["React", "Django"],
-    "databases": ["PostgreSQL", "MongoDB"],
-    "cloud_devops": ["AWS", "Docker"],
-    "methodologies": ["Agile", "CI/CD"]
+    "programming_languages": [],
+    "frameworks_tools": [],
+    "databases": [],
+    "cloud_devops": [],
+    "methodologies": []
   }},
-  "core_competencies": ["Leadership", "Communication", "Problem Solving"],
+  "core_competencies": [],
   "certifications": [
     {{
-      "name": "Certification Name",
-      "issuer": "Issuing Organization",
-      "date": "Year",
-      "credential_id": "ID if available"
+      "name": "",
+      "issuer": "",
+      "date": "",
+      "credential_id": ""
     }}
   ],
   "projects": [
     {{
-      "title": "Project Name",
-      "description": "Brief description highlighting relevant technologies and impact",
-      "technologies": ["Tech1", "Tech2"],
-      "url": "project-url.com",
-      "impact": "Quantified impact statement"
+      "title": "",
+      "description": "",
+      "technologies": [],
+      "url": "",
+      "impact": ""
     }}
   ],
   "awards": [
     {{
-      "title": "Award Name",
-      "issuer": "Organization",
-      "date": "Year",
-      "description": "Brief context"
+      "title": "",
+      "issuer": "",
+      "date": "",
+      "description": ""
     }}
   ],
   "references": [
     {{
-      "name": "Reference Name",
-      "position": "Their Title",
-      "company": "Their Company",
-      "email": "email@example.com",
-      "phone": "+1234567890",
-      "relationship": "Professional relationship"
+      "name": "",
+      "position": "",
+      "company": "",
+      "email": "",
+      "phone": "",
+      "relationship": ""
     }}
   ]
 }}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ CRITICAL RULES (MUST FOLLOW)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD CONSTRAINTS:
+1. NO fabrication — only use data provided above.
+2. Include ALL work experiences provided. None may be omitted.
+3. Skills must be evidenced by work history or projects.
+4. No company or organisation names in professional_summary.
+5. Valid JSON only — no trailing commas, proper string escaping.
+6. Generate only the sections listed in SECTIONS TO GENERATE.
 
-1. **NO FABRICATION**: Use ONLY the candidate data provided. Do NOT invent companies, degrees, skills, or achievements the candidate doesn't have.
-2. **MIRROR JOB LANGUAGE**: Use the exact terminology, keywords, and phrases from the job posting throughout the CV. If the job says "stakeholder management", use that exact phrase, not "managing stakeholders".
-3. **METRIC AUTHENTICITY**: Use numbers where evidence exists. Do not force metrics into every bullet.
-4. **STRUCTURAL VARIETY**: Vary sentence openings and cadence. Avoid repeated templates.
-5. **INCLUDE ALL EXPERIENCES WITH VARIED DEPTH**: Include every provided role. Use 3-6 bullets by relevance and substance.
-6. **NO BANNED PHRASES**: Remove any phrase from the banned list and rewrite in direct language.
-7. **NO TEMPLATE SOUND**: If a sentence sounds generic enough to fit anyone, rewrite it with candidate-specific detail.
-8. **SKILLS EVIDENCE RULE**: List skills that are demonstrated in work/project history; no aspirational padding.
-9. **ATS OPTIMIZATION**: Use standard headings, clean structure, and valid JSON-safe content.
-10. **INCLUDE ONLY REQUESTED SECTIONS**: Generate content only for REQUIRED SECTIONS.
-11. **VALID JSON**: No trailing commas, proper string escaping, no comments in JSON.
-12. **SUMMARY COMPANY RULE**: Never include target company/organization names in professional_summary.
+Generate the CV now."""
 
-Generate the CV now:"""
-        
         return prompt
-    
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # SECTION-LEVEL PROMPTS
+    # ──────────────────────────────────────────────────────────────────────────
+
     def build_section_prompt(
         self,
         section: str,
         user_data: Dict,
         job_data: Optional[Dict],
-        cv_style: str
+        cv_style: str,
     ) -> str:
-        """Build deeply tailored prompt for a single CV section"""
-        
-        profile = user_data.get('job_seeker_profile', {})
-        
-        # Build job context for section-level prompts
+        profile = user_data.get("job_seeker_profile", {})
         job_context = ""
         matching_data = {}
+
         if job_data:
             matching_data = self.matcher.analyze_match(user_data, job_data)
-            strategy = matching_data.get('tailoring_strategy', {})
-            
+            strategy = matching_data.get("tailoring_strategy", {})
             job_context = f"""
-🎯 TARGET ROLE: {job_data.get('title')} at {job_data.get('company_name', 'Target Company')}
-📝 Job Description: {job_data.get('description', 'Not provided')[:500]}
-📋 Requirements: {job_data.get('requirements', 'Not provided')[:500]}
+TARGET ROLE: {job_data.get("title")} at {job_data.get("company_name", "Target Company")}
+Job description: {job_data.get("description", "")[:600]}
+Requirements: {job_data.get("requirements", "")[:400]}
 
-MATCHING ANALYSIS:
-- Your matching skills: {', '.join(matching_data.get('matching_skills', [])[:10])}
-- Skill gaps to address: {', '.join(matching_data.get('skill_gaps', [])[:5])}
-- Experience match: {matching_data.get('experience_match', {}).get('summary', 'N/A')}
-- Relevance score: {matching_data.get('relevance_score', 0)}/100
+Matching skills from candidate: {", ".join(matching_data.get("matching_skills", [])[:10])}
+Skill gaps (do NOT fabricate): {", ".join(matching_data.get("skill_gaps", [])[:5])}
+Strategy: {strategy.get("focus", "Tailor to job requirements")}
 
-STRATEGY: {strategy.get('focus', 'Tailor to job requirements')}
+Use the job's exact terminology naturally. Do not repeat any key phrase more than twice.
+"""
 
-CRITICAL: Mirror the exact language and keywords from the job posting. Use the same terminology the employer uses."""
-        
-        section_prompts = {
-            'summary': self._build_summary_prompt(profile, user_data, job_data, job_context, matching_data),
-            'work': self._build_work_prompt(user_data, job_data, job_context, matching_data),
-            'education': self._build_education_prompt(user_data, job_data, job_context),
-            'skills': self._build_skills_prompt(profile, user_data, job_data, job_context, matching_data),
-            'certifications': self._build_certifications_prompt(user_data, job_data, job_context),
-            'projects': self._build_projects_prompt(user_data, job_data, job_context),
-            'awards': self._build_awards_prompt(user_data, job_context),
-            'references': self._build_references_prompt(user_data),
+        section_builders = {
+            "summary":        self._build_summary_prompt,
+            "work":           self._build_work_prompt,
+            "education":      self._build_education_prompt,
+            "skills":         self._build_skills_prompt,
+            "certifications": self._build_certifications_prompt,
+            "projects":       self._build_projects_prompt,
+            "awards":         self._build_awards_prompt,
+            "references":     self._build_references_prompt,
         }
-        
-        section_prompt = section_prompts.get(section, f"Generate the {section} section based on the provided data. Return valid JSON.")
-        return f"""{section_prompt}
 
-      HUMAN WRITING GUARDRAILS:
-      - Avoid banned/template phrases and rewrite in concrete, candidate-specific language.
-      - Vary sentence structure naturally. Do not make bullets read like a repeated formula.
-      - Use metrics selectively and credibly.
+        builder = section_builders.get(section)
+        if not builder:
+            return f"Generate the {section} section from the provided data. Return valid JSON."
 
-      {self._humanization_reference_block()}"""
-    
+        base_prompt = builder(profile, user_data, job_data, job_context, matching_data) \
+            if section in ("summary", "work", "skills") \
+            else builder(user_data, job_data, job_context)
+
+        return f"""{_banned_phrase_block()}
+
+{base_prompt}"""
+
     def _build_summary_prompt(self, profile, user_data, job_data, job_context, matching_data):
-        strategy = matching_data.get('tailoring_strategy', {})
-        summary_strategy = strategy.get('summary_focus', 'Write a compelling professional summary')
-        
-        return f"""Generate a natural, candidate-specific professional summary for a CV.
+        strategy = matching_data.get("tailoring_strategy", {}).get("summary_focus", "")
+        return f"""Write a professional summary for a CV.
 
 {job_context}
 
-CANDIDATE DATA:
-- Title: {profile.get('professional_title', 'Professional')}
-- Experience: {profile.get('years_of_experience', 0)} years
-- Current Summary: {profile.get('professional_summary', '')}
+CANDIDATE:
+Title: {profile.get("professional_title", "")}
+Experience: {profile.get("years_of_experience", 0)} years
+Existing summary (reference only): {profile.get("professional_summary", "")}
 
-WORK HISTORY (ALL POSITIONS — use for context):
-{self.formatter.format_work_experience(user_data.get('work_experiences', []))}
+All positions (for context):
+{self.formatter.format_work_experience(user_data.get("work_experiences", []))}
 
-SUMMARY STRATEGY: {summary_strategy}
+{"Strategy note: " + strategy if strategy else ""}
 
 REQUIREMENTS:
-1. 3-5 sentences, approximately 45-85 words.
-2. First sentence must position the candidate specifically (domain, specialization, or problem area) without generic filler.
-3. Include at least one candidate-unique signal from provided data (specific technology stack, domain niche, career pivot, or uncommon skill combination).
-4. Mention impact naturally: use 1-2 metrics only when evidence exists; otherwise use concrete qualitative outcomes.
-5. Include job-relevant keywords naturally, but do not keyword-stuff.
-6. Do NOT use template openers such as "results-driven", "passionate professional", or "X years of experience as a...".
-7. Do NOT mention company/organization names (no "at <company>", "for <organization>").
-8. Keep tone aligned to style: Professional/Modern = polished and direct; Creative = slightly conversational.
-9. Avoid repetitive sentence structure and avoid sounding like a generic AI summary.
+- 3–5 sentences, 50–90 words.
+- Sentence 1: Specific positioning statement. Name the domain or specialisation. No generic openers.
+- Include one unique signal: a niche, unusual skill combination, career transition, or specific methodology.
+- 1–2 concrete outcomes where candidate data supports them. No invented metrics.
+- No company or organisation names.
+- No template openers: "passionate", "results-driven", "dynamic", "dedicated professional with X years".
+- Natural language — if it sounds like it was written by a robot, rewrite it.
 
-Return ONLY valid JSON: {{"professional_summary": "Your summary text here"}}"""
-    
-    def _build_work_prompt(self, user_data, job_data, job_context, matching_data):
-        strategy = matching_data.get('tailoring_strategy', {})
-        achievement_strategy = strategy.get('achievement_focus', 'Quantify all achievements')
-        exp_relevance = matching_data.get('experience_relevance', [])
-        
-        # Build detailed relevance ranking
-        experiences = user_data.get('work_experiences', [])
-        total_experiences = len(experiences)
-        
-        # Build per-experience relevance guidance
-        relevance_guidance = []
+BAD example (do not produce this):
+"Results-driven software engineer passionate about leveraging cutting-edge technologies to deliver scalable solutions in fast-paced environments."
+
+GOOD example (this is the quality bar):
+"Ten years designing backend systems for e-commerce at scale, with the last four focused on reducing checkout abandonment through A/B testing infrastructure and personalisation pipelines. Comfortable owning a problem from data analysis through to production — have led teams of two to twelve depending on the project."
+
+Return ONLY valid JSON: {{"professional_summary": "..."}}"""
+
+    def _build_work_prompt(self, profile, user_data, job_data, job_context, matching_data):
+        strategy   = matching_data.get("tailoring_strategy", {}).get("achievement_focus", "")
+        experiences = user_data.get("work_experiences", [])
+        total       = len(experiences)
+
+        # Build per-role guidance
+        role_guidance = []
         for i, exp in enumerate(experiences):
-            score = exp.get('_relevance_score', 50)
-            label = exp.get('_relevance_label', 'relevant')
-            title = exp.get('job_title', 'Unknown')
-            company = exp.get('company_name', 'Unknown')
-            
+            score = exp.get("_relevance_score", 50)
+            label = exp.get("_relevance_label", "relevant")
+            title = exp.get("job_title", "Unknown")
+            company = exp.get("company_name", "Unknown")
+
             if score >= 70:
-                detail_level = '5-6 achievement bullets, elaborate on impact, mirror job language heavily'
+                depth = "5–6 bullets. Elaborate on impact. Use job posting terminology where it fits naturally."
             elif score >= 50:
-                detail_level = '4-5 achievement bullets, highlight transferable skills and related impact'
+                depth = "4–5 bullets. Highlight transferable achievements. Connect to target role."
             elif score >= 30:
-                detail_level = '3-4 achievement bullets, emphasize transferable skills, leadership, and soft skills'
+                depth = "3–4 bullets. Emphasise transferable skills, leadership, and problem solving."
             else:
-                detail_level = '2-3 concise bullets, focus on universal skills (communication, problem-solving, teamwork, initiative)'
-            
-            relevance_guidance.append(
-                f"  #{i+1} [{label.upper()} - {score}/100] {title} at {company}\n"
-                f"      → Strategy: {detail_level}"
-            )
-        
-        relevance_section = "\n".join(relevance_guidance) if relevance_guidance else "Order by recency, 3-4 bullets each"
-        
-        return f"""Generate the professional experience section for a CV.
+                depth = "2–3 bullets. Focus on universal skills: communication, initiative, reliability, problem solving."
+
+            role_guidance.append(f"  [{label.upper()} {score}/100] {title} at {company} → {depth}")
+
+        guidance_block = "\n".join(role_guidance)
+
+        return f"""Write the professional experience section for a CV.
 
 {job_context}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 EXPERIENCE RELEVANCE RANKING & STRATEGY ({total_experiences} positions — ALL MUST BE INCLUDED)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{relevance_section}
+ROLE DEPTH GUIDE ({total} roles — ALL must appear in output):
+{guidance_block}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 CANDIDATE'S COMPLETE WORK HISTORY (USE ALL OF THEM)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FULL WORK HISTORY:
 {self.formatter.format_work_experience(experiences)}
 
-ACHIEVEMENT STRATEGY: {achievement_strategy}
+{"Achievement strategy: " + strategy if strategy else ""}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ CRITICAL RULES FOR PROFESSIONAL EXPERIENCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BULLET RULES:
+1. Every bullet = something that happened, not a responsibility that existed.
+   BAD:  "Responsible for managing the deployment pipeline."
+   GOOD: "Cut deployment time from 45 minutes to 8 by rewriting the CI pipeline in GitHub Actions."
 
-1. **INCLUDE EVERY SINGLE POSITION** — You MUST generate entries for ALL {total_experiences} positions listed above. Do NOT skip or omit any experience, regardless of relevance.
-2. **ORDER BY RELEVANCE** — The output array must be ordered from MOST relevant to LEAST relevant to the target job (as shown in the ranking above), NOT by date.
-3. **VARY BULLET DEPTH BY RELEVANCE**:
-   - HIGHLY RELEVANT positions (70+): 5-6 detailed achievement bullets, elaborate descriptions, heavy keyword mirroring
-   - RELEVANT positions (50-69): 4-5 bullets, emphasize transferable accomplishments
-   - MODERATELY RELEVANT positions (30-49): 3-4 bullets, bridge transferable skills to job requirements
-   - TRANSFERABLE VALUE positions (<30): 2-3 concise bullets, highlight soft skills, leadership, initiative, problem-solving
-4. **EVERY BULLET = ACTION VERB + TASK + QUANTIFIED RESULT**: "Verb + What you did + How you did it + Measurable impact"
-5. **QUANTIFY EVERYTHING**: percentages, dollar amounts, team sizes, time saved, users impacted, projects delivered
-6. **MIRROR JOB LANGUAGE** in highly relevant positions — use exact terminology from the job posting
-7. **BRIDGE TRANSFERABLE SKILLS** in less relevant positions — connect past work to target role through universal skills
-8. **INCLUDE TECHNOLOGIES** mentioned in each experience, especially those matching the job requirements
-9. **TRANSFORM RESPONSIBILITIES INTO ACHIEVEMENTS**: "Managed team" → "Led cross-functional team of 8 engineers, delivering 3 products ahead of schedule"
-10. **USE STRONG ACTION VERBS**: Led, Developed, Architected, Implemented, Optimized, Spearheaded, Launched, Streamlined, Mentored, Delivered, Orchestrated, Pioneered, Championed
+2. Vary sentence openings within each role:
+   - Verb opener:    "Rebuilt the onboarding flow..."
+   - Context opener: "When the team moved to microservices..."
+   - Result opener:  "Zero downtime for 14 months after..."
 
-Return ONLY valid JSON: {{"professional_experience": [... EXACTLY {total_experiences} entries ...]}}"""
-    
+3. Vary bullet length. Mix short punchy lines with longer context-rich ones.
+
+4. Use numbers where the candidate's data implies them. Do not invent percentages.
+   If no number is available, use specific qualitative language:
+   BAD without data:  "Increased sales by 30%."
+   GOOD without data: "Took over an underperforming territory and turned it into the team's top account within two quarters."
+
+5. Each role must include at least:
+   - One bullet naming a specific tool, system, or technology.
+   - One bullet showing collaboration (without using "collaborated with cross-functional teams").
+
+6. Output order: by relevance to target job (most relevant first), not by date.
+
+Return ONLY valid JSON: {{"professional_experience": [ ... exactly {total} entries ... ]}}"""
+
     def _build_education_prompt(self, user_data, job_data, job_context):
-        return f"""Generate the education section for a CV.
+        return f"""Write the education section for a CV.
 
 {job_context}
 
 CANDIDATE EDUCATION:
-{self.formatter.format_education(user_data.get('educations', []))}
+{self.formatter.format_education(user_data.get("educations", []))}
 
 REQUIREMENTS:
-1. Include all education entries
-2. Highlight relevant coursework that matches the job requirements
-3. Include GPA if 3.5+ or equivalent
-4. Include honors, awards, and relevant extracurricular activities
-5. If the job requires specific degrees, emphasize matching qualifications
-6. List most relevant/highest degree first
+- Include all entries.
+- Highest or most relevant degree listed first.
+- Include GPA only if 3.5+/4.0 or local equivalent.
+- Include honours, relevant awards, or distinctions if present.
+- Add relevant coursework only where it directly matches job requirements.
 
-Return ONLY valid JSON: {{"education": [{{
-  "institution": "Name",
-  "degree": "Degree Type", 
-  "field": "Field of Study",
-  "graduation_date": "Year",
-  "gpa": "Score/Scale",
-  "honors": "If any",
-  "relevant_coursework": ["Course1", "Course2"]
-}}]}}"""
-    
+Return ONLY valid JSON:
+{{"education": [{{"institution":"","degree":"","field":"","graduation_date":"","gpa":"","honors":"","relevant_coursework":[]}}]}}"""
+
     def _build_skills_prompt(self, profile, user_data, job_data, job_context, matching_data):
-        skills_strategy = matching_data.get('tailoring_strategy', {}).get('skills_focus', 'Organize by relevance')
-        matching_skills = matching_data.get('matching_skills', [])
-        skill_gaps = matching_data.get('skill_gaps', [])
-        
-        return f"""Generate the skills section for a CV.
+        matching  = matching_data.get("matching_skills", [])
+        gaps      = matching_data.get("skill_gaps", [])
+        strategy  = matching_data.get("tailoring_strategy", {}).get("skills_focus", "")
+
+        return f"""Write the skills section for a CV.
 
 {job_context}
 
 CANDIDATE SKILLS:
 {self.formatter.format_skills(profile)}
-Technical Skills: {profile.get('technical_skills', '')}
-Soft Skills: {profile.get('soft_skills', '')}
+Technical: {profile.get("technical_skills", "")}
+Soft: {profile.get("soft_skills", "")}
 
-MATCHING ANALYSIS:
-- Skills that match the job: {', '.join(matching_skills[:15])}
-- Skills from job not in profile (DO NOT fabricate these): {', '.join(skill_gaps[:10])}
+Skills matching job requirements: {", ".join(matching[:15])}
+Job skills NOT in candidate profile (do NOT add these): {", ".join(gaps[:10])}
 
-SKILLS STRATEGY: {skills_strategy}
+{"Skills strategy: " + strategy if strategy else ""}
 
 REQUIREMENTS:
-1. Categorize into: Programming Languages, Frameworks & Tools, Databases, Cloud & DevOps, Methodologies, Soft Skills
-2. List skills that MATCH the job requirements FIRST in each category
-3. Include 12-20 total technical skills
-4. DO NOT add skills the candidate doesn't have
-5. Use the exact technology names from the job posting (e.g., "React.js" not "React" if the job says "React.js")
-6. Include core competencies as a separate list of 8-10 professional strengths
-7. Competencies should include soft skills relevant to the role
+- List only skills demonstrated in work history or projects.
+- Categories: Programming Languages, Frameworks & Tools, Databases, Cloud & DevOps, Methodologies, Soft Skills.
+- Within each category, list skills matching the job posting first.
+- 12–20 total technical skills.
+- Use the exact format from the job posting (e.g., "React.js" if the posting says "React.js", not "React").
+- Core competencies: 8–10 professional strengths grounded in the candidate's actual experience.
 
-Return ONLY valid JSON: {{"technical_skills": {{}}, "core_competencies": [...]}}"""
-    
+Return ONLY valid JSON: {{"technical_skills": {{}}, "core_competencies": []}}"""
+
     def _build_certifications_prompt(self, user_data, job_data, job_context):
-        return f"""Generate the certifications section for a CV.
+        return f"""Write the certifications section for a CV.
 
 {job_context}
 
 CANDIDATE CERTIFICATIONS:
-{self.formatter.format_certifications(user_data.get('certifications', []))}
+{self.formatter.format_certifications(user_data.get("certifications", []))}
 
 REQUIREMENTS:
-1. List all certifications
-2. Order by relevance to the target job first
-3. Include certification name, issuing organization, date, and credential ID if available
-4. Highlight certifications that match job requirements
+- Include all certifications provided.
+- List those matching job requirements first.
+- Include name, issuer, date, and credential ID where available.
 
-Return ONLY valid JSON: {{"certifications": [{{
-  "name": "Cert Name",
-  "issuer": "Organization",
-  "date": "Year",
-  "credential_id": "ID"
-}}]}}"""
-    
+Return ONLY valid JSON:
+{{"certifications": [{{"name":"","issuer":"","date":"","credential_id":""}}]}}"""
+
     def _build_projects_prompt(self, user_data, job_data, job_context):
-        return f"""Generate the projects section for a CV.
+        return f"""Write the projects section for a CV.
 
 {job_context}
 
 CANDIDATE PROJECTS:
-{self.formatter.format_projects(user_data.get('projects', []))}
+{self.formatter.format_projects(user_data.get("projects", []))}
 
 REQUIREMENTS:
-1. Order projects by relevance to the target job
-2. Highlight technologies used that match job requirements
-3. Include quantified impact for each project
-4. Emphasize the candidate's role and contributions
-5. Include project URLs if available
+- Order by relevance to target role.
+- Highlight technologies that match job requirements.
+- Include quantified impact where the data supports it.
+- Make the description specific — name the actual problem solved, not a generic description.
+- Include URL if available.
 
-Return ONLY valid JSON: {{"projects": [{{
-  "title": "Project Name",
-  "description": "Brief description with relevant tech + impact",
-  "technologies": ["Tech1", "Tech2"],
-  "url": "url-if-available",
-  "impact": "Quantified impact"
-}}]}}"""
-    
-    def _build_awards_prompt(self, user_data, job_context):
-        return f"""Generate the awards section for a CV.
+Return ONLY valid JSON:
+{{"projects": [{{"title":"","description":"","technologies":[],"url":"","impact":""}}]}}"""
+
+    def _build_awards_prompt(self, user_data, job_data, job_context):
+        return f"""Write the awards section for a CV.
 
 {job_context}
 
 CANDIDATE AWARDS:
-{self.formatter.format_awards(user_data.get('awards', []))}
+{self.formatter.format_awards(user_data.get("awards", []))}
 
 REQUIREMENTS:
-1. List all awards and recognitions
-2. Include brief context for relevance
-3. Order by most impressive/relevant first
+- Include all entries.
+- Add brief context that makes the award meaningful to someone outside the organisation.
+- Order by impressiveness or relevance.
 
-Return ONLY valid JSON: {{"awards": [{{
-  "title": "Award Name",
-  "issuer": "Organization",
-  "date": "Year",
-  "description": "Brief context"
-}}]}}"""
-    
-    def _build_references_prompt(self, user_data):
+Return ONLY valid JSON:
+{{"awards": [{{"title":"","issuer":"","date":"","description":""}}]}}"""
+
+    def _build_references_prompt(self, user_data, *args, **kwargs):
         return f"""Generate the references section for a CV.
 
 CANDIDATE REFERENCES:
-{self.formatter.format_references(user_data.get('references', []))}
+{self.formatter.format_references(user_data.get("references", []))}
 
 REQUIREMENTS:
-1. Include all references as provided
-2. Do not fabricate any reference information
+- Include all references exactly as provided.
+- Do not fabricate or modify any reference information.
 
-Return ONLY valid JSON: {{"references": [{{
-  "name": "Name",
-  "position": "Title",
-  "company": "Company",
-  "email": "email",
-  "phone": "phone",
-  "relationship": "Relationship"
-}}]}}"""
-    
+Return ONLY valid JSON:
+{{"references": [{{"name":"","position":"","company":"","email":"","phone":"","relationship":""}}]}}"""
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # JOB CONTEXT BUILDERS
+    # ──────────────────────────────────────────────────────────────────────────
+
     def _build_job_context(self, user_data: Dict, job_data: Dict) -> str:
-        """Build comprehensive job matching context with deep analysis"""
-        matching_analysis = self.matcher.analyze_match(user_data, job_data)
-        strategy = matching_analysis.get('tailoring_strategy', {})
-        exp_match = matching_analysis.get('experience_match', {})
-        keyword_density = matching_analysis.get('keyword_density', {})
-        
-        # Get top emphasis keywords from the job
-        emphasis_keywords = keyword_density.get('emphasis_keywords', [])
-        top_keywords = [k['keyword'] for k in keyword_density.get('top_keywords', [])[:15]]
-        
-        return f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 TARGET JOB — THIS CV MUST BE TAILORED FOR THIS SPECIFIC ROLE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        matching = self.matcher.analyze_match(user_data, job_data)
+        strategy = matching.get("tailoring_strategy", {})
+        exp_match = matching.get("experience_match", {})
+        kd = matching.get("keyword_density", {})
 
-JOB TITLE: {job_data.get('title')}
-COMPANY: {job_data.get('company_name', 'Not specified')}
-LOCATION: {job_data.get('location', 'Not specified')}
-CATEGORY: {job_data.get('category', 'Not specified')}
-EXPERIENCE LEVEL: {job_data.get('experience_level', 'Not specified')}
-EMPLOYMENT TYPE: {job_data.get('employment_type', 'Not specified')}
+        top_keywords    = [k["keyword"] for k in kd.get("top_keywords", [])[:15]]
+        emphasis_keywords = kd.get("emphasis_keywords", [])
 
-📝 JOB DESCRIPTION:
-{job_data.get('description', 'Not specified')}
+        must_include = strategy.get("must_include_keywords", [])[:10]
+        weave_in     = strategy.get("keywords_to_weave_in", [])[:5]
 
-📋 JOB REQUIREMENTS:
-{job_data.get('requirements', 'Not specified')}
-{'📄 FULL ORIGINAL JOB POSTING (use this for deeper context):' + chr(10) + job_data['full_posting'] if job_data.get('full_posting') else ''}
-🔧 REQUIRED SKILLS:
-{', '.join(job_data.get('required_skills', [])) if isinstance(job_data.get('required_skills'), list) else job_data.get('required_skills', job_data.get('skills_required', 'Not specified'))}
+        return f"""TARGET JOB
+Title:       {job_data.get("title")}
+Company:     {job_data.get("company_name", "Not specified")}
+Location:    {job_data.get("location", "Not specified")}
+Level:       {job_data.get("experience_level", "Not specified")}
+Type:        {job_data.get("employment_type", "Not specified")}
 
-⭐ PREFERRED SKILLS:
-{', '.join(job_data.get('preferred_skills', [])) if isinstance(job_data.get('preferred_skills'), list) else job_data.get('preferred_skills', 'Not specified')}
+JOB DESCRIPTION:
+{job_data.get("description", "Not specified")}
 
-📚 EDUCATION REQUIREMENT: {job_data.get('education_requirement', 'Not specified')}
-📅 EXPERIENCE REQUIRED: {job_data.get('years_experience_min', 'Not specified')}-{job_data.get('years_experience_max', 'N/A')} years
+REQUIREMENTS:
+{job_data.get("requirements", "Not specified")}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 DEEP MATCHING ANALYSIS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{("FULL POSTING:\n" + job_data["full_posting"]) if job_data.get("full_posting") else ""}
 
-RELEVANCE SCORE: {matching_analysis['relevance_score']}/100
+Required skills:  {", ".join(job_data.get("required_skills", [])) if isinstance(job_data.get("required_skills"), list) else job_data.get("required_skills", "See description")}
+Preferred skills: {", ".join(job_data.get("preferred_skills", [])) if isinstance(job_data.get("preferred_skills"), list) else job_data.get("preferred_skills", "See description")}
+Education req:    {job_data.get("education_requirement", "Not specified")}
+Experience req:   {job_data.get("years_experience_min", "?")}–{job_data.get("years_experience_max", "?")} years
 
-✅ MATCHING SKILLS (MUST be prominently featured):
-{', '.join(matching_analysis['matching_skills'][:15]) or 'None identified'}
+──────────────────────────────────────────────────────────────────
+MATCHING ANALYSIS
+──────────────────────────────────────────────────────────────────
+Relevance score: {matching["relevance_score"]}/100  |  Match: {exp_match.get("level","?").upper()}
 
-❌ SKILL GAPS (DO NOT fabricate — but emphasize related skills):
-{', '.join(matching_analysis['skill_gaps'][:10]) or 'None identified'}
+Candidate skills that match the job (feature these prominently):
+{", ".join(matching["matching_skills"][:15]) or "None identified"}
 
-🔄 TRANSFERABLE SKILLS (Leverage these):
-{', '.join(matching_analysis.get('transferable_skills', [])) or 'None identified'}
+Skills from job NOT in candidate profile (do NOT fabricate):
+{", ".join(matching["skill_gaps"][:10]) or "None"}
 
-📋 REQUIRED by employer: {', '.join(matching_analysis.get('required_skills', [])) or 'See requirements above'}
-⭐ PREFERRED by employer: {', '.join(matching_analysis.get('preferred_skills', [])) or 'See description above'}
+Transferable skills to bridge gaps:
+{", ".join(matching.get("transferable_skills", [])) or "None identified"}
 
-👔 EXPERIENCE ASSESSMENT:
-- Match Level: {exp_match.get('level', 'N/A').upper()}
-- {exp_match.get('summary', 'N/A')}
-- Total Experience: {exp_match.get('years_total', 0)} years
-- Relevant Experience: {exp_match.get('relevant_years', 0)} years
-- Required by Job: {exp_match.get('required_years', 'Not specified')} years
+Experience summary: {exp_match.get("summary", "")}
+Candidate total: {exp_match.get("years_total", 0)} yrs | Relevant: {exp_match.get("relevant_years", 0)} yrs | Required: {exp_match.get("required_years", "?")} yrs
 
-🔑 HIGH-PRIORITY KEYWORDS FROM JOB (use these exact terms throughout the CV):
-{', '.join(top_keywords) if top_keywords else 'Extract from job description above'}
+HIGH-PRIORITY KEYWORDS — use these naturally throughout (not forced):
+{", ".join(top_keywords) if top_keywords else "Extract from description above"}
 
-📊 MOST EMPHASIZED KEYWORDS (appeared 3+ times in posting):
-{', '.join(emphasis_keywords) if emphasis_keywords else 'N/A'}
+Most repeated in posting (3+ times — the employer really cares about these):
+{", ".join(emphasis_keywords) if emphasis_keywords else "N/A"}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧭 TAILORING STRATEGY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Must include (weave in naturally):        {", ".join(must_include)}
+Secondary keywords (include if relevant): {", ".join(weave_in)}
 
-APPROACH: {strategy.get('approach', 'bridge_skills').upper()}
-FOCUS: {strategy.get('focus', 'Tailor content to job requirements')}
-
-📝 SUMMARY STRATEGY: {strategy.get('summary_focus', 'Write a compelling summary')}
-💼 ACHIEVEMENT STRATEGY: {strategy.get('achievement_focus', 'Quantify all achievements')}
-🔧 SKILLS STRATEGY: {strategy.get('skills_focus', 'Organize by relevance')}
-
-KEYWORDS THAT MUST APPEAR IN CV:
-{', '.join(strategy.get('must_include_keywords', [])[:10])}
-
-ADDITIONAL KEYWORDS TO WEAVE IN (if candidate has related experience):
-{', '.join(strategy.get('keywords_to_weave_in', [])[:5])}
+TAILORING APPROACH: {strategy.get("approach", "bridge_skills").upper()}
+Focus: {strategy.get("focus", "Tailor to job requirements")}
 """
-    
+
     def _build_general_context(self, profile: Dict) -> str:
-        """Build context for general (non-job-targeted) CV"""
-        return f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 GENERAL CV (No specific job target)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        return f"""NO SPECIFIC JOB TARGET — writing a general-purpose CV.
 
-This is a general-purpose CV. Optimize for:
-1. Broad ATS compatibility across the candidate's industry
-2. Highlight strongest achievements and skills
-3. Target the candidate's desired position: {profile.get('desired_position', 'Not specified')}
-4. Emphasize versatility and breadth of experience
-5. Use industry-standard terminology
+Optimise for:
+- Broad ATS compatibility across the candidate's industry.
+- Strongest achievements and clearest career narrative.
+- Target position: {profile.get("desired_position", "Not specified")}.
+- Industry-standard terminology without over-indexing on any one role type.
 """
 
-    def _humanization_reference_block(self) -> str:
-        banned = ', '.join(HUMANIZATION_BANNED_PHRASES)
-        return f"BANNED PHRASES TO AVOID (verbatim and close variants): {banned}"
+    # ──────────────────────────────────────────────────────────────────────────
+    # HELPERS
+    # ──────────────────────────────────────────────────────────────────────────
 
-    def _extract_tone_preference(self, profile: Dict) -> str:
-        for key in ['tone_preference', 'writing_tone', 'custom_tone_preference', 'cv_tone_preference']:
-            value = profile.get(key)
-            if value:
-                return str(value)
-        return 'Not specified'
+    def _tone_guidance(self, style: str, seniority: str) -> str:
+        """
+        Tone is a combination of style AND seniority.
+        This replaces the old generic style_guide which gave formatting labels
+        without actually changing how the model writes.
+        """
+        seniority_voice = {
+            "entry-level": "Eager, concrete, and honest about learning. Don't oversell. Be specific about what you actually did.",
+            "junior":       "Concrete and direct. Let the work speak. Avoid sounding like you're overselling junior achievements.",
+            "mid-level":    "Confident and specific. You've done this before. Own your contributions without hedging.",
+            "senior":       "Strategic and precise. You solve problems and make decisions. Let that show in the language.",
+            "executive":    "Visionary but grounded. Board-level language. P&L, org design, stakeholder outcomes. No fluff.",
+        }
+
+        style_modifiers = {
+            "professional": "Formal, measured, corporate-ready. Every word earns its place.",
+            "creative":     "Slightly conversational. Show personality in how achievements are described. Still ATS-safe.",
+            "modern":       "Contemporary and direct. Approachable but professional. Strong verbs, clean structure.",
+            "minimal":      "Ultra-lean. If a word can be cut without losing meaning, cut it.",
+            "executive":    "Sophisticated. Leadership and business outcomes dominate. Strategy over tactics.",
+        }
+
+        voice   = seniority_voice.get(seniority, seniority_voice["mid-level"])
+        modifier = style_modifiers.get(style, style_modifiers["professional"])
+
+        return f"Seniority voice: {voice}\nStyle modifier: {modifier}"
+
+    def _build_section_requirements(self, sections: List[str], user_data: Dict) -> str:
+        reqs = []
+        for s in sections:
+            if s == "summary":
+                reqs.append("• Professional Summary (50–90 words, specific positioning, unique candidate signal)")
+            elif s in ("work", "experience"):
+                n = len(user_data.get("work_experiences", []))
+                reqs.append(f"• Professional Experience (ALL {n} positions — ordered by relevance, varied depth)")
+            elif s == "education":
+                n = len(user_data.get("educations", []))
+                reqs.append(f"• Education ({n} entries)")
+            elif s == "skills":
+                reqs.append("• Technical Skills (12–20, categorised, evidenced) + Core Competencies (8–10)")
+            elif s == "certifications":
+                n = len(user_data.get("certifications", []))
+                reqs.append(f"• Certifications ({n})")
+            elif s == "projects":
+                n = len(user_data.get("projects", []))
+                reqs.append(f"• Projects ({n}, with technologies and specific impact)")
+            elif s == "awards":
+                n = len(user_data.get("awards", []))
+                reqs.append(f"• Awards ({n})")
+            elif s == "references":
+                n = len(user_data.get("references", []))
+                reqs.append(f"• References ({n})")
+        return "\n".join(reqs) if reqs else "All standard sections"
 
     def _infer_seniority_level(self, user_data: Dict) -> str:
-        profile = user_data.get('job_seeker_profile', {})
-        years = profile.get('years_of_experience') or 0
+        profile = user_data.get("job_seeker_profile", {})
+        years   = profile.get("years_of_experience") or 0
 
         titles = []
-        if profile.get('professional_title'):
-            titles.append(str(profile.get('professional_title')))
-        titles.extend([str(exp.get('job_title', '')) for exp in user_data.get('work_experiences', [])])
-        title_blob = ' '.join(titles).lower()
+        if profile.get("professional_title"):
+            titles.append(str(profile["professional_title"]))
+        titles.extend(str(e.get("job_title", "")) for e in user_data.get("work_experiences", []))
+        blob = " ".join(titles).lower()
 
-        executive_tokens = ['chief', 'c-suite', 'c level', 'vp', 'vice president', 'director', 'head of', 'founder']
-        senior_tokens = ['senior', 'lead', 'principal', 'staff', 'manager']
+        exec_tokens   = ["chief", "c-suite", "vp", "vice president", "director", "head of", "founder"]
+        senior_tokens = ["senior", "lead", "principal", "staff", "manager"]
 
-        if years >= 12 or any(token in title_blob for token in executive_tokens):
-            return 'executive'
-        if years >= 7 or any(token in title_blob for token in senior_tokens):
-            return 'senior'
+        if years >= 12 or any(t in blob for t in exec_tokens):
+            return "executive"
+        if years >= 7 or any(t in blob for t in senior_tokens):
+            return "senior"
         if years >= 3:
-            return 'mid-level'
+            return "mid-level"
         if years >= 1:
-            return 'junior'
-        return 'entry-level'
+            return "junior"
+        return "entry-level"
 
     def _infer_industry_vertical(self, user_data: Dict, job_data: Optional[Dict]) -> str:
-        profile = user_data.get('job_seeker_profile', {})
-        preferred = profile.get('preferred_industries')
+        profile = user_data.get("job_seeker_profile", {})
+        preferred = profile.get("preferred_industries")
 
         if isinstance(preferred, list) and preferred:
             return str(preferred[0])
@@ -786,109 +767,33 @@ This is a general-purpose CV. Optimize for:
             return preferred.strip()
 
         if job_data:
-            for key in ['category', 'industry', 'company_industry']:
-                value = job_data.get(key)
-                if isinstance(value, str) and value.strip() and value.strip().lower() != 'not specified':
-                    return value.strip()
+            for key in ("category", "industry", "company_industry"):
+                v = job_data.get(key)
+                if isinstance(v, str) and v.strip().lower() not in ("", "not specified"):
+                    return v.strip()
 
-        text_chunks = [
-            str(profile.get('professional_title', '')),
-            str(profile.get('professional_summary', '')),
-            str(profile.get('desired_position', '')),
-            ' '.join(str(exp.get('job_title', '')) for exp in user_data.get('work_experiences', [])),
-            str((job_data or {}).get('title', '')),
-            str((job_data or {}).get('description', '')),
-            str((job_data or {}).get('requirements', '')),
+        chunks = [
+            str(profile.get("professional_title", "")),
+            str(profile.get("professional_summary", "")),
+            str(profile.get("desired_position", "")),
+            " ".join(str(e.get("job_title", "")) for e in user_data.get("work_experiences", [])),
+            str((job_data or {}).get("title", "")),
+            str((job_data or {}).get("description", "")),
         ]
-        haystack = ' '.join(text_chunks).lower()
+        haystack = " ".join(chunks).lower()
 
-        vertical_keywords = {
-            'fintech': ['fintech', 'payments', 'banking', 'credit', 'risk', 'ledger'],
-            'healthcare': ['healthcare', 'hospital', 'clinical', 'patient', 'ehr', 'medtech'],
-            'saas': ['saas', 'b2b software', 'subscription', 'customer success', 'product-led'],
-            'e-commerce': ['ecommerce', 'e-commerce', 'marketplace', 'merchandising', 'shopify'],
-            'education': ['education', 'edtech', 'curriculum', 'teaching', 'instructional'],
-            'ngo/nonprofit': ['ngo', 'nonprofit', 'humanitarian', 'development program', 'grant'],
-            'marketing': ['marketing', 'brand', 'campaign', 'seo', 'content strategy'],
-            'software engineering': ['software', 'engineering', 'backend', 'frontend', 'devops', 'cloud'],
+        verticals = {
+            "fintech":              ["fintech", "payments", "banking", "credit", "risk", "ledger"],
+            "healthcare":           ["healthcare", "hospital", "clinical", "patient", "ehr", "medtech"],
+            "saas":                 ["saas", "b2b software", "subscription", "customer success"],
+            "e-commerce":           ["ecommerce", "e-commerce", "marketplace", "shopify"],
+            "education":            ["education", "edtech", "curriculum", "teaching"],
+            "ngo/nonprofit":        ["ngo", "nonprofit", "humanitarian", "development program", "grant"],
+            "marketing":            ["marketing", "brand", "campaign", "seo", "content strategy"],
+            "software engineering": ["software", "engineering", "backend", "frontend", "devops", "cloud"],
         }
 
-        for vertical, keywords in vertical_keywords.items():
-            if any(keyword in haystack for keyword in keywords):
+        for vertical, keywords in verticals.items():
+            if any(k in haystack for k in keywords):
                 return vertical
-
-        return 'general'
-    
-    def _get_style_guidelines(self, style: str) -> str:
-        """Get detailed style-specific guidelines"""
-        styles = {
-            "professional": """STYLE GUIDELINES — PROFESSIONAL:
-- Clean, traditional, corporate-ready layout
-- Conservative and precise language
-- Formal tone throughout
-- Focus on substance, metrics, and impact
-- Standard section ordering (Summary → Experience → Education → Skills)
-- Use industry-standard terminology""",
-            
-            "creative": """STYLE GUIDELINES — CREATIVE:
-- Modern, engaging, personality-driven
-- Show creative thinking in how achievements are described
-- Conversational but professional tone
-- Include portfolio/project highlights prominently
-- Personality and unique perspective encouraged
-- Still maintain ATS compatibility""",
-            
-            "modern": """STYLE GUIDELINES — MODERN:
-- Sleek and contemporary
-- Professional yet approachable tone
-- Emphasize digital skills and modern methodologies
-- Concise, impactful language
-- Progressive formatting with clear visual hierarchy
-- Balance between creativity and professionalism""",
-            
-            "minimal": """STYLE GUIDELINES — MINIMAL:
-- Ultra-clean, content-focused
-- Maximum white space utilization
-- Simple typography and clear hierarchy
-- Every word must earn its place
-- Let achievements speak for themselves
-- No filler content whatsoever""",
-            
-            "executive": """STYLE GUIDELINES — EXECUTIVE:
-- Sophisticated and leadership-focused
-- Emphasize strategy, vision, and organizational impact
-- Highlight P&L responsibility, team sizes, and business outcomes
-- Board-level language and gravitas
-- Focus on transformation, growth, and stakeholder value
-- Include executive competencies prominently"""
-        }
-        return styles.get(style, styles["professional"])
-    
-    def _build_section_requirements(self, sections: List[str], user_data: Dict) -> str:
-        """Build detailed requirements for each requested section"""
-        requirements = []
-        for section in sections:
-            if section == 'summary':
-                requirements.append("✓ Professional Summary (50-80 words, 2 quantified achievements, job keywords)")
-            elif section in ['work', 'experience']:
-                count = len(user_data.get('work_experiences', []))
-                requirements.append(f"✓ Professional Experience (ALL {count} positions MUST be included — vary bullet depth: 5-6 for highly relevant, 4-5 for relevant, 3-4 for moderate, 2-3 for transferable)")
-            elif section == 'education':
-                count = len(user_data.get('educations', []))
-                requirements.append(f"✓ Education ({count} entries, include relevant coursework)")
-            elif section == 'skills':
-                requirements.append("✓ Technical Skills (categorized, 12-20 skills) + Core Competencies (8-10)")
-            elif section == 'certifications':
-                count = len(user_data.get('certifications', []))
-                requirements.append(f"✓ Certifications ({count} certifications)")
-            elif section == 'projects':
-                count = len(user_data.get('projects', []))
-                requirements.append(f"✓ Projects ({count} projects, include technologies and impact)")
-            elif section == 'awards':
-                count = len(user_data.get('awards', []))
-                requirements.append(f"✓ Awards & Achievements ({count} awards)")
-            elif section == 'references':
-                count = len(user_data.get('references', []))
-                requirements.append(f"✓ References ({count} references)")
-        
-        return "\n".join(requirements) if requirements else "All standard sections"
+        return "general"

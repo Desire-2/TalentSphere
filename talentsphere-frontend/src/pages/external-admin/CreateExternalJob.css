@@ -61,7 +61,20 @@
   -webkit-text-fill-color: #111827 !important;
 }
 
+.create-job-form [data-slot="select-trigger"] [data-slot="select-value"],
+.create-job-form [data-slot="select-trigger"] [data-slot="select-value"] * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  opacity: 1 !important;
+}
+
 .create-job-form [data-slot="select-trigger"][data-placeholder] [data-slot="select-value"] {
+  color: #6b7280 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+
+.create-job-form [data-slot="select-trigger"][data-placeholder] [data-slot="select-value"],
+.create-job-form [data-slot="select-trigger"][data-placeholder] [data-slot="select-value"] * {
   color: #6b7280 !important;
   -webkit-text-fill-color: #6b7280 !important;
 }
@@ -1669,6 +1682,13 @@
   .create-job-form [data-slot="select-trigger"] [data-slot="select-value"] {
     color: #111827 !important;
     -webkit-text-fill-color: #111827 !important;
+  }
+
+  .create-job-form [data-slot="select-trigger"] [data-slot="select-value"],
+  .create-job-form [data-slot="select-trigger"] [data-slot="select-value"] * {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    opacity: 1 !important;
   }
 
   .create-job-form [data-slot="select-trigger"][data-placeholder] [data-slot="select-value"] {

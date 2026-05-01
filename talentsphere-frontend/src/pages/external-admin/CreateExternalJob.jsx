@@ -133,6 +133,21 @@ const normalizeDateInput = (value) => {
   return formatDateForInput(parsed);
 };
 
+const normalizeEnumValue = (value, allowedValues, fallback = '') => {
+  const raw = coerceToString(value, '').trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  if (allowedValues.includes(raw)) {
+    return raw;
+  }
+
+  const normalizedRaw = raw.toLowerCase().replace(/[\s_]+/g, '-');
+  const found = allowedValues.find((item) => item.toLowerCase().replace(/[\s_]+/g, '-') === normalizedRaw);
+  return found || fallback;
+};
+
 // Ultra-Stable Input Component - CRITICAL: Defined outside component to prevent re-creation
 const StableInput = React.memo(({ field, type, value, placeholder, required, className, rows, onInputChange }) => {
   // Create a stable onChange handler - this is the key to preventing focus loss
@@ -2749,66 +2764,49 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField label="Employment Type" field="employment_type">
-                      <Select value={formData.employment_type} onValueChange={(value) => stableInputChange('employment_type', value)}>
+                      <Select
+                        value={normalizeEnumValue(formData.employment_type, ['full-time', 'part-time', 'contract', 'freelance', 'internship'], 'full-time')}
+                        onValueChange={(value) => stableInputChange('employment_type', value)}
+                      >
                         <SelectTrigger className="enhanced-input">
-                          <SelectValue placeholder="Select employment type" />
+                          <SelectValue className="block w-full truncate text-gray-900 opacity-100" placeholder="Select employment type">
+                            {{
+                              'full-time': 'Full-time',
+                              'part-time': 'Part-time',
+                              contract: 'Contract',
+                              freelance: 'Freelance',
+                              internship: 'Internship'
+                            }[normalizeEnumValue(formData.employment_type, ['full-time', 'part-time', 'contract', 'freelance', 'internship'], 'full-time')] || 'Select employment type'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="full-time">
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-blue-500" />
-                              <span>Full-time</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="part-time">
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-green-500" />
-                              <span>Part-time</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="contract">
-                            <div className="flex items-center space-x-2">
-                              <FileText className="h-4 w-4 text-purple-500" />
-                              <span>Contract</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="freelance">
-                            <div className="flex items-center space-x-2">
-                              <Zap className="h-4 w-4 text-yellow-500" />
-                              <span>Freelance</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="internship">
-                            <div className="flex items-center space-x-2">
-                              <Users className="h-4 w-4 text-pink-500" />
-                              <span>Internship</span>
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="full-time">Full-time</SelectItem>
+                          <SelectItem value="part-time">Part-time</SelectItem>
+                          <SelectItem value="contract">Contract</SelectItem>
+                          <SelectItem value="freelance">Freelance</SelectItem>
+                          <SelectItem value="internship">Internship</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormField>
 
                     <FormField label="Experience Level" field="experience_level">
-                      <Select value={formData.experience_level} onValueChange={(value) => stableInputChange('experience_level', value)}>
+                      <Select
+                        value={normalizeEnumValue(formData.experience_level, ['entry', 'mid', 'senior'], 'mid')}
+                        onValueChange={(value) => stableInputChange('experience_level', value)}
+                      >
                         <SelectTrigger className="enhanced-input">
-                          <SelectValue placeholder="Select experience level" />
+                          <SelectValue className="block w-full truncate text-gray-900 opacity-100" placeholder="Select experience level">
+                            {{
+                              entry: 'Entry level',
+                              mid: 'Mid level',
+                              senior: 'Senior level'
+                            }[normalizeEnumValue(formData.experience_level, ['entry', 'mid', 'senior'], 'mid')] || 'Select experience level'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="entry">
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Entry Level</Badge>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="mid">
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Mid Level</Badge>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="senior">
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Senior Level</Badge>
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="entry">Entry level</SelectItem>
+                          <SelectItem value="mid">Mid level</SelectItem>
+                          <SelectItem value="senior">Senior level</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormField>
@@ -2816,7 +2814,9 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                     <FormField label="Job Category" field="category_id">
                       <Select value={formData.category_id || undefined} onValueChange={(value) => stableInputChange('category_id', value)}>
                         <SelectTrigger className="enhanced-input">
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue className="block w-full truncate text-gray-900 opacity-100" placeholder="Select category">
+                            {(categories || []).find((category) => String(category.id) === String(formData.category_id))?.name || 'Select category'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {(categories || []).length > 0 ? (
@@ -2838,12 +2838,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                               })
                               .filter(Boolean)
                           ) : (
-                            <SelectItem value="loading-placeholder" disabled>
-                              <div className="flex items-center space-x-2">
-                                <div className="loading-spinner w-4 h-4" />
-                                <span>Loading categories...</span>
-                              </div>
-                            </SelectItem>
+                            <SelectItem value="loading-placeholder" disabled>Loading categories...</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -2958,29 +2953,17 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField label="Location Type" field="location_type">
-                    <Select value={formData.location_type} onValueChange={(value) => stableInputChange('location_type', value)}>
+                    <Select
+                      value={normalizeEnumValue(formData.location_type, ['remote', 'on-site', 'hybrid'], 'on-site')}
+                      onValueChange={(value) => stableInputChange('location_type', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select location type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="remote">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span>Remote</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="on-site">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                            <span>On-site</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="hybrid">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                            <span>Hybrid</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="remote">Remote</SelectItem>
+                        <SelectItem value="on-site">On-site</SelectItem>
+                        <SelectItem value="hybrid">Hybrid</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormField>
@@ -3065,7 +3048,10 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                       onInputChange={stableInputChange}
                     />
                     <FormField label="Currency" field="salary_currency">
-                      <Select value={formData.salary_currency} onValueChange={(value) => stableInputChange('salary_currency', value)}>
+                      <Select
+                        value={normalizeEnumValue(formData.salary_currency, ['USD', 'EUR', 'GBP', 'CAD'], 'USD')}
+                        onValueChange={(value) => stableInputChange('salary_currency', value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
@@ -3078,7 +3064,10 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                       </Select>
                     </FormField>
                     <FormField label="Period" field="salary_period">
-                      <Select value={formData.salary_period} onValueChange={(value) => stableInputChange('salary_period', value)}>
+                      <Select
+                        value={normalizeEnumValue(formData.salary_period, ['yearly', 'monthly', 'hourly'], 'yearly')}
+                        onValueChange={(value) => stableInputChange('salary_period', value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select salary period" />
                         </SelectTrigger>
@@ -3204,23 +3193,16 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <FormField label="Application Type" field="application_type">
-                    <Select value={formData.application_type} onValueChange={(value) => stableInputChange('application_type', value)}>
+                    <Select
+                      value={normalizeEnumValue(formData.application_type, ['external', 'email'], 'external')}
+                      onValueChange={(value) => stableInputChange('application_type', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select application type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="external">
-                          <div className="flex items-center space-x-2">
-                            <ExternalLink className="h-4 w-4" />
-                            <span>External Link</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="email">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4" />
-                            <span>Email Application</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="external">External link</SelectItem>
+                        <SelectItem value="email">Email application</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormField>

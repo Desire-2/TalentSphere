@@ -98,7 +98,7 @@ class CVAPIClient:
         }
         
         payload = {
-            "model": "openai/gpt-4o-mini",
+            "model": "openrouter/free",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens
@@ -119,7 +119,7 @@ class CVAPIClient:
         client = self._get_gemini_client()
         
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-3.1-pro-preview",
             contents=prompt,
             config={
                 'temperature': temperature,

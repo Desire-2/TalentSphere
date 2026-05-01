@@ -14,7 +14,7 @@ class CVAPIClient:
         """Initialize API clients and configuration"""
         self._api_key = os.getenv('GEMINI_API_KEY')
         self._openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-        self._site_url = os.getenv('SITE_URL', 'https://talentsphere.com')
+        self._site_url = os.getenv('SITE_URL', 'https://jbs.afritechbridge.online')
         self._site_name = os.getenv('SITE_NAME', 'TalentSphere')
         self._last_request_time = 0
         self._min_request_interval = 3  # 3 seconds between requests
@@ -98,7 +98,7 @@ class CVAPIClient:
         }
         
         payload = {
-            "model": "google/gemma-4-26b-a4b-it:free",
+            "model": "openrouter/free",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens

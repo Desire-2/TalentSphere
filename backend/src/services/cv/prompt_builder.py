@@ -629,7 +629,7 @@ JOB DESCRIPTION:
 REQUIREMENTS:
 {job_data.get("requirements", "Not specified")}
 
-{("FULL POSTING:\n" + job_data["full_posting"]) if job_data.get("full_posting") else ""}
+{"FULL POSTING:\n" + job_data["full_posting"] if job_data.get("full_posting") else ""}
 
 Required skills:  {", ".join(job_data.get("required_skills", [])) if isinstance(job_data.get("required_skills"), list) else job_data.get("required_skills", "See description")}
 Preferred skills: {", ".join(job_data.get("preferred_skills", [])) if isinstance(job_data.get("preferred_skills"), list) else job_data.get("preferred_skills", "See description")}

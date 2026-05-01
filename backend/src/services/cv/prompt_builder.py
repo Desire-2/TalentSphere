@@ -616,6 +616,10 @@ Return ONLY valid JSON:
         must_include = strategy.get("must_include_keywords", [])[:10]
         weave_in     = strategy.get("keywords_to_weave_in", [])[:5]
 
+        full_posting_block = ""
+        if job_data.get("full_posting"):
+            full_posting_block = "FULL POSTING:\n" + job_data["full_posting"]
+
         return f"""TARGET JOB
 Title:       {job_data.get("title")}
 Company:     {job_data.get("company_name", "Not specified")}
@@ -629,7 +633,7 @@ JOB DESCRIPTION:
 REQUIREMENTS:
 {job_data.get("requirements", "Not specified")}
 
-{"FULL POSTING:\n" + job_data["full_posting"] if job_data.get("full_posting") else ""}
+{full_posting_block}
 
 Required skills:  {", ".join(job_data.get("required_skills", [])) if isinstance(job_data.get("required_skills"), list) else job_data.get("required_skills", "See description")}
 Preferred skills: {", ".join(job_data.get("preferred_skills", [])) if isinstance(job_data.get("preferred_skills"), list) else job_data.get("preferred_skills", "See description")}

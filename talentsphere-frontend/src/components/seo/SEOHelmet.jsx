@@ -109,7 +109,11 @@ const SEOHelmet = ({
       {/* Article Structured Data */}
       {articleData && (
         <script type="application/ld+json">
-          {JSON.stringify(articleData)}
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            ...articleData
+          })}
         </script>
       )}
       

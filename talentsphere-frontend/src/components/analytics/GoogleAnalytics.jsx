@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { CONSENT_EVENT, getAnalyticsConsent } from '../../utils/consent';
 
 // Google Analytics configuration
 const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID;
@@ -7,7 +8,6 @@ const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID;
 // Initialize Google Analytics
 export const initGA = () => {
   if (!GA_TRACKING_ID) {
-    console.warn('Google Analytics tracking ID not found. Set VITE_GA_TRACKING_ID in your environment variables.');
     return;
   }
 
@@ -23,7 +23,7 @@ export const initGA = () => {
     window.dataLayer.push(arguments);
   }
   window.gtag = gtag;
-  
+
   gtag('js', new Date());
   gtag('config', GA_TRACKING_ID, {
     page_title: document.title,
@@ -34,7 +34,7 @@ export const initGA = () => {
 // Track page views
 export const trackPageView = (url, title) => {
   if (!GA_TRACKING_ID || typeof window.gtag === 'undefined') return;
-  
+
   window.gtag('config', GA_TRACKING_ID, {
     page_title: title,
     page_location: url,
@@ -44,7 +44,7 @@ export const trackPageView = (url, title) => {
 // Track custom events
 export const trackEvent = (action, category, label, value) => {
   if (!GA_TRACKING_ID || typeof window.gtag === 'undefined') return;
-  
+
   window.gtag('event', action, {
     event_category: category,
     event_label: label,
@@ -72,21 +72,28 @@ export const trackUserInteraction = (action, category, label) => {
   trackEvent(action, category, label);
 };
 
-// React component to automatically track page views
+// React component to automatically track page views (consent-gated)
 const GoogleAnalytics = () => {
   const location = useLocation();
+  const [consented, setConsented] = useState(() => getAnalyticsConsent());
 
   useEffect(() => {
-    // Initialize GA on component mount
-    initGA();
+    const onConsent = () => setConsented(getAnalyticsConsent());
+    window.addEventListener(CONSENT_EVENT, onConsent);
+    return () => window.removeEventListener(CONSENT_EVENT, onConsent);
   }, []);
 
   useEffect(() => {
-    // Track page view on location change
+    if (!consented) return;
+    initGA();
+  }, [consented]);
+
+  useEffect(() => {
+    if (!consented) return;
     const url = window.location.origin + location.pathname + location.search;
     const title = document.title;
     trackPageView(url, title);
-  }, [location]);
+  }, [consented, location]);
 
   return null;
 };

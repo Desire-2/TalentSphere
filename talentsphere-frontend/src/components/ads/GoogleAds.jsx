@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CONSENT_EVENT, getAdsConsent } from '../../utils/consent';
 
-const GoogleAds = ({ 
-  adSlot, 
-  adFormat = 'auto', 
+const GoogleAds = ({
+  adSlot,
+  adFormat = 'auto',
   adLayout = '',
   adLayoutKey = '',
   style = {},
@@ -11,24 +12,29 @@ const GoogleAds = ({
   adTest = import.meta.env.MODE === 'development' ? 'on' : 'off'
 }) => {
   const adClient = import.meta.env.VITE_GOOGLE_ADS_CLIENT_ID;
+  const [consented, setConsented] = useState(() => getAdsConsent());
 
   useEffect(() => {
+    const onConsent = () => setConsented(getAdsConsent());
+    window.addEventListener(CONSENT_EVENT, onConsent);
+    return () => window.removeEventListener(CONSENT_EVENT, onConsent);
+  }, []);
+
+  useEffect(() => {
+    if (!consented || !adClient) return;
+
     // Load Google AdSense script if not already loaded
-    if (!window.adsbygoogle && adClient) {
+    if (!window.adsbygoogle) {
       const script = document.createElement('script');
       script.async = true;
       script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
       script.crossOrigin = 'anonymous';
-      
-      // Add error handling
       script.onerror = () => {
         console.warn('Failed to load Google AdSense script');
       };
-      
       document.head.appendChild(script);
     }
 
-    // Initialize ad after script loads
     const initializeAd = () => {
       try {
         if (window.adsbygoogle && adClient && adSlot) {
@@ -39,19 +45,16 @@ const GoogleAds = ({
       }
     };
 
-    // Small delay to ensure DOM is ready
     const timer = setTimeout(initializeAd, 100);
-    
     return () => clearTimeout(timer);
-  }, [adClient, adSlot]);
+  }, [consented, adClient, adSlot]);
 
-  // Don't render if no ad client ID
-  if (!adClient || !adSlot) {
-    return import.meta.env.MODE === 'development' ? (
+  // Don't render without client/slot, or before ad consent
+  if (!adClient || !adSlot || !consented) {
+    return import.meta.env.MODE === 'development' && adClient && adSlot && !consented ? (
       <div className={`bg-gray-100 border-2 border-dashed border-gray-300 p-4 text-center text-gray-500 ${className}`} style={style}>
-        <div className="text-sm">Google Ad Placeholder</div>
+        <div className="text-sm">Ad placeholder (awaiting cookie consent)</div>
         <div className="text-xs">Slot: {adSlot}</div>
-        <div className="text-xs">Set VITE_GOOGLE_ADS_CLIENT_ID in .env</div>
       </div>
     ) : null;
   }

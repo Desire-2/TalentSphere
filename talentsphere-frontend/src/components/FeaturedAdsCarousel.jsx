@@ -134,11 +134,11 @@ const FeaturedAdsCarousel = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20"></div>
                 
-                {/* Featured Badge */}
+                {/* Sponsored Badge */}
                 <div className="absolute top-4 left-4">
                   <Badge className="bg-blue-600 text-white flex items-center gap-1 shadow-lg">
                     <Award className="w-3 h-3" />
-                    Featured
+                    Sponsored
                   </Badge>
                 </div>
               </div>

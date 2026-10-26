@@ -99,6 +99,7 @@ const EmployerOnboarding = lazy(() => import('./pages/employer/EmployerOnboardin
 // Analytics
 import GoogleAnalytics from './components/analytics/GoogleAnalytics';
 import FloatingWhatsAppButton from './components/common/FloatingWhatsAppButton';
+import CookieConsent from './components/common/CookieConsent';
 
 function App() {
   // Validate environment configuration on app startup
@@ -118,6 +119,7 @@ function App() {
       <NotificationProvider>
         <Router>
         <GoogleAnalytics />
+        <CookieConsent />
         <Suspense fallback={
           <div className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-600">
             Loading…

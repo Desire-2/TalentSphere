@@ -36,7 +36,7 @@ export function AdSpotlight({ ad, placementKey }) {
         )}
 
         <div className="ad-spotlight-content">
-          <span className="ad-badge ad-badge-spotlight">Spotlight</span>
+          <span className="ad-badge ad-badge-spotlight">Sponsored</span>
           
           <h1 className="ad-spotlight-title">{ad.title}</h1>
           {sponsorName && <p className="ad-sponsor ad-sponsor-spotlight">By {sponsorName}</p>}

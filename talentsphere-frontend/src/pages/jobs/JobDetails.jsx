@@ -36,6 +36,8 @@ import apiService from '../../services/api';
 import ShareJob from '../../components/jobs/ShareJob';
 import MarkdownRenderer from '../../components/ui/MarkdownRenderer';
 import SmartTextRenderer from '../../components/ui/SmartTextRenderer';
+import SEOHelmet from '../../components/seo/SEOHelmet';
+import { generateJobPostingStructuredData, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 import AdSlot from '../../components/ads/AdSlot';
 
@@ -126,13 +128,6 @@ const JobDetails = () => {
         const jobData = await apiService.getJob(id);
         setJob(jobData);
 
-        // Update page title if meta_title is available
-        if (jobData.meta_title) {
-          document.title = `${jobData.meta_title} - AfriTech Opportunities`;
-        } else {
-          document.title = `${jobData.title} at ${jobData.company?.name || 'Company'} - AfriTech Opportunities`;
-        }
-        
         // Check if user has applied (only for authenticated job seekers)
         if (isAuthenticated && user?.role === 'job_seeker') {
           try {
@@ -167,9 +162,6 @@ const JobDetails = () => {
         console.error('Failed to load job details:', error);
         const errorMessage = error.response?.data?.error || error.message || 'Failed to load job details';
         setError(errorMessage);
-        
-        // Set appropriate page title for error case
-        document.title = 'Job Not Found - AfriTech Opportunities';
       } finally {
         setLoading(false);
       }
@@ -276,6 +268,18 @@ ${user.name || user.email}`);
     });
   };
 
+  const jobSeoTitle = job
+    ? (job.meta_title || `${job.title} at ${job.company?.name || 'Company'}`)
+    : 'Job Not Found';
+  const jobStructuredData = job ? generateJobPostingStructuredData(job) : null;
+  const jobBreadcrumbs = job
+    ? generateBreadcrumbStructuredData([
+        { name: 'Home', url: '/' },
+        { name: 'Jobs', url: '/jobs' },
+        { name: job.title, url: `/jobs/${job.id}` }
+      ])
+    : null;
+
   if (loading) {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -352,6 +356,7 @@ ${user.name || user.email}`);
   if (error) {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <SEOHelmet title="Job Not Found" noindex />
         <div className="text-center">
           <h1 className="text-2xl font-bold text-[#003366] mb-4">Failed to Load Job</h1>
           <p className="text-[#003366] mb-8">{error}</p>
@@ -371,6 +376,7 @@ ${user.name || user.email}`);
   if (!job) {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <SEOHelmet title="Job Not Found" noindex />
         <div className="text-center">
           <h1 className="text-2xl font-bold text-[#003366] mb-4">Job Not Found</h1>
           <p className="text-[#003366] mb-8">The job you're looking for doesn't exist or has been removed.</p>
@@ -384,6 +390,13 @@ ${user.name || user.email}`);
 
     return (
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <SEOHelmet
+          title={jobSeoTitle}
+          description={job.meta_description || job.summary || undefined}
+          canonical={`${window.location.origin}/jobs/${job.id}`}
+          image={job.company?.logo_url || '/og-image.jpg'}
+          structuredData={jobStructuredData ? [jobStructuredData, jobBreadcrumbs] : null}
+        />
         {/* Google Ads - Leaderboard */}
         <div className="mb-6">
           <div className="flex justify-center">

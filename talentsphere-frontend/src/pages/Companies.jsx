@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import apiService from '../services/api';
+import SEOHelmet from '../components/seo/SEOHelmet';
 import AdSlot from '../components/ads/AdSlot';
 import {
   Building2,
@@ -235,6 +236,12 @@ const Companies = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+      <SEOHelmet
+        title="Companies Hiring in Rwanda & Africa"
+        description="Explore companies hiring on AfriTech Opportunities. Read company profiles, browse open roles, and find your next career opportunity across Rwanda and Africa."
+        canonical={`${window.location.origin}/companies`}
+        keywords="companies, employers, hiring, Rwanda, Africa, careers"
+      />
       <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <div className="text-center mb-12">

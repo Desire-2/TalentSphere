@@ -6,6 +6,8 @@ import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import apiService from '../services/api';
+import SEOHelmet from '../components/seo/SEOHelmet';
+import { generateCompanyStructuredData, generateBreadcrumbStructuredData } from '../utils/seoUtils';
 import { formatCurrency, formatRelativeTime } from '../utils/helpers';
 import {
   Building2,
@@ -85,6 +87,7 @@ const CompanyDetail = () => {
   if (error || !company) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+        <SEOHelmet title="Company Not Found" noindex />
         <div className="container mx-auto px-4 py-20">
           <div className="max-w-2xl mx-auto text-center">
             <Card>
@@ -107,6 +110,20 @@ const CompanyDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+      <SEOHelmet
+        title={`${company.name} - Company Profile`}
+        description={company.description?.slice(0, 160) || `Jobs and hiring information at ${company.name}.`}
+        canonical={`${window.location.origin}/companies/${company.slug || company.id}`}
+        image={company.logo_url || '/og-image.jpg'}
+        structuredData={[
+          generateCompanyStructuredData(company),
+          generateBreadcrumbStructuredData([
+            { name: 'Home', url: '/' },
+            { name: 'Companies', url: '/companies' },
+            { name: company.name, url: `/companies/${company.slug || company.id}` }
+          ])
+        ]}
+      />
       {/* Company Header with Banner */}
       <div className="relative">
         {/* Banner Image */}

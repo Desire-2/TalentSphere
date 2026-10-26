@@ -2,58 +2,100 @@ import React from 'react';
 
 // SEO utility functions for generating structured data
 
+const EMPLOYMENT_TYPE_MAP = {
+  'full-time': 'FULL_TIME',
+  'part-time': 'PART_TIME',
+  'contract': 'CONTRACT',
+  'internship': 'INTERN',
+  'freelance': 'FULL_TIME',
+  temporary: 'TEMPORARY',
+};
+
 export const generateJobPostingStructuredData = (job) => {
   const siteUrl = window.location.origin;
-  
-  return {
+  const salary = job.salary || {};
+  const location = job.location || {};
+  const skills = Array.isArray(job.required_skills)
+    ? job.required_skills
+    : (() => {
+        try {
+          return JSON.parse(job.required_skills || '[]');
+        } catch {
+          return [];
+        }
+      })();
+
+  const posting = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     "title": job.title,
-    "description": job.description,
+    "description": job.description || job.summary || '',
     "identifier": {
       "@type": "PropertyValue",
       "name": "AfriTech Opportunities Job ID",
-      "value": job.id
+      "value": String(job.id)
     },
-    "datePosted": job.created_at,
-    "validThrough": job.application_deadline || null,
-    "employmentType": job.employment_type || "FULL_TIME",
+    "datePosted": job.published_at || job.created_at,
+    "employmentType": EMPLOYMENT_TYPE_MAP[job.employment_type] || 'FULL_TIME',
     "hiringOrganization": {
       "@type": "Organization",
-      "name": job.company_name || "AfriTech Opportunities Partner",
-      "sameAs": job.company_website || `${siteUrl}/companies/${job.company_id}`,
-      "logo": job.company_logo || `${siteUrl}/default-company-logo.png`
+      "name": job.company?.name || job.external_company_name || "AfriTech Opportunities Partner",
+      "sameAs": job.company?.website || job.company?.slug
+        ? `${siteUrl}/companies/${job.company?.id || job.company_id}`
+        : siteUrl,
+      ...(job.company?.logo_url && { logo: job.company.logo_url })
     },
-    "jobLocation": {
-      "@type": "Place",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": job.location || "Remote",
-        "addressLocality": job.city || "",
-        "addressRegion": job.state || "",
-        "addressCountry": job.country || "US"
-      }
-    },
-    "baseSalary": job.salary_range ? {
-      "@type": "MonetaryAmount",
-      "currency": "USD",
-      "value": {
-        "@type": "QuantitativeValue",
-        "value": job.salary_range,
-        "unitText": "YEAR"
-      }
-    } : null,
-    "workHours": job.work_hours || "40 hours per week",
-    "qualifications": job.requirements || "",
-    "skills": job.skills || "",
-    "industry": job.industry || "",
-    "jobBenefits": job.benefits || "",
+    "jobLocation": location.is_remote
+      ? {
+          "@type": "Place",
+          address: { "@type": "PostalAddress", addressCountry: location.country || 'RW' }
+        }
+      : {
+          "@type": "Place",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: location.city || '',
+            addressRegion: location.state || '',
+            addressCountry: location.country || 'RW'
+          }
+        },
     "url": `${siteUrl}/jobs/${job.id}`,
     "applicationContact": {
       "@type": "ContactPoint",
-      "email": job.contact_email || "support@afritechbridge.online"
+      "email": job.application_email || "support@afritechbridge.online"
     }
   };
+
+  if (location.is_remote) {
+    posting.applicantLocationRequirements = {
+      "@type": "Country",
+      name: location.country || 'RW'
+    };
+  }
+
+  if (job.application_deadline) {
+    posting.validThrough = job.application_deadline;
+  }
+
+  if (salary.show_salary !== false && (salary.min || salary.max)) {
+    posting.baseSalary = {
+      "@type": "MonetaryAmount",
+      currency: salary.currency || 'RWF',
+      value: {
+        "@type": "QuantitativeValue",
+        ...(salary.min && { minValue: salary.min }),
+        ...(salary.max && { maxValue: salary.max }),
+        unitText: (salary.period || 'monthly').toUpperCase()
+      }
+    };
+  }
+
+  if (skills.length) {
+    posting.skills = skills.join(', ');
+    posting.qualifications = skills.join(', ');
+  }
+
+  return posting;
 };
 
 export const generateScholarshipStructuredData = (scholarship) => {

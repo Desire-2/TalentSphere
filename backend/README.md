@@ -298,28 +298,21 @@ JWT_SECRET_KEY=your-production-jwt-key
 ## 🧪 Testing
 
 ### Sample Login Credentials
-After running `init_db.py` with sample data:
+After running `init_db.py` with sample data, passwords are generated randomly and printed once at creation time. Set `ADMIN_INITIAL_PASSWORD` before running to choose the admin password yourself.
+
+For production-quality demo content (realistic jobs and scholarships), run:
 
 ```bash
-# Admin User
-Email: admin@talentsphere.com
-Password: admin123
-
-# Employer User
-Email: hr@techcorp.com
-Password: password123
-
-# Job Seeker User
-Email: john.doe@email.com
-Password: password123
+python3 scripts/cleanup_content.py      # remove fabricated/test fixtures
+python3 scripts/seed_real_content.py    # seed full listings with on-site apply
 ```
 
 ### API Testing
 ```bash
-# Test authentication
+# Test authentication (use the admin password printed when init_db ran, or your ADMIN_INITIAL_PASSWORD)
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@talentsphere.com", "password": "admin123"}'
+  -d '{"email": "admin@afritechbridge.online", "password": "<your-admin-password>"}'
 
 # Test job listing
 curl -X GET http://localhost:5000/api/jobs
@@ -375,7 +368,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support and questions:
 - Create an issue on GitHub
-- Email: support@talentsphere.com
+- Email: support@afritechbridge.online
 - Documentation: `/api/api-docs`
 
 ## 🔄 Version History

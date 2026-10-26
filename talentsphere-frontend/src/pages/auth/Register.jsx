@@ -1741,8 +1741,8 @@ const Register = () => {
               <Shield className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" style={{ color: '#2CB5C2' }} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white transition-colors">Secure & Safe</p>
-              <p className="text-xs text-gray-300">Bank-level security protection</p>
+              <p className="text-sm font-bold text-white transition-colors">Secure &amp; Safe</p>
+              <p className="text-xs text-gray-300">HTTPS encryption and secure password storage</p>
               <div className="flex items-center mt-1">
                 <div className="flex space-x-1">
                   {[...Array(5)].map((_, i) => (
@@ -1758,11 +1758,11 @@ const Register = () => {
               <Users className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" style={{ color: 'white' }} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white transition-colors">Join 10,000+ Users</p>
-              <p className="text-xs text-gray-300">Fast-growing community</p>
+              <p className="text-sm font-bold text-white transition-colors">Free to Get Started</p>
+              <p className="text-xs text-gray-300">Create a profile and start applying today</p>
               <div className="flex items-center mt-1">
-                <TrendingUp className="w-3 h-3 animate-bounce" style={{ color: '#2CB5C2' }} />
-                <span className="text-xs ml-1 font-medium" style={{ color: 'white' }}>+2.5k this month</span>
+                <Users className="w-3 h-3 animate-bounce" style={{ color: '#2CB5C2' }} />
+                <span className="text-xs ml-1 font-medium" style={{ color: 'white' }}>Job seekers apply for free</span>
               </div>
             </div>
           </div>
@@ -1772,8 +1772,8 @@ const Register = () => {
               <Star className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" style={{ color: '#F26522' }} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white transition-colors">Top Rated Platform</p>
-              <p className="text-xs text-gray-300">4.9/5 user satisfaction</p>
+              <p className="text-sm font-bold text-white transition-colors">Built for Africa</p>
+              <p className="text-xs text-gray-300">Jobs &amp; scholarships across Rwanda and Africa</p>
               <div className="flex items-center mt-1">
                 <div className="flex space-x-1">
                   {[...Array(5)].map((_, i) => (

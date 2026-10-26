@@ -80,27 +80,27 @@ const Home = () => {
   const [stats, setStats] = useState({
     activeJobs: 0,
     scholarships: 0,
-    totalUsers: 0,
-    successRate: '95%'
+    companies: 0
   });
 
   // Load stats from API
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [jobsResponse, scholarshipsResponse] = await Promise.all([
+        const [jobsResponse, scholarshipsResponse, companiesResponse] = await Promise.all([
           apiService.get('/jobs').catch(() => ({ jobs: [] })),
-          scholarshipService.getScholarships().catch(() => ({ scholarships: [] }))
+          scholarshipService.getScholarships().catch(() => ({ scholarships: [] })),
+          apiService.get('/companies').catch(() => ({ pagination: { total: 0 } }))
         ]);
 
         const activeJobs = jobsResponse.jobs?.length || 0;
         const scholarships = scholarshipsResponse.scholarships?.length || 0;
-        
+        const companies = companiesResponse.pagination?.total || companiesResponse.companies?.length || 0;
+
         setStats({
-          activeJobs: activeJobs,
-          scholarships: scholarships,
-          totalUsers: Math.floor((activeJobs + scholarships) * 3.2), // Estimated
-          successRate: '95%'
+          activeJobs,
+          scholarships,
+          companies
         });
       } catch (error) {
         console.error('Error loading stats:', error);
@@ -350,7 +350,7 @@ const Home = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Shield className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium">{stats.successRate} Success Rate</span>
+              <span className="text-sm font-medium">Free to Apply</span>
             </div>
           </div>
         </div>
@@ -950,10 +950,10 @@ const Home = () => {
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] bg-clip-text text-transparent">
-                {stats.totalUsers}
+                {stats.companies}
               </div>
-              <div className="text-[#1BA398] font-semibold text-lg mb-2">Active Users</div>
-              <div className="text-sm text-gray-400">Growing community</div>
+              <div className="text-[#1BA398] font-semibold text-lg mb-2">Companies</div>
+              <div className="text-sm text-gray-400">Hiring on the platform</div>
               <div className="w-16 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>
@@ -965,10 +965,10 @@ const Home = () => {
                 <TrendingUp className="w-8 h-8 text-white" />
               </div>
               <div className="text-4xl font-black text-white mb-3 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] bg-clip-text text-transparent">
-                {stats.successRate}
+                Free
               </div>
-              <div className="text-[#FF6B35] font-semibold text-lg mb-2">Success Rate</div>
-              <div className="text-sm text-gray-400">Proven results</div>
+              <div className="text-[#FF6B35] font-semibold text-lg mb-2">To Apply</div>
+              <div className="text-sm text-gray-400">No fees for job seekers</div>
               <div className="w-16 h-1 bg-gradient-to-r from-[#1BA398] to-[#FF6B35] mx-auto mt-4 rounded-full"></div>
             </div>
           </div>

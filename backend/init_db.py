@@ -5,6 +5,7 @@ Creates all database tables and optionally seeds with sample data
 """
 
 import os
+import secrets
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -61,9 +62,10 @@ def seed_sample_data():
                 category = JobCategory(**cat_data)
                 db.session.add(category)
         
-        # Create admin user
-        admin_email = 'admin@talentsphere.com'
+        # Create admin user (password from env, or random if unset)
+        admin_email = 'admin@afritechbridge.online'
         if not User.query.filter_by(email=admin_email).first():
+            admin_password = os.environ.get('ADMIN_INITIAL_PASSWORD') or secrets.token_urlsafe(16)
             admin = User(
                 email=admin_email,
                 first_name='Admin',
@@ -72,8 +74,10 @@ def seed_sample_data():
                 is_verified=True,
                 is_active=True
             )
-            admin.set_password('admin123')
+            admin.set_password(admin_password)
             db.session.add(admin)
+            print(f"\n✓ Admin account created: {admin_email}")
+            print(f"  Password: {admin_password} (set ADMIN_INITIAL_PASSWORD to choose your own)")
         
         # Create sample companies
         companies_data = [
@@ -140,7 +144,9 @@ def seed_sample_data():
                     is_verified=True,
                     is_active=True
                 )
-                employer.set_password('password123')
+                emp_password = secrets.token_urlsafe(16)
+                employer.set_password(emp_password)
+                print(f"  ✓ Sample employer: {employer.email} / {emp_password}")
                 db.session.add(employer)
                 db.session.flush()
                 
@@ -185,7 +191,9 @@ def seed_sample_data():
                     is_verified=True,
                     is_active=True
                 )
-                job_seeker.set_password('password123')
+                js_password = secrets.token_urlsafe(16)
+                job_seeker.set_password(js_password)
+                print(f"  ✓ Sample job seeker: {job_seeker.email} / {js_password}")
                 db.session.add(job_seeker)
                 db.session.flush()
                 
@@ -395,7 +403,7 @@ def seed_sample_data():
                     title=campaign_data['name'],
                     body_text=campaign_data['description'],
                     cta_text='View Positions',
-                    cta_url='https://jobs.afritechbridge.online/careers',
+                    cta_url='https://jobs.afritechbridge.online/jobs',
                     ad_format=campaign_data['format'],  # Use specified format
                     image_url='https://via.placeholder.com/600x400?text=Career+Opportunity',
                     is_active=True,
@@ -431,10 +439,8 @@ def main():
         seed_sample_data()
     
     print("\n✓ Database initialization completed successfully!")
-    print("\nSample login credentials:")
-    print("Admin: admin@talentsphere.com / admin123")
-    print("Employer: hr@techcorp.com / password123")
-    print("Job Seeker: john.doe@email.com / password123")
+    print("\nNote: sample-data passwords are random per run (printed above at creation).")
+    print("For production-quality listings, run scripts/seed_real_content.py instead of sample data.")
 
 if __name__ == '__main__':
     main()

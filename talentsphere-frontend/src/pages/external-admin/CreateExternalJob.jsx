@@ -2371,8 +2371,8 @@ Tools: Git, Jest, Cypress
                   <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3">
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="font-semibold text-gray-900 mb-1">95% Time Savings</h4>
-                  <p className="text-sm text-gray-600">Reduces job posting time from 30 minutes to 2 minutes</p>
+                  <h4 className="font-semibold text-gray-900 mb-1">Saves Drafting Time</h4>
+                  <p className="text-sm text-gray-600">AI turns a pasted job description into a structured draft</p>
                 </div>
               </div>
 

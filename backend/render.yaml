@@ -54,6 +54,23 @@ services:
         value: "https://jobs.afritechbridge.online"
       - key: API_BASE_URL
         value: "https://talentsphere-ev6o.onrender.com"
+      - key: SITE_URL
+        value: "https://jobs.afritechbridge.online"
+      - key: SITE_NAME
+        value: "AfriTech Opportunities"
+      # Ad click redirect allow-list (comma-separated hosts)
+      - key: AD_REDIRECT_ALLOWED_HOSTS
+        value: "jobs.afritechbridge.online"
+      # Auth rate limits (per client; minutes/hours windows)
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: RATE_LIMIT_PER_HOUR
+        value: "1000"
+      # Secrets — values are managed in the Render dashboard, not the repo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
 
   - type: redis
     name: talentsphere-redis

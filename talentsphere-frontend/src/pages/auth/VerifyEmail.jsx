@@ -58,7 +58,7 @@ export default function VerifyEmail() {
             </Button>
           )}
           <Button asChild variant={state === 'success' ? 'outline' : 'default'}>
-            <Link to="/">Return to TalentSphere</Link>
+            <Link to="/">Return to AfriTech Opportunities</Link>
           </Button>
         </div>
       </section>

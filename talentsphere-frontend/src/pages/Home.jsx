@@ -229,8 +229,8 @@ const Home = () => {
     <div className="w-full min-h-screen bg-gradient-to-br from-[#001F3F] via-[#0a2847] to-[#001F3F] relative overflow-hidden">
       {/* SEO Meta Tags */}
       <SEOHelmet
-        title="TalentSphere - Connect Talent with Opportunities"
-        description="Discover your next career opportunity or find the perfect candidate. TalentSphere connects talented professionals with leading companies worldwide. Find jobs, scholarships, and career resources."
+        title="AfriTech Opportunities - Connect Talent with Opportunities"
+        description="Discover your next career opportunity or find the perfect candidate. AfriTech Opportunities connects talented professionals with leading companies worldwide. Find jobs, scholarships, and career resources."
         keywords={homeKeywords}
         type="website"
         image="/home-og-image.jpg"

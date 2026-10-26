@@ -195,7 +195,7 @@ const ForgotPassword = () => {
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2CB5C2 0%, #F26522 100%)' }}>
               <span className="text-white font-bold text-lg">T</span>
             </div>
-            <span className="text-2xl font-bold text-white">TalentSphere</span>
+            <span className="text-2xl font-bold text-white">AfriTech Opportunities</span>
           </Link>
         </div>
 

@@ -23,7 +23,7 @@ export const parseJobWithAI = async (rawContent, categories = []) => {
       : '\n\nNote: Match the job to one of these common categories: Technology, Marketing, Sales, Design, Management, Finance, Healthcare, Education, Engineering, Customer Service, Human Resources, Legal, Operations, Data Science, Product Management';
 
     // Create a comprehensive prompt to extract job information
-    const prompt = `You are TalentSphere's AI Job Analyst, an expert system designed to extract and structure job posting information with exceptional accuracy and intelligence. Your role is to transform raw job postings into perfectly structured data that matches our platform's requirements.
+    const prompt = `You are AfriTech Opportunities' AI Job Analyst, an expert system designed to extract and structure job posting information with exceptional accuracy and intelligence. Your role is to transform raw job postings into perfectly structured data that matches our platform's requirements.
 
 CONTEXT & EXPERTISE:
 - You specialize in identifying job market trends, compensation structures, and skill requirements

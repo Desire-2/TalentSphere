@@ -84,7 +84,7 @@ const ShareScholarship = ({
   const communityUrl = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
   
   // Scholarship preview data
-  const organizationName = scholarship.external_organization_name || 'TalentSphere';
+  const organizationName = scholarship.external_organization_name || 'AfriTech Opportunities';
   const scholarshipTitle = scholarship.title;
   const amount = scholarship.amount_max 
     ? `${formatCurrency(scholarship.amount_max, scholarship.currency || 'USD')}`

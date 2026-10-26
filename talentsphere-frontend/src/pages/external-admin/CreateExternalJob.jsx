@@ -2327,7 +2327,7 @@ Tools: Git, Jest, Cypress
                     </div>
                   </div>
                   <div>
-                    <CardTitle className="text-2xl font-bold mb-1">TalentSphere AI Assistant</CardTitle>
+                    <CardTitle className="text-2xl font-bold mb-1">AfriTech Opportunities AI Assistant</CardTitle>
                     <CardDescription className="text-indigo-100 text-base">
                       Advanced job posting analysis • Intelligent field extraction • Professional content enhancement
                     </CardDescription>
@@ -2495,7 +2495,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                   ) : (
                     <>
                       <Sparkles className="h-6 w-6 mr-3 animate-pulse" />
-                      <span>Analyze with TalentSphere AI</span>
+                      <span>Analyze with AfriTech Opportunities AI</span>
                     </>
                   )}
                 </Button>
@@ -3493,7 +3493,7 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                       <Alert className="border-blue-200 bg-blue-50">
                         <CheckCircle className="h-4 w-4" />
                         <AlertDescription className="text-blue-800">
-                          ✨ Draft saved to TalentSphere
+                          ✨ Draft saved to AfriTech Opportunities
                         </AlertDescription>
                       </Alert>
                     )}

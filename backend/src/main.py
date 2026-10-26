@@ -137,7 +137,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 if DATABASE_URL and DATABASE_URL.startswith(('postgres://', 'postgresql://')):
     app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = {
         'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '10')),
-        'application_name': os.getenv('DB_APPLICATION_NAME', 'TalentSphere'),
+        'application_name': os.getenv('DB_APPLICATION_NAME', 'AfriTech Opportunities'),
     }
 
 # Enable CORS for all routes
@@ -270,7 +270,7 @@ def health_check():
         
         return jsonify({
             'status': 'healthy',
-            'message': 'TalentSphere API is running (optimized)',
+            'message': 'AfriTech Opportunities API is running (optimized)',
             'timestamp': datetime.utcnow().isoformat(),
             'database': 'connected',
             'cache': cache_status,

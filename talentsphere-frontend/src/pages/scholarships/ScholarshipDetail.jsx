@@ -345,7 +345,7 @@ const ScholarshipDetail = () => {
                   <div className="flex items-center">
                     <Building2 className="w-5 h-5 mr-2" />
                     <span className="font-medium">
-                      {scholarship.external_organization_name || scholarship.university_name || 'TalentSphere'}
+                      {scholarship.external_organization_name || scholarship.university_name || 'AfriTech Opportunities'}
                     </span>
                   </div>
                   {scholarship.location && (
@@ -608,7 +608,7 @@ const ScholarshipDetail = () => {
                       <div>
                         <h4 className="text-sm font-medium text-green-900 mb-1">Internal Application</h4>
                         <p className="text-xs text-green-700 leading-relaxed">
-                          You can apply for this scholarship directly through TalentSphere. 
+                          You can apply for this scholarship directly through AfriTech Opportunities. 
                           Your profile information will be used to pre-fill the application form.
                         </p>
                       </div>

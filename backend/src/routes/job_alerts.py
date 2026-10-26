@@ -130,7 +130,7 @@ def send_job_alert(current_user):
                 success = enhanced_notification_service.send_job_alert(
                     user.id,
                     job.id,
-                    frontend_url='https://talentsphere.com'
+                    frontend_url='https://jobs.afritechbridge.online'
                 )
                 if success:
                     sent_count += 1
@@ -194,7 +194,7 @@ def schedule_interview(current_user):
         success = enhanced_notification_service.send_interview_reminder(
             application.applicant_id,
             interview_data,
-            frontend_url='https://talentsphere.com'
+            frontend_url='https://jobs.afritechbridge.online'
         )
         
         if success:
@@ -238,7 +238,7 @@ def send_message_notification(current_user):
         success = enhanced_notification_service.send_new_message_notification(
             data['recipient_id'],
             message.id,
-            frontend_url='https://talentsphere.com'
+            frontend_url='https://jobs.afritechbridge.online'
         )
         
         db.session.commit()
@@ -270,7 +270,7 @@ def send_welcome_email(current_user):
         
         success = enhanced_notification_service.send_welcome_email(
             user_id,
-            frontend_url='https://talentsphere.com'
+            frontend_url='https://jobs.afritechbridge.online'
         )
         
         if success:
@@ -312,7 +312,7 @@ def send_system_notification(current_user):
         success = enhanced_notification_service.send_system_notification(
             data['user_id'],
             system_data,
-            frontend_url='https://talentsphere.com'
+            frontend_url='https://jobs.afritechbridge.online'
         )
         
         if success:
@@ -380,7 +380,7 @@ def test_all_email_templates(current_user):
                 success = enhanced_notification_service.send_job_alert(
                     current_user.id,
                     job.id,
-                    frontend_url='https://talentsphere.com'
+                    frontend_url='https://jobs.afritechbridge.online'
                 )
                 results['job_alert'] = 'success' if success else 'failed'
             else:
@@ -392,7 +392,7 @@ def test_all_email_templates(current_user):
         try:
             success = enhanced_notification_service.send_welcome_email(
                 current_user.id,
-                frontend_url='https://talentsphere.com'
+                frontend_url='https://jobs.afritechbridge.online'
             )
             results['welcome'] = 'success' if success else 'failed'
         except Exception as e:
@@ -412,7 +412,7 @@ def test_all_email_templates(current_user):
             success = enhanced_notification_service.send_system_notification(
                 current_user.id,
                 system_data,
-                frontend_url='https://talentsphere.com'
+                frontend_url='https://jobs.afritechbridge.online'
             )
             results['system'] = 'success' if success else 'failed'
         except Exception as e:
@@ -434,7 +434,7 @@ def test_all_email_templates(current_user):
             success = enhanced_notification_service.send_interview_reminder(
                 current_user.id,
                 interview_data,
-                frontend_url='https://talentsphere.com'
+                frontend_url='https://jobs.afritechbridge.online'
             )
             results['interview_reminder'] = 'success' if success else 'failed'
         except Exception as e:

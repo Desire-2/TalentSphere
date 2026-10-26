@@ -179,14 +179,14 @@ def apply_for_job(current_user, job_id):
             enhanced_notification_service.send_application_status_update(
                 application.id, 
                 'submitted',
-                frontend_url='https://talentsphere.com'
+                frontend_url='https://jobs.afritechbridge.online'
             )
         
         # Send confirmation to applicant
         enhanced_notification_service.send_application_status_update(
             application.id,
             'submitted',
-            frontend_url='https://talentsphere.com'
+            frontend_url='https://jobs.afritechbridge.online'
         )
         
         db.session.commit()
@@ -327,7 +327,7 @@ def update_application_status(current_user, application_id):
             enhanced_notification_service.send_application_status_update(
                 application.id,
                 new_status,
-                frontend_url='https://talentsphere.com'
+                frontend_url='https://jobs.afritechbridge.online'
             )
         
         db.session.commit()

@@ -47,7 +47,7 @@ const Dashboard = () => {
   // Default fallback for other roles or loading state
   return (
   <div className="max-w-3xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-16 sm:py-20 text-center">
-      <h1 className="text-4xl font-bold mb-4">Welcome to TalentSphere</h1>
+      <h1 className="text-4xl font-bold mb-4">Welcome to AfriTech Opportunities</h1>
       <p className="text-muted-foreground mb-8">
         Please complete your profile setup to access your personalized dashboard.
       </p>

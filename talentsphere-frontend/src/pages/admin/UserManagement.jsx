@@ -261,14 +261,14 @@ const UserManagement = () => {
 
   const handleSendEmail = (user) => {
     if (user) {
-      const subject = encodeURIComponent('Message from TalentSphere Admin');
-      const body = encodeURIComponent(`Dear ${user.first_name},\n\nThis is a message from the TalentSphere administration team.\n\nBest regards,\nTalentSphere Team`);
+      const subject = encodeURIComponent('Message from AfriTech Opportunities Admin');
+      const body = encodeURIComponent(`Dear ${user.first_name},\n\nThis is a message from the AfriTech Opportunities administration team.\n\nBest regards,\nAfriTech Opportunities Team`);
       const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${body}`;
       window.open(mailtoUrl, '_blank');
     } else {
       setEmailTemplate({
-        subject: 'Important Notice from TalentSphere',
-        message: 'Dear User,\n\nWe hope this message finds you well.\n\nBest regards,\nTalentSphere Team',
+        subject: 'Important Notice from AfriTech Opportunities',
+        message: 'Dear User,\n\nWe hope this message finds you well.\n\nBest regards,\nAfriTech Opportunities Team',
         sendToAll: selectedUsers.length === 0
       });
       setShowEmailDialog(true);

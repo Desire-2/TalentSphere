@@ -1,4 +1,4 @@
-"""Server-side text AI routes for TalentSphere."""
+"""Server-side text AI routes for AfriTech Opportunities."""
 
 from flask import Blueprint, jsonify, request
 
@@ -93,7 +93,7 @@ def parse_text(current_user):
 @token_required
 @role_required("admin", "external_admin")
 def generate_text(current_user):
-    """Generate a bounded text result for a supported TalentSphere task."""
+    """Generate a bounded text result for a supported AfriTech Opportunities task."""
     data = request.get_json(silent=True) or {}
     task = data.get("task")
     if task != "job_summary":

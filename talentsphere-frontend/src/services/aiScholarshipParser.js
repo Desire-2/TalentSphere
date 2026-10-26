@@ -3,7 +3,7 @@
  * Uses the server-side NVIDIA provider to parse scholarship postings.
  * 
  * This service takes raw scholarship text and converts it into a structured format
- * that matches the TalentSphere scholarship data structure.
+ * that matches the AfriTech Opportunities scholarship data structure.
  * 
  * @module aiScholarshipParser
  */

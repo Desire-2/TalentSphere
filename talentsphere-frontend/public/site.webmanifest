@@ -1,7 +1,7 @@
 {
-  "name": "TalentSphere",
-  "short_name": "TalentSphere",
-  "description": "Connect Talent with Opportunities - Leading job search and recruitment platform",
+  "name": "AfriTech Opportunities",
+  "short_name": "AfriTech",
+  "description": "Jobs, scholarships and internships in Rwanda and across Africa",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

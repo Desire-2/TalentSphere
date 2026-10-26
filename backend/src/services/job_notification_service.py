@@ -26,7 +26,7 @@ class JobNotificationService:
         self.frontend_url = (
             os.getenv('FRONTEND_URL')
             or os.getenv('SITE_URL')
-            or 'https://talentsphere.com'
+            or 'https://jobs.afritechbridge.online'
         ).rstrip('/')
         self.local_tz = self._get_local_timezone()
         self.local_tz_name = os.getenv('APP_TIMEZONE', 'system-local')
@@ -558,7 +558,7 @@ class JobNotificationService:
                 <!-- Footer -->
                 <div style='background-color: #f9fafb; padding: 24px 20px; text-align: center; border-top: 1px solid #e5e7eb;'>
                     <p style='margin: 0; color: #6b7280; font-size: 13px;'>
-                        You're receiving this because you're a valued TalentSphere member
+                        You're receiving this because you're a valued AfriTech Opportunities member
                     </p>
                     <p style='margin: 12px 0 0 0; color: #9ca3af; font-size: 12px;'>
                         <a href='{self.frontend_url}/settings/notifications' style='color: #3b82f6; text-decoration: none;'>Manage Preferences</a> •
@@ -780,7 +780,7 @@ class JobNotificationService:
                         <a href='{self.frontend_url}/help' style='color: #3b82f6; text-decoration: none;'>Get Help</a>
                     </p>
                     <p style='margin: 12px 0 0 0; color: #d1d5db; font-size: 11px;'>
-                        © 2026 TalentSphere. All rights reserved.
+                        © 2026 AfriTech Opportunities. All rights reserved.
                     </p>
                 </div>
             </div>

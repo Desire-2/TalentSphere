@@ -37,7 +37,7 @@ Allow: /scholarships
 Allow: /companies
 
 # Sitemap location
-Sitemap: /sitemap.xml
+Sitemap: https://jobs.afritechbridge.online/sitemap.xml
 
 # Crawl delay (optional - helps prevent overloading server)
 Crawl-delay: 1

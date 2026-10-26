@@ -12,14 +12,14 @@ export const API_CONFIG = {
 
 // Email Configuration
 export const EMAIL_CONFIG = {
-  SUPPORT: import.meta.env.VITE_SUPPORT_EMAIL || 'afritechbridge@yahoo.com',
-  CONTACT: import.meta.env.VITE_CONTACT_EMAIL || 'afritechbridge@yahoo.com',
-  NOREPLY: import.meta.env.VITE_NOREPLY_EMAIL || 'afritechbridge@yahoo.com',
+  SUPPORT: import.meta.env.VITE_SUPPORT_EMAIL || 'support@afritechbridge.online',
+  CONTACT: import.meta.env.VITE_CONTACT_EMAIL || 'support@afritechbridge.online',
+  NOREPLY: import.meta.env.VITE_NOREPLY_EMAIL || 'noreply@afritechbridge.online',
 };
 
 // App Configuration
 export const APP_CONFIG = {
-  NAME: import.meta.env.VITE_APP_NAME || 'TalentSphere',
+  NAME: import.meta.env.VITE_APP_NAME || 'AfriTech Opportunities',
   VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
   ENVIRONMENT: import.meta.env.VITE_APP_ENVIRONMENT || 'development',
   APP_URL: import.meta.env.VITE_APP_URL || 'http://localhost:5173',

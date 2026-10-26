@@ -280,12 +280,12 @@ const JobList = () => {
   );
   
   const seoTitle = filters.search 
-    ? `${filters.search} Jobs - Find Career Opportunities | TalentSphere`
-    : 'Job Search - Find Your Next Career Opportunity | TalentSphere';
+    ? `${filters.search} Jobs - Find Career Opportunities | AfriTech Opportunities`
+    : 'Job Search - Find Your Next Career Opportunity | AfriTech Opportunities';
     
   const seoDescription = filters.search
-    ? `Find ${filters.search} jobs on TalentSphere. Browse ${pagination.total || 'thousands of'} job opportunities from top companies. Apply now and advance your career.`
-    : `Discover your next career opportunity. Browse thousands of job openings from leading companies worldwide. Find your perfect job on TalentSphere.`;
+    ? `Find ${filters.search} jobs on AfriTech Opportunities. Browse ${pagination.total || 'thousands of'} job opportunities from top companies. Apply now and advance your career.`
+    : `Discover your next career opportunity. Browse thousands of job openings from leading companies worldwide. Find your perfect job on AfriTech Opportunities.`;
 
   const breadcrumbs = [
     { name: 'Home', url: '/' },

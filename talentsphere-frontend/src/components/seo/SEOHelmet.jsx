@@ -2,13 +2,13 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
 const SEOHelmet = ({
-  title = "TalentSphere - Connect Talent with Opportunities",
-  description = "Discover your next career opportunity or find the perfect candidate. TalentSphere connects talented professionals with leading companies worldwide.",
+  title = "AfriTech Opportunities - Connect Talent with Opportunities",
+  description = "Discover your next career opportunity or find the perfect candidate. AfriTech Opportunities connects talented professionals with leading companies worldwide.",
   keywords = "jobs, careers, recruitment, talent, opportunities, employment, job search, hiring, scholarships",
   image = "/og-image.jpg",
   url = window.location.href,
   type = "website",
-  author = "TalentSphere",
+  author = "AfriTech Opportunities",
   twitterCard = "summary_large_image",
   structuredData = null,
   canonical = null,
@@ -18,7 +18,7 @@ const SEOHelmet = ({
   articleData = null,
   organization = null
 }) => {
-  const siteName = "TalentSphere";
+  const siteName = "AfriTech Opportunities";
   const siteUrl = window.location.origin;
   const fullImageUrl = image.startsWith('http') ? image : `${siteUrl}${image}`;
   
@@ -26,20 +26,15 @@ const SEOHelmet = ({
   const defaultOrganization = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "TalentSphere",
+    "name": "AfriTech Opportunities",
     "url": siteUrl,
     "logo": `${siteUrl}/logo-512.png`,
-    "description": "Leading talent acquisition and career development platform",
+    "description": "Jobs, scholarships, and internships in Rwanda and across Africa",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer service",
-      "email": "support@talentsphere.com"
-    },
-    "sameAs": [
-      "https://linkedin.com/company/talentsphere",
-      "https://twitter.com/talentsphere",
-      "https://facebook.com/talentsphere"
-    ]
+      "email": "support@afritechbridge.online"
+    }
   };
 
   const organizationData = organization || defaultOrganization;
@@ -75,10 +70,8 @@ const SEOHelmet = ({
       <meta name="twitter:card" content={twitterCard} />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={fullImageUrl} />
-      <meta name="twitter:site" content="@talentsphere" />
-      <meta name="twitter:creator" content="@talentsphere" />
-      
+        <meta name="twitter:image" content={fullImageUrl} />
+        
       {/* Additional Meta Tags */}
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />

@@ -304,7 +304,7 @@ const EnhancedJobManagement = () => {
   const handleContactEmployer = (job) => {
     if (job.poster && job.poster.email) {
       const subject = encodeURIComponent(`Regarding Job Posting: ${job.title}`);
-      const body = encodeURIComponent(`Dear ${job.poster.first_name},\n\nThis is a message from the TalentSphere administration team regarding your job posting "${job.title}".\n\nBest regards,\nTalentSphere Team`);
+      const body = encodeURIComponent(`Dear ${job.poster.first_name},\n\nThis is a message from the AfriTech Opportunities administration team regarding your job posting "${job.title}".\n\nBest regards,\nAfriTech Opportunities Team`);
       const mailtoUrl = `mailto:${job.poster.email}?subject=${subject}&body=${body}`;
       window.open(mailtoUrl, '_blank');
     } else {

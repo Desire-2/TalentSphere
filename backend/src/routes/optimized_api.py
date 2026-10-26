@@ -1,5 +1,5 @@
 """
-Enhanced API Route Optimizations for TalentSphere
+Enhanced API Route Optimizations for AfriTech Opportunities
 
 Implements optimized endpoints with better caching, query optimization, and response compression.
 """

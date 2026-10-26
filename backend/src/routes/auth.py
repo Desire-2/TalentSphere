@@ -82,7 +82,7 @@ def _authorization_token():
     return None, 'Invalid token format'
 
 def _decode_access_token(token, verify_expiration=True):
-    """Decode one of TalentSphere's PyJWT access tokens."""
+    """Decode one of AfriTech Opportunities's PyJWT access tokens."""
     options = {'require': ['user_id', 'exp']}
     if not verify_expiration:
         options['verify_exp'] = False
@@ -1187,20 +1187,20 @@ def send_verification_email(current_user):
             f"{backend_url}/api/auth/verify-email-link?token={token}"
         )
         html_body = f"""
-        <p>Confirm your TalentSphere email address by selecting the button below.</p>
+        <p>Confirm your AfriTech Opportunities email address by selecting the button below.</p>
         <p><a href="{verification_link}">Verify email address</a></p>
         <p>This link expires in 24 hours. If you did not request it, you can ignore this email.</p>
-        <p><a href="{frontend_url}">Open TalentSphere</a></p>
+        <p><a href="{frontend_url}">Open AfriTech Opportunities</a></p>
         """
         text_body = (
-            "Confirm your TalentSphere email address:\\n"
+            "Confirm your AfriTech Opportunities email address:\\n"
             f"{verification_link}\\n\\n"
             "This link expires in 24 hours. If you did not request it, ignore this email."
         )
         sent = email_service.send_custom_email(
             current_user.email,
             current_user.get_full_name(),
-            'Verify your TalentSphere email',
+            'Verify your AfriTech Opportunities email',
             html_body,
             text_body
         )
@@ -1373,7 +1373,7 @@ def send_basic_welcome_email(user):
         smtp_port = int(os.getenv('SMTP_PORT', '587'))
         sender_email = os.getenv('SENDER_EMAIL')
         sender_password = os.getenv('SENDER_PASSWORD')
-        sender_name = os.getenv('SENDER_NAME', 'TalentSphere Team')
+        sender_name = os.getenv('SENDER_NAME', 'AfriTech Opportunities Team')
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
         
         # Check if email configuration is complete
@@ -1386,7 +1386,7 @@ def send_basic_welcome_email(user):
         
         # Create message
         message = MIMEMultipart("alternative")
-        message["Subject"] = f"Welcome to TalentSphere, {user.first_name}!"
+        message["Subject"] = f"Welcome to AfriTech Opportunities, {user.first_name}!"
         message["From"] = f"{sender_name} <{sender_email}>"
         message["To"] = user.email
         
@@ -1437,19 +1437,19 @@ def send_basic_welcome_email(user):
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Welcome to TalentSphere</title>
+            <title>Welcome to AfriTech Opportunities</title>
         </head>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
             <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #2563eb; margin: 0; font-size: 32px;">🚀 TalentSphere</h1>
+                    <h1 style="color: #2563eb; margin: 0; font-size: 32px;">🚀 AfriTech Opportunities</h1>
                     <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 18px;">Your Journey Starts Here!</p>
                 </div>
                 
                 <div style="margin-bottom: 30px;">
                     <h2 style="color: #374151; margin-bottom: 20px;">Hello {user.first_name}! 👋</h2>
                     <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
-                        Welcome to TalentSphere! We're thrilled to have you join our community of talented professionals and forward-thinking employers.
+                        Welcome to AfriTech Opportunities! We're thrilled to have you join our community of talented professionals and forward-thinking employers.
                     </p>
                     <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px; font-size: 16px;">
                         Your account has been successfully created as a <strong style="color: #2563eb;">{user.role.replace('_', ' ').title()}</strong>. 
@@ -1493,7 +1493,7 @@ def send_basic_welcome_email(user):
                 
                 <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        © 2024 TalentSphere. All rights reserved. | Made with ❤️ for connecting talent with opportunity
+                        © 2024 AfriTech Opportunities. All rights reserved. | Made with ❤️ for connecting talent with opportunity
                     </p>
                 </div>
             </div>

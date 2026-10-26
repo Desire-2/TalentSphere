@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database initialization script for TalentSphere Job Portal
+Database initialization script for AfriTech Opportunities Job Portal
 Creates all database tables and optionally seeds with sample data
 """
 
@@ -395,7 +395,7 @@ def seed_sample_data():
                     title=campaign_data['name'],
                     body_text=campaign_data['description'],
                     cta_text='View Positions',
-                    cta_url='https://talentsphere.com/careers',
+                    cta_url='https://jobs.afritechbridge.online/careers',
                     ad_format=campaign_data['format'],  # Use specified format
                     image_url='https://via.placeholder.com/600x400?text=Career+Opportunity',
                     is_active=True,
@@ -419,7 +419,7 @@ def seed_sample_data():
 
 def main():
     """Main function"""
-    print("TalentSphere Database Initialization")
+    print("AfriTech Opportunities Database Initialization")
     print("=" * 40)
     
     # Create tables

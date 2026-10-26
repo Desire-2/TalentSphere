@@ -37,7 +37,7 @@ class NotificationTemplateHandler:
             'job_type': (job.employment_type or 'full-time').replace('_', ' ').title(),
             'experience_level': (job.experience_level or 'entry').replace('_', ' ').title() if job.experience_level else 'Any Level',
             'salary_range': job.get_salary_range(),
-            'job_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/jobs/{job.id}",
+            'job_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/jobs/{job.id}",
             'job_description': job.description[:200] + '...' if len(job.description) > 200 else job.description,
             'posted_date': job.created_at.strftime('%B %d, %Y'),
             'application_deadline': job.application_deadline.strftime('%B %d, %Y') if job.application_deadline else None,
@@ -74,8 +74,8 @@ class NotificationTemplateHandler:
             'progress_percentage': progress_percentage,
             'current_step': current_step + 1,
             'total_steps': len(status_steps),
-            'application_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/applications/{application.id}",
-            'job_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/jobs/{job.id}",
+            'application_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/applications/{application.id}",
+            'job_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/jobs/{job.id}",
             'is_positive': status in ['shortlisted', 'interview_scheduled', 'hired'],
             'next_step': 'Check your dashboard for next steps.' if status != 'hired' else 'Welcome to the team!'
         }
@@ -124,12 +124,12 @@ class NotificationTemplateHandler:
             'sender_name': sender.get_full_name(),
             'sender_email': sender.email,
             'sender_role': sender.role.replace('_', ' ').title(),
-            'sender_avatar': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/api/users/{sender.id}/avatar",
+            'sender_avatar': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/api/users/{sender.id}/avatar",
             'message_subject': message.subject,
             'message_preview': message.content[:100] + '...' if len(message.content) > 100 else message.content,
             'message_date': message.created_at.strftime('%B %d, %Y at %I:%M %p'),
-            'message_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/messages/{message.id}",
-            'reply_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/messages/compose?reply_to={message.id}",
+            'message_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/messages/{message.id}",
+            'reply_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/messages/compose?reply_to={message.id}",
             'has_attachments': len(message.attachments) > 0 if hasattr(message, 'attachments') else False,
             'attachment_count': len(message.attachments) if hasattr(message, 'attachments') else 0,
             'is_urgent': message.priority == 'urgent' if hasattr(message, 'priority') else False
@@ -155,7 +155,7 @@ class NotificationTemplateHandler:
                 'Add more skills to your profile'
             ]),
             'recent_activity': system_data.get('recent_activity', []),
-            'action_url': system_data.get('action_url', f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/dashboard"),
+            'action_url': system_data.get('action_url', f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/dashboard"),
             'action_text': system_data.get('action_text', 'Visit Dashboard')
         }
     
@@ -167,26 +167,26 @@ class NotificationTemplateHandler:
             'user_email': user.email,
             'user_role': user.role.replace('_', ' ').title(),
             'registration_date': user.created_at.strftime('%B %d, %Y'),
-            'dashboard_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/dashboard",
-            'profile_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/profile",
-            'jobs_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/jobs",
+            'dashboard_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/dashboard",
+            'profile_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/profile",
+            'jobs_url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/jobs",
             'onboarding_steps': [
                 {
                     'title': 'Complete Your Profile',
                     'description': 'Add your skills, experience, and preferences',
-                    'url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/profile/edit",
+                    'url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/profile/edit",
                     'completed': False
                 },
                 {
                     'title': 'Upload Your Resume',
                     'description': 'Make it easy for employers to find you',
-                    'url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/profile/resume",
+                    'url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/profile/resume",
                     'completed': False
                 },
                 {
                     'title': 'Set Job Preferences',
                     'description': 'Tell us what kind of job you\'re looking for',
-                    'url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/profile/preferences",
+                    'url': f"{kwargs.get('frontend_url', 'https://jobs.afritechbridge.online')}/profile/preferences",
                     'completed': False
                 }
             ],
@@ -327,8 +327,8 @@ class EnhancedNotificationService:
             return self.email_service.create_and_send_notification(
                 user_id=user_id,
                 notification_type=NotificationType.WELCOME,
-                title=f"Welcome to TalentSphere, {user.get_full_name()}!",
-                message="Welcome to TalentSphere! We're excited to help you find your dream job.",
+                title=f"Welcome to AfriTech Opportunities, {user.get_full_name()}!",
+                message="Welcome to AfriTech Opportunities! We're excited to help you find your dream job.",
                 variables=template_data,
                 send_email=True
             )

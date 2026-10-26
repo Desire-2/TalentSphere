@@ -1,5 +1,5 @@
 """
-Enhanced Cache Middleware for TalentSphere Backend
+Enhanced Cache Middleware for AfriTech Opportunities Backend
 
 Implements intelligent caching, cache warming, and performance optimization.
 """

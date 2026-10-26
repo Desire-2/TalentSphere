@@ -1165,7 +1165,7 @@ const Register = () => {
                         )}
                       </div>
                       <Label htmlFor="terms" className="text-sm leading-relaxed flex-1">
-                        I agree to TalentSphere's{' '}
+                        I agree to AfriTech Opportunities's{' '}
                         <Link 
                           to="/terms" 
                           className="text-blue-600 hover:text-blue-800 underline font-semibold hover:bg-blue-100 px-1 rounded transition-all"

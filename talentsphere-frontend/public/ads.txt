@@ -1,0 +1,2 @@
+# Google AdSense publisher authorization
+google.com, pub-2776294322568123, DIRECT, f08c47fec0942fa0

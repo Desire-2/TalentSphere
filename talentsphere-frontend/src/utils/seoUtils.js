@@ -12,7 +12,7 @@ export const generateJobPostingStructuredData = (job) => {
     "description": job.description,
     "identifier": {
       "@type": "PropertyValue",
-      "name": "TalentSphere Job ID",
+      "name": "AfriTech Opportunities Job ID",
       "value": job.id
     },
     "datePosted": job.created_at,
@@ -20,7 +20,7 @@ export const generateJobPostingStructuredData = (job) => {
     "employmentType": job.employment_type || "FULL_TIME",
     "hiringOrganization": {
       "@type": "Organization",
-      "name": job.company_name || "TalentSphere Partner",
+      "name": job.company_name || "AfriTech Opportunities Partner",
       "sameAs": job.company_website || `${siteUrl}/companies/${job.company_id}`,
       "logo": job.company_logo || `${siteUrl}/default-company-logo.png`
     },
@@ -51,7 +51,7 @@ export const generateJobPostingStructuredData = (job) => {
     "url": `${siteUrl}/jobs/${job.id}`,
     "applicationContact": {
       "@type": "ContactPoint",
-      "email": job.contact_email || "apply@talentsphere.com"
+      "email": job.contact_email || "support@afritechbridge.online"
     }
   };
 };
@@ -70,7 +70,7 @@ export const generateScholarshipStructuredData = (scholarship) => {
     "competencyRequired": scholarship.eligibility_requirements || "",
     "availableAt": {
       "@type": "EducationalOrganization",
-      "name": scholarship.university_name || scholarship.external_organization_name || "TalentSphere Partner",
+      "name": scholarship.university_name || scholarship.external_organization_name || "AfriTech Opportunities Partner",
       "url": scholarship.external_organization_website || siteUrl
     },
     "offers": {
@@ -135,13 +135,13 @@ export const generateWebsiteStructuredData = () => {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "TalentSphere",
-    "alternateName": "TalentSphere Jobs",
+    "name": "AfriTech Opportunities",
+    "alternateName": "AfriTech Opportunities Jobs",
     "url": siteUrl,
     "description": "Connect Talent with Opportunities - Leading job search and recruitment platform",
     "publisher": {
       "@type": "Organization",
-      "name": "TalentSphere",
+      "name": "AfriTech Opportunities",
       "logo": `${siteUrl}/logo-512.png`
     },
     "potentialAction": [
@@ -168,11 +168,11 @@ export const generateArticleStructuredData = (article) => {
     "image": article.image ? `${siteUrl}${article.image}` : `${siteUrl}/og-image.jpg`,
     "author": {
       "@type": "Organization",
-      "name": "TalentSphere"
+      "name": "AfriTech Opportunities"
     },
     "publisher": {
       "@type": "Organization",
-      "name": "TalentSphere",
+      "name": "AfriTech Opportunities",
       "logo": {
         "@type": "ImageObject",
         "url": `${siteUrl}/logo-512.png`
@@ -189,7 +189,7 @@ export const generateArticleStructuredData = (article) => {
 
 // SEO optimization utilities
 export const generateMetaTitle = (pageTitle, includesSiteName = true) => {
-  const siteName = "TalentSphere";
+  const siteName = "AfriTech Opportunities";
   return includesSiteName ? `${pageTitle} | ${siteName}` : pageTitle;
 };
 
@@ -209,7 +209,7 @@ export const generateJobSEODescription = (job) => {
   const salary = job.salary_range ? `Salary: ${job.salary_range}. ` : "";
   const type = job.employment_type ? `Type: ${job.employment_type}. ` : "";
   
-  const fullDesc = baseDesc + location + salary + type + "Apply now on TalentSphere.";
+  const fullDesc = baseDesc + location + salary + type + "Apply now on AfriTech Opportunities.";
   return truncateDescription(fullDesc);
 };
 
@@ -225,7 +225,7 @@ export const generateScholarshipSEODescription = (scholarship) => {
     ? ` Deadline: ${new Date(scholarship.application_deadline).toLocaleDateString()}.`
     : '';
   
-  const fullDesc = `Apply for the ${amount}${scholarship.title} scholarship from ${org}.${deadline} Find more scholarships on TalentSphere.`;
+  const fullDesc = `Apply for the ${amount}${scholarship.title} scholarship from ${org}.${deadline} Find more scholarships on AfriTech Opportunities.`;
   return truncateDescription(fullDesc);
 };
 

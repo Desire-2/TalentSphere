@@ -79,7 +79,7 @@ def send_scholarship_share_email(current_user, scholarship_id):
 
         custom_message = str(data.get('custom_message') or '').strip()
         recipient_name = str(data.get('recipient_name') or '').strip()
-        organization = scholarship.external_organization_name or 'TalentSphere'
+        organization = scholarship.external_organization_name or 'AfriTech Opportunities'
         frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
         scholarship_url = f'{frontend_url}/scholarships/{scholarship.id}'
         personal_message = (
@@ -105,7 +105,7 @@ Provider: {organization}
 
 View scholarship: {scholarship_url}
 
-Shared through TalentSphere
+Shared through AfriTech Opportunities
 """
         html_body = (
             f'<p>{escape(text_body)}</p>'

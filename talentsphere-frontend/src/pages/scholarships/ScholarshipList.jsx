@@ -257,11 +257,11 @@ const ScholarshipList = () => {
   );
   
   const seoTitle = searchTerm 
-    ? `${searchTerm} Scholarships - Find Financial Aid | TalentSphere`
-    : 'Scholarships - Find Educational Funding Opportunities | TalentSphere';
+    ? `${searchTerm} Scholarships - Find Financial Aid | AfriTech Opportunities`
+    : 'Scholarships - Find Educational Funding Opportunities | AfriTech Opportunities';
     
   const seoDescription = searchTerm
-    ? `Find ${searchTerm} scholarships on TalentSphere. Browse financial aid opportunities and educational grants. Apply for scholarships to fund your education.`
+    ? `Find ${searchTerm} scholarships on AfriTech Opportunities. Browse financial aid opportunities and educational grants. Apply for scholarships to fund your education.`
     : `Discover scholarship opportunities to fund your education. Browse hundreds of scholarships, grants, and financial aid programs from leading institutions worldwide.`;
 
   const breadcrumbs = [
@@ -481,7 +481,7 @@ const ScholarshipList = () => {
                       </CardTitle>
                       <CardDescription className="flex items-center text-gray-300">
                         <Building2 className="w-4 h-4 mr-1" />
-                        {scholarship.external_organization_name || scholarship.university_name || 'TalentSphere'}
+                        {scholarship.external_organization_name || scholarship.university_name || 'AfriTech Opportunities'}
                       </CardDescription>
                       {scholarship.updated_at && (
                         <div className="flex items-center text-xs text-gray-400 mt-1">

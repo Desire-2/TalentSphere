@@ -374,7 +374,7 @@ const ScholarshipApplication = () => {
               <div className="flex-1">
                 <CardTitle className="text-xl text-gray-900">{scholarship.title}</CardTitle>
                 <CardDescription className="text-base mt-2">
-                  {scholarship.external_organization_name || 'TalentSphere'}
+                  {scholarship.external_organization_name || 'AfriTech Opportunities'}
                 </CardDescription>
               </div>
               <div className="text-right">

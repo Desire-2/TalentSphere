@@ -257,7 +257,7 @@ Don't miss this opportunity to invest in your education! If you have any questio
 Best of luck with your application!
 
 ---
-Shared via TalentSphere - Connecting Students with Opportunities
+Shared via AfriTech Opportunities - Connecting Students with Opportunities
 `;
   }
 

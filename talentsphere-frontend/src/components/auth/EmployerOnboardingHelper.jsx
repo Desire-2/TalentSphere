@@ -164,7 +164,7 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="w-6 h-6 text-blue-600" />
-            Welcome to TalentSphere!
+            Welcome to AfriTech Opportunities!
           </CardTitle>
           <CardDescription>
             Complete setup and reach at least {unlockThreshold}% company profile completion to unlock normal employer activities.

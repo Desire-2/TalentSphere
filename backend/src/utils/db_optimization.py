@@ -1,5 +1,5 @@
 """
-Database Connection Pool and Query Optimization for TalentSphere
+Database Connection Pool and Query Optimization for AfriTech Opportunities
 
 Implements connection pooling, query batching, and database performance monitoring.
 """
@@ -73,7 +73,7 @@ def create_optimized_engine(database_url: str):
     if database_url.startswith(('postgresql://', 'postgres://')):
         connect_args = {
             'connect_timeout': 10,
-            'application_name': 'TalentSphere',
+            'application_name': 'AfriTech Opportunities',
             'options': '-c default_transaction_isolation=read_committed'
         }
         engine_settings['connect_args'] = connect_args

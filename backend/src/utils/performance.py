@@ -1,5 +1,5 @@
 """
-Advanced Performance Optimization Utils for TalentSphere Backend
+Advanced Performance Optimization Utils for AfriTech Opportunities Backend
 
 Implements request timing, memory monitoring, and advanced caching strategies.
 """

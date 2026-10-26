@@ -683,7 +683,7 @@ def get_api_documentation():
     """Get API documentation"""
     try:
         api_docs = {
-            "title": "TalentSphere Job Portal API",
+            "title": "AfriTech Opportunities Job Portal API",
             "version": "1.0.0",
             "description": "Comprehensive job portal API with authentication, job management, applications, featured ads, and admin features",
             "base_url": "/api",

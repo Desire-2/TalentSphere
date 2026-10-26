@@ -1,5 +1,5 @@
 """
-Performance Cache System for TalentSphere
+Performance Cache System for AfriTech Opportunities
 
 Implements Redis-based caching for frequently accessed data to reduce database load.
 """
@@ -156,7 +156,7 @@ def invalidate_cache(patterns: List[str]):
     for pattern in patterns:
         cache.delete_pattern(f"ts:{pattern}:*")
 
-# Specific cache functions for TalentSphere
+# Specific cache functions for AfriTech Opportunities
 
 @cached("jobs_featured", ttl=600)  # 10 minutes
 def get_cached_featured_jobs(limit: int = 10) -> List[Dict]:

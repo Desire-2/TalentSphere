@@ -1,5 +1,5 @@
 """
-Enhanced Email Notification Service for TalentSphere
+Enhanced Email Notification Service for AfriTech Opportunities
 Provides comprehensive email delivery with templates, tracking, and batching
 """
 
@@ -70,7 +70,7 @@ class EmailService:
         self.frontend_url = (
             os.getenv('FRONTEND_URL')
             or os.getenv('SITE_URL')
-            or 'https://talentsphere.com'
+            or 'https://jobs.afritechbridge.online'
         ).rstrip('/')
         
         # Setup logging
@@ -126,13 +126,13 @@ class EmailService:
                 variables=['position', 'company_name', 'deadline_date', 'user_name', 'job_url', 'unsubscribe_url', 'preferences_url']
             ),
             'system': EmailTemplate(
-                subject="� TalentSphere: {notification_title}",
+                subject="� AfriTech Opportunities: {notification_title}",
                 html_body=self._load_html_template('email_system.html'),
                 text_body=self._get_system_notification_text(),
                 variables=['notification_title', 'notification_type', 'icon', 'message', 'action_url', 'action_text', 'percentage', 'missing_sections', 'stats', 'recommendations', 'unsubscribe_url', 'preferences_url']
             ),
             'welcome': EmailTemplate(
-                subject="🎉 Welcome to TalentSphere, {user_name}!",
+                subject="🎉 Welcome to AfriTech Opportunities, {user_name}!",
                 html_body=self._load_html_template('email_welcome.html'),
                 text_body=self._get_welcome_text(),
                 variables=['user_name', 'profile_url', 'jobs_url', 'unsubscribe_url', 'preferences_url']
@@ -150,7 +150,7 @@ class EmailService:
                 variables=['job_title', 'company_name', 'job_url', 'user_name', 'location', 'employment_type', 'salary_range', 'unsubscribe_url', 'preferences_url']
             ),
             'password_reset': EmailTemplate(
-                subject="Reset Your TalentSphere Password",
+                subject="Reset Your AfriTech Opportunities Password",
                 html_body=self._get_password_reset_html(),
                 text_body=self._get_password_reset_text(),
                 variables=['user_name', 'reset_url']
@@ -457,11 +457,11 @@ class EmailService:
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>TalentSphere Notification</title>
+            <title>AfriTech Opportunities Notification</title>
         </head>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #6366f1;">TalentSphere</h1>
-            <p>You have a new notification from TalentSphere.</p>
+            <h1 style="color: #6366f1;">AfriTech Opportunities</h1>
+            <p>You have a new notification from AfriTech Opportunities.</p>
             <p>Please visit your dashboard for more details.</p>
         </body>
         </html>
@@ -508,7 +508,7 @@ class EmailService:
     
     def _get_job_alert_text(self) -> str:
         return """
-        New Job Alert - TalentSphere
+        New Job Alert - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -520,7 +520,7 @@ class EmailService:
         View the full job details at: {job_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         
         Don't want to receive job alerts? Update your preferences in your account settings.
         """
@@ -566,7 +566,7 @@ class EmailService:
     
     def _get_application_status_text(self) -> str:
         return """
-        Application Update - TalentSphere
+        Application Update - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -579,7 +579,7 @@ class EmailService:
         View your application details at: {application_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_message_notification_html(self) -> str:
@@ -616,7 +616,7 @@ class EmailService:
     
     def _get_message_notification_text(self) -> str:
         return """
-        New Message - TalentSphere
+        New Message - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -628,7 +628,7 @@ class EmailService:
         Read the full message at: {message_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_interview_reminder_html(self) -> str:
@@ -671,7 +671,7 @@ class EmailService:
     
     def _get_interview_reminder_text(self) -> str:
         return """
-        Interview Reminder - TalentSphere
+        Interview Reminder - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -687,7 +687,7 @@ class EmailService:
         Good luck with your interview!
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_deadline_reminder_html(self) -> str:
@@ -729,7 +729,7 @@ class EmailService:
     
     def _get_deadline_reminder_text(self) -> str:
         return """
-        Application Deadline Reminder - TalentSphere
+        Application Deadline Reminder - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -744,7 +744,7 @@ class EmailService:
         Don't miss this opportunity!
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_weekly_digest_html(self) -> str:
@@ -791,7 +791,7 @@ class EmailService:
     
     def _get_weekly_digest_text(self) -> str:
         return """
-        Weekly Job Activity Digest - TalentSphere
+        Weekly Job Activity Digest - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -804,7 +804,7 @@ class EmailService:
         View your full dashboard at: {dashboard_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_company_update_html(self) -> str:
@@ -841,7 +841,7 @@ class EmailService:
     
     def _get_company_update_text(self) -> str:
         return """
-        Company Update - TalentSphere
+        Company Update - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -853,7 +853,7 @@ class EmailService:
         View the company page at: {company_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_system_notification_html(self) -> str:
@@ -888,7 +888,7 @@ class EmailService:
     
     def _get_system_notification_text(self) -> str:
         return """
-        System Notification - TalentSphere
+        System Notification - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -898,13 +898,13 @@ class EmailService:
         {action_text}: {action_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_welcome_text(self) -> str:
         """Welcome email text template"""
         return """
-        Welcome to TalentSphere, {user_name}!
+        Welcome to AfriTech Opportunities, {user_name}!
         
         We're thrilled to have you join our community of ambitious professionals.
         
@@ -914,13 +914,13 @@ class EmailService:
         3. Start applying to jobs: {jobs_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_promotion_text(self) -> str:
         """Promotion email text template"""
         return """
-        Featured Job Opportunity - TalentSphere
+        Featured Job Opportunity - AfriTech Opportunities
         
         Hi {user_name},
         
@@ -935,7 +935,7 @@ class EmailService:
         View details: {job_url}
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def _get_password_reset_html(self) -> str:
@@ -951,14 +951,14 @@ class EmailService:
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
             <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #2563eb; margin: 0; font-size: 28px;">TalentSphere</h1>
+                    <h1 style="color: #2563eb; margin: 0; font-size: 28px;">AfriTech Opportunities</h1>
                     <p style="color: #6b7280; margin: 5px 0 0 0;">Password Reset Request</p>
                 </div>
                 
                 <div style="margin-bottom: 30px;">
                     <h2 style="color: #374151; margin-bottom: 20px;">Hello {user_name},</h2>
                     <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
-                        We received a request to reset your password for your TalentSphere account. If you didn't make this request, you can safely ignore this email.
+                        We received a request to reset your password for your AfriTech Opportunities account. If you didn't make this request, you can safely ignore this email.
                     </p>
                     <p style="color: #6b7280; line-height: 1.6; margin-bottom: 30px;">
                         To reset your password, click the button below. This link will expire in 1 hour for security reasons.
@@ -986,7 +986,7 @@ class EmailService:
                 
                 <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        © 2024 TalentSphere. All rights reserved.
+                        © 2024 AfriTech Opportunities. All rights reserved.
                     </p>
                 </div>
             </div>
@@ -997,11 +997,11 @@ class EmailService:
     def _get_password_reset_text(self) -> str:
         """Password reset email text template"""
         return """
-        Password Reset Request - TalentSphere
+        Password Reset Request - AfriTech Opportunities
         
         Hello {user_name},
         
-        We received a request to reset your password for your TalentSphere account. If you didn't make this request, you can safely ignore this email.
+        We received a request to reset your password for your AfriTech Opportunities account. If you didn't make this request, you can safely ignore this email.
         
         To reset your password, visit this link (expires in 1 hour):
         {reset_url}
@@ -1009,7 +1009,7 @@ class EmailService:
         If you need help, contact our support team.
         
         Best regards,
-        The TalentSphere Team
+        The AfriTech Opportunities Team
         """
     
     def send_password_reset_email(self, user_email: str, user_name: str, reset_token: str) -> bool:
@@ -1021,7 +1021,7 @@ class EmailService:
                 recipient_email=user_email,
                 recipient_name=user_name,
                 template_name='password_reset',
-                subject="Reset Your TalentSphere Password",
+                subject="Reset Your AfriTech Opportunities Password",
                 variables={
                     'user_name': user_name,
                     'reset_url': reset_url
@@ -1058,7 +1058,7 @@ class EmailService:
                 'title': escape(subject),
                 'message': escape(message),
                 'action_url': action_url or self.frontend_url,
-                'action_text': 'Open TalentSphere',
+                'action_text': 'Open AfriTech Opportunities',
             },
             priority=EmailPriority.HIGH,
             send_immediately=True,

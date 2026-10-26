@@ -128,9 +128,9 @@ const JobDetails = () => {
 
         // Update page title if meta_title is available
         if (jobData.meta_title) {
-          document.title = `${jobData.meta_title} - TalentSphere`;
+          document.title = `${jobData.meta_title} - AfriTech Opportunities`;
         } else {
-          document.title = `${jobData.title} at ${jobData.company?.name || 'Company'} - TalentSphere`;
+          document.title = `${jobData.title} at ${jobData.company?.name || 'Company'} - AfriTech Opportunities`;
         }
         
         // Check if user has applied (only for authenticated job seekers)
@@ -169,7 +169,7 @@ const JobDetails = () => {
         setError(errorMessage);
         
         // Set appropriate page title for error case
-        document.title = 'Job Not Found - TalentSphere';
+        document.title = 'Job Not Found - AfriTech Opportunities';
       } finally {
         setLoading(false);
       }

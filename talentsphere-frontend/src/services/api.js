@@ -1,4 +1,4 @@
-// API service for TalentSphere backend connection
+// API service for AfriTech Opportunities backend connection
 import config from '../config/environment.js';
 
 // Environment-based configuration from centralized config

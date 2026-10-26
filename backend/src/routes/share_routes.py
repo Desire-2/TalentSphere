@@ -152,7 +152,7 @@ Apply here: {apply_url}
 View full job details: {job_url}
 
 ---
-This job was shared through TalentSphere
+This job was shared through AfriTech Opportunities
 """
         
         # Send emails

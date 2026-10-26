@@ -117,7 +117,7 @@ const ResetPassword = () => {
         } else {
           setError(result.message || 'Invalid or expired reset token');
         }
-      } catch (err) {
+      } catch (_err) {
         setError('Network error. Please check your connection.');
       } finally {
         setIsVerifying(false);
@@ -155,7 +155,7 @@ const ResetPassword = () => {
       } else {
         setError(result.error || 'Failed to reset password');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);

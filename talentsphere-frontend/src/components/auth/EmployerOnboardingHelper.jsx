@@ -18,7 +18,6 @@ import {
   Loader2,
   ShieldCheck
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
 
 const EmployerOnboardingHelper = ({ onComplete }) => {
@@ -27,8 +26,6 @@ const EmployerOnboardingHelper = ({ onComplete }) => {
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
-  const { user } = useAuthStore();
-
   useEffect(() => {
     loadOnboardingGuide();
   }, []);

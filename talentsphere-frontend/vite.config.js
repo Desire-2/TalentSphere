@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ _command, mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -32,15 +32,15 @@ export default defineConfig(({ command, mode }) => {
       },
       proxy: {
         '/api': {
-          target: 'http://localhost:5001',
+          target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path,
           configure: (proxy, options) => {
-            proxy.on('error', (err, req, res) => {
+            proxy.on('error', (err, _req, _res) => {
               console.log('Proxy error:', err);
             });
-            proxy.on('proxyReq', (proxyReq, req, res) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
               console.log('Proxying:', req.method, req.url, '→', options.target + req.url);
             });
           }
@@ -51,6 +51,20 @@ export default defineConfig(({ command, mode }) => {
       outDir: 'dist',
       sourcemap: mode === 'development',
       minify: mode === 'production' ? 'esbuild' : false,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'react';
+            if (id.includes('/react-router') || id.includes('@remix-run')) return 'router';
+            if (id.includes('/recharts/') || id.includes('/d3-')) return 'charts';
+            if (id.includes('/@mui/') || id.includes('/@emotion/')) return 'mui';
+            if (id.includes('/framer-motion/') || id.includes('/motion/')) return 'motion';
+            if (id.includes('/jspdf/') || id.includes('/html2canvas/')) return 'pdf';
+            return 'vendor';
+          },
+        },
+      },
     },
     define: {
       __DEV__: mode === 'development',

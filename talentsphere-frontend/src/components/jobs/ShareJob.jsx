@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { 
   Dialog, 
   DialogContent, 
@@ -44,7 +44,7 @@ import {
   Globe,
   TrendingUp
 } from 'lucide-react';
-import { formatCurrency, formatRelativeTime, snakeToTitle } from '../../utils/helpers';
+import { formatRelativeTime, snakeToTitle } from '../../utils/helpers';
 import { toast } from 'sonner';
 // (Dynamic import for QRCode done only when needed to reduce initial bundle size)
 import shareJobService from '../../services/shareJobService';
@@ -71,7 +71,6 @@ const ShareJob = ({
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [shareSuggestions, setShareSuggestions] = useState([]);
   const [jobShareStats, setJobShareStats] = useState(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [supportsNativeShare] = useState(typeof navigator !== 'undefined' && !!navigator.share);
   const messageLimit = 280;
 
@@ -103,15 +102,23 @@ const ShareJob = ({
   const getCurrentMessage = () => customMessage || selectedTemplate?.template || defaultMessage;
 
   // Initialize analytics and suggestions
-  const initializeShareData = () => {
+  const initializeShareData = async () => {
     const templates = shareJobService.generateShareTemplates(job, companyName);
     setShareTemplates(templates);
-    
+
     const suggestions = shareJobService.getShareSuggestions(job);
     setShareSuggestions(suggestions);
-    
-    const stats = shareJobService.getJobShareStats(job.id);
-    setJobShareStats(stats);
+
+    try {
+      const response = await shareJobService.fetchJobShareStats(job.id);
+      setJobShareStats({
+        totalShares: response.total_shares || 0,
+        platformStats: response.platform_stats || {},
+        lastShared: response.last_shared || null
+      });
+    } catch {
+      setJobShareStats(shareJobService.getJobShareStats(job.id));
+    }
   };
 
   // Generate QR Code
@@ -128,8 +135,8 @@ const ShareJob = ({
         }
       });
       setQrCodeUrl(url);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
+    } catch (_error) {
+      console.error('Error generating QR code:', _error);
     }
   };
 
@@ -170,7 +177,7 @@ const ShareJob = ({
       toast.success("Copied to clipboard!", {
         description: "Link has been copied to your clipboard."
       });
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to copy", {
         description: "Please try again or copy manually."
       });
@@ -254,10 +261,10 @@ const ShareJob = ({
     try {
       // Use the share service to send emails
       const message = customMessage || selectedTemplate?.template || defaultMessage;
-      await shareJobService.sendDirectEmails(job.id, recipientEmails, message);
+      const result = await shareJobService.sendDirectEmails(job.id, recipientEmails, message);
       
       toast.success("Emails sent!", {
-        description: `Job shared with ${recipientEmails.length} recipient(s).`
+        description: `Job shared with ${result.success_count} recipient(s).`
       });
       setRecipientEmails([]);
       setCustomMessage('');
@@ -266,16 +273,9 @@ const ShareJob = ({
   updateStats();
       
     } catch (error) {
-      // Fallback to simulated send if service fails
-      await new Promise(resolve => setTimeout(resolve, 2000));
-  shareJobService.recordShare(job.id, 'direct_email', customMessage || selectedTemplate?.template, recipientEmails.length);
-  updateStats();
-      
-      toast.success("Emails sent!", {
-        description: `Job shared with ${recipientEmails.length} recipient(s). (Simulated)`
+      toast.error("Emails could not be sent", {
+        description: error.message || "Please try again."
       });
-      setRecipientEmails([]);
-      setCustomMessage('');
     }
     
     setSending(false);
@@ -696,7 +696,7 @@ const ShareJob = ({
                       <div className="bg-blue-50 rounded-lg p-4">
                         <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                           <Star className="w-4 h-4" />
-                          Personalized Suggestions
+                          Sharing Tips
                         </h4>
                         <div className="space-y-2">
                           {shareSuggestions.slice(0, 3).map((suggestion, index) => (

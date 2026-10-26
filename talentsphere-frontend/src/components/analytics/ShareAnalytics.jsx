@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { 
   Dialog, 
   DialogContent, 
@@ -44,18 +44,33 @@ const ShareAnalytics = ({ children, trigger = null }) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Load analytics data
-  const loadAnalytics = () => {
+  // Load analytics data from the server.
+  const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const userAnalytics = shareJobService.getUserShareAnalytics();
-      const optimalTimes = shareJobService.getOptimalSharingTimes();
-      const shareHistory = shareJobService.shareHistory.slice(0, 20); // Last 20 shares
-      
+      const response = await shareJobService.fetchUserShareAnalytics();
+      const dailyStats = response.daily_stats || {};
+      const last30DaysCutoff = new Date();
+      last30DaysCutoff.setDate(last30DaysCutoff.getDate() - 30);
+      const recentShares = Object.entries(dailyStats)
+        .filter(([date]) => new Date(date) >= last30DaysCutoff)
+        .reduce((sum, [, count]) => sum + count, 0);
+      const activeDays = Object.keys(dailyStats).length;
+
       setAnalytics({
-        ...userAnalytics,
-        optimalTimes,
-        recentShareHistory: shareHistory
+        totalShares: response.total_shares || 0,
+        recentShares,
+        topPlatforms: Object.entries(response.platform_stats || {}),
+        dailyStats,
+        averageSharesPerDay: activeDays > 0
+          ? (response.total_shares || 0) / activeDays
+          : 0,
+        recentShareHistory: (response.recent_shares || []).map((share) => ({
+          ...share,
+          recipientCount: share.recipient_count
+        })),
+        topSharedJobs: response.top_shared_jobs || [],
+        sharingStreak: response.sharing_streak || 0
       });
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -68,19 +83,6 @@ const ShareAnalytics = ({ children, trigger = null }) => {
   const handleOpenChange = (newOpen) => {
     setOpen(newOpen);
     if (newOpen) {
-      loadAnalytics();
-    }
-  };
-
-  // Export analytics data
-  const exportAnalytics = () => {
-    shareJobService.exportShareData();
-  };
-
-  // Clear analytics data
-  const clearAnalytics = () => {
-    if (confirm('Are you sure you want to clear all sharing data? This action cannot be undone.')) {
-      shareJobService.clearAllData();
       loadAnalytics();
     }
   };
@@ -136,8 +138,6 @@ const ShareAnalytics = ({ children, trigger = null }) => {
             loading={loading}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            exportAnalytics={exportAnalytics}
-            clearAnalytics={clearAnalytics}
             getPlatformIcon={getPlatformIcon}
             getPlatformDisplayName={getPlatformDisplayName}
           />
@@ -154,8 +154,6 @@ const ShareAnalyticsContent = ({
   loading, 
   activeTab, 
   setActiveTab, 
-  exportAnalytics, 
-  clearAnalytics,
   getPlatformIcon,
   getPlatformDisplayName
 }) => {
@@ -243,7 +241,7 @@ const ShareAnalyticsContent = ({
                 <div className="text-3xl font-bold text-purple-600 mb-2">
                   {Math.round(analytics.averageSharesPerDay || 0)}
                 </div>
-                <div className="text-sm text-gray-600">Avg. Per Day</div>
+                <div className="text-sm text-gray-600">Avg. Active Day</div>
               </CardContent>
             </Card>
           </div>
@@ -259,7 +257,7 @@ const ShareAnalyticsContent = ({
             <CardContent>
               {analytics.recentShareHistory && analytics.recentShareHistory.length > 0 ? (
                 <div className="space-y-3">
-                  {analytics.recentShareHistory.slice(0, 5).map((share, index) => (
+                  {analytics.recentShareHistory.slice(0, 5).map((share, _index) => (
                     <div key={share.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                       {getPlatformIcon(share.platform)}
                       <div className="flex-1 min-w-0">
@@ -398,42 +396,6 @@ const ShareAnalyticsContent = ({
 
         {/* Insights Tab */}
         <TabsContent value="insights" className="space-y-6">
-          {/* Optimal Times */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Optimal Sharing Times
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {analytics.optimalTimes && analytics.optimalTimes.length > 0 ? (
-                <div className="space-y-3">
-                  {analytics.optimalTimes.map((time, index) => (
-                    <div key={time.hour} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="bg-white">
-                          #{index + 1}
-                        </Badge>
-                        <div>
-                          <div className="font-semibold">{time.timeLabel}</div>
-                          <div className="text-sm text-gray-600">
-                            {time.count} share{time.count !== 1 ? 's' : ''} at this time
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl">⏰</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-4">Share more jobs to discover your optimal times!</p>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Performance Insights */}
           <Card>
             <CardHeader>
@@ -485,24 +447,6 @@ const ShareAnalyticsContent = ({
         </TabsContent>
       </Tabs>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 pt-4 border-t">
-        <Button
-          onClick={exportAnalytics}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export Data
-        </Button>
-        <Button
-          onClick={clearAnalytics}
-          variant="outline"
-          className="flex items-center gap-2 text-red-600 hover:text-red-700"
-        >
-          Clear All Data
-        </Button>
-      </div>
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import config from './config/environment.js';
@@ -7,76 +7,78 @@ import AdminLayout from './components/layout/AdminLayout';
 import ExternalAdminLayout from './components/layout/ExternalAdminLayout';
 import JobSeekerLayout from './components/layout/JobSeekerLayout';
 import EmployerLayout from './components/layout/EmployerLayout';
-import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
+import NotificationProvider from './components/notifications/NotificationProviderReal';
+const Home = lazy(() => import('./pages/Home'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'));
 import Profile from './pages/Profile';
 import CompanyProfile from './pages/CompanyProfile';
 import CompanyDetail from './pages/CompanyDetail';
 import Companies from './pages/Companies';
 
 // Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import UserManagement from './pages/admin/UserManagement';
-import JobManagement from './pages/admin/JobManagement';
-import EnhancedJobManagement from './pages/admin/EnhancedJobManagement';
-import CompanyManagement from './pages/admin/CompanyManagement';
-import AdminScholarshipManagement from './pages/admin/AdminScholarshipManagement';
-import AdminCleanupManagement from './pages/admin/AdminCleanupManagement';
-import NotificationManagement from './pages/admin/NotificationManagement';
-import RevenueAnalytics from './pages/admin/RevenueAnalytics';
-import UserAnalytics from './pages/admin/UserAnalytics';
-import SystemHealth from './pages/admin/SystemHealth';
-import AdminProfile from './pages/admin/AdminProfile';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminAdsManagement from './pages/admin/AdminAdsManagement';
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+const JobManagement = lazy(() => import('./pages/admin/JobManagement'));
+const EnhancedJobManagement = lazy(() => import('./pages/admin/EnhancedJobManagement'));
+const CompanyManagement = lazy(() => import('./pages/admin/CompanyManagement'));
+const AdminScholarshipManagement = lazy(() => import('./pages/admin/AdminScholarshipManagement'));
+const AdminCleanupManagement = lazy(() => import('./pages/admin/AdminCleanupManagement'));
+const NotificationManagement = lazy(() => import('./pages/admin/NotificationManagement'));
+const RevenueAnalytics = lazy(() => import('./pages/admin/RevenueAnalytics'));
+const UserAnalytics = lazy(() => import('./pages/admin/UserAnalytics'));
+const SystemHealth = lazy(() => import('./pages/admin/SystemHealth'));
+const AdminProfile = lazy(() => import('./pages/admin/AdminProfile'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminAdsManagement = lazy(() => import('./pages/admin/AdminAdsManagement'));
 
 // External Admin Pages
-import ExternalAdminDashboard from './pages/external-admin/ExternalAdminDashboard';
-import ExternalJobsManagement from './pages/external-admin/ExternalJobsManagement';
-import CreateExternalJob from './pages/external-admin/CreateExternalJob';
-import EditExternalJob from './pages/external-admin/EditExternalJob';
-import ExternalJobAnalytics from './pages/external-admin/ExternalJobAnalytics';
-import ExternalJobTemplates from './pages/external-admin/ExternalJobTemplates';
-import ExternalAdminProfile from './pages/external-admin/ExternalAdminProfile';
-import ScholarshipsManagement from './pages/external-admin/ScholarshipsManagement';
-import CreateScholarship from './pages/external-admin/CreateScholarship';
-import EditScholarship from './pages/external-admin/EditScholarship';
+const ExternalAdminDashboard = lazy(() => import('./pages/external-admin/ExternalAdminDashboard'));
+const ExternalJobsManagement = lazy(() => import('./pages/external-admin/ExternalJobsManagement'));
+const CreateExternalJob = lazy(() => import('./pages/external-admin/CreateExternalJob'));
+const EditExternalJob = lazy(() => import('./pages/external-admin/EditExternalJob'));
+const ExternalJobAnalytics = lazy(() => import('./pages/external-admin/ExternalJobAnalytics'));
+const ExternalJobTemplates = lazy(() => import('./pages/external-admin/ExternalJobTemplates'));
+const ExternalAdminProfile = lazy(() => import('./pages/external-admin/ExternalAdminProfile'));
+const ScholarshipsManagement = lazy(() => import('./pages/external-admin/ScholarshipsManagement'));
+const CreateScholarship = lazy(() => import('./pages/external-admin/CreateScholarship'));
+const EditScholarship = lazy(() => import('./pages/external-admin/EditScholarship'));
 
 // Public Scholarship Pages
-import ScholarshipList from './pages/scholarships/ScholarshipList';
-import ScholarshipDetail from './pages/scholarships/ScholarshipDetail';
-import ScholarshipApplication from './pages/scholarships/ScholarshipApplication';
-import ApplicationSuccess from './pages/scholarships/ApplicationSuccess';
+const ScholarshipList = lazy(() => import('./pages/scholarships/ScholarshipList'));
+const ScholarshipDetail = lazy(() => import('./pages/scholarships/ScholarshipDetail'));
+const ScholarshipApplication = lazy(() => import('./pages/scholarships/ScholarshipApplication'));
+const ApplicationSuccess = lazy(() => import('./pages/scholarships/ApplicationSuccess'));
 
 // Job Pages
-import JobList from './pages/jobs/JobList';
-import JobDetails from './pages/jobs/JobDetails';
-import PostJob from './pages/jobs/PostJob';
-import JobApply from './pages/jobs/JobApply';
-import TestApplyRoute from './pages/TestApplyRoute';
+const JobList = lazy(() => import('./pages/jobs/JobList'));
+const JobDetails = lazy(() => import('./pages/jobs/JobDetails'));
+const PostJob = lazy(() => import('./pages/jobs/PostJob'));
+const JobApply = lazy(() => import('./pages/jobs/JobApply'));
+const TestApplyRoute = lazy(() => import('./pages/TestApplyRoute'));
 
 // Application Pages
-import MyApplications from './pages/applications/MyApplications';
+const MyApplications = lazy(() => import('./pages/applications/MyApplications'));
 
 // Job Seeker Pages
-import EnhancedJobSeekerProfile from './pages/jobseeker/EnhancedProfile';
-import ProfileSettings from './pages/jobseeker/ProfileSettings';
-import ApplicationsDashboard from './pages/jobseeker/ApplicationsDashboard';
-import CVBuilder from './pages/jobseeker/CVBuilder';
+const EnhancedJobSeekerProfile = lazy(() => import('./pages/jobseeker/EnhancedProfile'));
+const ProfileSettings = lazy(() => import('./pages/jobseeker/ProfileSettings'));
+const ApplicationsDashboard = lazy(() => import('./pages/jobseeker/ApplicationsDashboard'));
+const CareerAgent = lazy(() => import('./pages/jobseeker/CareerAgent'));
 
 // Company Pages
-import CompanyProfileManagement from './pages/company/CompanyProfileManagement';
-import CompanySettings from './pages/company/CompanySettings';
+const CompanyProfileManagement = lazy(() => import('./pages/company/CompanyProfileManagement'));
+const CompanySettings = lazy(() => import('./pages/company/CompanySettings'));
 
 // Ads/Advertising Pages
-import AdsDashboard from './pages/ads/AdsDashboard';
-import CreateCampaignWizard from './pages/ads/CreateCampaignWizard';
-import CampaignDetail from './pages/ads/CampaignDetail';
-import CreditsBilling from './pages/ads/CreditsBilling';
+const AdsDashboard = lazy(() => import('./pages/ads/AdsDashboard'));
+const CreateCampaignWizard = lazy(() => import('./pages/ads/CreateCampaignWizard'));
+const CampaignDetail = lazy(() => import('./pages/ads/CampaignDetail'));
+const CreditsBilling = lazy(() => import('./pages/ads/CreditsBilling'));
 
 // Auth Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -85,12 +87,11 @@ import ExternalAdminRoute from './components/auth/ExternalAdminRoute';
 import AnyAdminRoute from './components/auth/AnyAdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import EmployerOnboardingRoute from './components/auth/EmployerOnboardingRoute';
-import TestEmployerComponents from './pages/TestEmployerComponents';
-import EmployerOnboarding from './pages/employer/EmployerOnboarding';
+const TestEmployerComponents = lazy(() => import('./pages/TestEmployerComponents'));
+const EmployerOnboarding = lazy(() => import('./pages/employer/EmployerOnboarding'));
 
 // Analytics
 import GoogleAnalytics from './components/analytics/GoogleAnalytics';
-import { useAdTracking } from './utils/adTracking';
 import FloatingWhatsAppButton from './components/common/FloatingWhatsAppButton';
 
 function App() {
@@ -108,8 +109,14 @@ function App() {
 
   return (
     <AuthInitializer>
-      <Router>
+      <NotificationProvider>
+        <Router>
         <GoogleAnalytics />
+        <Suspense fallback={
+          <div className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-600">
+            Loading…
+          </div>
+        }>
         <Routes>
           {/* Public routes with layout */}
           <Route path="/" element={<Layout />}>
@@ -144,6 +151,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/test-employer" element={<TestEmployerComponents />} />
 
           {/* Common Dashboard Route - automatically routes to correct dashboard based on user role */}
@@ -162,12 +170,6 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="applications" element={<MyApplications />} />
             <Route path="my-applications" element={<MyApplications />} />
-            <Route path="recommendations" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Recommendations</h1>
-                <p className="text-muted-foreground">Coming soon in the next phase!</p>
-              </div>
-            } />
           </Route>
 
           {/* Employer Routes with EmployerLayout */}
@@ -185,18 +187,6 @@ function App() {
             <Route path="company/settings" element={<CompanySettings />} />
             <Route path="jobs/post" element={<PostJob />} />
             <Route path="jobs/create" element={<PostJob />} />
-            <Route path="featured-ads" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Featured Ads</h1>
-                <p className="text-muted-foreground">Coming soon in the next phase!</p>
-              </div>
-            } />
-            <Route path="payment" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Payment</h1>
-                <p className="text-muted-foreground">Payment integration coming soon!</p>
-              </div>
-            } />
             {/* Advertising Routes */}
             <Route path="ads" element={<AdsDashboard />} />
             <Route path="ads/new" element={<CreateCampaignWizard />} />
@@ -215,7 +205,7 @@ function App() {
             <Route path="profile" element={<EnhancedJobSeekerProfile />} />
             <Route path="settings" element={<ProfileSettings />} />
             <Route path="applications" element={<ApplicationsDashboard />} />
-            <Route path="cv-builder" element={<CVBuilder />} />
+            <Route path="career-agent" element={<CareerAgent />} />
           </Route>
 
           {/* Admin routes with admin layout */}
@@ -258,37 +248,15 @@ function App() {
             <Route path="analytics" element={<ExternalJobAnalytics />} />
             <Route path="templates" element={<ExternalJobTemplates />} />
             <Route path="profile" element={<ExternalAdminProfile />} />
-            <Route path="jobs/import" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Import Jobs</h1>
-                <p className="text-muted-foreground">Bulk import feature coming soon!</p>
-              </div>
-            } />
-            <Route path="applications" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Applications</h1>
-                <p className="text-muted-foreground">Application management coming soon!</p>
-              </div>
-            } />
-            <Route path="sources" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">External Sources</h1>
-                <p className="text-muted-foreground">Source management coming soon!</p>
-              </div>
-            } />
-            <Route path="settings" element={
-              <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-4xl font-bold mb-4">Settings</h1>
-                <p className="text-muted-foreground">Settings page coming soon!</p>
-              </div>
-            } />
           </Route>
 
           {/* 404 - redirect all unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         <FloatingWhatsAppButton />
-      </Router>
+        </Router>
+      </NotificationProvider>
       <Toaster />
     </AuthInitializer>
   );

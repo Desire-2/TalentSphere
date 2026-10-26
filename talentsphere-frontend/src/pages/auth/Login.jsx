@@ -12,8 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { 
   getAndClearIntendedDestination, 
   getPostLoginRedirect, 
-  extractReturnUrl, 
-  buildFullPath 
+  extractReturnUrl
 } from '../../utils/redirectUtils';
 
 const loginSchema = z.object({
@@ -97,14 +96,11 @@ const Login = () => {
   const onSubmit = async (data) => {
     try {
       clearError();
-      console.log('Attempting login with:', { email: data.email });
       const response = await login(data);
       
       // Get the redirect destination using enhanced logic
       const user = response.user;
       const redirectDestination = getRedirectDestination(user);
-      
-      console.log('Login successful, navigating to:', redirectDestination);
       
       // Navigate to the determined destination
       navigate(redirectDestination.pathname + (redirectDestination.search || ''), {

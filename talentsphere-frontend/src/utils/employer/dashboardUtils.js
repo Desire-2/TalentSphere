@@ -38,7 +38,7 @@ export const getStatusColor = (status) => {
 };
 
 // Status icon mapping
-export const getStatusIcon = (status) => {
+export const getStatusIcon = (_status) => {
   // This would return appropriate icon components based on status
   // For now, returning null as icons are handled in components
   return null;

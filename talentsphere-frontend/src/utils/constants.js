@@ -123,7 +123,7 @@ export const VALIDATION_RULES = {
     MIN_LENGTH: 8,
     PATTERN: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
   },
-  PHONE: /^[\+]?[1-9][\d]{0,15}$/
+  PHONE: /^[+]?[1-9][\d]{0,15}$/
 };
 
 // File upload limits
@@ -167,4 +167,3 @@ export const THEME_COLORS = {
     600: '#7c3aed'
   }
 };
-

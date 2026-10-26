@@ -451,7 +451,11 @@ class NotificationScheduler:
                         Notification.created_at >= week_ago
                     ).count()
                     
-                    applications_count = 0  # Placeholder
+                    from src.models.application import Application
+                    applications_count = Application.query.filter(
+                        Application.applicant_id == user.id,
+                        Application.created_at >= week_ago
+                    ).count()
                     
                     from src.models.notification import Message
                     messages_count = Message.query.filter(
@@ -462,8 +466,7 @@ class NotificationScheduler:
                     digest_data = {
                         'new_jobs_count': new_jobs_count,
                         'applications_count': applications_count,
-                        'messages_count': messages_count,
-                        'jobs_list': []
+                        'messages_count': messages_count
                     }
                     
                     # Send digest

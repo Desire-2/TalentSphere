@@ -31,6 +31,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { scholarshipService } from '../../services/scholarship';
+import uploadService from '../../services/uploadService';
 import { useAuthStore } from '../../stores/authStore';
 import { useAuthNavigation } from '../../hooks/useAuthNavigation';
 import { toast } from 'sonner';
@@ -199,18 +200,13 @@ const ScholarshipApplication = () => {
     try {
       setUploadingFile(true);
       
-      // Create FormData for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('file', file);
-
-      // You would upload to your backend here
-      // For now, we'll simulate with local file info
+      const url = await uploadService.uploadDocument(file, undefined, 'document');
       const fileInfo = {
-        id: Date.now(),
+        id: url,
         name: file.name,
         type: file.type,
         size: file.size,
-        file: file
+        url
       };
 
       setUploadedFiles(prev => [...prev, fileInfo]);
@@ -241,12 +237,12 @@ const ScholarshipApplication = () => {
       // Prepare application data
       const applicationData = {
         ...formData,
-        files: uploadedFiles,
+        files: uploadedFiles.map(({ url, name, type, size }) => ({ url, name, type, size })),
         submitted_at: new Date().toISOString()
       };
 
       // Submit application
-      const response = await scholarshipService.applyToScholarship(id, applicationData);
+      await scholarshipService.applyToScholarship(id, applicationData);
 
       toast.success('Application submitted successfully!');
       

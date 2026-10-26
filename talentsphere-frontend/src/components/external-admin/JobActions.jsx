@@ -28,9 +28,9 @@ import { Link } from 'react-router-dom';
 /**
  * JobActionButton - Reusable component for individual job actions
  */
-export const JobActionButton = ({ 
-  action, 
-  job, 
+export const JobActionButton = ({
+  action,
+  _job,
   loading, 
   onClick, 
   className = '',

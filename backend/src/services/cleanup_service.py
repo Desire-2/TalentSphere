@@ -4,13 +4,13 @@ Automatically deletes external jobs and scholarships 1 day after their deadline
 """
 
 import logging
+import os
 import threading
-import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from functools import lru_cache
+from typing import Dict, List
 
 from sqlalchemy import func, and_, or_
+from sqlalchemy.exc import OperationalError
 from src.models.user import db
 from src.models.job import Job
 from src.models.scholarship import Scholarship
@@ -24,8 +24,12 @@ class CleanupService:
         self.is_running = False
         self.scheduler_thread = None
         self.app = None
+        self._stop_event = threading.Event()
         # Check every 12 hours
-        self.check_interval = 12 * 60 * 60  # 12 hours in seconds
+        self.check_interval = max(
+            60,
+            int(os.getenv("CLEANUP_CHECK_INTERVAL_SECONDS", str(12 * 60 * 60))),
+        )
         # Delete 1 day after deadline
         self.deletion_grace_period_days = 1
         # Cache for stats (5 minute TTL)
@@ -35,24 +39,42 @@ class CleanupService:
         
     def start(self, app=None):
         """Start the cleanup scheduler"""
-        if self.is_running:
+        if self.is_running and self.scheduler_thread and self.scheduler_thread.is_alive():
             self.logger.warning("Cleanup service is already running")
-            return
+            return False
+
+        if app is None:
+            self.logger.error(
+                "Cleanup service requires a Flask application; refusing to start "
+                "without an application context"
+            )
+            return False
         
         self.app = app
+        self._stop_event.clear()
         self.is_running = True
-        self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
+        self.scheduler_thread = threading.Thread(
+            target=self._run_scheduler,
+            daemon=True,
+            name="cleanup-service",
+        )
         self.scheduler_thread.start()
-        self.logger.info("🧹 Cleanup service started - checking every 12 hours")
+        self.logger.info(
+            "🧹 Cleanup service started - checking every %s hours",
+            self.check_interval / 3600,
+        )
+        return True
     
     def stop(self):
         """Stop the cleanup scheduler"""
-        if not self.is_running:
+        if not self.is_running and not self.scheduler_thread:
             return
         
         self.is_running = False
+        self._stop_event.set()
         if self.scheduler_thread:
             self.scheduler_thread.join(timeout=5)
+        self.scheduler_thread = None
         self.logger.info("🛑 Cleanup service stopped")
     
     def _run_scheduler(self):
@@ -61,31 +83,44 @@ class CleanupService:
             try:
                 self.logger.info("🔍 Running cleanup check...")
 
-                if self.app is not None:
-                    with self.app.app_context():
-                        jobs_deleted = self.cleanup_external_jobs()
-                        scholarships_deleted = self.cleanup_external_scholarships()
-                else:
-                    jobs_deleted = self.cleanup_external_jobs()
-                    scholarships_deleted = self.cleanup_external_scholarships()
-                
-                total_deleted = jobs_deleted + scholarships_deleted
-                if total_deleted > 0:
-                    self.logger.info(
-                        f"✅ Cleanup complete: Deleted {jobs_deleted} jobs and "
-                        f"{scholarships_deleted} scholarships (Total: {total_deleted})"
+                if self.app is None:
+                    self.logger.error(
+                        "Cleanup check skipped because no Flask application is configured"
                     )
                 else:
-                    self.logger.info("✅ Cleanup complete: No items to delete")
+                    with self.app.app_context():
+                        try:
+                            jobs_deleted = self.cleanup_external_jobs()
+                            scholarships_deleted = self.cleanup_external_scholarships()
+                        finally:
+                            # Explicitly release this thread's scoped session
+                            # before the application context is torn down.
+                            db.session.remove()
+
+                    total_deleted = jobs_deleted + scholarships_deleted
+                    if total_deleted > 0:
+                        self.logger.info(
+                            "✅ Cleanup complete: Deleted %s jobs and %s scholarships "
+                            "(Total: %s)",
+                            jobs_deleted,
+                            scholarships_deleted,
+                            total_deleted,
+                        )
+                    else:
+                        self.logger.info("✅ Cleanup complete: No items to delete")
                 
-                # Wait for next check
-                time.sleep(self.check_interval)
-                
-            except Exception as e:
-                self.logger.error(f"❌ Error in cleanup scheduler loop: {str(e)}")
-                import traceback
-                self.logger.error(traceback.format_exc())
-                time.sleep(self.check_interval)
+            except OperationalError:
+                # The cleanup job is best-effort. A DNS outage or a temporary
+                # database disconnect must defer work, not kill the thread.
+                self.logger.warning(
+                    "Cleanup check deferred because the database is unavailable; "
+                    "it will retry on the next scheduled run"
+                )
+            except Exception:
+                self.logger.exception("❌ Error in cleanup scheduler loop")
+
+            if self._stop_event.wait(self.check_interval):
+                break
     
     def get_cutoff_date(self) -> datetime:
         """
@@ -164,11 +199,15 @@ class CleanupService:
             
             return deleted_count
             
-        except Exception as e:
-            db.session.rollback()
-            self.logger.error(f"❌ Error in cleanup_external_jobs: {str(e)}")
-            import traceback
-            self.logger.error(traceback.format_exc())
+        except OperationalError:
+            self._reset_session()
+            self.logger.warning(
+                "External job cleanup deferred because the database is unavailable"
+            )
+            return 0
+        except Exception:
+            self._reset_session()
+            self.logger.exception("❌ Error in cleanup_external_jobs")
             return 0
     
     def cleanup_external_scholarships(self) -> int:
@@ -230,12 +269,23 @@ class CleanupService:
             
             return deleted_count
             
-        except Exception as e:
-            db.session.rollback()
-            self.logger.error(f"❌ Error in cleanup_external_scholarships: {str(e)}")
-            import traceback
-            self.logger.error(traceback.format_exc())
+        except OperationalError:
+            self._reset_session()
+            self.logger.warning(
+                "External scholarship cleanup deferred because the database is unavailable"
+            )
             return 0
+        except Exception:
+            self._reset_session()
+            self.logger.exception("❌ Error in cleanup_external_scholarships")
+            return 0
+
+    def _reset_session(self):
+        """Rollback a failed operation without masking the original failure."""
+        try:
+            db.session.rollback()
+        except Exception:
+            self.logger.debug("Unable to rollback cleanup session", exc_info=True)
     
     def _log_deletion_summary(self, item_type: str, deleted_items: List[Dict]):
         """Log a summary of deleted items"""
@@ -326,10 +376,19 @@ class CleanupService:
             
             return result
             
-        except Exception as e:
-            self.logger.error(f"Error getting cleanup stats: {str(e)}")
+        except OperationalError:
+            self._reset_session()
+            self.logger.warning("Cleanup statistics unavailable: database is unavailable")
             return {
-                'error': str(e),
+                'error': 'database_unavailable',
+                'jobs': {'total_external': 0, 'eligible_for_deletion': 0, 'active': 0},
+                'scholarships': {'total_external': 0, 'eligible_for_deletion': 0, 'active': 0}
+            }
+        except Exception:
+            self._reset_session()
+            self.logger.exception("Error getting cleanup stats")
+            return {
+                'error': 'cleanup_stats_failed',
                 'jobs': {'total_external': 0, 'eligible_for_deletion': 0, 'active': 0},
                 'scholarships': {'total_external': 0, 'eligible_for_deletion': 0, 'active': 0}
             }
@@ -368,8 +427,7 @@ def start_cleanup_service(app=None):
     """Start the cleanup service"""
     global _service_started
     service = get_cleanup_service()
-    service.start(app=app)
-    _service_started = True  # Mark that service was started
+    _service_started = service.start(app=app) or _service_started
     return service
 
 def stop_cleanup_service():

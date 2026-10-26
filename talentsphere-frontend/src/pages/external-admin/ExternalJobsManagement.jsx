@@ -650,7 +650,7 @@ const ExternalJobsManagement = () => {
                 <p className="text-xs sm:text-sm text-gray-600 mb-6">
                   {Object.values(filters).some(v => v) 
                     ? "No jobs match your current filters. Try adjusting your search criteria."
-                    : "Get started by creating your first external job posting or importing jobs from external sources."
+                    : "Get started by creating your first external job posting."
                   }
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
@@ -658,11 +658,6 @@ const ExternalJobsManagement = () => {
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
                       Create Job
-                    </Button>
-                  </Link>
-                  <Link to="/external-admin/jobs/import">
-                    <Button variant="outline">
-                      Import Jobs
                     </Button>
                   </Link>
                 </div>

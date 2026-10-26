@@ -49,7 +49,7 @@ def _invalidate_complete_profile_cache(user_id):
 
 @profile_extensions_bp.after_request
 def _bust_cache_on_write(response):
-    """Invalidate the complete-profile cache after any successful mutating request."""
+    """Invalidate the complete-profile cache and stale career memory after any successful mutating request."""
     if request.method in ('POST', 'PUT', 'DELETE') and response.status_code < 400:
         try:
             import jwt as _jwt
@@ -59,6 +59,11 @@ def _bust_cache_on_write(response):
             if token:
                 payload = _jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
                 _invalidate_complete_profile_cache(payload['user_id'])
+                # Every write on this blueprint is a profile edit (work
+                # experience, education, skills, ...), so the stored career
+                # memory must rebuild before the next generation reads it.
+                from src.services.career_agent.memory import mark_profile_changed_and_commit
+                mark_profile_changed_and_commit(payload['user_id'])
         except Exception:
             pass
     return response

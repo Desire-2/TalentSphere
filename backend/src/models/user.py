@@ -52,20 +52,33 @@ class User(db.Model):
         """Check if provided password matches hash"""
         return check_password_hash(self.password_hash, password)
     
-    def generate_token(self, expires_in=3600):
+    def generate_token(self, expires_in=None):
         """Generate JWT token for authentication"""
         from flask import current_app
+
+        if expires_in is None:
+            try:
+                expires_in = int(current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES', 3600))
+            except (RuntimeError, TypeError, ValueError):
+                try:
+                    expires_in = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', '3600'))
+                except (TypeError, ValueError):
+                    expires_in = 3600
+
+        issued_at = datetime.utcnow()
         payload = {
             'user_id': self.id,
             'email': self.email,
             'role': self.role,
-            'exp': datetime.utcnow() + timedelta(seconds=expires_in)
+            'iat': issued_at,
+            'exp': issued_at + timedelta(seconds=expires_in)
         }
         try:
             secret_key = current_app.config['SECRET_KEY']
         except RuntimeError:
-            # Fallback if no application context
-            secret_key = 'asdf#FGSgvasgf$5$WGT'
+            secret_key = os.getenv('SECRET_KEY')
+            if not secret_key:
+                raise RuntimeError('SECRET_KEY is required to generate authentication tokens')
         return jwt.encode(payload, secret_key, algorithm='HS256')
     
     @staticmethod
@@ -76,13 +89,21 @@ class User(db.Model):
             try:
                 secret_key = current_app.config['SECRET_KEY']
             except RuntimeError:
-                # Fallback if no application context
-                secret_key = 'asdf#FGSgvasgf$5$WGT'
-            payload = jwt.decode(token, secret_key, algorithms=['HS256'])
-            return User.query.get(payload['user_id'])
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
+                secret_key = os.getenv('SECRET_KEY')
+                if not secret_key:
+                    return None
+            payload = jwt.decode(
+                token,
+                secret_key,
+                algorithms=['HS256'],
+                options={'require': ['user_id', 'exp']},
+                leeway=int(os.getenv('JWT_CLOCK_SKEW_SECONDS', '5')),
+            )
+            user_id = payload.get('user_id')
+            if not user_id:
+                return None
+            return db.session.get(User, user_id)
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, KeyError, TypeError, ValueError):
             return None
     
     def get_full_name(self):
@@ -297,4 +318,3 @@ class EmployerProfile(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
-

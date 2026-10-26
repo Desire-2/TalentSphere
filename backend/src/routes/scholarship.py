@@ -787,7 +787,7 @@ def get_my_bookmarked_scholarships(current_user):
 # Scholarship application endpoints
 @scholarship_bp.route('/scholarships/<int:scholarship_id>/apply', methods=['POST'])
 @token_required
-@role_required(['job_seeker', 'admin'])
+@role_required('job_seeker', 'admin')
 def apply_to_scholarship(scholarship_id, current_user):
     """Apply to an internal scholarship"""
     try:
@@ -804,7 +804,7 @@ def apply_to_scholarship(scholarship_id, current_user):
         # Check if user already applied
         existing_application = ScholarshipApplication.query.filter_by(
             scholarship_id=scholarship_id,
-            user_id=current_user.id
+            applicant_id=current_user.id
         ).first()
         
         if existing_application:
@@ -814,33 +814,63 @@ def apply_to_scholarship(scholarship_id, current_user):
         data = request.get_json() or {}
         
         # Create new application
+        file_documents = [
+            str(document.get('url'))
+            for document in data.get('files', [])
+            if isinstance(document, dict) and document.get('url')
+        ]
+        submitted_at = None
+        if data.get('submitted_at'):
+            try:
+                submitted_at = datetime.fromisoformat(
+                    str(data['submitted_at']).replace('Z', '+00:00')
+                ).replace(tzinfo=None)
+            except (TypeError, ValueError):
+                submitted_at = None
+
+        application_payload = {
+            'first_name': data.get('first_name'),
+            'last_name': data.get('last_name'),
+            'email': data.get('email'),
+            'phone': data.get('phone'),
+            'date_of_birth': data.get('date_of_birth'),
+            'current_institution': data.get('current_institution'),
+            'study_level': data.get('study_level'),
+            'current_gpa': data.get('current_gpa'),
+            'field_of_study': data.get('field_of_study'),
+            'country': data.get('country'),
+            'state': data.get('state'),
+            'city': data.get('city'),
+            'postal_code': data.get('postal_code'),
+            'motivation_essay': data.get('motivation_essay'),
+            'career_goals': data.get('career_goals'),
+            'achievements': data.get('achievements'),
+            'financial_need_statement': data.get('financial_need_statement'),
+            'extracurricular_activities': data.get('extracurricular_activities'),
+            'community_service': data.get('community_service'),
+            'leadership_experience': data.get('leadership_experience'),
+            'additional_information': data.get('additional_information'),
+        }
+        personal_statement = '\n\n'.join(
+            str(value)
+            for value in (
+                data.get('motivation_essay'),
+                data.get('career_goals'),
+                data.get('additional_information'),
+            )
+            if value
+        )
         application = ScholarshipApplication(
             scholarship_id=scholarship_id,
-            user_id=current_user.id,
+            applicant_id=current_user.id,
             status='submitted',
-            application_data=json.dumps({
-                'first_name': data.get('first_name'),
-                'last_name': data.get('last_name'),
-                'email': data.get('email'),
-                'phone': data.get('phone'),
-                'date_of_birth': data.get('date_of_birth'),
-                'current_institution': data.get('current_institution'),
-                'study_level': data.get('study_level'),
-                'current_gpa': data.get('current_gpa'),
-                'field_of_study': data.get('field_of_study'),
-                'country': data.get('country'),
-                'state': data.get('state'),
-                'city': data.get('city'),
-                'postal_code': data.get('postal_code'),
-                'motivation_essay': data.get('motivation_essay'),
-                'career_goals': data.get('career_goals'),
-                'achievements': data.get('achievements'),
-                'financial_need_statement': data.get('financial_need_statement'),
-                'extracurricular_activities': data.get('extracurricular_activities'),
-                'community_service': data.get('community_service'),
-                'leadership_experience': data.get('leadership_experience'),
-                'additional_information': data.get('additional_information'),
-            })
+            personal_statement=personal_statement or None,
+            academic_achievements=data.get('achievements'),
+            extracurricular_activities=data.get('extracurricular_activities'),
+            financial_need_statement=data.get('financial_need_statement'),
+            additional_documents=json.dumps(file_documents),
+            essay_responses=json.dumps(application_payload),
+            submitted_at=submitted_at or datetime.utcnow(),
         )
         
         # Update scholarship application count
@@ -853,7 +883,7 @@ def apply_to_scholarship(scholarship_id, current_user):
             'message': 'Application submitted successfully',
             'application_id': application.id,
             'status': 'submitted',
-            'submitted_at': application.created_at.isoformat()
+            'submitted_at': application.submitted_at.isoformat()
         }), 201
         
     except Exception as e:

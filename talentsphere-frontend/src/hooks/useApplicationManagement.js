@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
-import employerService from '../services/employer';
 
 export const useApplicationManagement = () => {
   // Applications state
@@ -73,8 +72,7 @@ export const useApplicationManagement = () => {
                 `${app.applicant?.first_name || ''} ${app.applicant?.last_name || ''}`.trim() ||
                 'Anonymous'
         },
-        // Calculate match score if not present (mock for now)
-        match_score: app.match_score || calculateMockMatchScore(app),
+        match_score: app.match_score ?? null,
         // Ensure proper status formatting
         status: app.status || 'submitted'
       }));
@@ -106,34 +104,6 @@ export const useApplicationManagement = () => {
       setLoading(prev => ({ ...prev, jobs: false }));
     }
   }, []);
-
-  // Calculate mock match score based on application data
-  const calculateMockMatchScore = (application) => {
-    let score = 50; // Base score
-    
-    // Add score based on cover letter
-    if (application.cover_letter && application.cover_letter.length > 100) {
-      score += 20;
-    }
-    
-    // Add score based on resume
-    if (application.resume_url) {
-      score += 15;
-    }
-    
-    // Add score based on profile completeness
-    if (application.applicant_profile) {
-      const profile = application.applicant_profile;
-      if (profile.title) score += 5;
-      if (profile.skills) score += 5;
-      if (profile.years_experience > 0) score += 5;
-    }
-    
-    // Add some randomness to make it more realistic
-    score += Math.floor(Math.random() * 20) - 10;
-    
-    return Math.min(Math.max(score, 0), 100);
-  };
 
   // Filter change handler
   const handleFilterChange = useCallback((key, value) => {
@@ -263,11 +233,11 @@ export const useApplicationManagement = () => {
           : app
       ));
       
-      console.log(`Interview scheduled for application ${applicationId}`);
-      
+      return true;
     } catch (err) {
       console.error('Failed to schedule interview:', err);
       setError(`Failed to schedule interview: ${err.message}`);
+      return false;
     } finally {
       setLoading(prev => ({ ...prev, action: false }));
     }
@@ -318,20 +288,6 @@ export const useApplicationManagement = () => {
       setLoading(prev => ({ ...prev, action: false }));
     }
   }, [filters]);
-
-  // Send message to applicant
-  const handleSendMessage = useCallback(async (applicationId) => {
-    // This would typically open a modal or navigate to messaging
-    console.log('Send message to application:', applicationId);
-    // For now, just log - implement messaging modal later
-  }, []);
-
-  // Review application details
-  const handleReviewApplication = useCallback((applicationId) => {
-    // This would typically navigate to application details page
-    console.log('Review application:', applicationId);
-    // For now, just log - implement navigation later
-  }, []);
 
   // Refresh data
   const handleRefresh = useCallback(() => {
@@ -387,8 +343,6 @@ export const useApplicationManagement = () => {
     handleBulkAction,
     handleScheduleInterview,
     handleExport,
-    handleSendMessage,
-    handleReviewApplication,
     handleRefresh,
     
     // Actions

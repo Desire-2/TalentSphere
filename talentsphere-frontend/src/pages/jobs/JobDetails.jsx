@@ -126,18 +126,6 @@ const JobDetails = () => {
         const jobData = await apiService.getJob(id);
         setJob(jobData);
 
-        // Debug: Log external job data
-        if (jobData.job_source === 'external' || jobData.external_company_name) {
-          console.log('External job data:', {
-            id: jobData.id,
-            title: jobData.title,
-            external_company_name: jobData.external_company_name,
-            external_company_logo: jobData.external_company_logo,
-            job_source: jobData.job_source,
-            company: jobData.company
-          });
-        }
-
         // Update page title if meta_title is available
         if (jobData.meta_title) {
           document.title = `${jobData.meta_title} - TalentSphere`;
@@ -200,33 +188,27 @@ const JobDetails = () => {
       ? { pathname: `/jobs/${id}/apply` }
       : { pathname: `/jobs/${id}` };
 
-    console.log('🚀 Apply button clicked!', { id, user, isAuthenticated, job, applicationType, overridePath });
-    
     requireAuth(async () => {
       if (user?.role !== 'job_seeker') {
         // Show message that only job seekers can apply
-        console.log('❌ User is not a job seeker:', user?.role);
         setError('Only job seekers can apply for jobs');
         return;
       }
 
       // Check if user has already applied
       if (hasApplied) {
-        console.log('❌ User has already applied');
         setError('You have already applied to this job! Check your application status in "My Applications".');
         return;
       }
 
       // Check if job is expired
       if (job.is_expired) {
-        console.log('❌ Job is expired');
         setError('This job posting has expired');
         return;
       }
 
       // Check application method and redirect accordingly
       const currentApplicationType = job.application_type || 'internal';
-      console.log('🔍 Application type:', currentApplicationType);
 
       try {
         setApplying(true);
@@ -234,7 +216,6 @@ const JobDetails = () => {
 
         if (currentApplicationType === 'external' && job.application_url) {
           // External application - open URL in new tab
-          console.log('🌐 Opening external URL:', job.application_url);
           window.open(job.application_url, '_blank', 'noopener,noreferrer');
           
           // Optional: Track that user clicked external apply
@@ -245,7 +226,6 @@ const JobDetails = () => {
           }
         } else if (currentApplicationType === 'email' && job.application_email) {
           // Email application - open email client
-          console.log('📧 Opening email application:', job.application_email);
           const subject = encodeURIComponent(`Application for ${job.title} at ${job.company?.name || 'Your Company'}`);
           const body = encodeURIComponent(`Dear Hiring Manager,
 
@@ -268,9 +248,6 @@ ${user.name || user.email}`);
         } else {
           // Internal application - redirect to application form
           const applyUrl = `/jobs/${id}/apply`;
-          console.log('✅ Navigating to internal application form:', applyUrl);
-          console.log('Current location:', window.location.href);
-          console.log('Target URL will be:', `${window.location.origin}${applyUrl}`);
           navigateToProtectedRoute(applyUrl);
         }
       } catch (error) {
@@ -445,7 +422,6 @@ ${user.name || user.email}`);
                     alt={`${getCompanyName(job)} logo`} 
                     className="w-14 h-14 object-contain rounded-xl bg-white/90 p-2 relative z-10"
                     onError={(e) => {
-                      console.log('Logo failed to load:', job.company?.logo_url || job.external_company_logo);
                       e.target.style.display = 'none';
                       e.target.parentNode.querySelector('.fallback-icon').style.display = 'flex';
                     }}
@@ -652,7 +628,7 @@ ${user.name || user.email}`);
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => navigate('/my-applications')}
+                        onClick={() => navigate('/jobseeker/applications')}
                         className="text-[#17a2b8] border-[#17a2b8] hover:bg-[#17a2b8]/10 font-semibold"
                       >
                         📋 View Application
@@ -660,7 +636,7 @@ ${user.name || user.email}`);
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => navigate(`/jobseeker/cv-builder?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company?.name || job.company_name || '')}&description=${encodeURIComponent((job.description || '').slice(0, 500))}&requirements=${encodeURIComponent((job.requirements || job.required_skills || []).toString().slice(0, 500))}`)}
+                        onClick={() => navigate(`/jobseeker/career-agent?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}`)}
                         className="text-[#FF6B35] border-[#FF6B35] hover:bg-[#FF6B35]/10 font-semibold"
                       >
                         <FileText className="w-4 h-4 mr-1" />
@@ -692,7 +668,7 @@ ${user.name || user.email}`);
                   <Button 
                     size="lg" 
                     variant="outline"
-                    onClick={() => navigate(`/jobseeker/cv-builder?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company?.name || job.company_name || '')}&description=${encodeURIComponent((job.description || '').slice(0, 500))}&requirements=${encodeURIComponent((job.requirements || job.required_skills || []).toString().slice(0, 500))}`)}
+                    onClick={() => navigate(`/jobseeker/career-agent?job_id=${job.id}&job_title=${encodeURIComponent(job.title)}`)}
                     className="text-[#17a2b8] border-[#17a2b8] hover:bg-[#17a2b8]/10 font-bold shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     <FileText className="w-5 h-5 mr-2" />
@@ -1249,7 +1225,6 @@ ${user.name || user.email}`);
                       alt={`${getCompanyName(job)} logo`} 
                       className="w-8 h-8 object-contain rounded"
                       onError={(e) => {
-                        console.log('Sidebar logo failed to load:', job.company?.logo_url || job.external_company_logo);
                         e.target.style.display = 'none';
                         e.target.parentNode.querySelector('.sidebar-fallback-icon').style.display = 'flex';
                       }}
@@ -1481,7 +1456,7 @@ ${user.name || user.email}`);
                 </div>
               ) : similarJobs.length > 0 ? (
                 <div className="space-y-1">
-                  {similarJobs.map((similarJob, index) => (
+                  {similarJobs.map((similarJob) => (
                     <div 
                       key={similarJob.id} 
                       className="relative group hover:shadow-lg transition-all duration-300 bg-white hover:bg-white border-b border-[#003366]/10 last:border-b-0"
@@ -1660,17 +1635,6 @@ ${user.name || user.email}`);
                           Browse {job.category?.name || 'Related'} Jobs
                         </Link>
                       </Button>
-                      {isAuthenticated && user?.role === 'job_seeker' && (
-                        <Button 
-                          className="flex-1 bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#003366] hover:to-[#17a2b8] text-white shadow-lg hover:shadow-xl transition-all duration-200" 
-                          asChild
-                        >
-                          <Link to="/recommendations">
-                            <Star className="w-4 h-4 mr-2" />
-                            Get AI Recommendations
-                          </Link>
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1685,8 +1649,7 @@ ${user.name || user.email}`);
                   
                   <h4 className="text-xl font-bold text-gray-900 mb-3">No Similar Jobs Found</h4>
                   <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
-                    We couldn't find jobs similar to this one right now, but don't worry! 
-                    Explore our other opportunities or get personalized recommendations.
+                    We couldn't find jobs similar to this one right now. Explore all current opportunities instead.
                   </p>
                   
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -1700,17 +1663,6 @@ ${user.name || user.email}`);
                         Browse {job.category?.name || 'Related'} Jobs
                       </Link>
                     </Button>
-                    {isAuthenticated && user?.role === 'job_seeker' && (
-                      <Button 
-                        className="bg-gradient-to-r from-[#003366] to-[#17a2b8] hover:from-[#003366] hover:to-[#17a2b8] text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200" 
-                        asChild
-                      >
-                        <Link to="/recommendations">
-                          <Star className="w-4 h-4 mr-2" />
-                          Get Personalized Jobs
-                        </Link>
-                      </Button>
-                    )}
                   </div>
                 </div>
               )}
@@ -1723,4 +1675,3 @@ ${user.name || user.email}`);
 };
 
 export default JobDetails;
-

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { 
   Dialog, 
   DialogContent, 
@@ -44,7 +44,7 @@ import {
   Calendar,
   Award
 } from 'lucide-react';
-import { formatCurrency, formatRelativeTime } from '../../utils/helpers';
+import { formatCurrency } from '../../utils/helpers';
 import { toast } from 'sonner';
 import shareScholarshipService from '../../services/shareScholarshipService';
 
@@ -58,7 +58,6 @@ const ShareScholarship = ({
   const [customMessage, setCustomMessage] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientName, setRecipientName] = useState('');
-  const [recipientEmails, setRecipientEmails] = useState([]);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
@@ -66,14 +65,17 @@ const ShareScholarship = ({
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [shareSuggestions, setShareSuggestions] = useState([]);
   const [scholarshipShareStats, setScholarshipShareStats] = useState(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [supportsNativeShare] = useState(typeof navigator !== 'undefined' && !!navigator.share);
   const messageLimit = 280;
 
   // Helper to update stats after any share action
-  const updateStats = () => {
-    const stats = shareScholarshipService.getScholarshipShareStats(scholarship.id);
-    setScholarshipShareStats(stats);
+  const updateStats = async () => {
+    try {
+      const stats = await shareScholarshipService.getScholarshipShareStats(scholarship.id);
+      setScholarshipShareStats(stats);
+    } catch {
+      setScholarshipShareStats(null);
+    }
   };
 
   // Generate scholarship URL
@@ -104,11 +106,11 @@ const ShareScholarship = ({
   // Load data when dialog opens
   useEffect(() => {
     if (open) {
-      loadShareData();
+      void loadShareData();
     }
   }, [open]);
 
-  const loadShareData = () => {
+  const loadShareData = async () => {
     // Generate share templates
     const templates = shareScholarshipService.generateShareTemplates(scholarship, organizationName);
     setShareTemplates(templates);
@@ -119,7 +121,7 @@ const ShareScholarship = ({
     setShareSuggestions(suggestions);
 
     // Load stats
-    updateStats();
+    await updateStats();
   };
 
   // Generate QR Code when QR tab is opened
@@ -141,8 +143,8 @@ const ShareScholarship = ({
         }
       });
       setQrCodeUrl(url);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
+    } catch (_error) {
+      console.error('Error generating QR code:', _error);
       toast.error('Failed to generate QR code');
     }
   };
@@ -163,13 +165,23 @@ const ShareScholarship = ({
     setCopying(true);
     try {
       await navigator.clipboard.writeText(text);
-      shareScholarshipService.recordShare(scholarship.id, platform, customMessage || selectedTemplate?.template);
-      updateStats();
+      try {
+        await shareScholarshipService.recordShare(
+          scholarship.id,
+          platform,
+          customMessage || selectedTemplate?.template
+        );
+        await updateStats();
+      } catch {
+        toast.error('Share tracking failed', {
+          description: 'The link was copied, but analytics could not be updated.'
+        });
+      }
       
       toast.success("Copied to clipboard!", {
         description: "Scholarship link has been copied to your clipboard."
       });
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to copy", {
         description: "Please try again or copy manually."
       });
@@ -201,10 +213,20 @@ const ShareScholarship = ({
   };
 
   // Handle social share with analytics
-  const handleSocialShare = (platform) => {
+  const handleSocialShare = async (platform) => {
     window.open(getSocialShareUrl(platform), '_blank');
-    shareScholarshipService.recordShare(scholarship.id, platform, customMessage || selectedTemplate?.template);
-    updateStats();
+    try {
+      await shareScholarshipService.recordShare(
+        scholarship.id,
+        platform,
+        customMessage || selectedTemplate?.template
+      );
+      await updateStats();
+    } catch {
+      toast.error('Share tracking failed', {
+        description: 'The share window opened, but analytics could not be updated.'
+      });
+    }
     toast.success(`Opening ${platform}...`, {
       description: "Share this scholarship with your network!"
     });
@@ -219,33 +241,22 @@ const ShareScholarship = ({
 
     setSending(true);
     try {
-      const emailContent = shareScholarshipService.generateEmailContent(
-        scholarship,
-        organizationName,
-        recipientName,
-        scholarshipUrl,
-        customMessage
-      );
+      await shareScholarshipService.sendEmail(scholarship.id, {
+        recipients: [recipientEmail],
+        recipient_name: recipientName,
+        custom_message: customMessage || selectedTemplate?.template || '',
+      });
+      await updateStats();
 
-      // Record the share
-      shareScholarshipService.recordShare(scholarship.id, 'direct_email', customMessage, recipientEmail);
-      updateStats();
-
-      // In a real app, you would send this to your backend
-      // For now, we'll open the email client
-      const subject = `Scholarship Opportunity: ${scholarshipTitle}`;
-      const body = encodeURIComponent(emailContent);
-      window.location.href = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${body}`;
-
-      toast.success("Email client opened!", {
-        description: "Your email is ready to send."
+      toast.success("Email sent!", {
+        description: "The scholarship invitation was delivered."
       });
 
       setRecipientEmail('');
       setRecipientName('');
     } catch (error) {
-      toast.error("Failed to prepare email", {
-        description: "Please try again."
+      toast.error("Failed to send email", {
+        description: error.message || "Please try again."
       });
     } finally {
       setSending(false);
@@ -260,8 +271,8 @@ const ShareScholarship = ({
         text: getCurrentMessage(),
         url: scholarshipUrl
       });
-      shareScholarshipService.recordShare(scholarship.id, 'native_share', customMessage);
-      updateStats();
+      await shareScholarshipService.recordShare(scholarship.id, 'native_share', customMessage);
+      await updateStats();
       toast.success("Shared successfully!");
     } catch (error) {
       if (error.name !== 'AbortError') {
@@ -273,7 +284,7 @@ const ShareScholarship = ({
   };
 
   // Download QR Code
-  const downloadQRCode = () => {
+  const downloadQRCode = async () => {
     if (!qrCodeUrl) return;
     
     const link = document.createElement('a');
@@ -281,8 +292,14 @@ const ShareScholarship = ({
     link.download = `scholarship-${scholarship.id}-qr.png`;
     link.click();
     
-    shareScholarshipService.recordShare(scholarship.id, 'qr_download');
-    updateStats();
+    try {
+      await shareScholarshipService.recordShare(scholarship.id, 'qr_download');
+      await updateStats();
+    } catch {
+      toast.error('Share tracking failed', {
+        description: 'The QR code downloaded, but analytics could not be updated.'
+      });
+    }
     
     toast.success("QR Code downloaded!", {
       description: "You can now print or share the QR code."

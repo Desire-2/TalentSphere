@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAdminStore } from '../../stores/adminStore';
 import { formatCurrency, formatNumber, formatRelativeTime } from '../../utils/helpers';
-import AdvertisementManagement from '../../components/admin/AdvertisementManagement';
+import AdminAdsManagement from './AdminAdsManagement';
 
 const AdminDashboardOverview = () => {
   const { 
@@ -366,7 +366,6 @@ const AdminDashboardOverview = () => {
           </div>
         </TabsContent>
 
-        {/* Other tabs would be implemented similarly */}
         <TabsContent value="users" className="space-y-6">
           {/* User Analytics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -681,7 +680,7 @@ const AdminDashboardOverview = () => {
         </TabsContent>
 
         <TabsContent value="advertisements">
-          <AdvertisementManagement />
+          <AdminAdsManagement />
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-6">

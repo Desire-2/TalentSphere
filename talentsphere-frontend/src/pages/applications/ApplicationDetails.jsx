@@ -29,12 +29,13 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { applicationsService } from '../../services/applications';
+import ApplicationResumeLink from '../../components/applications/ApplicationResumeLink';
 import { formatCurrency, formatRelativeTime, formatDate } from '../../utils/helpers';
 
 const ApplicationDetails = () => {
   const { id: applicationId } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -103,9 +104,7 @@ const ApplicationDetails = () => {
       setError(null);
       
       try {
-        console.log('Loading application details for ID:', applicationId);
         const response = await applicationsService.getApplication(applicationId);
-        console.log('Application details loaded:', response);
         
         setApplication(response);
         
@@ -397,10 +396,10 @@ const ApplicationDetails = () => {
                 </div>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
+                <ApplicationResumeLink application={application} mode="view" fallbackLabel="View generated resume">
                   <Download className="w-4 h-4 mr-2" />
                   View
-                </a>
+                </ApplicationResumeLink>
               </Button>
             </div>
           )}
@@ -480,7 +479,7 @@ const ApplicationDetails = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {application.activities.map((activity, index) => (
+              {application.activities.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
                   <div className="flex-1">

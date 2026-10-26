@@ -33,6 +33,8 @@ def create_tables():
         db.drop_all()
         # Create all tables
         db.create_all()
+        from models.career_agent import ensure_career_agent_indexes
+        ensure_career_agent_indexes()
     print("✓ Database tables created successfully")
 
 def seed_sample_data():
@@ -436,4 +438,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

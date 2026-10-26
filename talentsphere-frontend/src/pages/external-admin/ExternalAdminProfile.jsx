@@ -4,28 +4,21 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Switch } from '../../components/ui/switch';
-import { Separator } from '../../components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { 
   User, 
-  Settings,
   Shield,
-  Eye, 
   Key,
   Save,
-  Upload,
-  Download,
-  Trash2,
-  AlertTriangle
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { externalAdminService } from '../../services/externalAdmin';
 import { useAuthStore } from '../../stores/authStore';
 
 const ExternalAdminProfile = () => {
-  const { user, setUser } = useAuthStore();
+  const { setUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   
@@ -47,27 +40,11 @@ const ExternalAdminProfile = () => {
   const [security, setSecurity] = useState({
     current_password: '',
     new_password: '',
-    confirm_password: '',
-    two_factor_enabled: false,
-    session_timeout: 30,
-    api_key: '',
-    allowed_ips: []
-  });
-
-
-  // Privacy settings
-  const [privacy, setPrivacy] = useState({
-    profile_visibility: 'private',
-    show_email: false,
-    show_phone: false,
-    allow_contact: true,
-    data_sharing: false,
-    analytics_tracking: true
+    confirm_password: ''
   });
 
   useEffect(() => {
     loadProfile();
-    loadSettings();
   }, []);
 
   const loadProfile = async () => {
@@ -86,34 +63,68 @@ const ExternalAdminProfile = () => {
         timezone: response.timezone || 'UTC',
         avatar_url: response.profile_picture || response.avatar_url || ''
       };
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `external-admin-data-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      
-      toast.success('Data exported successfully');
+      setProfile(profileData);
     } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error('Failed to export data');
+      console.error('Error loading profile:', error);
+      toast.error('Failed to load profile');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await externalAdminService.updateProfile({
+        ...profile,
+        profile_picture: profile.avatar_url
+      });
+      const updatedUser = response.user || response;
+      if (updatedUser?.id) setUser(updatedUser);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(error.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteAccount = async () => {
-    const confirmation = prompt('Type "DELETE" to confirm account deletion:');
-    if (confirmation !== 'DELETE') return;
-
+  const handleChangePassword = async () => {
+    if (security.new_password !== security.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
     try {
       setLoading(true);
-      await externalAdminService.deleteAccount();
-      toast.success('Account deleted successfully');
-      // Redirect to login or homepage
-      window.location.href = '/login';
+      await externalAdminService.changePassword({
+        current_password: security.current_password,
+        new_password: security.new_password
+      });
+      setSecurity({ current_password: '', new_password: '', confirm_password: '' });
+      toast.success('Password changed successfully');
     } catch (error) {
-      console.error('Error deleting account:', error);
-      toast.error('Failed to delete account');
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      setLoading(true);
+      const data = await externalAdminService.exportUserData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `external-admin-data-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Data exported successfully');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
     } finally {
       setLoading(false);
     }
@@ -128,7 +139,7 @@ const ExternalAdminProfile = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-  <TabsList className="grid w-full grid-cols-3">
+  <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -136,10 +147,6 @@ const ExternalAdminProfile = () => {
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Security
-          </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Privacy
           </TabsTrigger>
         </TabsList>
 
@@ -162,15 +169,6 @@ const ExternalAdminProfile = () => {
                   ) : (
                     <User className="w-8 h-8 text-gray-400" />
                   )}
-                </div>
-                <div>
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Photo
-                  </Button>
-                  <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG or GIF. Max size 2MB.
-                  </p>
                 </div>
               </div>
 
@@ -280,7 +278,11 @@ const ExternalAdminProfile = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={exportData} disabled={loading}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Data
+                </Button>
                 <Button onClick={handleSaveProfile} disabled={loading}>
                   <Save className="h-4 w-4 mr-2" />
                   {loading ? 'Saving...' : 'Save Profile'}
@@ -329,201 +331,6 @@ const ExternalAdminProfile = () => {
                 <Key className="h-4 w-4 mr-2" />
                 {loading ? 'Changing...' : 'Change Password'}
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Two-Factor Authentication */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Two-Factor Authentication</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Enable Two-Factor Authentication</p>
-                  <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
-                </div>
-                <Switch
-                  checked={security.two_factor_enabled}
-                  onCheckedChange={(checked) => setSecurity(prev => ({ ...prev, two_factor_enabled: checked }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* API Key Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle>API Key Management</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={security.api_key ? '••••••••••••••••' : 'No API key generated'}
-                    readOnly
-                  />
-                  {security.api_key ? (
-                    <Button variant="outline" onClick={revokeApiKey} disabled={loading}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button onClick={generateApiKey} disabled={loading}>
-                      Generate
-                    </Button>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  Use this key to access TalentSphere API programmatically
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={loading}>
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Saving...' : 'Save Security Settings'}
-            </Button>
-          </div>
-        </TabsContent>
-        {/* Privacy Tab */}
-        <TabsContent value="privacy" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Privacy Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Profile Visibility */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Profile Visibility</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="profile_visibility">Profile Visibility</Label>
-                    <Select value={privacy.profile_visibility} onValueChange={(value) => setPrivacy(prev => ({ ...prev, profile_visibility: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">Public</SelectItem>
-                        <SelectItem value="private">Private</SelectItem>
-                        <SelectItem value="contacts">Contacts Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Show Email Address</p>
-                      <p className="text-sm text-gray-600">Allow others to see your email</p>
-                    </div>
-                    <Switch
-                      checked={privacy.show_email}
-                      onCheckedChange={(checked) => setPrivacy(prev => ({ ...prev, show_email: checked }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Show Phone Number</p>
-                      <p className="text-sm text-gray-600">Allow others to see your phone</p>
-                    </div>
-                    <Switch
-                      checked={privacy.show_phone}
-                      onCheckedChange={(checked) => setPrivacy(prev => ({ ...prev, show_phone: checked }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Allow Contact</p>
-                      <p className="text-sm text-gray-600">Allow job seekers to contact you directly</p>
-                    </div>
-                    <Switch
-                      checked={privacy.allow_contact}
-                      onCheckedChange={(checked) => setPrivacy(prev => ({ ...prev, allow_contact: checked }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Data & Analytics */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Data & Analytics</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Data Sharing</p>
-                      <p className="text-sm text-gray-600">Share anonymized data for platform improvement</p>
-                    </div>
-                    <Switch
-                      checked={privacy.data_sharing}
-                      onCheckedChange={(checked) => setPrivacy(prev => ({ ...prev, data_sharing: checked }))}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Analytics Tracking</p>
-                      <p className="text-sm text-gray-600">Allow usage analytics for better experience</p>
-                    </div>
-                    <Switch
-                      checked={privacy.analytics_tracking}
-                      onCheckedChange={(checked) => setPrivacy(prev => ({ ...prev, analytics_tracking: checked }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Data Management */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Data Management</h3>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={exportData} disabled={loading}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export My Data
-                  </Button>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Download a copy of your data in JSON format
-                </p>
-              </div>
-
-              <div className="flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {loading ? 'Saving...' : 'Save Privacy Settings'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Danger Zone */}
-          <Card className="border-red-200">
-            <CardHeader>
-              <CardTitle className="text-red-600 flex items-center">
-                <AlertTriangle className="h-5 w-5 mr-2" />
-                Danger Zone
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <p className="font-medium">Delete Account</p>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Permanently delete your account and all associated data. This action cannot be undone.
-                  </p>
-                  <Button variant="destructive" onClick={deleteAccount} disabled={loading}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

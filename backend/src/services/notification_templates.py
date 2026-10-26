@@ -2,6 +2,7 @@
 Enhanced notification template handlers for connecting HTML email templates with real notification data
 """
 
+import json
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from src.models.user import User
@@ -15,26 +16,37 @@ class NotificationTemplateHandler:
     """Handles template data preparation for different notification types"""
     
     @staticmethod
-    def prepare_job_alert_data(user: User, job: Job, **kwargs) -> Dict[str, Any]:
+    def _company_name(job: Job) -> str:
+        """Resolve the employer display name across internal and external jobs."""
+        if getattr(job, 'company', None):
+            return job.company.name or 'The hiring company'
+        return job.external_company_name or 'The hiring company'
+
+    @classmethod
+    def prepare_job_alert_data(cls, user: User, job: Job, **kwargs) -> Dict[str, Any]:
         """Prepare data for job alert email template"""
+        try:
+            skills = json.loads(job.required_skills) if job.required_skills else []
+        except (TypeError, ValueError):
+            skills = []
         return {
             'user_name': user.get_full_name(),
             'job_title': job.title,
-            'company_name': job.company.company_name if job.company else job.company_name,
-            'location': job.location,
-            'job_type': job.job_type.replace('_', ' ').title() if job.job_type else 'Full-time',
-            'experience_level': job.experience_level.replace('_', ' ').title() if job.experience_level else 'Any Level',
-            'salary_range': job.salary_range if job.salary_range else 'Competitive',
+            'company_name': cls._company_name(job),
+            'location': job.get_location_display(),
+            'job_type': (job.employment_type or 'full-time').replace('_', ' ').title(),
+            'experience_level': (job.experience_level or 'entry').replace('_', ' ').title() if job.experience_level else 'Any Level',
+            'salary_range': job.get_salary_range(),
             'job_url': f"{kwargs.get('frontend_url', 'https://talentsphere.com')}/jobs/{job.id}",
             'job_description': job.description[:200] + '...' if len(job.description) > 200 else job.description,
             'posted_date': job.created_at.strftime('%B %d, %Y'),
             'application_deadline': job.application_deadline.strftime('%B %d, %Y') if job.application_deadline else None,
-            'skills_required': job.skills_required.split(',')[:5] if job.skills_required else [],
-            'benefits': job.benefits.split(',')[:3] if job.benefits else []
+            'skills_required': skills[:5] if isinstance(skills, list) else [],
+            'benefits': []
         }
     
-    @staticmethod
-    def prepare_application_status_data(user: User, application: Application, status: str, **kwargs) -> Dict[str, Any]:
+    @classmethod
+    def prepare_application_status_data(cls, user: User, application: Application, status: str, **kwargs) -> Dict[str, Any]:
         """Prepare data for application status update email template"""
         job = application.job
         
@@ -55,8 +67,8 @@ class NotificationTemplateHandler:
         return {
             'user_name': user.get_full_name(),
             'job_title': job.title,
-            'company_name': job.company.company_name if job.company else job.company_name,
-            'application_date': application.applied_at.strftime('%B %d, %Y'),
+            'company_name': cls._company_name(job),
+            'application_date': application.created_at.strftime('%B %d, %Y'),
             'status': status.replace('_', ' ').title(),
             'status_message': status_messages.get(status, 'Your application status has been updated.'),
             'progress_percentage': progress_percentage,

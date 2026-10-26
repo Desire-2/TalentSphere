@@ -34,6 +34,7 @@ class NotificationType(Enum):
     DEADLINE_REMINDER = "deadline_reminder"
     DIGEST = "digest"
     WELCOME = "welcome"
+    CAREER_AGENT = "career_agent"
 
 
 @dataclass
@@ -254,14 +255,28 @@ class EmailService:
             self.logger.error(f"Error sending digest email: {str(e)}")
             return False
     
-    def create_and_send_notification(self, user_id: int, notification_type: NotificationType, 
+    def create_and_send_notification(self, user_id: int, notification_type,
                                    title: str, message: str, variables: Dict[str, Any] = None,
                                    send_email: bool = True, priority: EmailPriority = EmailPriority.NORMAL) -> bool:
-        """Create in-app notification and optionally send email"""
+        """Create in-app notification and optionally send email.
+
+        Runs inside a SAVEPOINT so a failure here can never roll back the
+        caller's transaction (previously a notification error destroyed data
+        the caller had already flushed, e.g. a submitted application).
+        """
+        # Accept plain strings from callers; coerce instead of crashing later.
+        if isinstance(notification_type, str):
+            try:
+                notification_type = NotificationType(notification_type)
+            except ValueError:
+                notification_type = NotificationType.SYSTEM
+
+        nested = db.session.begin_nested()
         try:
             from src.models.user import User
             user = User.query.get(user_id)
             if not user:
+                nested.rollback()
                 return False
             
             # Create in-app notification
@@ -272,7 +287,9 @@ class EmailService:
                 notification_type=notification_type.value,
                 priority=priority.value,
                 send_email=send_email,
-                data=json.dumps(variables) if variables else None
+                data=json.dumps(variables) if variables else None,
+                action_url=(variables or {}).get("action_url"),
+                action_text=(variables or {}).get("action_text"),
             )
             
             db.session.add(notification)
@@ -288,7 +305,8 @@ class EmailService:
                     NotificationType.DEADLINE_REMINDER: 'deadline_reminder',
                     NotificationType.COMPANY_UPDATE: 'company_update',
                     NotificationType.SYSTEM: 'system_notification',
-                    NotificationType.WELCOME: 'welcome'
+                    NotificationType.WELCOME: 'welcome',
+                    NotificationType.CAREER_AGENT: 'system_notification'
                 }
                 
                 template_name = template_map.get(notification_type, 'system_notification')
@@ -310,25 +328,26 @@ class EmailService:
                 if email_success:
                     notification.mark_as_sent()
             
-            db.session.commit()
+            nested.commit()  # release savepoint; caller still owns the transaction
             return True
             
         except Exception as e:
-            db.session.rollback()
+            nested.rollback()  # undo ONLY the notification work, never the caller's data
             self.logger.error(f"Error creating and sending notification: {str(e)}")
             return False
     
     def _should_send_email(self, user, notification_type: NotificationType) -> bool:
-        """Check if user wants to receive email for this notification type"""
-        # TODO: Implement user preferences check
-        # For now, return True for important notifications
-        important_types = [
-            NotificationType.APPLICATION_STATUS,
-            NotificationType.INTERVIEW_REMINDER,
-            NotificationType.DEADLINE_REMINDER,
-            NotificationType.WELCOME
-        ]
-        return notification_type in important_types
+        """Check persisted user preferences for this notification type."""
+        from src.models.notification_preferences import NotificationPreference
+
+        preferences = NotificationPreference.get_or_create_for_user(user.id)
+        if not preferences.email_enabled:
+            return False
+        if notification_type == NotificationType.WELCOME:
+            return preferences.system_notifications_email
+        if notification_type == NotificationType.DIGEST:
+            return preferences.weekly_digest_enabled
+        return preferences.get_email_preference(notification_type.value)
     
     def _send_brevo_email(self, recipient_email: str, recipient_name: str,
                            subject: str, html_body: str, text_body: str) -> bool:
@@ -385,12 +404,29 @@ class EmailService:
             self.logger.error(f"Error updating notification status: {str(e)}")
     
     def _render_template(self, template: str, variables: Dict[str, Any]) -> str:
-        """Render template with variables"""
+        """Render {placeholder} variables without breaking CSS braces.
+
+        Python's str.format() treats every ``{`` in inline styles as a format
+        field, so email HTML with ``style="margin: 0 auto;"`` raised KeyError
+        and was returned unrendered. String.Template only consumes ``$name``
+        placeholders, leaving CSS intact.
+        """
         try:
-            return template.format(**variables)
-        except KeyError as e:
-            self.logger.warning(f"Missing template variable: {str(e)}")
-            return template
+            from string import Template
+
+            rendered = Template(template).safe_substitute(variables)
+            # Templates written for str.format use {placeholder} syntax.
+            if "$" not in template and "{" in template:
+                import re
+
+                known = set(variables.keys())
+
+                def _replace(match: "re.Match[str]") -> str:
+                    key = match.group(1).strip()
+                    return str(variables.get(key, match.group(0))) if key in known else match.group(0)
+
+                rendered = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", _replace, template)
+            return rendered
         except Exception as e:
             self.logger.error(f"Error rendering template: {str(e)}")
             return template
@@ -999,6 +1035,55 @@ class EmailService:
         except Exception as e:
             self.logger.error(f"Error sending password reset email: {str(e)}")
             return False
+
+
+    def send_system_message(
+        self,
+        recipient_email: str,
+        recipient_name: str,
+        subject: str,
+        message: str,
+        action_url: Optional[str] = None,
+    ) -> bool:
+        """Send a custom system email through the configured Brevo adapter."""
+        from html import escape
+
+        notification = EmailNotification(
+            recipient_email=recipient_email,
+            recipient_name=escape(recipient_name or recipient_email),
+            template_name='system',
+            subject=subject,
+            variables={
+                'user_name': escape(recipient_name or recipient_email),
+                'title': escape(subject),
+                'message': escape(message),
+                'action_url': action_url or self.frontend_url,
+                'action_text': 'Open TalentSphere',
+            },
+            priority=EmailPriority.HIGH,
+            send_immediately=True,
+        )
+        return self.send_notification_email(notification)
+
+    def send_custom_email(
+        self,
+        recipient_email: str,
+        recipient_name: str,
+        subject: str,
+        html_body: str,
+        text_body: str,
+    ) -> bool:
+        """Send custom content through the configured Brevo adapter."""
+        if not self.brevo_api_key:
+            self.logger.warning("Email service not configured - BREVO_API_KEY missing")
+            return False
+        return self._send_brevo_email(
+            recipient_email=recipient_email,
+            recipient_name=recipient_name or recipient_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
 
 
 # Global email service instance

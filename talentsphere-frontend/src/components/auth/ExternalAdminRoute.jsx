@@ -4,12 +4,13 @@ import { useAuthStore } from '../../stores/authStore';
 import { storeIntendedDestination } from '../../utils/redirectUtils';
 
 const ExternalAdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isInitialized } = useAuthStore();
   const location = useLocation();
   const lastStoredPath = useRef(null);
 
   // Store intended destination only when location changes and user is not authenticated as external admin
   useEffect(() => {
+    if (!isInitialized) return;
     if ((!isAuthenticated || !user || user.role !== 'external_admin') && lastStoredPath.current !== location.pathname) {
       storeIntendedDestination(location.pathname, {
         search: location.search,
@@ -17,7 +18,9 @@ const ExternalAdminRoute = ({ children }) => {
       });
       lastStoredPath.current = location.pathname;
     }
-  }, [isAuthenticated, user, location.pathname, location.search, location.state]);
+  }, [isAuthenticated, user, isInitialized, location.pathname, location.search, location.state]);
+
+  if (!isInitialized) return null;
 
   // Check authentication and role using store state instead of localStorage
   if (!isAuthenticated || !user || user.role !== 'external_admin') {

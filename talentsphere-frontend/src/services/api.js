@@ -8,6 +8,33 @@ const APP_VERSION = config.APP.VERSION;
 const APP_ENVIRONMENT = config.APP.ENVIRONMENT;
 const ENABLE_DEBUG_LOGS = config.FEATURES.ENABLE_DEBUG_LOGS;
 const ENABLE_API_LOGGING = config.FEATURES.ENABLE_API_LOGGING;
+const AUTH_LIFECYCLE_ENDPOINTS = new Set([
+  '/auth/login',
+  '/auth/register',
+  '/auth/logout',
+  '/auth/verify-token',
+  '/auth/refresh-token',
+  '/auth/forgot-password',
+  '/auth/verify-reset-token',
+  '/auth/reset-password',
+  '/auth/verify-email'
+]);
+const SESSION_AUTH_ERRORS = new Set([
+  'Token is missing',
+  'Invalid token',
+  'Token has expired',
+  'Account inactive',
+  'Authentication error'
+]);
+
+const redactSensitiveData = (value) => {
+  if (!value || typeof value !== 'object') return value;
+  const redacted = Array.isArray(value) ? [...value] : { ...value };
+  ['token', 'password', 'confirm_password', 'current_password', 'new_password'].forEach((key) => {
+    if (key in redacted) redacted[key] = '[redacted]';
+  });
+  return redacted;
+};
 
 // Log environment configuration (only in development)
 if (APP_ENVIRONMENT === 'development') {
@@ -59,14 +86,11 @@ class ApiService {
       
       // Debug logging for production issues
       if (ENABLE_DEBUG_LOGS) {
-        console.log('🔑 Token found and added to headers:', {
+      console.log('🔑 Token found and added to headers:', {
           tokenLength: this.token.length,
-          tokenPreview: this.token.substring(0, 20) + '...',
           hasAuthorization: !!headers.Authorization
         });
       }
-    } else {
-      console.warn('⚠️ No authentication token found in localStorage');
     }
     
     return headers;
@@ -75,29 +99,45 @@ class ApiService {
   // Generic request method
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const {
+      skipAuthFailure = false,
+      retryAuth = true,
+      headers: customHeaders = {},
+      ...requestOptions
+    } = options;
     const config = {
+      ...requestOptions,
       mode: 'cors',
       credentials: 'include', // Important: Send cookies and auth headers with cross-origin requests
-      headers: this.getHeaders(),
-      ...options,
+      headers: {
+        ...this.getHeaders(
+          typeof FormData === 'undefined' || !(requestOptions.body instanceof FormData)
+        ),
+        ...customHeaders
+      },
     };
 
     if (ENABLE_API_LOGGING) {
       let bodyParsed = null;
-      if (typeof options.body === 'string') {
+      if (typeof requestOptions.body === 'string') {
         try {
-          bodyParsed = JSON.parse(options.body);
+          bodyParsed = JSON.parse(requestOptions.body);
         } catch {
-          bodyParsed = options.body;
+          bodyParsed = requestOptions.body;
         }
       }
 
+      const logHeaders = { ...config.headers };
+      if (logHeaders.Authorization) {
+        logHeaders.Authorization = 'Bearer [redacted]';
+      }
+
       console.log('🌐 API Request:', {
-        method: options.method || 'GET',
+        method: requestOptions.method || 'GET',
         url: url,
-        headers: config.headers,
-        body: options.body || 'No body',
-        bodyParsed
+        headers: logHeaders,
+        body: requestOptions.body || 'No body',
+        bodyParsed: redactSensitiveData(bodyParsed)
       });
     }
 
@@ -165,49 +205,66 @@ class ApiService {
           ok: response.ok,
           url: url,
           dataKeys: data ? Object.keys(data) : [],
-          dataPreview: data
+          dataPreview: redactSensitiveData(data)
         });
       }
 
       if (!response.ok) {
         // Handle 401 Unauthorized - Session expired or invalid token
-        if (response.status === 401) {
-          const errorMsg = data.error || data.message || '';
-          const isTokenExpired = errorMsg.includes('expired') || errorMsg.includes('invalid') || errorMsg.includes('missing');
-          
+        const errorMsg = data.error || data.message || '';
+        const isSessionAuthFailure =
+          SESSION_AUTH_ERRORS.has(data.error) ||
+          /token validation failed|authorization header is required|jwt/i.test(errorMsg);
+        const shouldRecoverSession =
+          response.status === 401 &&
+          !skipAuthFailure &&
+          !AUTH_LIFECYCLE_ENDPOINTS.has(endpoint) &&
+          isSessionAuthFailure;
+
+        if (shouldRecoverSession && retryAuth) {
+          let refreshed = false;
+          try {
+            // authService owns the single-flight refresh request. Importing it
+            // lazily avoids a module cycle because authService uses api too.
+            const { authService } = await import('./auth.js');
+            refreshed = await authService.refreshSession();
+          } catch (refreshError) {
+            // A failed refresh caused by a network/5xx outage is not proof
+            // that the user's credentials are invalid. Keep the session and
+            // let the next request/session check retry.
+            if (refreshError?.code === 'NETWORK_ERROR' || refreshError?.status >= 500) {
+              throw refreshError;
+            }
+          }
+
+          if (refreshed) {
+            return this.request(endpoint, {
+              ...requestOptions,
+              headers: customHeaders,
+              retryAuth: false,
+            });
+          }
+        }
+
+        if (shouldRecoverSession) {
           if (ENABLE_DEBUG_LOGS) {
             console.log('🔒 Authentication failed:', {
               status: response.status,
               error: errorMsg,
-              isTokenExpired,
               url: url
             });
           }
-          
-          if (isTokenExpired) {
-            if (ENABLE_DEBUG_LOGS) {
-              console.log('🔒 Token expired or invalid, clearing auth data...');
-            }
-            
-            // Clear authentication data
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            
-            // Emit custom event for session expiration
+
+          // The auth store owns clearing credentials and navigation. Keeping
+          // that decision in one place prevents duplicate redirects and
+          // avoids clearing a valid session after a failed login attempt.
+          if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('session-expired', {
-              detail: { message: data.message || 'Your session has expired. Please login again.' }
+              detail: {
+                message: data.message || 'Your session has expired. Please login again.',
+                endpoint
+              }
             }));
-            
-            // Redirect to login with return path (only if not already on login page)
-            const returnPath = window.location.pathname;
-            if (!returnPath.includes('/login')) {
-              const loginUrl = `/login?returnTo=${encodeURIComponent(returnPath)}`;
-              
-              // Small delay to allow event handlers to run
-              setTimeout(() => {
-                window.location.href = loginUrl;
-              }, 100);
-            }
           }
         }
         
@@ -222,14 +279,17 @@ class ApiService {
           });
         }
         
-        throw new Error(errorMessage);
+        const apiError = new Error(errorMessage);
+        apiError.status = response.status;
+        apiError.payload = data;
+        throw apiError;
       }
 
       return data;
     } catch (error) {
       // Check if it's a network error
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        const networkError = 'Cannot connect to server. Please check if the backend is running.';
+        const networkError = `Cannot connect to server at ${this.baseURL}. Please check if the backend is running.`;
         if (ENABLE_DEBUG_LOGS) {
           console.error('❌ Network Error:', {
             url: url,
@@ -238,7 +298,9 @@ class ApiService {
             apiBaseUrl: API_BASE_URL
           });
         }
-        throw new Error(networkError);
+        const networkFailure = new Error(networkError);
+        networkFailure.code = 'NETWORK_ERROR';
+        throw networkFailure;
       }
       
       if (ENABLE_DEBUG_LOGS) {
@@ -259,10 +321,11 @@ class ApiService {
 
   // POST request
   async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const options = { method: 'POST' };
+    if (data !== undefined) {
+      options.body = JSON.stringify(data);
+    }
+    return this.request(endpoint, options);
   }
 
   // POST multipart/form-data request
@@ -560,82 +623,24 @@ class ApiService {
     return this.get(`/user/profile-views${queryString ? `?${queryString}` : ''}`);
   }
 
-  // Interview schedule endpoints (with fallback for missing endpoints)
-  // Returns empty list if endpoint doesn't exist
   async getInterviewSchedule(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      return await this.get(`/interviews${queryString ? `?${queryString}` : ''}`);
-    } catch (error) {
-      if (error.message.includes('endpoint not found')) {
-        console.info('ℹ️ Interview schedule endpoint not implemented yet');
-      } else {
-        console.warn('⚠️ Failed to fetch interview schedule:', error.message);
-      }
-      return { interviews: [] };
-    }
+    const queryString = new URLSearchParams(params).toString();
+    return this.get(`/interviews${queryString ? `?${queryString}` : ''}`);
   }
 
   async getMyInterviews(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      return await this.get(`/my-interviews${queryString ? `?${queryString}` : ''}`);
-    } catch (error) {
-      if (error.message.includes('endpoint not found')) {
-        console.info('ℹ️ My interviews endpoint not implemented yet');
-      } else {
-        console.warn('⚠️ Failed to fetch interviews:', error.message);
-      }
-      return { interviews: [] };
-    }
+    const queryString = new URLSearchParams(params).toString();
+    return this.get(`/my-interviews${queryString ? `?${queryString}` : ''}`);
   }
 
-  // Skill gap analysis endpoints (with fallback for missing endpoints)
-  // Returns empty list if endpoint doesn't exist
   async getSkillGaps(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      return await this.get(`/skill-analysis/gaps${queryString ? `?${queryString}` : ''}`);
-    } catch (error) {
-      if (error.message.includes('endpoint not found')) {
-        console.info('ℹ️ Skill gap analysis endpoint not implemented yet');
-      } else {
-        console.warn('⚠️ Failed to fetch skill gaps:', error.message);
-      }
-      return { skill_gaps: [] };
-    }
+    const queryString = new URLSearchParams(params).toString();
+    return this.get(`/skill-analysis/gaps${queryString ? `?${queryString}` : ''}`);
   }
 
-  // Career insights endpoints (with fallback for missing endpoints)
-  // Returns default insights if endpoint doesn't exist
   async getCareerInsights(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      return await this.get(`/career-insights${queryString ? `?${queryString}` : ''}`);
-    } catch (error) {
-      if (error.message.includes('endpoint not found')) {
-        console.info('ℹ️ Career insights endpoint not implemented yet');
-      } else {
-        console.warn('⚠️ Failed to fetch career insights:', error.message);
-      }
-      return { avg_salary_increase: 0, market_demand: 'Medium', top_skills_in_demand: [], career_growth_potential: 0 };
-    }
-  }
-
-  // Profile views endpoint (with fallback for missing endpoint)
-  // Returns 0 views if endpoint doesn't exist
-  async getProfileViews(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      return await this.get(`/user/profile-views${queryString ? `?${queryString}` : ''}`);
-    } catch (error) {
-      if (error.message.includes('endpoint not found')) {
-        console.info('ℹ️ Profile views endpoint not implemented yet');
-      } else {
-        console.warn('⚠️ Failed to fetch profile views:', error.message);
-      }
-      return { total_views: 0, profile_views: 0 };
-    }
+    const queryString = new URLSearchParams(params).toString();
+    return this.get(`/career-insights${queryString ? `?${queryString}` : ''}`);
   }
 
   // Check if job is bookmarked
@@ -656,23 +661,6 @@ class ApiService {
     return this.get(`/jobs${queryString ? `?${queryString}` : ''}`);
   }
 
-  async getMyCompanyProfile() {
-    try {
-      return await this.get('/my-company');
-    } catch (error) {
-      console.warn('Company profile endpoint not available:', error);
-      return null;
-    }
-  }
-
-  async createCompanyProfile(companyData) {
-    return this.post('/companies', companyData);
-  }
-
-  async updateCompanyProfile(companyData) {
-    return this.put('/my-company', companyData);
-  }
-
   async getRecentApplications(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.get(`/my-applications${queryString ? `?${queryString}` : ''}`);
@@ -690,7 +678,8 @@ class ApiService {
 
   // New employer-specific endpoints
   async getEmployerDashboardStats() {
-    return this.get('/employer/dashboard/stats');
+    const response = await this.get('/employer/dashboard/stats');
+    return response?.stats || response;
   }
 
   async getEmployerApplications(params = {}) {
@@ -759,11 +748,6 @@ class ApiService {
 
   // Update job seeker profile (uses the main profile endpoint)
   async updateJobSeekerProfile(profileData) {
-    return this.put('/auth/profile', profileData);
-  }
-
-  // Update profile (alternative method for compatibility)
-  async updateProfile(profileData) {
     return this.put('/auth/profile', profileData);
   }
 
@@ -1068,21 +1052,6 @@ class ApiService {
     return this.put('/profile/complete-profile', data);
   }
 
-  // CV Auto-Fill
-  async cvExtractText(file) {
-    const formData = new FormData();
-    formData.append('cv_file', file);
-    return this.postForm('/profile/cv-extract', formData);
-  }
-
-  async cvParseWithAI(extractedText) {
-    return this.post('/profile/cv-parse', { extracted_text: extractedText });
-  }
-
-  async cvAutoFill(parsedProfile) {
-    return this.post('/profile/cv-autofill', { parsed_profile: parsedProfile });
-  }
-
   // Profile Analysis & Export
   async getProfileCompletenessAnalysis() {
     return this.get('/profile/completeness-analysis');
@@ -1124,4 +1093,3 @@ class ApiService {
 // Create and export a singleton instance
 const apiService = new ApiService();
 export default apiService;
-

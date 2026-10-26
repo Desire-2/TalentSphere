@@ -37,7 +37,6 @@ import {
   Play,
   Settings,
   Bell,
-  Heart,
   Share2,
   PieChart,
   LineChart,
@@ -96,7 +95,7 @@ import { Label } from '../components/ui/label';
 import { Separator } from '../components/ui/separator';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
+import ApplicationResumeLink from '../components/applications/ApplicationResumeLink';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -134,6 +133,7 @@ import {
 import { Slider } from '../components/ui/slider';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
+import { toast } from 'sonner';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
@@ -145,7 +145,6 @@ const EmployerDashboard = () => {
   
   // Real-time updates
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
-  const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Job Management State
@@ -172,8 +171,7 @@ const EmployerDashboard = () => {
     total: 0,
     pages: 0
   });
-  const [jobCategories, setJobCategories] = useState([]);
-  
+
   // Application Management State
   const [applications, setApplications] = useState([]);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
@@ -201,7 +199,6 @@ const EmployerDashboard = () => {
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [candidatesError, setCandidatesError] = useState(null);
   const [candidateSearchMode, setCandidateSearchMode] = useState('top'); // 'top' or 'search'
-  const [savedCandidates, setSavedCandidates] = useState([]);
   const [candidateFilters, setCandidateFilters] = useState({
     search: '',
     skills: '',
@@ -274,26 +271,14 @@ const EmployerDashboard = () => {
     costPerHire: {},
     sourceEffectiveness: {}
   });
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [, setAnalyticsLoading] = useState(false);
   const [analyticsDateRange, setAnalyticsDateRange] = useState('30');
 
   // Company Profile State
-  const [companyProfile, setCompanyProfile] = useState(null);
-  const [profileCompletion, setProfileCompletion] = useState(0);
-  const [profileEditMode, setProfileEditMode] = useState(false);
-  
-  // Bulk Actions State
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const [bulkActionType, setBulkActionType] = useState('');
 
-  // Quick Actions State
-  const [quickActionDialogs, setQuickActionDialogs] = useState({
-    postJob: false,
-    sendMessage: false,
-    scheduleInterview: false,
-    exportData: false,
-    manageTeam: false
-  });
+  // Bulk Actions State
+  const [, setBulkActionLoading] = useState(false);
+  const [, setBulkActionType] = useState('');
 
   const [dashboardData, setDashboardData] = useState({
     stats: {
@@ -348,7 +333,6 @@ const EmployerDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
-    loadJobCategories();
     loadNotifications();
   }, []);
 
@@ -387,12 +371,11 @@ const EmployerDashboard = () => {
       
       // Load all dashboard data in parallel
       const [
-        dashboardStatsResponse,
+        dashboardStatsPayload,
         myJobsResponse,
         myCompanyResponse,
         candidateRecsResponse,
-        notificationsResponse,
-        analyticsResponse
+        notificationsResponse
       ] = await Promise.all([
         apiService.getEmployerDashboardStats().catch(err => {
           console.warn('⚠️ Dashboard stats failed:', err);
@@ -427,12 +410,10 @@ const EmployerDashboard = () => {
         apiService.getNotifications({ limit: 5, unread_only: true }).catch(err => {
           console.warn('⚠️ Notifications failed:', err);
           return { notifications: [], total: 0 };
-        }),
-        apiService.getEmployerDashboardStats().catch(err => {
-          console.warn('⚠️ Analytics failed:', err);
-          return { application_trends: [], job_performance: [] };
         })
       ]);
+
+      const dashboardStatsResponse = dashboardStatsPayload.stats || dashboardStatsPayload;
 
       console.log('📊 Enhanced dashboard stats response:', dashboardStatsResponse);
       console.log('💼 Enhanced jobs response:', myJobsResponse);
@@ -482,7 +463,6 @@ const EmployerDashboard = () => {
           applications: job.application_count || 0,
           views: job.view_count || 0,
           conversion_rate: job.view_count > 0 ? ((job.application_count / job.view_count) * 100).toFixed(1) : 0,
-          avg_match_score: Math.floor(Math.random() * 20) + 75, // Mock data for now
           status: job.status,
           created_at: job.created_at,
           performance_score: calculatePerformanceScore(job)
@@ -494,21 +474,18 @@ const EmployerDashboard = () => {
       const profileCompletionData = myCompanyResponse ? calculateEnhancedProfileCompletion(myCompanyResponse) : { percentage: 0, missing: [] };
 
       // Process notifications
-      setNotifications(notificationsResponse.notifications || []);
       setUnreadCount(notificationsResponse.total || 0);
 
       // Generate insights and alerts
       const insights = generateDashboardInsights({
         stats: dashboardStatsResponse,
         jobs: jobs,
-        applications: recentApplications,
         profile: myCompanyResponse
       });
 
       const alerts = generateDashboardAlerts({
         stats: dashboardStatsResponse,
-        jobs: jobs,
-        profile: myCompanyResponse
+        jobs: jobs
       });
 
       setDashboardData({
@@ -547,9 +524,6 @@ const EmployerDashboard = () => {
         alerts: alerts
       });
 
-      setCompanyProfile(myCompanyResponse);
-      setProfileCompletion(profileCompletionData.percentage);
-      
     } catch (error) {
       console.error('Error loading enhanced dashboard data:', error);
       if (!silent) {
@@ -563,16 +537,6 @@ const EmployerDashboard = () => {
     }
   };
 
-  // Load job categories for filters
-  const loadJobCategories = async () => {
-    try {
-      const response = await apiService.getJobCategories();
-      setJobCategories(response.categories || []);
-    } catch (error) {
-      console.warn('Failed to load job categories:', error);
-    }
-  };
-
   // Load notifications
   const loadNotifications = async () => {
     try {
@@ -580,7 +544,6 @@ const EmployerDashboard = () => {
         limit: 10, 
         unread_only: false 
       });
-      setNotifications(response.notifications || []);
       setUnreadCount(response.notifications?.filter(n => !n.is_read).length || 0);
     } catch (error) {
       console.warn('Failed to load notifications:', error);
@@ -685,22 +648,6 @@ const EmployerDashboard = () => {
       console.error('Error updating job status:', error);
       setJobsError(error.message || 'Failed to update job status');
       showNotification('Failed to update job status', 'error');
-    } finally {
-      setJobsLoading(false);
-    }
-  };
-
-  const promoteJob = async (jobId) => {
-    try {
-      setJobsLoading(true);
-      await apiService.updateJob(jobId, { is_featured: true });
-      await loadJobs();
-      await loadDashboardData(true);
-      
-      showNotification('Job promoted successfully', 'success');
-    } catch (error) {
-      console.error('Error promoting job:', error);
-      showNotification('Failed to promote job', 'error');
     } finally {
       setJobsLoading(false);
     }
@@ -856,21 +803,6 @@ const EmployerDashboard = () => {
     navigate(`/applications/${applicationId}/message`);
   };
 
-  const rateCandidate = async (applicationId, rating, notes = '') => {
-    try {
-      await apiService.updateApplicationStatus(applicationId, { 
-        rating, 
-        notes: notes || undefined 
-      });
-      await loadApplications();
-      
-      showNotification('Candidate rated successfully', 'success');
-    } catch (error) {
-      console.error('Error rating candidate:', error);
-      showNotification('Failed to rate candidate', 'error');
-    }
-  };
-
   // Enhanced Candidate Management
   const loadTopCandidates = async () => {
     try {
@@ -946,17 +878,6 @@ const EmployerDashboard = () => {
     }
   };
 
-  const saveCandidate = async (candidateId) => {
-    try {
-      // This would typically call an API to save the candidate
-      setSavedCandidates(prev => [...prev, candidateId]);
-      showNotification('Candidate saved to your talent pool', 'success');
-    } catch (error) {
-      console.error('Error saving candidate:', error);
-      showNotification('Failed to save candidate', 'error');
-    }
-  };
-
   const contactCandidate = (candidateId) => {
     navigate(`/candidates/${candidateId}/contact`);
   };
@@ -965,75 +886,61 @@ const EmployerDashboard = () => {
   const loadAnalytics = async () => {
     try {
       setAnalyticsLoading(true);
-      
-      const [
-        dashboardStats,
-        performanceMetrics,
-        hiringFunnelData
-      ] = await Promise.all([
-        apiService.getEmployerDashboardStats(),
-        apiService.getJobPerformanceStats?.() || Promise.resolve({}),
-        apiService.getHiringFunnelData?.() || Promise.resolve({})
-      ]);
 
-      // Calculate mock analytics data based on current data
-      const totalApps = applications.length;
+      const response = await apiService.getEmployerDashboardStats();
+      const stats = response.stats || response;
+      const totalApps = Number(stats.total_applications || 0);
       const activeJobsCount = jobs.filter(job => job.status === 'published').length;
-      const hiredCount = applications.filter(app => app.status === 'hired').length;
-      
+      const hiredCount = Number(stats.hires_made || 0);
+      const trends = stats.application_trends || [];
+      const recentApplicationsCount = trends.slice(-15)
+        .reduce((sum, item) => sum + Number(item.applications || 0), 0);
+      const priorApplicationsCount = trends.slice(-30, -15)
+        .reduce((sum, item) => sum + Number(item.applications || 0), 0);
+      const applicationGrowth = priorApplicationsCount > 0
+        ? Math.round(((recentApplicationsCount - priorApplicationsCount) / priorApplicationsCount) * 100)
+        : null;
+      const underReview = Math.max(
+        totalApps
+          - Number(stats.new_applications || 0)
+          - Number(stats.shortlisted_applications || 0)
+          - hiredCount,
+        0
+      );
+      const sources = applications.reduce((accumulator, application) => {
+        const source = application.source || 'Direct';
+        accumulator[source] = (accumulator[source] || 0) + 1;
+        return accumulator;
+      }, {});
+
       setAnalyticsData(prev => ({
         ...prev,
-        // Key Metrics
         totalApplications: totalApps,
-        applicationGrowth: Math.floor(Math.random() * 20) - 10, // Mock growth
+        applicationGrowth,
         activeJobs: activeJobsCount,
-        jobGrowth: Math.floor(Math.random() * 15) - 5, // Mock growth
+        jobGrowth: null,
         successfulHires: hiredCount,
-        hireGrowth: Math.floor(Math.random() * 25) - 10, // Mock growth
-        avgTimeToHire: `${Math.floor(Math.random() * 20) + 10} days`,
-        timeToHireChange: Math.floor(Math.random() * 10) - 5, // Mock change
-        
-        // Funnel Data
+        hireGrowth: null,
+        avgTimeToHire: `${Number(stats.avg_time_to_hire || 0)} days`,
+        timeToHireChange: null,
         funnelData: {
           applications: totalApps,
-          underReview: applications.filter(app => app.status === 'under_review').length,
-          interviewed: applications.filter(app => app.status === 'interviewed').length,
+          underReview,
+          interviewed: Number(stats.interviews_scheduled || 0),
           hired: hiredCount
         },
-        
-        // Top Jobs (sample data)
-        topJobs: jobs.slice(0, 5).map((job, index) => ({
+        topJobs: (stats.job_performance || jobs).slice(0, 5).map(job => ({
           id: job.id,
-          title: job.title,
-          applications: job.application_count || 0,
-          conversionRate: Math.floor(Math.random() * 15) + 5
+          title: job.title || job.job_title,
+          applications: job.applications || job.application_count || 0,
+          conversionRate: Number(job.conversion_rate || 0)
         })),
-        
-        // Application Sources (sample data)
-        sources: [
-          { name: 'Direct Applications', count: Math.floor(totalApps * 0.4), percentage: 40 },
-          { name: 'Job Boards', count: Math.floor(totalApps * 0.3), percentage: 30 },
-          { name: 'Social Media', count: Math.floor(totalApps * 0.2), percentage: 20 },
-          { name: 'Referrals', count: Math.floor(totalApps * 0.1), percentage: 10 }
-        ],
-        
-        // AI Insights (sample)
-        insights: [
-          {
-            type: 'success',
-            title: 'Strong Application Rate',
-            description: 'Your jobs are receiving above-average applications',
-            action: 'View top performing jobs'
-          },
-          {
-            type: 'warning',
-            title: 'Slow Response Time',
-            description: 'Consider responding to applications faster to improve candidate experience',
-            action: 'Review pending applications'
-          }
-        ],
-        
-        // Job Details
+        sources: Object.entries(sources).map(([name, count]) => ({
+          name,
+          count,
+          percentage: totalApps > 0 ? Math.round((count / totalApps) * 100) : 0
+        })),
+        insights: [],
         jobDetails: jobs.map(job => ({
           id: job.id,
           title: job.title,
@@ -1042,12 +949,11 @@ const EmployerDashboard = () => {
           conversion: job.view_count > 0 ? Math.round((job.application_count || 0) / job.view_count * 100) : 0
         })),
         
-        // Time Metrics
         timeMetrics: {
-          firstReview: Math.floor(Math.random() * 48) + 6, // 6-54 hours
-          interview: Math.floor(Math.random() * 10) + 3, // 3-13 days
-          hire: Math.floor(Math.random() * 20) + 10, // 10-30 days
-          response: Math.floor(Math.random() * 24) + 2 // 2-26 hours
+          firstReview: 0,
+          interview: 0,
+          hire: Number(stats.avg_time_to_hire || 0),
+          response: 0
         }
       }));
     } catch (error) {
@@ -1142,7 +1048,7 @@ const EmployerDashboard = () => {
     }));
   };
 
-  const generateDashboardInsights = ({ stats, jobs, applications, profile }) => {
+  const generateDashboardInsights = ({ stats, jobs, profile }) => {
     const insights = [];
     
     // Performance insights
@@ -1186,7 +1092,7 @@ const EmployerDashboard = () => {
     return insights;
   };
 
-  const generateDashboardAlerts = ({ stats, jobs, profile }) => {
+  const generateDashboardAlerts = ({ stats, jobs }) => {
     const alerts = [];
     
     // Urgent alerts
@@ -1228,101 +1134,10 @@ const EmployerDashboard = () => {
     return alerts;
   };
 
-  const generateCandidateInsights = (applications) => {
-    if (!applications.length) return {};
-    
-    const skills = applications.flatMap(app => 
-      app.applicant_profile?.skills || []
-    ).reduce((acc, skill) => {
-      acc[skill] = (acc[skill] || 0) + 1;
-      return acc;
-    }, {});
-    
-    const topSkills = Object.entries(skills)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-      .map(([skill, count]) => ({ skill, count }));
-    
-    const experienceLevels = applications.reduce((acc, app) => {
-      const level = app.applicant_profile?.experience_level || 'unknown';
-      acc[level] = (acc[level] || 0) + 1;
-      return acc;
-    }, {});
-    
-    return {
-      topSkills,
-      experienceLevels,
-      totalCandidates: applications.length,
-      avgRating: applications.reduce((sum, app) => sum + (app.rating || 0), 0) / applications.length
-    };
-  };
-
-  const generateCompetitorAnalysis = (jobs) => {
-    // This would typically involve external data
-    return {
-      marketSalaryRange: 'Competitive',
-      industryBenchmarks: {},
-      suggestions: [
-        'Consider increasing salary range for better candidates',
-        'Add remote work options to attract wider talent pool',
-        'Improve job descriptions with more specific requirements'
-      ]
-    };
-  };
-
-  const calculateTimeToHireMetrics = (applications) => {
-    const hiredApps = applications.filter(app => app.status === 'hired');
-    if (!hiredApps.length) return { avg: 0, median: 0, fastest: 0, slowest: 0 };
-    
-    const hireTimes = hiredApps.map(app => {
-      const start = new Date(app.created_at);
-      const end = new Date(app.updated_at);
-      return Math.floor((end - start) / (1000 * 60 * 60 * 24));
-    });
-    
-    const avg = hireTimes.reduce((sum, time) => sum + time, 0) / hireTimes.length;
-    const sorted = hireTimes.sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)];
-    
-    return {
-      avg: Math.round(avg),
-      median,
-      fastest: Math.min(...hireTimes),
-      slowest: Math.max(...hireTimes)
-    };
-  };
-
-  const calculateCostPerHire = (stats) => {
-    // This would typically include job board costs, recruiting fees, etc.
-    const estimatedCost = stats.total_jobs * 100; // Mock calculation
-    return stats.hires_made > 0 ? Math.round(estimatedCost / stats.hires_made) : 0;
-  };
-
-  const calculateSourceEffectiveness = (applications) => {
-    const sources = applications.reduce((acc, app) => {
-      const source = app.source || 'direct';
-      if (!acc[source]) {
-        acc[source] = { total: 0, hired: 0 };
-      }
-      acc[source].total++;
-      if (app.status === 'hired') {
-        acc[source].hired++;
-      }
-      return acc;
-    }, {});
-    
-    return Object.entries(sources).map(([source, data]) => ({
-      source,
-      total: data.total,
-      hired: data.hired,
-      hireRate: data.total > 0 ? Math.round((data.hired / data.total) * 100) : 0
-    }));
-  };
-
   const showNotification = (message, type = 'info') => {
-    // This would typically integrate with a toast library
-    console.log(`${type.toUpperCase()}: ${message}`);
-    // You could add react-hot-toast or similar here
+    if (type === 'error') toast.error(message);
+    else if (type === 'success') toast.success(message);
+    else toast.info(message);
   };
 
   const refreshData = async () => {
@@ -1341,8 +1156,8 @@ const EmployerDashboard = () => {
 
   const exportData = async (type) => {
     try {
-      let data = [];
-      let filename = '';
+      let data;
+      let filename;
       
       switch (type) {
         case 'jobs':
@@ -1362,9 +1177,34 @@ const EmployerDashboard = () => {
           filename = 'analytics_export.json';
           break;
       }
-      
-      // This would typically create and download a file
-      console.log(`Exporting ${type}:`, data);
+
+      const isJson = type === 'analytics';
+      const serializeCsv = (rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) return '';
+        const headers = [...new Set(rows.flatMap(row => Object.keys(row || {})))];
+        const escapeCell = (value) => {
+          if (value === null || value === undefined) return '';
+          const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+          return `"${text.replaceAll('"', '""')}"`;
+        };
+        return [
+          headers.map(escapeCell).join(','),
+          ...rows.map(row => headers.map(header => escapeCell(row?.[header])).join(','))
+        ].join('\n');
+      };
+      const content = isJson ? JSON.stringify(data, null, 2) : serializeCsv(data);
+      const blob = new Blob([content], {
+        type: isJson ? 'application/json;charset=utf-8' : 'text/csv;charset=utf-8'
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
       showNotification(`${type} data exported successfully`, 'success');
     } catch (error) {
       console.error('Export error:', error);
@@ -2182,18 +2022,6 @@ const EmployerDashboard = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant="outline" onClick={() => saveCandidate(candidate.id)}>
-                            <Heart className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Save to talent pool</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
                     <Button size="sm" onClick={() => contactCandidate(candidate.id)}>
                       <Mail className="w-4 h-4 mr-1" />
                       Contact
@@ -2937,9 +2765,9 @@ const EmployerDashboard = () => {
                           <div className="flex items-center gap-2">
                             {application.resume_url && (
                               <Button variant="ghost" size="sm" asChild>
-                                <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
+                                <ApplicationResumeLink application={application} mode="download" fallbackLabel="Download applicant resume">
                                   <ExternalLink className="w-4 h-4" />
-                                </a>
+                                </ApplicationResumeLink>
                               </Button>
                             )}
                             <Button 

@@ -54,10 +54,16 @@ class Notification(db.Model):
         db.session.commit()
     
     def mark_as_sent(self):
-        """Mark notification as sent"""
+        """Mark notification as sent.
+
+        Only mutates state; the caller owns the transaction. Committing here
+        used to close any active savepoint and prematurely persist (or close)
+        the caller's in-flight request transaction.
+        """
         self.is_sent = True
         self.sent_at = datetime.utcnow()
-        db.session.commit()
+        db.session.add(self)
+        db.session.flush()
     
     def get_priority_color(self):
         """Get color for notification priority"""

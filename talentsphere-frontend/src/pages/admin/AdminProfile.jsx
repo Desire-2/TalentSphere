@@ -1,503 +1,390 @@
-import React, { useState, useEffect } from 'react';
+import { createElement, useEffect, useState } from 'react';
 import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
+  Activity,
+  Briefcase,
   Calendar,
-  Shield,
+  Camera,
+  Clock,
   Edit3,
   Save,
+  Shield,
+  Users,
   X,
-  Camera,
-  Activity,
-  Lock,
-  Clock,
-  Check,
-  AlertCircle
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { useAuthStore } from '../../stores/authStore';
 import api from '../../services/api';
 
+const initialProfile = {
+  id: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  location: '',
+  bio: '',
+  profilePicture: '',
+  role: '',
+  createdAt: '',
+  lastLogin: '',
+};
+
+const initialStats = {
+  totalUsers: 0,
+  activeUsers: 0,
+  totalJobs: 0,
+  activeJobs: 0,
+  totalApplications: 0,
+  totalCompanies: 0,
+};
+
+const formatDate = (value) => (value ? new Date(value).toLocaleString() : 'Never');
+
+const MetricCard = ({ label, value, icon }) => (
+  <Card>
+    <CardContent className="flex items-center justify-between p-5">
+      <div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-1 text-2xl font-bold">{Number(value || 0).toLocaleString()}</p>
+      </div>
+      {createElement(icon, { className: 'h-8 w-8 text-primary', 'aria-hidden': true })}
+    </CardContent>
+  </Card>
+);
+
 const AdminProfile = () => {
-  const { user: currentUser } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [profileData, setProfileData] = useState({
-    id: '',
-    username: '',
-    email: '',
-    fullName: '',
-    phone: '',
-    location: '',
-    bio: '',
-    profilePicture: '',
-    role: '',
-    createdAt: '',
-    lastLogin: '',
-    permissions: [],
-    settings: {}
-  });
-
-  const [adminStats, setAdminStats] = useState({
-    totalActions: 0,
-    activeUsers: 0,
-    totalLogins: 0,
-    lastActivity: '',
-    systemHealth: 'healthy'
-  });
-
-  const [activityLog, setActivityLog] = useState([]);
-  const [formData, setFormData] = useState({});
+  const [profile, setProfile] = useState(initialProfile);
+  const [formData, setFormData] = useState(initialProfile);
+  const [stats, setStats] = useState(initialStats);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    fetchAdminProfile();
-    fetchAdminStats();
-    fetchActivityLog();
+    let isActive = true;
+
+    const loadProfile = async () => {
+      try {
+        const [profileData, statsData] = await Promise.all([
+          api.get('/admin/profile'),
+          api.get('/admin/stats'),
+        ]);
+        if (!isActive) return;
+        setProfile(profileData);
+        setFormData(profileData);
+        setStats(statsData);
+        setLoadError('');
+      } catch (error) {
+        if (!isActive) return;
+        setLoadError(error?.message || 'Unable to load administrator profile');
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
-  const fetchAdminProfile = async () => {
-    try {
-      setIsLoading(true);
-      const response = await api.get('/admin/profile');
-      setProfileData(response.data);
-      setFormData(response.data);
-    } catch (error) {
-      console.error('Error fetching admin profile:', error);
-      // Use current user data as fallback
-      if (currentUser) {
-        const fallbackData = {
-          id: currentUser.id,
-          username: currentUser.username || '',
-          email: currentUser.email || '',
-          fullName: currentUser.full_name || currentUser.name || '',
-          phone: currentUser.phone || '',
-          location: currentUser.location || '',
-          bio: currentUser.bio || '',
-          profilePicture: currentUser.profile_picture || '',
-          role: currentUser.role || 'admin',
-          createdAt: currentUser.created_at || new Date().toISOString(),
-          lastLogin: currentUser.last_login || new Date().toISOString(),
-          permissions: currentUser.permissions || ['read', 'write', 'delete', 'admin'],
-          settings: currentUser.settings || {}
-        };
-        setProfileData(fallbackData);
-        setFormData(fallbackData);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  const updateField = (field, value) => {
+    setFormData((previous) => ({ ...previous, [field]: value }));
   };
 
-  const fetchAdminStats = async () => {
+  const saveProfile = async () => {
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      toast.error('First and last name are required');
+      return;
+    }
+
     try {
-      const response = await api.get('/admin/stats');
-      setAdminStats(response.data);
-    } catch (error) {
-      console.error('Error fetching admin stats:', error);
-      // Set mock data as fallback
-      setAdminStats({
-        totalActions: 1247,
-        activeUsers: 89,
-        totalLogins: 156,
-        lastActivity: new Date().toISOString(),
-        systemHealth: 'healthy'
+      setIsSaving(true);
+      const response = await api.put('/admin/profile', {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        location: formData.location.trim(),
+        bio: formData.bio.trim(),
       });
-    }
-  };
-
-  const fetchActivityLog = async () => {
-    try {
-      const response = await api.get('/admin/activity-log');
-      setActivityLog(response.data.slice(0, 10)); // Latest 10 activities
-    } catch (error) {
-      console.error('Error fetching activity log:', error);
-      // Set mock data as fallback
-      setActivityLog([
-        { id: 1, action: 'User management update', timestamp: new Date(Date.now() - 3600000).toISOString(), type: 'update' },
-        { id: 2, action: 'System health check', timestamp: new Date(Date.now() - 7200000).toISOString(), type: 'system' },
-        { id: 3, action: 'Job approval', timestamp: new Date(Date.now() - 10800000).toISOString(), type: 'approval' },
-        { id: 4, action: 'Company verification', timestamp: new Date(Date.now() - 14400000).toISOString(), type: 'verification' },
-        { id: 5, action: 'Revenue analytics review', timestamp: new Date(Date.now() - 18000000).toISOString(), type: 'analytics' }
-      ]);
-    }
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setIsLoading(true);
-      await api.put('/admin/profile', formData);
-      setProfileData(formData);
+      const updatedProfile = response?.profile || formData;
+      setProfile(updatedProfile);
+      setFormData(updatedProfile);
       setIsEditing(false);
-      toast.success("Profile updated successfully");
+      toast.success('Profile updated');
     } catch (error) {
-      console.error('Error updating admin profile:', error);
-      toast.error("Failed to update profile. Please try again.");
+      toast.error(error?.message || 'Unable to update profile');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setFormData(profileData);
+  const cancelEditing = () => {
+    setFormData(profile);
     setIsEditing(false);
   };
 
-  const handleAvatarUpload = async (event) => {
-    const file = event.target.files[0];
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    const formDataUpload = new FormData();
-    formDataUpload.append('avatar', file);
+    const uploadData = new FormData();
+    uploadData.append('avatar', file);
 
     try {
-      setIsLoading(true);
-      const response = await api.post('/admin/upload-avatar', formDataUpload);
-      const newProfileData = { ...profileData, profilePicture: response.data.url };
-      setProfileData(newProfileData);
-      setFormData(newProfileData);
-      toast.success("Avatar updated successfully");
+      setIsUploadingAvatar(true);
+      const response = await api.postForm('/admin/upload-avatar', uploadData);
+      const updatedProfile = { ...profile, profilePicture: response.url };
+      setProfile(updatedProfile);
+      setFormData(updatedProfile);
+      toast.success('Profile picture updated');
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast.error("Failed to upload avatar. Please try again.");
+      toast.error(error?.message || 'Unable to upload profile picture');
     } finally {
-      setIsLoading(false);
+      setIsUploadingAvatar(false);
     }
   };
 
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'update': return <Edit3 className="h-4 w-4 text-blue-500" />;
-      case 'system': return <Activity className="h-4 w-4 text-green-500" />;
-      case 'approval': return <Check className="h-4 w-4 text-purple-500" />;
-      case 'verification': return <Shield className="h-4 w-4 text-orange-500" />;
-      case 'analytics': return <Activity className="h-4 w-4 text-indigo-500" />;
-      default: return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
-  };
+  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
+  const initials = fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'A';
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const formatRelativeTime = (dateString) => {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now - date;
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffDays > 0) return `${diffDays} days ago`;
-    if (diffHours > 0) return `${diffHours} hours ago`;
-    return 'Just now';
-  };
-
-  if (isLoading && !profileData.id) {
+  if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-4" aria-busy="true">
+        <div className="h-9 w-64 animate-pulse rounded bg-muted" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="h-36 animate-pulse rounded-lg bg-muted" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Profile</h1>
-          <p className="text-muted-foreground">Manage your administrator account and settings</p>
+          <h1 className="text-2xl font-bold">Administrator Profile</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your account details and review platform totals.
+          </p>
         </div>
-        <div className="flex gap-2">
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} disabled={isLoading}>
-              <Edit3 className="h-4 w-4 mr-2" />
-              Edit Profile
+        {!isEditing ? (
+          <Button onClick={() => setIsEditing(true)}>
+            <Edit3 className="mr-2 h-4 w-4" />
+            Edit profile
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button onClick={saveProfile} disabled={isSaving}>
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? 'Saving…' : 'Save changes'}
             </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button onClick={handleSave} disabled={isLoading}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </Button>
-              <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          )}
-        </div>
+            <Button variant="outline" onClick={cancelEditing} disabled={isSaving}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
 
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="profile">Profile Details</TabsTrigger>
-          <TabsTrigger value="stats">Admin Statistics</TabsTrigger>
-          <TabsTrigger value="activity">Recent Activity</TabsTrigger>
+      {loadError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          {loadError}
+        </div>
+      )}
+
+      <Tabs defaultValue="profile">
+        <TabsList>
+          <TabsTrigger value="profile">Profile details</TabsTrigger>
+          <TabsTrigger value="stats">Platform statistics</TabsTrigger>
         </TabsList>
 
-        {/* Profile Details Tab */}
-        <TabsContent value="profile" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Profile Picture and Basic Info */}
+        <TabsContent value="profile" className="mt-4 space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Picture</CardTitle>
-                <CardDescription>Update your admin profile picture</CardDescription>
+                <CardTitle>Profile picture</CardTitle>
+                <CardDescription>JPEG, PNG, WebP, or GIF up to 5 MB.</CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-4">
+              <CardContent className="flex flex-col items-center gap-4">
                 <div className="relative">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={profileData.profilePicture} alt={profileData.fullName} />
-                    <AvatarFallback className="text-lg">
-                      {profileData.fullName ? profileData.fullName.charAt(0).toUpperCase() : 'A'}
-                    </AvatarFallback>
+                    <AvatarImage src={profile.profilePicture} alt={fullName || 'Administrator'} />
+                    <AvatarFallback className="text-lg">{initials}</AvatarFallback>
                   </Avatar>
-                  {isEditing && (
-                    <label className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:bg-primary/90">
-                      <Camera className="h-4 w-4" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
+                  <label className="absolute -bottom-2 -right-2 cursor-pointer rounded-full bg-primary p-2 text-primary-foreground hover:opacity-90">
+                    <Camera className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only">Upload profile picture</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={uploadAvatar}
+                      className="hidden"
+                      disabled={isUploadingAvatar}
+                    />
+                  </label>
                 </div>
                 <div className="text-center">
-                  <h3 className="font-semibold text-lg">{profileData.fullName || profileData.username}</h3>
-                  <Badge variant="secondary" className="mt-1">
-                    <Shield className="h-3 w-3 mr-1" />
-                    {profileData.role?.toUpperCase() || 'ADMIN'}
+                  <h2 className="font-semibold">{fullName || 'Administrator'}</h2>
+                  <Badge variant="secondary" className="mt-2">
+                    <Shield className="mr-1 h-3 w-3" />
+                    {profile.role?.replace('_', ' ') || 'Administrator'}
                   </Badge>
                 </div>
+                {isUploadingAvatar && <p className="text-sm text-muted-foreground">Uploading…</p>}
               </CardContent>
             </Card>
 
-            {/* Contact Information */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
-                <CardDescription>Your admin account contact details</CardDescription>
+                <CardTitle>Contact information</CardTitle>
+                <CardDescription>Update the details shown for your administrator account.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={isEditing ? formData.fullName : profileData.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={isEditing ? formData.username : profileData.username}
-                      onChange={(e) => handleInputChange('username', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Enter your username"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={isEditing ? formData.email : profileData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={isEditing ? formData.phone : profileData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={isEditing ? formData.location : profileData.location}
-                      onChange={(e) => handleInputChange('location', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Enter your location"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={isEditing ? formData.bio : profileData.bio}
-                      onChange={(e) => handleInputChange('bio', e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="Tell us about yourself"
-                      rows={3}
-                    />
-                  </div>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="first-name">First name</Label>
+                  <Input
+                    id="first-name"
+                    value={isEditing ? formData.firstName : profile.firstName}
+                    onChange={(event) => updateField('firstName', event.target.value)}
+                    disabled={!isEditing}
+                    autoComplete="given-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last-name">Last name</Label>
+                  <Input
+                    id="last-name"
+                    value={isEditing ? formData.lastName : profile.lastName}
+                    onChange={(event) => updateField('lastName', event.target.value)}
+                    disabled={!isEditing}
+                    autoComplete="family-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email">Email</Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={isEditing ? formData.email : profile.email}
+                    onChange={(event) => updateField('email', event.target.value)}
+                    disabled={!isEditing}
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-phone">Phone</Label>
+                  <Input
+                    id="profile-phone"
+                    type="tel"
+                    value={isEditing ? formData.phone : profile.phone}
+                    onChange={(event) => updateField('phone', event.target.value)}
+                    disabled={!isEditing}
+                    autoComplete="tel"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="profile-location">Location</Label>
+                  <Input
+                    id="profile-location"
+                    value={isEditing ? formData.location : profile.location}
+                    onChange={(event) => updateField('location', event.target.value)}
+                    disabled={!isEditing}
+                    autoComplete="address-level2"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="profile-bio">Bio</Label>
+                  <Textarea
+                    id="profile-bio"
+                    rows={4}
+                    value={isEditing ? formData.bio : profile.bio}
+                    onChange={(event) => updateField('bio', event.target.value)}
+                    disabled={!isEditing}
+                  />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Account Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Account Details</CardTitle>
-              <CardDescription>Your admin account information and permissions</CardDescription>
+              <CardTitle>Account details</CardTitle>
+              <CardDescription>Current session and account information.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Member Since</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(profileData.createdAt)}
-                    </p>
-                  </div>
+            <CardContent className="grid gap-4 md:grid-cols-3">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Member since</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(profile.createdAt)}</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Last Login</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatRelativeTime(profileData.lastLogin)}
-                    </p>
-                  </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Last login</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(profile.lastLogin)}</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Role</p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {profileData.role || 'Administrator'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Lock className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Permissions</p>
-                    <p className="text-sm text-muted-foreground">
-                      {profileData.permissions?.length || 0} granted
-                    </p>
-                  </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Access scope</p>
+                  <p className="text-sm text-muted-foreground">Platform administration</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Admin Statistics Tab */}
-        <TabsContent value="stats">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Actions</p>
-                    <p className="text-2xl font-bold">{adminStats.totalActions.toLocaleString()}</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                    <p className="text-2xl font-bold">{adminStats.activeUsers.toLocaleString()}</p>
-                  </div>
-                  <User className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Logins</p>
-                    <p className="text-2xl font-bold">{adminStats.totalLogins.toLocaleString()}</p>
-                  </div>
-                  <Shield className="h-8 w-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">System Health</p>
-                    <p className="text-2xl font-bold capitalize">{adminStats.systemHealth}</p>
-                  </div>
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                    adminStats.systemHealth === 'healthy' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    <div className={`h-4 w-4 rounded-full ${
-                      adminStats.systemHealth === 'healthy' ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="stats" className="mt-4 space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard label="Total users" value={stats.totalUsers} icon={Users} />
+            <MetricCard label="Active users" value={stats.activeUsers} icon={Activity} />
+            <MetricCard label="Jobs" value={stats.totalJobs} icon={Briefcase} />
+            <MetricCard label="Applications" value={stats.totalApplications} icon={Calendar} />
           </div>
-        </TabsContent>
-
-        {/* Recent Activity Tab */}
-        <TabsContent value="activity">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Your recent administrative actions</CardDescription>
+              <CardTitle>Coverage</CardTitle>
+              <CardDescription>Live aggregate counts from the platform database.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {activityLog.map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-4 p-4 rounded-lg border">
-                    <div className="flex-shrink-0">
-                      {getActivityIcon(activity.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatRelativeTime(activity.timestamp)}
-                      </p>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(activity.timestamp)}
-                    </div>
-                  </div>
-                ))}
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">Published jobs</p>
+                <p className="mt-1 text-2xl font-semibold">{stats.activeJobs.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">Companies</p>
+                <p className="mt-1 text-2xl font-semibold">{stats.totalCompanies.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">Active user rate</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {stats.totalUsers
+                    ? `${Math.round((stats.activeUsers / stats.totalUsers) * 100)}%`
+                    : '0%'}
+                </p>
               </div>
             </CardContent>
           </Card>

@@ -9,7 +9,7 @@ import AdBanner from './AdBanner.jsx';
 import AdInlineFeed from './AdInlineFeed.jsx';
 import AdSpotlight from './AdSpotlight.jsx';
 import { initializeAdTracking } from '../../utils/adTracking.js';
-import config from '../../config/environment.js';
+import api from '../../services/api';
 
 export function AdSlot({
   placement = 'job_feed_mid',
@@ -33,26 +33,7 @@ export function AdSlot({
         limit,
       });
 
-      const apiBaseUrl = config.API.BASE_URL || '/api';
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `${apiBaseUrl}/ads/serve?${params}`,
-        {
-          headers,
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch ads');
-
-      const data = await response.json();
+      const data = await api.get(`/ads/serve?${params}`);
       
       // Filter by requested format if specified
       let filteredAds = data.ads || [];

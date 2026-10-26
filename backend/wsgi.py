@@ -28,6 +28,8 @@ try:
             with app.app_context():
                 from src.models.user import db
                 db.create_all()
+                from src.models.career_agent import ensure_career_agent_indexes
+                ensure_career_agent_indexes()
                 logger.info("Database tables initialized successfully")
         except Exception as db_error:
             logger.warning(f"Database initialization failed: {db_error}")

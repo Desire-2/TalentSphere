@@ -109,11 +109,6 @@ const ExternalAdminLayout = () => {
       icon: FileText
     },
     {
-      name: 'External Sources',
-      href: '/external-admin/sources',
-      icon: ExternalLink
-    },
-    {
       name: 'Profile & Settings',
       href: '/external-admin/profile',
       icon: User

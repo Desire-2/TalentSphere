@@ -120,12 +120,12 @@ for var in "${OPTIONAL_VARS[@]}"; do
                 echo "  🔧 $var: 1.0 (default)"
                 ;;
             "DB_POOL_SIZE")
-                export DB_POOL_SIZE="10"
-                echo "  🔧 $var: 10 (default)"
+                export DB_POOL_SIZE="2"
+                echo "  🔧 $var: 2 (default)"
                 ;;
             "DB_MAX_OVERFLOW")
-                export DB_MAX_OVERFLOW="20"
-                echo "  🔧 $var: 20 (default)"
+                export DB_MAX_OVERFLOW="1"
+                echo "  🔧 $var: 1 (default)"
                 ;;
             *)
                 echo "  ⚪ $var: Not set (optional)"
@@ -241,7 +241,7 @@ else
     # Use different configurations for development vs production
     if [[ "${FLASK_ENV}" == "production" ]]; then
         exec gunicorn --bind 0.0.0.0:${PORT:-5000} \
-            --workers $(python -c "import multiprocessing; print(multiprocessing.cpu_count() * 2 + 1)") \
+            --workers "${WEB_CONCURRENCY:-${GUNICORN_WORKERS:-2}}" \
             --worker-class sync \
             --timeout 30 \
             --keepalive 2 \

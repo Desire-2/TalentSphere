@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { FileText, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
+import { careerAgentService } from '../../services/careerAgentService';
 
 const JobApply = () => {
   const { id } = useParams();
@@ -21,6 +23,10 @@ const JobApply = () => {
     additional_documents: ''
   });
 
+  // ── Career Agent document attachment state ────────────────────────────────
+  const [careerDocs, setCareerDocs] = useState(null);   // {cv_document_id, cover_letter_document_id, matched_job, target_job}
+  const [attachCareerDocs, setAttachCareerDocs] = useState(false);
+
   // Fetch job details and check if already applied
   useEffect(() => {
     const fetchJobAndCheckApplication = async () => {
@@ -37,6 +43,17 @@ const JobApply = () => {
         if (applicationStatus) {
           setExistingApplication(applicationStatus);
           console.log('📝 Existing application found:', applicationStatus);
+        }
+
+        // Auto-detect a generated CV/cover-letter package for this job.
+        try {
+          const docs = await careerAgentService.documentsForJob(Number(id));
+          if (docs?.matched_job && docs.cv_document_id) {
+            setCareerDocs(docs);
+            setAttachCareerDocs(true);
+          }
+        } catch (docsErr) {
+          console.warn('Career Agent documents unavailable:', docsErr);
         }
         
       } catch (err) {
@@ -72,7 +89,7 @@ const JobApply = () => {
         if (currentApplicationStatus) {
           setError('You have already applied to this job! Redirecting to your applications...');
           setTimeout(() => {
-            navigate('/my-applications');
+            navigate('/jobseeker/applications');
           }, 2000);
           return;
         }
@@ -80,26 +97,29 @@ const JobApply = () => {
         console.warn('Could not double-check application status:', err);
       }
       
-      // Basic validation
-      if (!applicationData.cover_letter.trim()) {
+      // Basic validation — skipped fields are derived server-side when a
+      // generated package is attached.
+      if (!attachCareerDocs && !applicationData.cover_letter.trim()) {
         setError('Cover letter is required.');
         return;
       }
       
-      if (!applicationData.resume_url.trim()) {
+      if (!attachCareerDocs && !applicationData.resume_url.trim()) {
         setError('Resume URL is required.');
         return;
       }
       
       // Validate URLs
-      try {
-        new URL(applicationData.resume_url);
-        if (applicationData.portfolio_url) {
-          new URL(applicationData.portfolio_url);
+      if (!attachCareerDocs) {
+        try {
+          new URL(applicationData.resume_url);
+          if (applicationData.portfolio_url) {
+            new URL(applicationData.portfolio_url);
+          }
+        } catch {
+          setError('Please provide valid URLs for resume and portfolio.');
+          return;
         }
-      } catch {
-        setError('Please provide valid URLs for resume and portfolio.');
-        return;
       }
       
       console.log('📤 Submitting application:', {
@@ -109,13 +129,20 @@ const JobApply = () => {
       });
       
       // Submit application via API
-      const response = await apiService.applyForJob(id, applicationData);
+      const payload = attachCareerDocs && careerDocs?.cv_document_id
+        ? {
+            ...applicationData,
+            career_document_id: careerDocs.cv_document_id,
+            ...(careerDocs.cover_letter_document_id ? { cover_letter_document_id: careerDocs.cover_letter_document_id } : {}),
+          }
+        : applicationData;
+      const response = await apiService.applyForJob(id, payload);
       
       console.log('✅ Application submitted successfully:', response);
       
       // Show success message and redirect
       alert('🎉 Application submitted successfully! You can track your application in "My Applications".');
-      navigate('/my-applications');
+      navigate('/jobseeker/applications');
       
     } catch (err) {
       console.error('❌ Error submitting application:', err);
@@ -230,7 +257,7 @@ const JobApply = () => {
               </div>
               <div className="flex space-x-3">
                 <button 
-                  onClick={() => navigate('/my-applications')}
+                  onClick={() => navigate('/jobseeker/applications')}
                   className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 font-medium"
                 >
                   📋 View My Applications
@@ -320,7 +347,7 @@ const JobApply = () => {
                 {error.includes('already applied') && (
                   <div className="mt-3 flex space-x-2">
                     <button 
-                      onClick={() => navigate('/my-applications')}
+                      onClick={() => navigate('/jobseeker/applications')}
                       className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
                     >
                       View My Applications
@@ -339,6 +366,76 @@ const JobApply = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Career Agent generated documents */}
+          {careerDocs?.matched_job && careerDocs?.cv_document_id && (
+            <div className="border-2 border-teal-200 bg-teal-50/60 rounded-lg p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-teal-700 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-teal-900 text-sm">AfriTech AI Career Agent</h3>
+                    <p className="text-xs text-teal-800 mt-0.5">
+                      A CV package prepared for this exact job is ready to attach.
+                    </p>
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={attachCareerDocs}
+                    onChange={(e) => setAttachCareerDocs(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600"
+                  />
+                  Attach
+                </label>
+              </div>
+              {attachCareerDocs && (
+                <ul className="mt-3 space-y-1.5 text-sm text-teal-900">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                    <a
+                      href={`/api/career-agent/documents/${careerDocs.cv_document_id}/download?format=pdf`}
+                        className="underline font-medium"
+                        onClick={async (event) => {
+                          event.preventDefault();
+                          try {
+                            await careerAgentService.viewDocument(careerDocs.cv_document_id, 'pdf');
+                          } catch (documentError) {
+                            setError(documentError.message || 'Unable to open the generated CV.');
+                          }
+                        }}
+                    >
+                      <FileText className="w-3.5 h-3.5 inline mr-1" />Generated CV
+                    </a>
+                    <span className="text-teal-700">— will be shared with the employer</span>
+                  </li>
+                  {careerDocs.cover_letter_document_id && (
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                      <a
+                        href={`/api/career-agent/documents/${careerDocs.cover_letter_document_id}/download?format=pdf`}
+                        className="underline font-medium"
+                        onClick={async (event) => {
+                          event.preventDefault();
+                          try {
+                            await careerAgentService.viewDocument(careerDocs.cover_letter_document_id, 'pdf');
+                          } catch (documentError) {
+                            setError(documentError.message || 'Unable to open the generated cover letter.');
+                          }
+                        }}
+                      >
+                        <FileText className="w-3.5 h-3.5 inline mr-1" />Generated cover letter
+                      </a>
+                      <span className="text-teal-700">— its text will be submitted</span>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {!attachCareerDocs && (
+          <>
           {/* Cover Letter */}
           <div>
             <label htmlFor="cover_letter" className="block text-sm font-medium text-gray-700 mb-2">
@@ -406,6 +503,8 @@ const JobApply = () => {
               onChange={(e) => handleInputChange('additional_documents', e.target.value)}
             />
           </div>
+          </>
+          )}
 
           {/* Submit Button */}
           <div className="flex items-center space-x-4 pt-6 border-t">

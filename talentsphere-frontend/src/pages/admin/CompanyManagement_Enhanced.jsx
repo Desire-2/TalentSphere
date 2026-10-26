@@ -109,6 +109,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAdminStore } from '../../stores/adminStore';
+import adminService from '../../services/admin';
 import { formatRelativeTime, formatNumber } from '../../utils/helpers';
 
 const EnhancedCompanyManagement = () => {
@@ -136,7 +137,6 @@ const EnhancedCompanyManagement = () => {
 
   const [selectedCompanies, setSelectedCompanies] = useState(new Set());
   const [actionLoading, setActionLoading] = useState({});
-  const [viewMode, setViewMode] = useState('table'); // table, grid, detailed
   const [showFilters, setShowFilters] = useState(false);
   
   // Modal states
@@ -146,14 +146,10 @@ const EnhancedCompanyManagement = () => {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Form states
-  const [verificationNotes, setVerificationNotes] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
-  const [suspendReason, setSuspendReason] = useState('');
 
   useEffect(() => {
     fetchCompanies(filters);
@@ -190,14 +186,11 @@ const EnhancedCompanyManagement = () => {
     try {
       if (approved) {
         await verifyCompany(companyId);
-        console.log('✅ Company verified successfully');
       } else {
-        // Call reject API (would need to be implemented)
-        console.log('❌ Company verification rejected');
+        await adminService.rejectCompanyVerification(companyId);
       }
       await fetchCompanies(filters);
       setShowVerificationDialog(false);
-      setVerificationNotes('');
     } catch (error) {
       console.error('❌ Failed to verify company:', error);
       alert('Failed to verify company. Please try again.');
@@ -220,12 +213,10 @@ const EnhancedCompanyManagement = () => {
           }
           break;
         case 'feature':
-          // Implement bulk feature toggle
-          console.log('Bulk featuring companies:', Array.from(selectedCompanies));
+          await adminService.bulkCompanyAction(Array.from(selectedCompanies), 'feature');
           break;
         case 'suspend':
-          // Implement bulk suspend
-          console.log('Bulk suspending companies:', Array.from(selectedCompanies));
+          await adminService.bulkCompanyAction(Array.from(selectedCompanies), 'suspend');
           break;
         case 'export':
           await handleExportSelected();
@@ -247,9 +238,19 @@ const EnhancedCompanyManagement = () => {
   };
 
   const handleExportAll = async () => {
-    // In a real app, this would fetch all companies from the API
-    const csvContent = generateCSV(companies);
-    downloadCSV(csvContent, 'all_companies.csv');
+    try {
+      const firstPage = await adminService.getCompaniesAdmin({ page: 1, per_page: 100 });
+      const allCompanies = [...(firstPage.companies || [])];
+      const totalPages = firstPage.pagination?.pages || 1;
+      for (let page = 2; page <= totalPages; page += 1) {
+        const response = await adminService.getCompaniesAdmin({ page, per_page: 100 });
+        allCompanies.push(...(response.companies || []));
+      }
+      const csvContent = generateCSV(allCompanies);
+      downloadCSV(csvContent, 'all_companies.csv');
+    } catch {
+      alert('Failed to fetch all companies for export.');
+    }
   };
 
   const generateCSV = (data) => {
@@ -327,11 +328,7 @@ const EnhancedCompanyManagement = () => {
     }
 
     try {
-      // Implement email sending logic
-      console.log('Sending email to:', selectedCompany.email);
-      console.log('Subject:', emailSubject);
-      console.log('Body:', emailBody);
-      
+      await adminService.sendCompanyEmail(selectedCompany.id, emailSubject.trim(), emailBody.trim());
       alert('Email sent successfully!');
       setShowEmailDialog(false);
       setEmailSubject('');
@@ -1035,12 +1032,6 @@ const EnhancedCompanyManagement = () => {
                       
                       {!selectedCompany.is_verified && (
                         <div className="space-y-2">
-                          <Label>Verification Notes</Label>
-                          <Textarea
-                            placeholder="Add notes about the verification decision..."
-                            value={verificationNotes}
-                            onChange={(e) => setVerificationNotes(e.target.value)}
-                          />
                           <div className="flex gap-2">
                             <Button 
                               onClick={() => handleVerifyCompany(selectedCompany.id, true)}
@@ -1158,16 +1149,6 @@ const EnhancedCompanyManagement = () => {
                 Review the company profile and decide whether to approve or reject their verification request.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Verification Notes (Optional)</Label>
-                <Textarea
-                  placeholder="Add any notes about your verification decision..."
-                  value={verificationNotes}
-                  onChange={(e) => setVerificationNotes(e.target.value)}
-                />
-              </div>
-            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowVerificationDialog(false)}>
                 Cancel

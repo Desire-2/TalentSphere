@@ -68,13 +68,13 @@ const ForgotPassword = () => {
 
       if (response.ok) {
         setEmail(data.email);
-        // Backend may include an `email_sent` boolean (true if SMTP succeeded or simulated)
-        setEmailSent(result.hasOwnProperty('email_sent') ? !!result.email_sent : true);
+        // The backend reports delivery only when the account exists.
+        setEmailSent(Object.prototype.hasOwnProperty.call(result, 'email_sent') ? !!result.email_sent : true);
         setIsSubmitted(true);
       } else {
         // Surface server-provided error when available
         setError(result.error || 'Failed to send reset email');
-        setEmailSent(result.hasOwnProperty('email_sent') ? !!result.email_sent : false);
+        setEmailSent(Object.prototype.hasOwnProperty.call(result, 'email_sent') ? !!result.email_sent : false);
       }
     } catch (err) {
       // Detect a common connection error (e.g., ERR_CONNECTION_REFUSED / failed to fetch)

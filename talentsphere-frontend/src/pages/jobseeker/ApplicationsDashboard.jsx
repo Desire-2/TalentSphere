@@ -40,6 +40,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
+import ApplicationResumeLink from '../../components/applications/ApplicationResumeLink';
 
 const ApplicationsDashboard = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -687,10 +688,10 @@ const ApplicationsDashboard = () => {
                             
                             {application.resume_url && (
                               <Button variant="outline" size="sm" asChild>
-                                <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
+                                <ApplicationResumeLink application={application} mode="download" fallbackLabel="Download resume">
                                   <Download className="w-4 h-4 mr-2" />
                                   Resume
-                                </a>
+                                </ApplicationResumeLink>
                               </Button>
                             )}
                             

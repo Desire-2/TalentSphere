@@ -110,21 +110,6 @@ const Footer = () => {
                   Browse Candidates
                 </Link>
               </li>
-              <li>
-                <Link to="/pricing" className="hover:text-[#FF6B35] transition-colors">
-                  Pricing Plans
-                </Link>
-              </li>
-              <li>
-                <Link to="/featured-ads" className="hover:text-[#FF6B35] transition-colors">
-                  Featured Ads
-                </Link>
-              </li>
-              <li>
-                <Link to="/recruitment-solutions" className="hover:text-[#FF6B35] transition-colors">
-                  Recruitment Solutions
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -186,4 +171,3 @@ const Footer = () => {
 };
 
 export default Footer;
-

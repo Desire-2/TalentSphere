@@ -48,7 +48,7 @@ const JobSeekerProfile = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState(null);
+  const [, setProfile] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '', show: true });
   const [showRemoveSkillDialog, setShowRemoveSkillDialog] = useState(false);
   const [skillToRemove, setSkillToRemove] = useState(null);
@@ -184,7 +184,7 @@ const JobSeekerProfile = () => {
             if (typeof parsed === 'string') {
               return parsed.split(',').map((s) => s.trim()).filter(Boolean);
             }
-          } catch (e) {
+          } catch (_e) {
             // Fallback to CSV parsing for non-JSON string values.
           }
           return raw.split(',').map((s) => s.trim()).filter(Boolean);

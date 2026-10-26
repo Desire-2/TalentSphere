@@ -8,8 +8,11 @@ import os
 bind = f"0.0.0.0:{os.getenv('PORT', '5000')}"
 backlog = 4096  # Increased backlog for high traffic
 
-# Worker processes - optimized for performance
-workers = int(os.getenv('GUNICORN_WORKERS', multiprocessing.cpu_count() * 2 + 1))
+# Worker processes - bounded by the database connection budget. The previous
+# CPU-based default could create dozens of independent SQLAlchemy pools.
+requested_workers = int(os.getenv('WEB_CONCURRENCY', os.getenv('GUNICORN_WORKERS', '1')))
+max_web_workers = max(1, int(os.getenv('MAX_WEB_WORKERS', '2')))
+workers = max(1, min(requested_workers, max_web_workers))
 worker_class = os.getenv('GUNICORN_WORKER_CLASS', 'sync')
 worker_connections = int(os.getenv('GUNICORN_WORKER_CONNECTIONS', '1500'))
 max_requests = int(os.getenv('GUNICORN_MAX_REQUESTS', '2000'))
@@ -90,32 +93,42 @@ def post_fork(server, worker):
     import setproctitle
     setproctitle.setproctitle(f"talentsphere-worker-{worker.pid}")
 
-    # Use environment flag to ensure scheduler starts only once, survives worker recycling
-    if not os.getenv('TALENTSPHERE_SCHEDULER_STARTED'):
-        os.environ['TALENTSPHERE_SCHEDULER_STARTED'] = 'true'
-        os.environ['TALENTSPHERE_SCHEDULER_WORKER_PID'] = str(worker.pid)
-        
+    try:
+        from src.main import app
+        from src.models.user import db
+        with app.app_context():
+            db.engine.dispose(close=False)
+    except Exception as e:
+        server.log.warning(f"Could not reset inherited DB pool in worker {worker.pid}: {e}")
+        return
+
+    try:
+        from src.services.career_agent.worker import start_career_agent_worker
+        start_career_agent_worker(app)
+        server.log.info(f"Career Agent background worker started in worker {worker.pid}")
+    except Exception as e:
+        server.log.error(f"Career Agent background worker failed in worker {worker.pid}: {e}")
+
+    # Environment variables are copied on fork and cannot coordinate ownership
+    # between workers. Gunicorn worker age identifies the first worker.
+    if worker.age == 1:
         try:
-            from src.main import app
             from src.services.job_digest_scheduler import job_digest_scheduler
             job_digest_scheduler.start(app)
             server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (scheduler process)")
         except Exception as e:
             server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
-            # Clear flag on failure so another worker can try
-            del os.environ['TALENTSPHERE_SCHEDULER_STARTED']
 
-        try:
-            from src.services.cleanup_service import start_cleanup_service
-            service = start_cleanup_service(app)
-            if service and service.is_running:
-                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
-            else:
-                server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
-        except Exception as e:
-            server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
+        if os.getenv('ENABLE_CLEANUP_SERVICE', 'false').lower() == 'true':
+            try:
+                from src.services.cleanup_service import start_cleanup_service
+                service = start_cleanup_service(app)
+                if service and service.is_running:
+                    server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
+            except Exception as e:
+                server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
     else:
-        server.log.info(f"Worker {worker.pid} - background schedulers run in primary worker")
+        server.log.info(f"Worker {worker.pid} - background schedulers owned by worker age 1")
 
 def pre_exec(server):
     """Called just before a new master process is forked."""
@@ -177,7 +190,7 @@ try:
     # Adjust based on CPU cores
     cpu_count = multiprocessing.cpu_count()
     if cpu_count == 1:
-        workers = 2
+        workers = min(workers, 2)
         worker_connections = 500
     elif cpu_count >= 8:
         workers = min(workers, cpu_count * 2)
@@ -185,6 +198,9 @@ try:
         
 except ImportError:
     pass  # psutil not available, use defaults
+
+# Resource heuristics above must never exceed the explicit database-safe cap.
+workers = max(1, min(workers, max_web_workers))
 
 # Final logging of configuration
 def log_config():

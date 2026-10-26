@@ -39,21 +39,15 @@ import VolunteerSection from './sections/VolunteerSection';
 import MembershipsSection from './sections/MembershipsSection';
 import ReferencesSection from './sections/ReferencesSection';
 import PreferencesSection from './sections/PreferencesSection';
-import PrivacySection from './sections/PrivacySection';
 import ProfileOptimization from './sections/ProfileOptimization';
-import CVUploadModal from './components/CVUploadModal';
 
 const EnhancedJobSeekerProfile = () => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, clearSession } = useAuthStore();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showMessageBadge, setShowMessageBadge] = useState(false);
-  const [cvModalOpen, setCvModalOpen] = useState(false);
   const hasFetchedRef = useRef(false);
   
   // Profile data state
@@ -122,9 +116,7 @@ const EnhancedJobSeekerProfile = () => {
       // Handle auth errors
       if (error.message.includes('401') || error.message.includes('Unauthorized')) {
         console.error('❌ Authentication failed - redirecting to login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
+        clearSession({ redirect: true });
         return;
       }
       
@@ -479,10 +471,10 @@ const EnhancedJobSeekerProfile = () => {
               variant="default"
               size="sm"
               className="gap-2"
-              onClick={() => setCvModalOpen(true)}
+              onClick={() => navigate('/jobseeker/career-agent')}
             >
               <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload CV</span>
+              <span className="hidden sm:inline">Import CV</span>
             </Button>
 
             <DropdownMenu>
@@ -806,14 +798,6 @@ const EnhancedJobSeekerProfile = () => {
         </TabsContent>
       </Tabs>
 
-      <CVUploadModal
-        open={cvModalOpen}
-        onOpenChange={setCvModalOpen}
-        onSuccess={async () => {
-          await loadCompleteProfile();
-          setMessage({ type: 'success', text: 'Profile updated using CV auto-fill.' });
-        }}
-      />
       </div>
     </div>
   );

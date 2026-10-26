@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import dayjs from 'dayjs';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -168,7 +168,7 @@ const AlertDescription = ({ children, className = "" }) => (
 );
 
 // Validation Summary Component
-const ValidationSummary = ({ steps, formik }) => {
+const ValidationSummary = ({ steps, _formik }) => {
   const errorSteps = steps.filter(step => step.validation.status === 'error');
   const incompleteSteps = steps.filter(step => step.validation.status !== 'complete');
   const allMissingFields = incompleteSteps.flatMap(step => 
@@ -399,7 +399,7 @@ const JobDetailsStep = ({ formik }) => (
       </div>
 
       {formik.values.location_type && formik.values.location_type !== 'remote' && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ duration: 0.3 }}
@@ -455,11 +455,11 @@ const JobDetailsStep = ({ formik }) => (
               <p className="text-sm text-red-600">{formik.errors.country}</p>
             )}
           </div>
-        </motion.div>
+        </Motion.div>
       )}
 
       {(formik.values.location_type === 'remote' || formik.values.location_type === 'hybrid') && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ duration: 0.3 }}
@@ -480,7 +480,7 @@ const JobDetailsStep = ({ formik }) => (
           {formik.touched.remote_policy && formik.errors.remote_policy && (
             <p className="text-sm text-red-600">{formik.errors.remote_policy}</p>
           )}
-        </motion.div>
+        </Motion.div>
       )}
     </CardContent>
   </Card>
@@ -527,7 +527,7 @@ const CompensationStep = ({ formik }) => {
 
         <AnimatePresence>
           {showSalaryDetails && (
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
@@ -634,7 +634,7 @@ const CompensationStep = ({ formik }) => {
               </div>
 
               {formik.values.salary_min && formik.values.salary_max && (
-                <motion.div
+                <Motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="p-4 bg-green-50 rounded-lg border border-green-200"
@@ -655,9 +655,9 @@ const CompensationStep = ({ formik }) => {
                       <Badge variant="outline" className="ml-2">Negotiable</Badge>
                     )}
                   </p>
-                </motion.div>
+                </Motion.div>
               )}
-            </motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
       </CardContent>
@@ -771,7 +771,7 @@ const RequirementsStep = ({ formik }) => (
 
       {/* Skills preview */}
       {formik.values.required_skills && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="p-4 bg-blue-50 rounded-lg border border-blue-200"
@@ -787,7 +787,7 @@ const RequirementsStep = ({ formik }) => (
               </Badge>
             ))}
           </div>
-        </motion.div>
+        </Motion.div>
       )}
     </CardContent>
   </Card>
@@ -848,7 +848,7 @@ const ApplicationStep = ({ formik }) => (
       </div>
 
       {formik.values.application_type === 'external' && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           className="space-y-2"
@@ -871,11 +871,11 @@ const ApplicationStep = ({ formik }) => (
           {formik.touched.application_url && formik.errors.application_url && (
             <p className="text-sm text-red-600">{formik.errors.application_url}</p>
           )}
-        </motion.div>
+        </Motion.div>
       )}
 
       {formik.values.application_type === 'email' && (
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           className="space-y-2"
@@ -898,7 +898,7 @@ const ApplicationStep = ({ formik }) => (
           {formik.touched.application_email && formik.errors.application_email && (
             <p className="text-sm text-red-600">{formik.errors.application_email}</p>
           )}
-        </motion.div>
+        </Motion.div>
       )}
 
       <div className="space-y-2">
@@ -1429,7 +1429,7 @@ const JobPreview = ({ formData }) => (
 
 const PostJobPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1437,7 +1437,6 @@ const PostJobPage = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [formProgress, setFormProgress] = useState(0);
   const [previewMode, setPreviewMode] = useState(false);
-  const [savedDrafts, setSavedDrafts] = useState([]);
   
   // Enhanced form steps
   const steps = [
@@ -1540,8 +1539,7 @@ const PostJobPage = () => {
       }
       
       // Validate token expiry
-      const token = localStorage.getItem('token');
-      if (!token) {
+      if (!isAuthenticated) {
         toast.error('Session expired. Please log in again.');
         navigate('/login', { 
           state: { 
@@ -1554,20 +1552,17 @@ const PostJobPage = () => {
     };
 
     validateUserAccess();
-  }, [user, navigate]);
+  }, [user, isAuthenticated, navigate]);
 
   // Fetch job categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Fetching job categories...');
         const response = await jobsService.getJobCategories();
-        console.log('📦 Categories response:', response);
         
         if (response && response.categories) {
           setCategories(response.categories);
-          console.log('✅ Categories loaded:', response.categories.length);
         } else {
           console.warn('⚠️ No categories found in response:', response);
           setCategories([]);
@@ -2010,8 +2005,6 @@ const PostJobPage = () => {
         if (user?.employer_profile?.company_id) {
           jobData.company_id = user.employer_profile.company_id;
         } else if (user.role === 'employer') {
-          // For employers without company profile, we'll let the backend create a basic company
-          console.log('⚠️ No company profile found, backend will create basic company');
           toast.warning('A basic company profile will be created for you. You can enhance it later.');
         }
         
@@ -2025,10 +2018,6 @@ const PostJobPage = () => {
           toast.error('Experience range is invalid: minimum cannot exceed maximum');
           return;
         }
-        
-        console.log('🔍 Final job data being sent:', JSON.stringify(jobData, null, 2));
-        console.log('🔑 Auth token:', localStorage.getItem('token') ? 'Present' : 'Missing');
-        console.log('👤 Current user:', user);
         
         // Call API to create job
         const response = await jobsService.createJob(jobData);
@@ -2337,7 +2326,7 @@ const PostJobPage = () => {
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Enhanced Header */}
-          <motion.div 
+          <Motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
@@ -2387,12 +2376,12 @@ const PostJobPage = () => {
               </div>
               <Progress value={formProgress} className="h-2" />
             </div>
-          </motion.div>
+          </Motion.div>
 
           {/* Company Profile Warning */}
           <AnimatePresence>
             {showCompanyProfileWarning && (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, y: -20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -2441,12 +2430,12 @@ const PostJobPage = () => {
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </Motion.div>
             )}
           </AnimatePresence>
 
           {loading ? (
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-16"
@@ -2458,7 +2447,7 @@ const PostJobPage = () => {
                 </div>
               </div>
               <p className="mt-4 text-lg font-medium text-gray-700">Loading job categories...</p>
-            </motion.div>
+            </Motion.div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               {/* Step Navigation Sidebar */}
@@ -2498,7 +2487,7 @@ const PostJobPage = () => {
                       };
                       
                       return (
-                        <motion.div
+                        <Motion.div
                           key={step.id}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -2571,7 +2560,7 @@ const PostJobPage = () => {
                               </div>
                             </TooltipContent>
                           </Tooltip>
-                        </motion.div>
+                        </Motion.div>
                       );
                     })}
                   </CardContent>
@@ -2582,7 +2571,7 @@ const PostJobPage = () => {
               <div className="lg:col-span-3">
                 <form onSubmit={formik.handleSubmit}>
                   <AnimatePresence mode="wait">
-                    <motion.div
+                    <Motion.div
                       key={currentStep}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -2590,7 +2579,7 @@ const PostJobPage = () => {
                       transition={{ duration: 0.3 }}
                     >
                       {renderCurrentStep()}
-                    </motion.div>
+                    </Motion.div>
                   </AnimatePresence>
 
         {/* Enhanced Navigation Buttons with Validation Feedback */}
@@ -2707,1326 +2696,4 @@ const PostJobPage = () => {
     </TooltipProvider>
   );
 };
-
-// Step Components with Enhanced Validation
-const BasicInformationStep = ({ formik, categories }) => {
-  return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <Briefcase className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl">Basic Information</CardTitle>
-            <CardDescription>
-              Start with the essential details about your job opportunity
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-      <ValidationMessage field="title" formik={formik}>
-        <Label htmlFor="title" className="text-sm font-medium flex items-center gap-2">
-          Job Title *
-          <Tooltip>
-            <TooltipTrigger>
-              <Info className="w-4 h-4 text-gray-400" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Be specific and descriptive. Include seniority level and key technologies.</p>
-            </TooltipContent>
-          </Tooltip>
-        </Label>
-        <Input
-          id="title"
-          name="title"
-          placeholder="e.g., Senior Frontend Developer - React & TypeScript"
-          value={formik.values.title}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={`h-12 transition-all ${
-            formik.touched.title && formik.errors.title 
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
-              : formik.touched.title && formik.values.title && !formik.errors.title
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-200'
-                : 'focus:border-blue-500 focus:ring-blue-200'
-          }`}
-          maxLength={100}
-        />
-        {formik.values.title && (
-          <div className="text-xs text-gray-500 text-right">
-            {formik.values.title.length}/100 characters
-          </div>
-        )}
-      </ValidationMessage>
-
-      <ValidationMessage field="category_id" formik={formik}>
-        <Label htmlFor="category_id" className="text-sm font-medium flex items-center gap-2">
-          Job Category *
-          <Tooltip>
-            <TooltipTrigger>
-              <Info className="w-4 h-4 text-gray-400" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Choose the category that best matches your role for better visibility.</p>
-            </TooltipContent>
-          </Tooltip>
-        </Label>
-        <Select 
-          value={formik.values.category_id.toString()} 
-          onValueChange={(value) => {
-            formik.setFieldValue('category_id', parseInt(value));
-            formik.setFieldTouched('category_id', true);
-          }}
-        >
-          <SelectTrigger className={`h-12 transition-all ${
-            formik.touched.category_id && formik.errors.category_id 
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
-              : formik.touched.category_id && formik.values.category_id && !formik.errors.category_id
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-200'
-                : 'focus:border-blue-500 focus:ring-blue-200'
-          }`}>
-            <SelectValue placeholder="Select a job category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.id.toString()}>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  {category.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </ValidationMessage>
-
-      <ValidationMessage field="summary" formik={formik}>
-        <Label htmlFor="summary" className="text-sm font-medium flex items-center gap-2">
-          Job Summary
-          <Tooltip>
-            <TooltipTrigger>
-              <Info className="w-4 h-4 text-gray-400" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>A brief, compelling summary that appears in search results.</p>
-            </TooltipContent>
-          </Tooltip>
-        </Label>
-        <Textarea
-          id="summary"
-          name="summary"
-          placeholder="A brief, compelling summary of the position that will grab candidates' attention..."
-          value={formik.values.summary}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          rows={3}
-          className={`min-h-[80px] transition-all ${
-            formik.touched.summary && formik.errors.summary 
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
-              : formik.touched.summary && formik.values.summary && !formik.errors.summary
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-200'
-                : 'focus:border-blue-500 focus:ring-blue-200'
-          }`}
-          maxLength={500}
-        />
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>This appears in job listings and search results</span>
-          {formik.values.summary && (
-            <span>{formik.values.summary.length}/500 characters</span>
-          )}
-        </div>
-      </ValidationMessage>
-
-      <ValidationMessage field="description" formik={formik}>
-        <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
-          Job Description *
-          <Tooltip>
-            <TooltipTrigger>
-              <Info className="w-4 h-4 text-gray-400" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Detailed description of responsibilities, requirements, and company culture.</p>
-            </TooltipContent>
-          </Tooltip>
-        </Label>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="Provide a comprehensive description including:
-• Key responsibilities and daily tasks
-• Technologies and tools you'll work with
-• Team structure and collaboration style
-• Growth opportunities and career development
-• Company culture and values
-• What makes this role exciting and unique"
-          value={formik.values.description}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          rows={10}
-          className={`min-h-[250px] transition-all ${
-            formik.touched.description && formik.errors.description 
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
-              : formik.touched.description && formik.values.description && !formik.errors.description
-                ? 'border-green-500 focus:border-green-500 focus:ring-green-200'
-                : 'focus:border-blue-500 focus:ring-blue-200'
-          }`}
-          maxLength={5000}
-        />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Code className="w-3 h-3" />
-            <span>Supports markdown formatting for better presentation</span>
-          </div>
-          {formik.values.description && (
-            <span className="text-xs text-gray-500">
-              {formik.values.description.length}/5000 characters
-            </span>
-          )}
-        </div>
-        {formik.values.description && formik.values.description.length < 50 && formik.touched.description && (
-          <div className="flex items-center gap-2 text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
-            <AlertCircle className="w-4 h-4" />
-            <span>Consider adding more details for better candidate engagement (minimum 50 characters)</span>
-          </div>
-        )}
-      </ValidationMessage>
-    </CardContent>
-  </Card>
-);
-
-const JobDetailsStep = ({ formik }) => (
-  <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-    <CardHeader>
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-green-100 rounded-full">
-          <Settings className="w-6 h-6 text-green-600" />
-        </div>
-        <div>
-          <CardTitle className="text-2xl">Job Details</CardTitle>
-          <CardDescription>
-            Specify the employment type, experience level, and work location
-          </CardDescription>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="employment_type" className="text-sm font-medium">
-            Employment Type *
-          </Label>
-          <Select 
-            value={formik.values.employment_type} 
-            onValueChange={(value) => formik.setFieldValue('employment_type', value)}
-          >
-            <SelectTrigger className={`h-12 ${formik.touched.employment_type && formik.errors.employment_type ? 'border-red-500' : ''}`}>
-              <SelectValue placeholder="Select employment type" />
-            </SelectTrigger>
-            <SelectContent>
-              {EMPLOYMENT_TYPES.map(type => (
-                <SelectItem key={type.value} value={type.value}>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    {type.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {formik.touched.employment_type && formik.errors.employment_type && (
-            <p className="text-sm text-red-600">{formik.errors.employment_type}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="experience_level" className="text-sm font-medium">
-            Experience Level *
-          </Label>
-          <Select 
-            value={formik.values.experience_level} 
-            onValueChange={(value) => formik.setFieldValue('experience_level', value)}
-          >
-            <SelectTrigger className={`h-12 ${formik.touched.experience_level && formik.errors.experience_level ? 'border-red-500' : ''}`}>
-              <SelectValue placeholder="Select experience level" />
-            </SelectTrigger>
-            <SelectContent>
-              {EXPERIENCE_LEVELS.map(level => (
-                <SelectItem key={level.value} value={level.value}>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    {level.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {formik.touched.experience_level && formik.errors.experience_level && (
-            <p className="text-sm text-red-600">{formik.errors.experience_level}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <Label className="text-sm font-medium">Work Location *</Label>
-        <RadioGroup 
-          value={formik.values.location_type} 
-          onValueChange={(value) => formik.setFieldValue('location_type', value)}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          {LOCATION_TYPES.map(type => {
-            const icons = {
-              'on-site': Home,
-              'remote': Laptop,
-              'hybrid': Coffee
-            };
-            const Icon = icons[type.value];
-            
-            return (
-              <div key={type.value} className="flex items-center space-x-2">
-                <RadioGroupItem value={type.value} id={type.value} />
-                <Label 
-                  htmlFor={type.value}
-                  className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-300 transition-colors flex-1"
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{type.label}</span>
-                </Label>
-              </div>
-            );
-          })}
-        </RadioGroup>
-      </div>
-
-      {formik.values.location_type && formik.values.location_type !== 'remote' && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50/50 rounded-lg border border-blue-200/50"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="city" className="text-sm font-medium">
-              City *
-            </Label>
-            <Input
-              id="city"
-              name="city"
-              placeholder="e.g., San Francisco"
-              value={formik.values.city}
-              onChange={formik.handleChange}
-              className={formik.touched.city && formik.errors.city ? 'border-red-500' : ''}
-            />
-            {formik.touched.city && formik.errors.city && (
-              <p className="text-sm text-red-600">{formik.errors.city}</p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="state" className="text-sm font-medium">
-              State/Province *
-            </Label>
-            <Input
-              id="state"
-              name="state"
-              placeholder="e.g., California"
-              value={formik.values.state}
-              onChange={formik.handleChange}
-              className={formik.touched.state && formik.errors.state ? 'border-red-500' : ''}
-            />
-            {formik.touched.state && formik.errors.state && (
-              <p className="text-sm text-red-600">{formik.errors.state}</p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="country" className="text-sm font-medium">
-              Country *
-            </Label>
-            <Input
-              id="country"
-              name="country"
-              placeholder="e.g., United States"
-              value={formik.values.country}
-              onChange={formik.handleChange}
-              className={formik.touched.country && formik.errors.country ? 'border-red-500' : ''}
-            />
-            {formik.touched.country && formik.errors.country && (
-              <p className="text-sm text-red-600">{formik.errors.country}</p>
-            )}
-          </div>
-        </motion.div>
-      )}
-
-      {(formik.values.location_type === 'remote' || formik.values.location_type === 'hybrid') && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          transition={{ duration: 0.3 }}
-          className="space-y-2 p-4 bg-purple-50/50 rounded-lg border border-purple-200/50"
-        >
-          <Label htmlFor="remote_policy" className="text-sm font-medium">
-            Remote Work Policy *
-          </Label>
-          <Textarea
-            id="remote_policy"
-            name="remote_policy"
-            placeholder="Describe your remote work policy, tools provided, communication expectations, etc."
-            value={formik.values.remote_policy}
-            onChange={formik.handleChange}
-            rows={3}
-            className={formik.touched.remote_policy && formik.errors.remote_policy ? 'border-red-500' : ''}
-          />
-          {formik.touched.remote_policy && formik.errors.remote_policy && (
-            <p className="text-sm text-red-600">{formik.errors.remote_policy}</p>
-          )}
-        </motion.div>
-      )}
-    </CardContent>
-  </Card>
-);
-
-const CompensationStep = ({ formik }) => {
-  const [showSalaryDetails, setShowSalaryDetails] = useState(formik.values.show_salary);
-
-  useEffect(() => {
-    setShowSalaryDetails(formik.values.show_salary);
-  }, [formik.values.show_salary]);
-
-  return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-100 rounded-full">
-            <DollarSign className="w-6 h-6 text-emerald-600" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl">Compensation Package</CardTitle>
-            <CardDescription>
-              Set competitive salary ranges and benefits to attract top talent
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">Display Salary Information</Label>
-            <p className="text-xs text-gray-500">
-              Jobs with visible salaries get 30% more applications
-            </p>
-          </div>
-          <Switch
-            checked={formik.values.show_salary}
-            onCheckedChange={(checked) => {
-              formik.setFieldValue('show_salary', checked);
-              setShowSalaryDetails(checked);
-            }}
-          />
-        </div>
-
-        <AnimatePresence>
-          {showSalaryDetails && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salary_min" className="text-sm font-medium">
-                    Minimum Salary
-                  </Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="salary_min"
-                      name="salary_min"
-                      type="number"
-                      placeholder="50000"
-                      value={formik.values.salary_min}
-                      onChange={formik.handleChange}
-                      className={`pl-10 ${formik.touched.salary_min && formik.errors.salary_min ? 'border-red-500' : ''}`}
-                    />
-                  </div>
-                  {formik.touched.salary_min && formik.errors.salary_min && (
-                    <p className="text-sm text-red-600">{formik.errors.salary_min}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="salary_max" className="text-sm font-medium">
-                    Maximum Salary
-                  </Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="salary_max"
-                      name="salary_max"
-                      type="number"
-                      placeholder="80000"
-                      value={formik.values.salary_max}
-                      onChange={formik.handleChange}
-                      className={`pl-10 ${formik.touched.salary_max && formik.errors.salary_max ? 'border-red-500' : ''}`}
-                    />
-                  </div>
-                  {formik.touched.salary_max && formik.errors.salary_max && (
-                    <p className="text-sm text-red-600">{formik.errors.salary_max}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salary_currency" className="text-sm font-medium">
-                    Currency
-                  </Label>
-                  <Select 
-                    value={formik.values.salary_currency} 
-                    onValueChange={(value) => formik.setFieldValue('salary_currency', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map(currency => (
-                        <SelectItem key={currency.value} value={currency.value}>
-                          {currency.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="salary_period" className="text-sm font-medium">
-                    Pay Period
-                  </Label>
-                  <Select 
-                    value={formik.values.salary_period} 
-                    onValueChange={(value) => formik.setFieldValue('salary_period', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SALARY_PERIODS.map(period => (
-                        <SelectItem key={period.value} value={period.value}>
-                          {period.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="salary_negotiable"
-                  checked={formik.values.salary_negotiable}
-                  onCheckedChange={(checked) => formik.setFieldValue('salary_negotiable', checked)}
-                />
-                <Label htmlFor="salary_negotiable" className="text-sm">
-                  Salary is negotiable
-                </Label>
-              </div>
-
-              {formik.values.salary_min && formik.values.salary_max && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-4 bg-green-50 rounded-lg border border-green-200"
-                >
-                  <div className="flex items-center gap-2 text-green-700 mb-2">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="font-medium">Salary Preview</span>
-                  </div>
-                  <p className="text-lg font-bold text-green-800">
-                    {new Intl.NumberFormat('en-US', { 
-                      style: 'currency', 
-                      currency: formik.values.salary_currency 
-                    }).format(formik.values.salary_min)} - {new Intl.NumberFormat('en-US', { 
-                      style: 'currency', 
-                      currency: formik.values.salary_currency 
-                    }).format(formik.values.salary_max)} {formik.values.salary_period}
-                    {formik.values.salary_negotiable && (
-                      <Badge variant="outline" className="ml-2">Negotiable</Badge>
-                    )}
-                  </p>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </CardContent>
-    </Card>
-  );
-};
-
-const RequirementsStep = ({ formik }) => (
-  <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-    <CardHeader>
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-purple-100 rounded-full">
-          <GraduationCap className="w-6 h-6 text-purple-600" />
-        </div>
-        <div>
-          <CardTitle className="text-2xl">Requirements & Qualifications</CardTitle>
-          <CardDescription>
-            Define the skills, education, and experience needed for this role
-          </CardDescription>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="required_skills" className="text-sm font-medium">
-          Required Skills *
-        </Label>
-        <Textarea
-          id="required_skills"
-          name="required_skills"
-          placeholder="React, TypeScript, Node.js, GraphQL, AWS..."
-          value={formik.values.required_skills}
-          onChange={formik.handleChange}
-          rows={3}
-        />
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Code className="w-3 h-3" />
-          <span>Separate skills with commas - these will appear as tags</span>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="preferred_skills" className="text-sm font-medium">
-          Preferred Skills
-        </Label>
-        <Textarea
-          id="preferred_skills"
-          name="preferred_skills"
-          placeholder="Docker, Kubernetes, Machine Learning, Python..."
-          value={formik.values.preferred_skills}
-          onChange={formik.handleChange}
-          rows={2}
-        />
-        <p className="text-xs text-gray-500">
-          Nice-to-have skills that would make a candidate stand out
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="education_requirement" className="text-sm font-medium">
-          Education Requirements
-        </Label>
-        <Input
-          id="education_requirement"
-          name="education_requirement"
-          placeholder="Bachelor's degree in Computer Science or equivalent experience"
-          value={formik.values.education_requirement}
-          onChange={formik.handleChange}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="years_experience_min" className="text-sm font-medium">
-            Minimum Years of Experience
-          </Label>
-          <div className="relative">
-            <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              id="years_experience_min"
-              name="years_experience_min"
-              type="number"
-              min="0"
-              placeholder="3"
-              value={formik.values.years_experience_min}
-              onChange={formik.handleChange}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="years_experience_max" className="text-sm font-medium">
-            Maximum Years of Experience
-          </Label>
-          <div className="relative">
-            <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              id="years_experience_max"
-              name="years_experience_max"
-              type="number"
-              min={formik.values.years_experience_min || 0}
-              placeholder="8"
-              value={formik.values.years_experience_max}
-              onChange={formik.handleChange}
-              className="pl-10"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Skills preview */}
-      {formik.values.required_skills && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="p-4 bg-blue-50 rounded-lg border border-blue-200"
-        >
-          <div className="flex items-center gap-2 text-blue-700 mb-3">
-            <Sparkles className="w-4 h-4" />
-            <span className="font-medium">Skills Preview</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formik.values.required_skills.split(',').map((skill, index) => (
-              <Badge key={index} variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
-                {skill.trim()}
-              </Badge>
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </CardContent>
-  </Card>
-);
-
-const ApplicationStep = ({ formik }) => (
-  <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-    <CardHeader>
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-orange-100 rounded-full">
-          <Send className="w-6 h-6 text-orange-600" />
-        </div>
-        <div>
-          <CardTitle className="text-2xl">Application Process</CardTitle>
-          <CardDescription>
-            Configure how candidates should apply for this position
-          </CardDescription>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-6">
-      <div className="space-y-4">
-        <Label className="text-sm font-medium">Application Method *</Label>
-        <RadioGroup 
-          value={formik.values.application_type} 
-          onValueChange={(value) => formik.setFieldValue('application_type', value)}
-          className="space-y-3"
-        >
-          {APPLICATION_TYPES.map(type => {
-            const icons = {
-              'internal': Users,
-              'external': ExternalLink,
-              'email': Mail
-            };
-            const Icon = icons[type.value];
-            
-            return (
-              <div key={type.value} className="flex items-center space-x-3">
-                <RadioGroupItem value={type.value} id={type.value} />
-                <Label 
-                  htmlFor={type.value}
-                  className="flex items-center gap-3 cursor-pointer p-4 rounded-lg border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors flex-1"
-                >
-                  <Icon className="w-5 h-5" />
-                  <div>
-                    <div className="font-medium">{type.label}</div>
-                    <div className="text-xs text-gray-500">
-                      {type.value === 'internal' && 'Candidates apply through your platform'}
-                      {type.value === 'external' && 'Redirect to external application page'}
-                      {type.value === 'email' && 'Candidates send applications via email'}
-                    </div>
-                  </div>
-                </Label>
-              </div>
-            );
-          })}
-        </RadioGroup>
-      </div>
-
-      {formik.values.application_type === 'external' && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="space-y-2"
-        >
-          <Label htmlFor="application_url" className="text-sm font-medium">
-            Application URL *
-          </Label>
-          <div className="relative">
-            <ExternalLink className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              id="application_url"
-              name="application_url"
-              type="url"
-              placeholder="https://company.com/careers/apply"
-              value={formik.values.application_url}
-              onChange={formik.handleChange}
-              className={`pl-10 ${formik.touched.application_url && formik.errors.application_url ? 'border-red-500' : ''}`}
-            />
-          </div>
-          {formik.touched.application_url && formik.errors.application_url && (
-            <p className="text-sm text-red-600">{formik.errors.application_url}</p>
-          )}
-        </motion.div>
-      )}
-
-      {formik.values.application_type === 'email' && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="space-y-2"
-        >
-          <Label htmlFor="application_email" className="text-sm font-medium">
-            Application Email *
-          </Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              id="application_email"
-              name="application_email"
-              type="email"
-              placeholder="careers@company.com"
-              value={formik.values.application_email}
-              onChange={formik.handleChange}
-              className={`pl-10 ${formik.touched.application_email && formik.errors.application_email ? 'border-red-500' : ''}`}
-            />
-          </div>
-          {formik.touched.application_email && formik.errors.application_email && (
-            <p className="text-sm text-red-600">{formik.errors.application_email}</p>
-          )}
-        </motion.div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="application_deadline" className="text-sm font-medium">
-          Application Deadline
-        </Label>
-        <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            id="application_deadline"
-            name="application_deadline"
-            type="date"
-            min={new Date().toISOString().split('T')[0]}
-            value={formik.values.application_deadline ? new Date(formik.values.application_deadline).toISOString().split('T')[0] : ''}
-            onChange={(e) => formik.setFieldValue('application_deadline', e.target.value ? new Date(e.target.value).toISOString() : null)}
-            className="pl-10"
-          />
-        </div>
-        <p className="text-xs text-gray-500">
-          Leave empty for open-ended applications
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="application_instructions" className="text-sm font-medium">
-          Special Instructions
-        </Label>
-        <Textarea
-          id="application_instructions"
-          name="application_instructions"
-          placeholder="Any additional instructions for applicants..."
-          value={formik.values.application_instructions}
-          onChange={formik.handleChange}
-          rows={3}
-        />
-      </div>
-
-      <div className="space-y-4">
-        <Label className="text-sm font-medium">Required Documents</Label>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="requires_resume"
-              checked={formik.values.requires_resume}
-              onCheckedChange={(checked) => formik.setFieldValue('requires_resume', checked)}
-            />
-            <Label htmlFor="requires_resume" className="flex items-center gap-2 cursor-pointer">
-              <FileText className="w-4 h-4" />
-              Resume
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="requires_cover_letter"
-              checked={formik.values.requires_cover_letter}
-              onCheckedChange={(checked) => formik.setFieldValue('requires_cover_letter', checked)}
-            />
-            <Label htmlFor="requires_cover_letter" className="flex items-center gap-2 cursor-pointer">
-              <BookOpen className="w-4 h-4" />
-              Cover Letter
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="requires_portfolio"
-              checked={formik.values.requires_portfolio}
-              onCheckedChange={(checked) => formik.setFieldValue('requires_portfolio', checked)}
-            />
-            <Label htmlFor="requires_portfolio" className="flex items-center gap-2 cursor-pointer">
-              <ImageIcon className="w-4 h-4" />
-              Portfolio
-            </Label>
-          </div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const ReviewStep = ({ formik }) => {
-  // Import required validation functions and steps from the main component context
-  const getFieldValidation = (fieldName, value, formik) => {
-    const errors = formik.errors || {};
-    const touched = formik.touched || {};
-    
-    const isEmpty = !value || (typeof value === 'string' && value.trim() === '');
-    const hasError = touched[fieldName] && errors[fieldName];
-    
-    return {
-      isEmpty,
-      hasError,
-      errorMessage: hasError ? errors[fieldName] : null,
-      isValid: !isEmpty && !hasError
-    };
-  };
-
-  const getStepValidation = (step) => {
-    let validFields = 0;
-    let invalidFields = 0;
-    let errorFields = 0;
-    let missingFields = [];
-    
-    // Get conditional fields based on current values
-    const getConditionalFields = (baseFields) => {
-      let fields = [...baseFields];
-      
-      // Location fields for non-remote jobs
-      if (step.id === 'basic' && formik.values.location_type !== 'remote') {
-        fields = fields.filter(f => !['city', 'state'].includes(f));
-        fields.push('city', 'state');
-      }
-      
-      // Salary fields when showing salary
-      if (step.id === 'compensation' && formik.values.show_salary) {
-        fields = fields.filter(f => !['salary_min', 'salary_max', 'salary_currency', 'salary_period'].includes(f));
-        fields.push('salary_min', 'salary_max', 'salary_currency', 'salary_period');
-      }
-      
-      // Application method specific fields
-      if (step.id === 'application') {
-        if (formik.values.application_type === 'email') {
-          fields = fields.filter(f => !['application_email', 'application_url'].includes(f));
-          fields.push('application_email');
-        } else if (formik.values.application_type === 'url') {
-          fields = fields.filter(f => !['application_email', 'application_url'].includes(f));
-          fields.push('application_url');
-        }
-      }
-      
-      return fields;
-    };
-    
-    const conditionalFields = getConditionalFields(step.fields);
-    
-    conditionalFields.forEach(fieldName => {
-      const fieldValidation = getFieldValidation(fieldName, formik.values[fieldName], formik);
-      
-      if (fieldValidation.isValid) {
-        validFields++;
-      } else if (fieldValidation.hasError) {
-        errorFields++;
-        invalidFields++;
-      } else if (fieldValidation.isEmpty) {
-        missingFields.push(fieldName);
-        invalidFields++;
-      }
-    });
-    
-    const totalFields = conditionalFields.length;
-    const completionRate = totalFields > 0 ? (validFields / totalFields) * 100 : 100;
-    
-    let status = 'incomplete';
-    if (totalFields === 0 || completionRate === 100) {
-      status = 'complete';
-    } else if (errorFields > 0) {
-      status = 'error';
-    } else if (validFields > 0) {
-      status = 'partial';
-    }
-    
-    return {
-      status,
-      completionRate,
-      validFields,
-      invalidFields,
-      errorFields,
-      missingFields,
-      totalFields
-    };
-  };
-
-  // Get validation status for all steps
-  const steps = [
-    {
-      id: 'basic',
-      title: 'Basic Information',
-      fields: ['title', 'department', 'location_type', 'employment_type']
-    },
-    {
-      id: 'details',
-      title: 'Job Details',
-      fields: ['description', 'requirements', 'experience_level']
-    },
-    {
-      id: 'compensation',
-      title: 'Compensation',
-      fields: ['show_salary']
-    },
-    {
-      id: 'requirements',
-      title: 'Requirements',
-      fields: ['required_skills', 'education_level']
-    },
-    {
-      id: 'application',
-      title: 'Application Method',
-      fields: ['application_type']
-    }
-  ];
-
-  const allStepValidations = steps.map(step => ({
-    ...step,
-    validation: getStepValidation(step)
-  }));
-
-  const incompleteSteps = allStepValidations.filter(step => step.validation.status !== 'complete');
-  const errorSteps = allStepValidations.filter(step => step.validation.status === 'error');
-  const allMissingFields = incompleteSteps.flatMap(step => 
-    step.validation.missingFields.map(field => ({
-      field,
-      stepTitle: step.title,
-      stepId: step.id
-    }))
-  );
-
-  return (
-    <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-100 rounded-full">
-            <Eye className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div>
-            <CardTitle className="text-2xl">Review & Publish</CardTitle>
-            <CardDescription>
-              Final review of your job posting before publishing
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        
-        {/* Validation Summary */}
-        {(incompleteSteps.length > 0 || errorSteps.length > 0) && (
-          <Alert className={`${errorSteps.length > 0 ? 'border-red-200 bg-red-50' : 'border-yellow-200 bg-yellow-50'}`}>
-            <AlertCircle className={`h-4 w-4 ${errorSteps.length > 0 ? 'text-red-600' : 'text-yellow-600'}`} />
-            <AlertTitle className={`${errorSteps.length > 0 ? 'text-red-800' : 'text-yellow-800'}`}>
-              {errorSteps.length > 0 ? 'Validation Errors Found' : 'Incomplete Information'}
-            </AlertTitle>
-            <AlertDescription className={`${errorSteps.length > 0 ? 'text-red-700' : 'text-yellow-700'}`}>
-              <div className="space-y-3 mt-2">
-                {errorSteps.length > 0 && (
-                  <div>
-                    <p className="font-medium mb-2">Please fix the following errors:</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      {errorSteps.map(step => (
-                        <li key={step.id}>
-                          <span className="font-medium">{step.title}</span> has {step.validation.errorFields} validation error{step.validation.errorFields > 1 ? 's' : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {allMissingFields.length > 0 && (
-                  <div>
-                    <p className="font-medium mb-2">Missing required information:</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      {allMissingFields.slice(0, 8).map((missingField, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-white/50 rounded border">
-                          <span>
-                            {typeof missingField === 'string' 
-                              ? missingField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                              : missingField.label || 
-                                (typeof missingField.field === 'string' 
-                                  ? missingField.field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                  : 'Unknown field')
-                            }
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {missingField.stepTitle || missingField.step || 'Unknown Step'}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                    {allMissingFields.length > 8 && (
-                      <p className="text-sm mt-2">...and {allMissingFields.length - 8} more fields</p>
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-2 mt-3 p-2 bg-white/50 rounded">
-                  <Info className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    Use the step navigation on the left to complete missing information
-                  </span>
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Success Message when everything is complete */}
-        {incompleteSteps.length === 0 && errorSteps.length === 0 && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Ready to Publish!</AlertTitle>
-            <AlertDescription className="text-green-700">
-              All required information has been provided. Your job posting is complete and ready to be published.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Form Completion Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card className="bg-white/50 border border-gray-200">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Form Progress</h4>
-              <div className="space-y-3">
-                {allStepValidations.map(step => (
-                  <div key={step.id} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{step.title}</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={step.validation.completionRate} className="w-16 h-2" />
-                      <span className="text-xs font-medium text-gray-600 w-10">
-                        {Math.round(step.validation.completionRate)}%
-                      </span>
-                      {step.validation.status === 'complete' && (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      )}
-                      {step.validation.status === 'error' && (
-                        <AlertCircle className="w-4 h-4 text-red-600" />
-                      )}
-                      {step.validation.status === 'partial' && (
-                        <Clock className="w-4 h-4 text-yellow-600" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-white/50 border border-gray-200">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Statistics</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Total Steps:</span>
-                  <span className="font-medium">{allStepValidations.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Complete Steps:</span>
-                  <span className="font-medium text-green-600">
-                    {allStepValidations.length - incompleteSteps.length}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Incomplete Steps:</span>
-                  <span className="font-medium text-yellow-600">{incompleteSteps.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Steps with Errors:</span>
-                  <span className="font-medium text-red-600">{errorSteps.length}</span>
-                </div>
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Overall Progress:</span>
-                    <span className="font-bold">
-                      {Math.round(
-                        (allStepValidations.reduce((sum, step) => sum + step.validation.completionRate, 0) / 
-                         allStepValidations.length) || 0
-                      )}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Job Overview</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-gray-500" />
-              <span className="font-medium">{formik.values.title || 'Job Title'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-gray-500" />
-              <span>
-                {formik.values.location_type === 'remote' ? 'Remote' : 
-                 `${formik.values.city || 'City'}, ${formik.values.state || 'State'}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span>{EMPLOYMENT_TYPES.find(t => t.value === formik.values.employment_type)?.label || 'Employment Type'}</span>
-            </div>
-            {formik.values.show_salary && formik.values.salary_min && formik.values.salary_max && (
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-gray-500" />
-                <span>
-                  {new Intl.NumberFormat('en-US', { 
-                    style: 'currency', 
-                    currency: formik.values.salary_currency 
-                  }).format(formik.values.salary_min)} - {new Intl.NumberFormat('en-US', { 
-                    style: 'currency', 
-                    currency: formik.values.salary_currency 
-                  }).format(formik.values.salary_max)} {formik.values.salary_period}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Application Details</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-gray-500" />
-              <span>{APPLICATION_TYPES.find(t => t.value === formik.values.application_type)?.label}</span>
-            </div>
-            {formik.values.application_deadline && (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span>Deadline: {new Date(formik.values.application_deadline).toLocaleDateString()}</span>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-1">
-              {formik.values.requires_resume && <Badge variant="outline">Resume Required</Badge>}
-              {formik.values.requires_cover_letter && <Badge variant="outline">Cover Letter Required</Badge>}
-              {formik.values.requires_portfolio && <Badge variant="outline">Portfolio Required</Badge>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {formik.values.required_skills && (
-        <div className="space-y-2">
-          <h3 className="font-semibold">Required Skills</h3>
-          <div className="flex flex-wrap gap-2">
-            {formik.values.required_skills.split(',').map((skill, index) => (
-              <Badge key={index} variant="secondary">{skill.trim()}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-start gap-3">
-          <Info className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div className="space-y-2">
-            <p className="font-medium text-blue-900">Ready to publish?</p>
-            <p className="text-sm text-blue-700">
-              Your job will be visible to candidates immediately after publishing. 
-              You can edit or pause it anytime from your dashboard.
-            </p>
-          </div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-  );
-};
-
-const JobPreview = ({ formData }) => (
-  <Card className="bg-white/80 backdrop-blur-sm border border-white/20">
-    <CardHeader>
-      <CardTitle className="text-2xl">Job Preview</CardTitle>
-      <CardDescription>
-        This is how your job posting will appear to candidates
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="border rounded-lg p-6 bg-white">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold">{formData.title}</h2>
-            <p className="text-gray-600">Company Name</p>
-          </div>
-          <Badge variant="secondary">
-            {EMPLOYMENT_TYPES.find(t => t.value === formData.employment_type)?.label}
-          </Badge>
-        </div>
-        
-        <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
-          <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" />
-            {formData.location_type === 'remote' ? 'Remote' : 
-             `${formData.city}, ${formData.state}`}
-          </div>
-          {formData.show_salary && formData.salary_min && formData.salary_max && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="w-4 h-4" />
-              {new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: formData.salary_currency 
-              }).format(formData.salary_min)} - {new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: formData.salary_currency 
-              }).format(formData.salary_max)} {formData.salary_period}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          {formData.summary && (
-            <div>
-              <h3 className="font-semibold mb-2">Summary</h3>
-              <p className="text-gray-700">{formData.summary}</p>
-            </div>
-          )}
-          
-          <div>
-            <h3 className="font-semibold mb-2">Description</h3>
-            <p className="text-gray-700 whitespace-pre-line">{formData.description}</p>
-          </div>
-
-          {formData.required_skills && (
-            <div>
-              <h3 className="font-semibold mb-2">Required Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {formData.required_skills.split(',').map((skill, index) => (
-                  <Badge key={index} variant="outline">{skill.trim()}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-  );
-};
-
 export default PostJobPage;

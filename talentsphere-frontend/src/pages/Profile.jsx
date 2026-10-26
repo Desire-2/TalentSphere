@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 const Profile = () => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

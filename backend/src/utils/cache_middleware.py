@@ -17,6 +17,7 @@ from sqlalchemy import func
 from typing import Any, Optional, Dict, List, Union, Callable
 
 from src.utils.cache import cache, CacheManager
+from src.routes.auth import role_required, token_required
 
 class AdvancedCacheManager(CacheManager):
     """Advanced caching with compression, serialization options, and cache warming"""
@@ -186,6 +187,8 @@ class ResponseCacheMiddleware:
             return jsonify(advanced_cache.get_stats())
         
         @app.route('/api/cache/clear', methods=['POST'])
+        @token_required
+        @role_required('admin')
         def clear_cache():
             try:
                 advanced_cache.clear_all()
@@ -298,12 +301,10 @@ def warm_popular_searches():
         from src.routes.optimized_api import optimized_job_search
         
         for search_params in popular_searches:
-            # Simulate request context for popular searches
             with current_app.test_request_context(
                 f"/v2/jobs/search?{urlencode(search_params)}"
             ):
-                # This would trigger the cached search
-                pass
+                optimized_job_search()
     except Exception as e:
         current_app.logger.error(f"Popular searches cache warming failed: {str(e)}")
 

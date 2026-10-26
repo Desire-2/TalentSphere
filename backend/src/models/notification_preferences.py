@@ -84,7 +84,9 @@ class NotificationPreference(db.Model):
             'system': self.system_notifications_email,
             'promotion': self.promotions_email,
             'new_feature': self.new_features_email,
-            'platform_update': self.platform_updates_email
+            'platform_update': self.platform_updates_email,
+            'welcome': self.system_notifications_email,
+            'career_agent': self.system_notifications_email
         }
         
         return preference_map.get(notification_type, False)
@@ -104,7 +106,8 @@ class NotificationPreference(db.Model):
             'system': self.system_notifications_push,
             'promotion': self.promotions_push,
             'new_feature': self.new_features_push,
-            'platform_update': self.platform_updates_push
+            'platform_update': self.platform_updates_push,
+            'career_agent': self.system_notifications_push
         }
         
         return preference_map.get(notification_type, True)

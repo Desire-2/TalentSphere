@@ -4,50 +4,26 @@ Handles sharing analytics, email notifications, and share tracking
 """
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.models.user import db, User
+from src.routes.auth import token_required, validate_email
 from src.models.job import Job, JobShare
 from src.models.company import Company
 from datetime import datetime, timedelta
+from html import escape
 import json
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import os
+from src.services.email_service import email_service as delivery_email_service
 
 logger = logging.getLogger(__name__)
 share_bp = Blueprint('share', __name__)
 
-class EmailService:
-    """Simple email service for job sharing"""
-    
-    def __init__(self):
-        self.smtp_server = os.getenv('SMTP_SERVER', 'localhost')
-        self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.smtp_username = os.getenv('SMTP_USERNAME', '')
-        self.smtp_password = os.getenv('SMTP_PASSWORD', '')
-        self.from_email = os.getenv('FROM_EMAIL', 'noreply@talentsphere.com')
-    
-    def send_email(self, to_email, subject, html_content, text_content=None):
-        """Send an email"""
-        try:
-            # For now, just simulate sending email
-            logger.info(f"Email simulated: {to_email} - {subject}")
-            return True
-        except Exception as e:
-            logger.error(f"Email sending failed: {e}")
-            raise e
-
-email_service = EmailService()
-
 @share_bp.route('/jobs/<int:job_id>/share', methods=['POST'])
-@jwt_required()
-def record_job_share(job_id):
+@token_required
+def record_job_share(current_user, job_id):
     """Record a job share event"""
     try:
-        data = request.get_json()
-        user_id = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        user_id = current_user.id
         
         # Validate job exists
         job = Job.query.get_or_404(job_id)
@@ -82,12 +58,12 @@ def record_job_share(job_id):
         }), 500
 
 @share_bp.route('/jobs/<int:job_id>/share/email', methods=['POST'])
-@jwt_required()
-def send_job_share_email(job_id):
+@token_required
+def send_job_share_email(current_user, job_id):
     """Send job share via email"""
     try:
-        data = request.get_json()
-        user_id = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        user_id = current_user.id
         
         # Validate required fields
         recipients = data.get('recipients', [])
@@ -95,6 +71,20 @@ def send_job_share_email(job_id):
             return jsonify({
                 'success': False,
                 'message': 'Recipients list is required'
+            }), 400
+        if len(recipients) > 20:
+            return jsonify({
+                'success': False,
+                'message': 'A maximum of 20 recipients is allowed'
+            }), 400
+        invalid_recipients = [
+            recipient for recipient in recipients
+            if not isinstance(recipient, str) or not validate_email(recipient.strip())
+        ]
+        if invalid_recipients:
+            return jsonify({
+                'success': False,
+                'message': 'One or more recipient email addresses are invalid'
             }), 400
         
         # Validate job exists
@@ -106,7 +96,11 @@ def send_job_share_email(job_id):
         if job.company_id:
             company = Company.query.get(job.company_id)
         
-        custom_message = data.get('custom_message', '')
+        custom_message = (
+            data.get('custom_message')
+            or data.get('customMessage')
+            or ''
+        )
         requirement_items = []
 
         if job.required_skills:
@@ -131,10 +125,10 @@ def send_job_share_email(job_id):
         # Generate job URL
         job_url = f"{request.host_url.rstrip('/')}/jobs/{job.id}"
         apply_url = f"https://jobs.afritechbridge.online/jobs/{job.id}"
-        community_url = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl'
-
         # Create personal message section separately
-        personal_message_section = f"\n**Personal Message:**\n{custom_message}\n" if custom_message else ""
+        personal_message_section = (
+            f"\nPersonal message:\n{custom_message}\n" if custom_message else ""
+        )
         
         # Email template
         email_body = f"""
@@ -142,22 +136,20 @@ Hello!
 
 {user.full_name if user.full_name else user.email} thought you might be interested in this job opportunity:
 
-**{job.title}**
+{job.title}
 {f"Company: {company.name}" if company else ""}
 {f"Location: {job.location}" if job.location else ""}
-{f"Employment Type: {job.employment_type.replace('_', ' ').title()}" if job.employment_type else ""}
+{f"Employment type: {job.employment_type.replace('_', ' ').title()}" if job.employment_type else ""}
 {f"Salary: ${job.salary_min:,} - ${job.salary_max:,}" if job.salary_min and job.salary_max else ""}
 {requirements_section}
 {personal_message_section}
 
-**Job Description:**
+Job description:
 {job.description[:500]}{"..." if len(job.description) > 500 else ""}
 
-**Apply Here:** {apply_url}
+Apply here: {apply_url}
 
-**Join Our Community:** {community_url}
-
-**View Full Job Details:** {job_url}
+View full job details: {job_url}
 
 ---
 This job was shared through TalentSphere
@@ -168,17 +160,25 @@ This job was shared through TalentSphere
         failed_recipients = []
         
         for recipient_email in recipients:
-            try:
-                email_service.send_email(
-                    to_email=recipient_email,
-                    subject=subject,
-                    html_content=email_body.replace('\n', '<br>'),
-                    text_content=email_body
-                )
+            sent = delivery_email_service.send_custom_email(
+                recipient_email=recipient_email.strip(),
+                recipient_name='',
+                subject=subject,
+                html_body=escape(email_body).replace('\n', '<br>'),
+                text_body=email_body,
+            )
+            if sent:
                 success_count += 1
-            except Exception as e:
-                logger.error(f"Failed to send email to {recipient_email}: {str(e)}")
+            else:
                 failed_recipients.append(recipient_email)
+
+        if success_count == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Email delivery failed',
+                'success_count': 0,
+                'failed_count': len(failed_recipients)
+            }), 502
         
         # Record the share
         share = JobShare(
@@ -191,9 +191,8 @@ This job was shared through TalentSphere
             user_agent=request.headers.get('User-Agent', ''),
             timestamp=datetime.utcnow(),
             extra_data=json.dumps({
-                'recipients': recipients,
-                'failed_recipients': failed_recipients,
-                'success_count': success_count
+                'success_count': success_count,
+                'failed_count': len(failed_recipients)
             })
         )
         
@@ -205,7 +204,6 @@ This job was shared through TalentSphere
             'message': f'Emails sent successfully to {success_count} recipient(s)',
             'success_count': success_count,
             'failed_count': len(failed_recipients),
-            'failed_recipients': failed_recipients,
             'share_id': share.id
         }), 200
         
@@ -218,6 +216,7 @@ This job was shared through TalentSphere
         }), 500
 
 @share_bp.route('/jobs/<int:job_id>/share/stats', methods=['GET'])
+@token_required
 def get_job_share_stats(job_id):
     """Get sharing statistics for a specific job"""
     try:
@@ -263,11 +262,11 @@ def get_job_share_stats(job_id):
         }), 500
 
 @share_bp.route('/analytics/shares', methods=['GET'])
-@jwt_required()
-def get_user_share_analytics():
+@token_required
+def get_user_share_analytics(current_user):
     """Get user's sharing analytics"""
     try:
-        user_id = get_jwt_identity()
+        user_id = current_user.id
         
         # Get all user shares
         shares = JobShare.query.filter_by(user_id=user_id).all()
@@ -386,11 +385,11 @@ def calculate_sharing_streak(shares):
     return streak
 
 @share_bp.route('/analytics/shares/export', methods=['GET'])
-@jwt_required()
-def export_share_data():
+@token_required
+def export_share_data(current_user):
     """Export user's sharing data"""
     try:
-        user_id = get_jwt_identity()
+        user_id = current_user.id
         
         # Get all user shares with job details
         shares = db.session.query(JobShare, Job, Company)\

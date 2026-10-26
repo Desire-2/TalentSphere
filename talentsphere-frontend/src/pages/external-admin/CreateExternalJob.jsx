@@ -277,7 +277,8 @@ const CreateExternalJob = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'saving', 'saved', 'error'
+  const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle', 'saving', 'saved', 'error'
+  const [createdJobId, setCreatedJobId] = useState(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [fieldAnimations, setFieldAnimations] = useState({});
   
@@ -491,7 +492,6 @@ Please share:
   const validationTimeoutRef = useRef(null);
   const suggestionsTimeoutRef = useRef(null);
   const suggestJobCategoryRef = useRef(null);
-  const suggestCompanyInfoRef = useRef(null);
   
   const [formData, setFormData] = useState({
     // Job Details
@@ -625,34 +625,6 @@ Please share:
     };
   }, [formData, formSections]);
 
-  // Auto-save functionality with optimized debouncing
-  // Auto-save logic: define the auto-save function first to avoid TDZ (handleAutoSave used in effect)
-  const handleAutoSave = useCallback(async () => {
-    if (!isDirty) return;
-
-    setAutoSaveStatus('saving');
-    try {
-      // Here you would call your auto-save API
-      // For now, just simulate a save
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAutoSaveStatus('saved');
-      setIsDirty(false);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-      setAutoSaveStatus('error');
-    }
-  }, [isDirty]);
-
-  useEffect(() => {
-    if (isDirty) {
-      const timer = setTimeout(() => {
-        handleAutoSave();
-      }, 5000); // Increased delay to 5 seconds to reduce database calls during typing
-
-      return () => clearTimeout(timer);
-    }
-  }, [formData, handleAutoSave, isDirty]);
-
   // Fetch templates function
   const fetchTemplates = useCallback(async () => {
     try {
@@ -763,7 +735,14 @@ Please share:
       delete jobData.location_state;
       delete jobData.location_country;
 
-      await externalAdminService.createExternalJob(jobData);
+      if (createdJobId) {
+        await externalAdminService.updateExternalJob(createdJobId, jobData);
+      } else {
+        const response = await externalAdminService.createExternalJob(jobData);
+        if (response?.job?.id) {
+          setCreatedJobId(response.job.id);
+        }
+      }
       toast.success('✨ Draft saved successfully!', {
         icon: '💾'
       });
@@ -776,7 +755,7 @@ Please share:
       setAutoSaveStatus('error');
       return false;
     }
-  }, [formData]);
+  }, [createdJobId, formData]);
 
   // Cleanup timeout refs on unmount
   useEffect(() => {
@@ -1057,14 +1036,10 @@ Please share:
             if (suggestJobCategoryRef.current) {
               suggestJobCategoryRef.current(value);
             }
-          } else if (field === 'external_company_name') {
-            if (suggestCompanyInfoRef.current) {
-              suggestCompanyInfoRef.current(value);
-            }
           }
         } catch (error) {
           // Silently ignore suggestion errors to prevent input interruption
-          console.log('Suggestion error (non-critical):', error);
+          return error;
         }
       }, 1500); // Even longer delay for suggestions
     }
@@ -1392,26 +1367,9 @@ Tools: Git, Jest, Cypress
     }
   }, [categories, formData.category_id, stableInputChange]);
 
-  const suggestCompanyInfo = useCallback((companyName) => {
-    // Mock company info suggestion - in reality, this could query a company database
-    if (companyName.length > 3 && !formData.external_company_website) {
-      const suggestedWebsite = `https://${companyName.toLowerCase().replace(/\s+/g, '')}.com`;
-      toast.info(`💡 Suggested website: ${suggestedWebsite}`, {
-        action: {
-          label: 'Apply',
-          onClick: () => stableInputChange('external_company_website', suggestedWebsite)
-        }
-      });
-    }
-  }, [formData.external_company_website, stableInputChange]);
-
   useEffect(() => {
     suggestJobCategoryRef.current = suggestJobCategory;
   }, [suggestJobCategory]);
-
-  useEffect(() => {
-    suggestCompanyInfoRef.current = suggestCompanyInfo;
-  }, [suggestCompanyInfo]);
 
   // AI Job Parser Handler
   const handleAiParse = async () => {
@@ -1679,7 +1637,14 @@ Tools: Git, Jest, Cypress
       delete jobData.location_state;
       delete jobData.location_country;
 
-      await externalAdminService.createExternalJob(jobData);
+      if (createdJobId) {
+        await externalAdminService.updateExternalJob(createdJobId, jobData);
+      } else {
+        const response = await externalAdminService.createExternalJob(jobData);
+        if (response?.job?.id) {
+          setCreatedJobId(response.job.id);
+        }
+      }
       
       // Show success animation
       setShowSuccessMessage(true);
@@ -2268,10 +2233,16 @@ Tools: Git, Jest, Cypress
                     <span className="text-gray-500">Saving...</span>
                   </>
                 )}
-                {autoSaveStatus === 'saved' && (
+                {autoSaveStatus === 'saved' && !isDirty && (
                   <>
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600">Saved</span>
+                    <span className="text-green-600">Draft saved</span>
+                  </>
+                )}
+                {isDirty && autoSaveStatus !== 'saving' && (
+                  <>
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <span className="text-amber-600">Unsaved changes</span>
                   </>
                 )}
                 {autoSaveStatus === 'error' && (
@@ -3518,11 +3489,11 @@ Send your resume to careers@techcorp.com or apply at https://techcorp.com/career
                       </Alert>
                     )}
                     
-                    {autoSaveStatus === 'saved' && (
+                    {autoSaveStatus === 'saved' && !isDirty && (
                       <Alert className="border-blue-200 bg-blue-50">
                         <CheckCircle className="h-4 w-4" />
                         <AlertDescription className="text-blue-800">
-                          ✨ Changes saved automatically
+                          ✨ Draft saved to TalentSphere
                         </AlertDescription>
                       </Alert>
                     )}

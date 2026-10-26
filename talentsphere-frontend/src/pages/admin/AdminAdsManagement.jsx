@@ -918,7 +918,7 @@ const KPICard = ({ title, value, icon, color }) => {
 const CampaignReviewCard = ({ campaign, employer, creatives, onApprove, onReject }) => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectNotes, setRejectNotes] = useState('');
-  const [showCreativeModal, setShowCreativeModal] = useState(false);
+  const [, setShowCreativeModal] = useState(false);
 
   return (
     <>

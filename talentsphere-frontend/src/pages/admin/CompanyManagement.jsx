@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Building, 
   Search, 
@@ -39,14 +40,12 @@ import {
   Info,
   Copy,
   RefreshCw,
-  Flag,
   MessageSquare,
   Verified,
   Camera,
   MapPin as LocationIcon,
   Building2,
   Archive,
-  BarChart3,
   Calendar as CalendarIcon,
   Settings,
   UserCheck,
@@ -109,9 +108,11 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAdminStore } from '../../stores/adminStore';
+import { adminService } from '../../services/admin';
 import { formatRelativeTime, formatNumber } from '../../utils/helpers';
 
 const EnhancedCompanyManagement = () => {
+  const navigate = useNavigate();
   const { 
     companies, 
     pagination, 
@@ -142,7 +143,6 @@ const EnhancedCompanyManagement = () => {
 
   const [selectedCompanies, setSelectedCompanies] = useState(new Set());
   const [actionLoading, setActionLoading] = useState({});
-  const [viewMode, setViewMode] = useState('table'); // table, grid, detailed
   const [showFilters, setShowFilters] = useState(false);
   
   // Modal states
@@ -152,7 +152,6 @@ const EnhancedCompanyManagement = () => {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Form states
@@ -248,9 +247,19 @@ const EnhancedCompanyManagement = () => {
   };
 
   const handleExportAll = async () => {
-    // In a real app, this would fetch all companies from the API
-    const csvContent = generateCSV(companies);
-    downloadCSV(csvContent, 'all_companies.csv');
+    try {
+      const firstPage = await adminService.getCompaniesAdmin({ page: 1, per_page: 100 });
+      const allCompanies = [...(firstPage.companies || [])];
+      const totalPages = firstPage.pagination?.pages || 1;
+      for (let page = 2; page <= totalPages; page += 1) {
+        const response = await adminService.getCompaniesAdmin({ page, per_page: 100 });
+        allCompanies.push(...(response.companies || []));
+      }
+      const csvContent = generateCSV(allCompanies);
+      downloadCSV(csvContent, 'all_companies.csv');
+    } catch {
+      alert('Failed to fetch all companies for export.');
+    }
   };
 
   const generateCSV = (data) => {
@@ -435,23 +444,7 @@ const EnhancedCompanyManagement = () => {
   };
 
   const handleViewJobs = (company) => {
-    // Navigate to jobs page with company filter
-    console.log('Viewing jobs for company:', company.name);
-    // In a real app, you would navigate to /admin/jobs?company_id=companyId
-    alert(`Job postings view would open here for "${company.name}"`);
-  };
-
-  const handleViewAnalytics = (company) => {
-    // Navigate to analytics page for specific company
-    console.log('Viewing analytics for company:', company.name);
-    // In a real app, you would show detailed analytics
-    alert(`Analytics dashboard would open here for "${company.name}"`);
-  };
-
-  const handleFlagForReview = (company) => {
-    // Flag company for manual review
-    console.log('Flagging company for review:', company.name);
-    alert(`Company "${company.name}" has been flagged for review`);
+    navigate(`/admin/jobs-enhanced?company_id=${company.id}`);
   };
 
   const handleDeleteCompany = (company) => {
@@ -1012,10 +1005,6 @@ const EnhancedCompanyManagement = () => {
                                   <Briefcase className="h-4 w-4 mr-2" />
                                   View Job Postings
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleViewAnalytics(company)}>
-                                  <BarChart3 className="h-4 w-4 mr-2" />
-                                  View Analytics
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel>Verification</DropdownMenuLabel>
                                 {!company.is_verified ? (
@@ -1047,10 +1036,6 @@ const EnhancedCompanyManagement = () => {
                                     Revoke Verification
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem onClick={() => handleFlagForReview(company)}>
-                                  <Flag className="h-4 w-4 mr-2" />
-                                  Flag for Review
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel>Management</DropdownMenuLabel>
                                 <DropdownMenuItem 
@@ -1345,17 +1330,6 @@ const EnhancedCompanyManagement = () => {
                             <Star className="h-4 w-4 mr-2" />
                           )}
                           {selectedCompany?.is_featured ? 'Remove Feature Status' : 'Make Featured'}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => {
-                            handleFlagForReview(selectedCompany);
-                            setShowCompanyDetails(false);
-                          }}
-                        >
-                          <Flag className="h-4 w-4 mr-2" />
-                          Flag for Review
                         </Button>
                         <Separator />
                         <Button 

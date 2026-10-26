@@ -21,7 +21,7 @@ source venv/bin/activate
 # Configuration
 export FLASK_ENV=${FLASK_ENV:-production}
 export PORT=${PORT:-5001}
-export WORKERS=${GUNICORN_WORKERS:-$(nproc --all)}
+export WORKERS=${GUNICORN_WORKERS:-2}
 export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 export MALLOC_ARENA_MAX=2

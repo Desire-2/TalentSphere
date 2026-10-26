@@ -19,8 +19,8 @@ import {
   Award,
   Building2
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
+import uploadService from '../../services/uploadService';
 
 const EmployerVerification = () => {
   const [verificationStatus, setVerificationStatus] = useState(null);
@@ -28,8 +28,6 @@ const EmployerVerification = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const { user } = useAuthStore();
-
   const documentTypes = [
     {
       key: 'business_license',
@@ -69,8 +67,8 @@ const EmployerVerification = () => {
     try {
       const response = await apiService.get('/auth/employer/verification-status');
       setVerificationStatus(response);
-    } catch (error) {
-      console.error('Failed to load verification status:', error);
+    } catch (_error) {
+      console.error('Failed to load verification status:', _error);
       setMessage({ type: 'error', text: 'Failed to load verification status' });
     }
   };
@@ -80,9 +78,7 @@ const EmployerVerification = () => {
 
     setIsUploading(true);
     try {
-      // In a real application, you would upload to cloud storage
-      // For now, we'll simulate the upload
-      const fileUrl = URL.createObjectURL(file);
+      const fileUrl = await uploadService.uploadDocument(file, undefined, 'document');
       
       setUploadedFiles(prev => ({
         ...prev,
@@ -97,7 +93,10 @@ const EmployerVerification = () => {
 
       setMessage({ type: 'success', text: `${file.name} uploaded successfully` });
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to upload file' });
+      setMessage({
+        type: 'error',
+        text: error.message || 'Failed to upload file'
+      });
     } finally {
       setIsUploading(false);
     }
@@ -107,7 +106,6 @@ const EmployerVerification = () => {
     setUploadedFiles(prev => {
       const updated = { ...prev };
       if (updated[documentType]) {
-        URL.revokeObjectURL(updated[documentType].url);
         delete updated[documentType];
       }
       return updated;
@@ -126,14 +124,14 @@ const EmployerVerification = () => {
       
       setMessage({ type: 'success', text: 'Verification documents submitted successfully!' });
       await loadVerificationStatus();
-    } catch (error) {
+    } catch (_error) {
       setMessage({ type: 'error', text: 'Failed to submit verification documents' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (_status) => {
     if (!verificationStatus) return null;
 
     if (verificationStatus.is_verified) {

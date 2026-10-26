@@ -295,6 +295,8 @@ def update_profile_visibility(current_user, user_id):
             profile.updated_at = datetime.utcnow()
             
         current_user.updated_at = datetime.utcnow()
+        from src.services.career_agent.memory import notify_profile_changed
+        notify_profile_changed(current_user.id)
         db.session.commit()
         
         return jsonify({'message': 'Profile visibility updated successfully'}), 200
@@ -424,6 +426,8 @@ def update_user_skills(current_user, user_id):
         profile.updated_at = datetime.utcnow()
         current_user.updated_at = datetime.utcnow()
         
+        from src.services.career_agent.memory import notify_profile_changed
+        notify_profile_changed(current_user.id)
         db.session.commit()
         
         return jsonify({
@@ -564,6 +568,9 @@ def update_user_profile(current_user):
             profile.updated_at = datetime.utcnow()
         
         current_user.updated_at = datetime.utcnow()
+        from src.services.career_agent.memory import notify_profile_changed
+        if current_user.role == 'job_seeker':
+            notify_profile_changed(current_user.id)
         db.session.commit()
         
         # Return updated profile

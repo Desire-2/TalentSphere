@@ -111,8 +111,6 @@ const FeaturedAdsCarousel = () => {
     return null; // Hide carousel if no ads
   }
 
-  const currentAd = featuredAds[currentIndex];
-
   return (
     <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl overflow-hidden carousel-container animate-fade-in">
       {/* Main Carousel Content */}

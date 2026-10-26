@@ -139,7 +139,7 @@ const Register = () => {
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState('');
   const [agreedToMarketing, setAgreedToMarketing] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isAnimating] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [hoveredRole, setHoveredRole] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -243,10 +243,7 @@ const Register = () => {
   });
 
   const selectedRole = watch('role');
-  const watchedEmail = watch('email');
   const watchedPassword = watch('password');
-  const watchedFirstName = watch('first_name');
-  const watchedLastName = watch('last_name');
   
   // Update resolver when role changes
   useEffect(() => {
@@ -325,15 +322,6 @@ const Register = () => {
     return () => subscription.unsubscribe();
   }, [watch]);
 
-  // Smooth animations
-  const handleStepTransition = (newStep) => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setCurrentStep(newStep);
-      setIsAnimating(false);
-    }, 150);
-  };
-
   // Enhanced field focus handling
   const handleFieldFocus = (fieldName) => {
     setFocusedField(fieldName);
@@ -378,9 +366,6 @@ const Register = () => {
     });
     const termsAccepted = watch('terms_accepted');
     const hasNoErrors = !errors.role && !errors.first_name && !errors.last_name && !errors.email && !errors.password && !errors.terms_accepted;
-    console.log('canProceedToStep2 - hasValues:', hasValues, 'termsAccepted:', termsAccepted, 'hasNoErrors:', hasNoErrors);
-    console.log('form values:', basicFields.map(field => ({ [field]: watch(field) })));
-    console.log('errors:', { role: errors.role, first_name: errors.first_name, last_name: errors.last_name, email: errors.email, password: errors.password, terms_accepted: errors.terms_accepted });
     return hasValues && termsAccepted && hasNoErrors;
   };
 
@@ -416,25 +401,11 @@ const Register = () => {
     try {
       clearError();
       
-      console.log('🔍 Form submission debug:');
-      console.log('Selected role:', selectedRole);
-      console.log('All form data:', data);
-      console.log('Watch values check:', {
-        role: watch('role'),
-        job_title: watch('job_title'),
-        company_name: watch('company_name'),
-        industry: watch('industry'),
-        company_size: watch('company_size'),
-        company_type: watch('company_type')
-      });
-      
       // Add marketing consent
       data.marketing_consent = agreedToMarketing;
       
       // Basic validation for required fields
       if (data.role === 'employer') {
-        console.log('🏢 Validating employer data...');
-        
         // Get the latest values directly from the form
         const formValues = {
           job_title: watch('job_title'),
@@ -444,18 +415,8 @@ const Register = () => {
           company_type: watch('company_type')
         };
         
-        console.log('Form values from watch:', formValues);
-        
         // Update data with latest form values
         Object.assign(data, formValues);
-        
-        console.log('Updated data with form values:', {
-          job_title: data.job_title,
-          company_name: data.company_name,
-          industry: data.industry,
-          company_size: data.company_size,
-          company_type: data.company_type
-        });
         
         // Company details are collected during onboarding, only job_title is required here.
         const requiredFields = ['job_title'];
@@ -464,8 +425,6 @@ const Register = () => {
         if (missingFields.length > 0) {
           console.error('❌ Missing required employer fields:', missingFields);
           // Don't return, let's try to continue and see what the backend says
-        } else {
-          console.log('✅ All required employer fields are present');
         }
       }
       
@@ -481,8 +440,6 @@ const Register = () => {
       if (cleanedData.profile_picture) {
         delete cleanedData.profile_picture;
       }
-      
-      console.log('🧹 Cleaned data for submission:', cleanedData);
       
       const response = await registerUser(cleanedData);
 
@@ -686,7 +643,6 @@ const Register = () => {
                       value={selectedRole || ''}
                       onValueChange={(value) => {
                         setValue('role', value);
-                        console.log('Role changed to:', value);
                       }}
                       className="grid grid-cols-1 sm:grid-cols-2 gap-6"
                     >
@@ -1416,7 +1372,6 @@ const Register = () => {
                               Industry <span className="text-red-500">*</span>
                             </Label>
                             <Select onValueChange={(value) => {
-                              console.log('🏭 Industry selected:', value);
                               setValue('industry', value);
                               trigger('industry');
                             }}>
@@ -1446,7 +1401,6 @@ const Register = () => {
                               Company Size <span className="text-red-500">*</span>
                             </Label>
                             <Select onValueChange={(value) => {
-                              console.log('📏 Company size selected:', value);
                               setValue('company_size', value);
                               trigger('company_size');
                             }}>
@@ -1476,7 +1430,6 @@ const Register = () => {
                               Company Type <span className="text-red-500">*</span>
                             </Label>
                             <Select onValueChange={(value) => {
-                              console.log('🏢 Company type selected:', value);
                               setValue('company_type', value);
                               trigger('company_type');
                             }}>
@@ -1837,4 +1790,3 @@ const Register = () => {
 };
 
 export default Register;
-

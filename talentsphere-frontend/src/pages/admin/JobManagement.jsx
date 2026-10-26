@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import config from '../../config/environment.js';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Briefcase, 
   Search, 
@@ -74,20 +74,26 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAdminStore } from '../../stores/adminStore';
+import { useAuthStore } from '../../stores/authStore';
+import { adminService } from '../../services/admin';
+import apiService from '../../services/api';
 import { formatCurrency, formatRelativeTime, formatNumber } from '../../utils/helpers';
 
 const JobManagement = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { 
     jobs, 
     pagination, 
     isLoading, 
     error, 
-    fetchJobs, 
-    moderateJob 
+    fetchJobs
   } = useAdminStore();
+  const { refreshSession, isAuthenticated } = useAuthStore();
 
   const [filters, setFilters] = useState({
     search: '',
+    company_id: searchParams.get('company_id') || '',
     status: 'all',
     is_featured: 'all',
     is_urgent: 'all',
@@ -100,18 +106,10 @@ const JobManagement = () => {
     per_page: 20
   });
 
-  const [selectedJobs, setSelectedJobs] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [categories, setCategories] = useState([]);
   const [authError, setAuthError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [bulkActionDialog, setBulkActionDialog] = useState({ open: false, action: '', reason: '' });
-  const [jobAnalytics, setJobAnalytics] = useState({});
-  const [showAnalytics, setShowAnalytics] = useState({});
-  const [jobStats, setJobStats] = useState(null);
-  const [currentView, setCurrentView] = useState('table'); // table, cards, analytics
 
   // Authentication refresh function
   console.log('🎯 JobManagement render - jobs:', jobs);
@@ -120,147 +118,19 @@ const JobManagement = () => {
   console.log('🎯 JobManagement render - authError:', authError);
 
   // Bulk selection handlers
-  const handleSelectAll = (checked) => {
-    setSelectAll(checked);
-    if (checked) {
-      setSelectedJobs(jobs.map(job => job.id));
-    } else {
-      setSelectedJobs([]);
-    }
-  };
-
-  const handleSelectJob = (jobId, checked) => {
-    if (checked) {
-      setSelectedJobs(prev => [...prev, jobId]);
-    } else {
-      setSelectedJobs(prev => prev.filter(id => id !== jobId));
-      setSelectAll(false);
-    }
-  };
-
-  // Enhanced analytics functions
-  const fetchJobAnalytics = async (jobId) => {
-    try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setJobAnalytics(prev => ({ ...prev, [jobId]: data }));
-      }
-    } catch (error) {
-      console.error('Failed to fetch job analytics:', error);
-    }
-  };
-
-  const fetchJobStats = async () => {
-    try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setJobStats(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch job stats:', error);
-    }
-  };
-
-  // Bulk actions
-  const handleBulkAction = async () => {
-    if (selectedJobs.length === 0) {
-      alert('Please select jobs to perform bulk action');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/bulk-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          job_ids: selectedJobs,
-          action: bulkActionDialog.action,
-          reason: bulkActionDialog.reason
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert(`Bulk ${bulkActionDialog.action} completed successfully for ${data.affected_jobs} jobs`);
-        setBulkActionDialog({ open: false, action: '', reason: '' });
-        setSelectedJobs([]);
-        setSelectAll(false);
-        await fetchJobsWithAuth(filters);
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
-      console.error('Bulk action failed:', error);
-      alert(`Failed to perform bulk action: ${error.message}`);
-    }
-  };
-
   const refreshAuthentication = async () => {
+    if (isRefreshing) return false;
     setIsRefreshing(true);
     setAuthError(false);
     
     try {
-      const response = await fetch(`${config.API.API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: 'admin@talentsphere.com',
-          password: 'AdminPass123!'
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Store token in localStorage
-        localStorage.setItem('token', data.token);
-        
-        // Update auth store if it exists
-        const authStore = {
-          state: {
-            token: data.token,
-            user: data.user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          },
-          version: 0
-        };
-        localStorage.setItem('auth-store', JSON.stringify(authStore));
-        
-        console.log('✅ Authentication refreshed successfully');
-        
-        // Retry fetching jobs after successful authentication
-        console.log('🔄 Attempting to fetch jobs after authentication refresh...');
-        try {
-          const result = await fetchJobsWithAuth(filters);
-          console.log('✅ Jobs fetched successfully after auth refresh:', result);
-        } catch (fetchError) {
-          console.error('❌ Failed to fetch jobs even after auth refresh:', fetchError);
-          // Don't set auth error here, as auth was successful
-        }
-        
-      } else {
-        throw new Error(data.error || 'Failed to refresh authentication');
-      }
-    } catch (error) {
-      console.error('❌ Failed to refresh authentication:', error);
+      const refreshed = await refreshSession();
+      if (!refreshed) throw new Error('Your session could not be refreshed. Please log in again.');
+      await fetchJobsWithAuth(filters);
+      return true;
+    } catch (_error) {
       setAuthError(true);
+      return false;
     } finally {
       setIsRefreshing(false);
     }
@@ -313,10 +183,9 @@ const JobManagement = () => {
     // Initial load with auth check
     const initializeData = async () => {
       console.log('🚀 Initializing JobManagement data...');
-      const token = localStorage.getItem('token');
-      console.log('📱 Current token:', token ? `${token.substring(0, 50)}...` : 'No token');
+      console.log('📱 Current session:', isAuthenticated ? 'Authenticated' : 'Missing');
       
-      if (!token) {
+      if (!isAuthenticated) {
         console.log('🔄 No token found, attempting authentication...');
         await refreshAuthentication();
       } else {
@@ -328,9 +197,6 @@ const JobManagement = () => {
           if (!result || !result.jobs || result.jobs.length === 0) {
             console.log('⚠️ No jobs returned, might be an auth issue. Trying refresh...');
             await refreshAuthentication();
-          } else {
-            // Also fetch job stats for analytics
-            await fetchJobStats();
           }
         } catch (error) {
           console.log('🔄 Initial fetch failed, refreshing authentication...');
@@ -356,8 +222,7 @@ const JobManagement = () => {
     // Fetch job categories for the filter dropdown
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`${config.API.API_URL}/api/job-categories`);
-        const data = await response.json();
+        const data = await apiService.getJobCategories();
         setCategories(data.categories || []);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
@@ -365,15 +230,6 @@ const JobManagement = () => {
     };
     fetchCategories();
   }, []);
-
-  // Update selectAll state when jobs change
-  useEffect(() => {
-    if (jobs.length > 0 && selectedJobs.length === jobs.length) {
-      setSelectAll(true);
-    } else {
-      setSelectAll(false);
-    }
-  }, [jobs, selectedJobs]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -386,26 +242,10 @@ const JobManagement = () => {
   const handleJobModeration = async (jobId, action, reason = '', notes = '') => {
     setActionLoading(prev => ({ ...prev, [jobId]: action }));
     try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/moderate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ action, reason, notes })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log(`✅ Job ${action}d successfully:`, data);
-        // Refresh the data
-        await fetchJobsWithAuth(filters);
-        
-        // Show success message
-        alert(`Job ${action}d successfully!`);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await adminService.moderateJob(jobId, action, reason, notes);
+      console.log(`✅ Job ${action}d successfully:`, data);
+      await fetchJobsWithAuth(filters);
+      alert(`Job ${action}d successfully!`);
     } catch (error) {
       console.error('❌ Failed to moderate job:', error);
       if (error.message?.includes('401') || error.message?.includes('unauthorized') || 
@@ -421,9 +261,7 @@ const JobManagement = () => {
   };
 
   const handleViewJob = (job) => {
-    // Navigate to job details view
-    console.log('Opening job details for:', job);
-    alert(`Job details viewing functionality would open here for "${job.title}"`);
+    navigate(`/jobs/${job.id}`);
   };
 
   const handleContactEmployer = (job) => {

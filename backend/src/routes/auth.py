@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import jwt
@@ -9,6 +9,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
+import threading
+import time
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
 from src.utils.db_utils import db_transaction, safe_db_operation
@@ -61,6 +63,107 @@ def validate_password(password):
         return False, "Password must contain at least one number"
     return True, "Password is valid"
 
+def _authorization_token():
+    """Return the bearer token from the request without logging its value."""
+    auth_header = request.headers.get('Authorization', '').strip()
+    if not auth_header:
+        return None, 'Token is missing'
+
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == 'bearer' and parts[1].strip():
+        return parts[1].strip(), None
+
+    # Keep accepting the legacy raw-token format for existing API clients, but
+    # reject malformed multi-part headers instead of guessing which part is a
+    # credential.
+    if len(parts) == 1 and parts[0]:
+        return parts[0], None
+
+    return None, 'Invalid token format'
+
+def _decode_access_token(token, verify_expiration=True):
+    """Decode one of TalentSphere's PyJWT access tokens."""
+    options = {'require': ['user_id', 'exp']}
+    if not verify_expiration:
+        options['verify_exp'] = False
+
+    return jwt.decode(
+        token,
+        current_app.config['SECRET_KEY'],
+        algorithms=['HS256'],
+        options=options,
+        leeway=current_app.config.get('JWT_CLOCK_SKEW_SECONDS', 5),
+    )
+
+# ---------------------------------------------------------------------------
+# Identity cache for high-frequency read-only endpoints
+# ---------------------------------------------------------------------------
+# Resolving id -> (role, is_active) costs one database round trip. On a remote
+# database that is a large slice of a polling request's budget even though
+# role/active state change rarely, so a short per-process cache removes the
+# query entirely. Handing the endpoint a narrow stand-in (instead of a User
+# row) guarantees a route can never silently observe None for a column that
+# was never loaded: anything but id/role/is_active raises AttributeError.
+IDENTITY_CACHED_ENDPOINTS = frozenset({
+    'career_agent.generate_package',
+    'career_agent.get_generation',
+    'career_agent.list_generations',
+    'enhanced_notification.get_notifications',
+    'enhanced_notification.get_notification_stats',
+})
+
+IDENTITY_CACHE_TTL = float(os.getenv('AUTH_IDENTITY_CACHE_TTL', '30'))
+
+_identity_lock = threading.Lock()
+_identity_cache = {}
+
+
+class IdentityUser:
+    """Read-only stand-in exposing only id, role and is_active."""
+
+    __slots__ = ('id', 'role', 'is_active')
+
+    def __init__(self, user_id, role, is_active):
+        self.id = user_id
+        self.role = role
+        self.is_active = is_active
+
+    def __repr__(self):
+        return f'<IdentityUser id={self.id} role={self.role}>'
+
+
+def _identity_get(user_id):
+    if user_id is None:
+        return None
+    with _identity_lock:
+        entry = _identity_cache.get(user_id)
+    if not entry:
+        return None
+    expires_at, role, is_active = entry
+    if time.time() >= expires_at:
+        invalidate_identity_cache(user_id)
+        return None
+    return IdentityUser(user_id, role, is_active)
+
+
+def _identity_put(user_id, role, is_active):
+    if user_id is None:
+        return
+    with _identity_lock:
+        if len(_identity_cache) > 4096:
+            _identity_cache.clear()
+        _identity_cache[user_id] = (time.time() + IDENTITY_CACHE_TTL, role, is_active)
+
+
+def invalidate_identity_cache(user_id=None):
+    """Drop cached identity rows. Call after a role or account-status change."""
+    with _identity_lock:
+        if user_id is None:
+            _identity_cache.clear()
+        else:
+            _identity_cache.pop(user_id, None)
+
+
 def token_required(f):
     """Decorator to require valid JWT token"""
     @wraps(f)
@@ -69,46 +172,36 @@ def token_required(f):
         if request.method == 'OPTIONS':
             return current_app.make_default_options_response()
 
-        token = None
-        auth_header = request.headers.get('Authorization')
-        
-        # Enhanced logging for debugging auth issues
-        if current_app.config.get('DEBUG') or current_app.config.get('FLASK_ENV') == 'development':
-            current_app.logger.debug(f"Auth header present: {bool(auth_header)}")
-            if auth_header:
-                current_app.logger.debug(f"Auth header format: {auth_header[:20]}...")
-        
-        if auth_header:
-            try:
-                # Handle both "Bearer token" and "token" formats
-                parts = auth_header.split(" ")
-                if len(parts) == 2 and parts[0].lower() == 'bearer':
-                    token = parts[1]
-                elif len(parts) == 1:
-                    token = parts[0]
-                else:
-                    current_app.logger.warning(f"Invalid auth header format: {auth_header[:50]}")
-                    return jsonify({
-                        'error': 'Invalid token format',
-                        'message': 'Authorization header must be "Bearer <token>" or "<token>"'
-                    }), 401
-            except Exception as e:
-                current_app.logger.error(f"Error parsing auth header: {str(e)}")
-                return jsonify({'error': 'Invalid token format', 'details': str(e)}), 401
-        
+        token, token_error = _authorization_token()
         if not token:
             return jsonify({
-                'error': 'Token is missing',
-                'message': 'Authorization header is required'
+                'error': token_error,
+                'message': 'Authorization header must be "Bearer <token>"'
             }), 401
         
         try:
             # Decode and validate token
-            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            data = _decode_access_token(token)
             
-            # Get user from database
-            current_user = User.query.get(data['user_id'])
-            
+            # High-frequency, read-only endpoints only need identity, role and
+            # active state. They resolve those from a short-lived cache so a
+            # polling request does not pay a users SELECT on every call; all
+            # other endpoints still hydrate the full user row.
+            user_id = data.get('user_id')
+            if request.endpoint in IDENTITY_CACHED_ENDPOINTS:
+                current_user = _identity_get(user_id)
+                if current_user is None:
+                    row = (
+                        db.session.query(User.id, User.role, User.is_active)
+                        .filter(User.id == user_id)
+                        .first()
+                    )
+                    if row is not None:
+                        _identity_put(row.id, row.role, row.is_active)
+                        current_user = IdentityUser(row.id, row.role, row.is_active)
+            else:
+                current_user = db.session.get(User, user_id)
+
             if not current_user:
                 current_app.logger.warning(f"User not found for token user_id: {data.get('user_id')}")
                 return jsonify({
@@ -117,7 +210,7 @@ def token_required(f):
                 }), 401
                 
             if not current_user.is_active:
-                current_app.logger.warning(f"Inactive user attempted access: {current_user.email}")
+                current_app.logger.warning(f"Inactive user attempted access: user_id={current_user.id}")
                 return jsonify({
                     'error': 'Account inactive',
                     'message': 'Your account has been deactivated'
@@ -142,6 +235,25 @@ def token_required(f):
                 'message': 'An error occurred during authentication'
             }), 500
         
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+def optional_token(f):
+    """Attach the current user when a valid token is present, otherwise None."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return current_app.make_default_options_response()
+        current_user = None
+        token, _ = _authorization_token()
+        if token:
+            try:
+                payload = _decode_access_token(token)
+                current_user = db.session.get(User, payload.get('user_id'))
+                if current_user and not current_user.is_active:
+                    current_user = None
+            except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+                current_user = None
         return f(current_user, *args, **kwargs)
     return decorated
 
@@ -729,13 +841,22 @@ def get_employer_dashboard_stats(current_user):
             company = Company.query.get(current_user.employer_profile.company_id)
         
         # Get job statistics
-        jobs_query = Job.query.filter_by(employer_id=current_user.id) if hasattr(Job, 'employer_id') else Job.query.filter_by(user_id=current_user.id)
+        jobs_query = Job.query.filter_by(posted_by=current_user.id)
         total_jobs = jobs_query.count()
         active_jobs = jobs_query.filter_by(is_active=True).count()
+        draft_jobs = jobs_query.filter_by(status='draft').count()
+        expired_jobs = jobs_query.filter(
+            Job.expires_at.isnot(None),
+            Job.expires_at < datetime.utcnow()
+        ).count()
         
         # Get application statistics
         total_applications = 0
-        pending_applications = 0
+        awaiting_review = 0
+        reviewed_applications = 0
+        applications_this_month = 0
+        recent_activity = []
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         if hasattr(Application, 'job_id'):
             # Get all applications for this employer's jobs
@@ -743,7 +864,34 @@ def get_employer_dashboard_stats(current_user):
             if job_ids:
                 applications_query = Application.query.filter(Application.job_id.in_(job_ids))
                 total_applications = applications_query.count()
-                pending_applications = applications_query.filter_by(status='pending').count()
+                awaiting_review = applications_query.filter(
+                    Application.reviewed_at.is_(None)
+                ).count()
+                reviewed_applications = applications_query.filter(
+                    Application.reviewed_at.isnot(None)
+                ).count()
+                applications_this_month = applications_query.filter(
+                    Application.created_at >= month_start
+                ).count()
+
+                from src.models.application import ApplicationActivity
+                activities = (
+                    db.session.query(ApplicationActivity)
+                    .join(Application, ApplicationActivity.application_id == Application.id)
+                    .filter(Application.job_id.in_(job_ids))
+                    .order_by(ApplicationActivity.created_at.desc())
+                    .limit(10)
+                    .all()
+                )
+                recent_activity = [
+                    {
+                        'type': activity.activity_type,
+                        'description': activity.description,
+                        'application_id': activity.application_id,
+                        'timestamp': activity.created_at.isoformat()
+                    }
+                    for activity in activities
+                ]
         
         # Profile completion
         profile_completion = calculate_employer_profile_completion(current_user)
@@ -757,18 +905,19 @@ def get_employer_dashboard_stats(current_user):
             'jobs': {
                 'total': total_jobs,
                 'active': active_jobs,
-                'draft': 0,  # Would need to implement draft status
-                'expired': total_jobs - active_jobs
+                'draft': draft_jobs,
+                'expired': expired_jobs
             },
             'applications': {
                 'total': total_applications,
-                'pending': pending_applications,
-                'reviewed': total_applications - pending_applications,
-                'this_month': 0  # Would need date filtering
+                'pending': awaiting_review,
+                'awaiting_review': awaiting_review,
+                'reviewed': reviewed_applications,
+                'this_month': applications_this_month
             },
             'company': company.to_dict() if company else None,
             'required_actions': get_employer_required_actions(current_user),
-            'recent_activity': []  # Would implement activity tracking
+            'recent_activity': recent_activity
         }
         
         return jsonify(stats), 200
@@ -855,9 +1004,13 @@ def login():
         return jsonify({'error': 'Login failed', 'details': str(e)}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
-@token_required
-def logout(current_user):
-    """Logout user (client should discard token)"""
+def logout():
+    """End the client session.
+
+    Access tokens are stateless. Logout is intentionally idempotent and does
+    not require a still-valid token; the client must discard its credentials.
+    This also lets a tab log out cleanly after its access token has expired.
+    """
     return jsonify({'message': 'Logout successful'}), 200
 
 @auth_bp.route('/profile', methods=['GET'])
@@ -964,6 +1117,9 @@ def update_profile(current_user):
                     setattr(profile, field, data[field])
         
         current_user.updated_at = datetime.utcnow()
+        if current_user.role == 'job_seeker':
+            from src.services.career_agent.memory import notify_profile_changed
+            notify_profile_changed(current_user.id)
         db.session.commit()
         
         return jsonify({
@@ -1013,8 +1169,46 @@ def send_verification_email(current_user):
         if current_user.is_verified:
             return jsonify({'error': 'Email is already verified'}), 400
         
-        # In a real application, you would send an actual email here
-        # For now, we'll just return a success message
+        issued_at = datetime.utcnow()
+        token = jwt.encode(
+            {
+                'user_id': current_user.id,
+                'email': current_user.email,
+                'purpose': 'email_verification',
+                'iat': issued_at,
+                'exp': issued_at + timedelta(hours=24)
+            },
+            current_app.config['SECRET_KEY'],
+            algorithm='HS256'
+        )
+        backend_url = request.url_root.rstrip('/')
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+        verification_link = (
+            f"{backend_url}/api/auth/verify-email-link?token={token}"
+        )
+        html_body = f"""
+        <p>Confirm your TalentSphere email address by selecting the button below.</p>
+        <p><a href="{verification_link}">Verify email address</a></p>
+        <p>This link expires in 24 hours. If you did not request it, you can ignore this email.</p>
+        <p><a href="{frontend_url}">Open TalentSphere</a></p>
+        """
+        text_body = (
+            "Confirm your TalentSphere email address:\\n"
+            f"{verification_link}\\n\\n"
+            "This link expires in 24 hours. If you did not request it, ignore this email."
+        )
+        sent = email_service.send_custom_email(
+            current_user.email,
+            current_user.get_full_name(),
+            'Verify your TalentSphere email',
+            html_body,
+            text_body
+        )
+        if not sent:
+            return jsonify({
+                'error': 'Email delivery is not configured. Please try again later.',
+                'code': 'EMAIL_DELIVERY_UNAVAILABLE'
+            }), 503
         return jsonify({'message': 'Verification email sent successfully'}), 200
         
     except Exception as e:
@@ -1030,24 +1224,58 @@ def verify_email():
         if not token:
             return jsonify({'error': 'Verification token is required'}), 400
         
-        # In a real application, you would verify the token and mark email as verified
-        # For now, we'll just return a success message
+        try:
+            payload = jwt.decode(
+                token,
+                current_app.config['SECRET_KEY'],
+                algorithms=['HS256'],
+                options={'require': ['user_id', 'email', 'purpose', 'exp']},
+                leeway=5
+            )
+        except jwt.PyJWTError:
+            return jsonify({
+                'error': 'Verification link is invalid or has expired.',
+                'code': 'INVALID_VERIFICATION_TOKEN'
+            }), 400
+
+        if payload.get('purpose') != 'email_verification':
+            return jsonify({'error': 'Invalid verification token.'}), 400
+
+        user = User.query.get(payload.get('user_id'))
+        if not user or user.email.lower() != str(payload.get('email', '')).lower():
+            return jsonify({'error': 'Verification link is invalid.'}), 400
+
+        if not user.is_verified:
+            user.is_verified = True
+            user.email_verified_at = datetime.utcnow()
+            user.updated_at = datetime.utcnow()
+            db.session.commit()
         return jsonify({'message': 'Email verified successfully'}), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to verify email', 'details': str(e)}), 500
 
+@auth_bp.route('/verify-email-link', methods=['GET'])
+def verify_email_link():
+    """Verify an emailed token and redirect into the verification UI."""
+    token = request.args.get('token', '')
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+    redirect_url = f"{frontend_url}/verify-email"
+    if token:
+        redirect_url = f"{redirect_url}?token={token}"
+    return redirect(redirect_url, code=302)
+
 @auth_bp.route('/verify-token', methods=['POST'])
 def verify_token():
     """Verify if a token is valid - optimized version"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         token = data.get('token')
         
-        if not token:
+        if not isinstance(token, str) or not token.strip():
             return jsonify({'valid': False, 'error': 'Token is required'}), 400
         
-        user = User.verify_token(token)
+        user = User.verify_token(token.strip())
         if user and user.is_active:
             # Return minimal user data to avoid slow to_dict() calls
             user_data = {
@@ -1066,21 +1294,50 @@ def verify_token():
         else:
             return jsonify({'valid': False, 'error': 'Invalid or expired token'}), 401
             
-    except Exception as e:
-        return jsonify({'valid': False, 'error': str(e)}), 500
+    except Exception as exc:
+        # Keep infrastructure failures distinct from invalid credentials. A
+        # temporary database outage must not make the browser discard a valid
+        # session and force a needless login.
+        current_app.logger.error(f"Token verification unavailable: {str(exc)}")
+        return jsonify({'valid': False, 'error': 'Token verification temporarily unavailable'}), 503
 
 @auth_bp.route('/refresh-token', methods=['POST'])
-@token_required
-def refresh_token(current_user):
+def refresh_token():
     """Refresh JWT token"""
     try:
+        if request.method == 'OPTIONS':
+            return current_app.make_default_options_response()
+
+        token, token_error = _authorization_token()
+        if not token:
+            return jsonify({'error': token_error, 'message': 'Authorization header is required'}), 401
+
+        # Refresh can be called by a sleeping browser tab after the access
+        # token expires. It is still bounded by a short grace period, so an
+        # old stolen access token cannot be refreshed indefinitely.
+        data = _decode_access_token(token, verify_expiration=False)
+        expires_at = data.get('exp')
+        refresh_grace = current_app.config.get('JWT_REFRESH_GRACE_SECONDS', 900)
+        if not expires_at or expires_at < datetime.utcnow().timestamp() - refresh_grace:
+            return jsonify({'error': 'Token has expired', 'message': 'Please login again'}), 401
+
+        current_user = db.session.get(User, data.get('user_id'))
+        if not current_user or not current_user.is_active:
+            return jsonify({'error': 'Invalid token', 'message': 'User account is not active'}), 401
+
         new_token = current_user.generate_token()
         return jsonify({
             'message': 'Token refreshed successfully',
             'token': new_token
         }), 200
-        
+    except jwt.ExpiredSignatureError:
+        # Kept for compatibility if the JWT library verifies exp before the
+        # bounded-grace branch above.
+        return jsonify({'error': 'Token has expired', 'message': 'Please login again'}), 401
+    except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+        return jsonify({'error': 'Invalid token', 'message': 'Token validation failed'}), 401
     except Exception as e:
+        current_app.logger.error(f"Token refresh error: {str(e)}")
         return jsonify({'error': 'Failed to refresh token', 'details': str(e)}), 500
 
 @auth_bp.route('/deactivate-account', methods=['POST'])
@@ -1475,4 +1732,3 @@ def not_found(error):
 @auth_bp.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
-

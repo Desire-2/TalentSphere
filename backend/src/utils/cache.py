@@ -199,32 +199,43 @@ def get_cached_employer_stats(user_id: int, company_id: Optional[int] = None) ->
     """Cache employer dashboard statistics"""
     from src.models.job import Job
     from src.models.application import Application
+    from src.models.company import Company
     from src.models.user import db
     from sqlalchemy import func
-    
+
     # Build base query for jobs
     if company_id:
         jobs_query = Job.query.filter_by(company_id=company_id)
     else:
         jobs_query = Job.query.filter_by(posted_by=user_id)
-    
-    job_ids = [job.id for job in jobs_query.all()]
-    
-    if not job_ids:
+
+    jobs = jobs_query.all()
+    job_ids = [job.id for job in jobs]
+
+    if not jobs:
         return {
             'total_jobs': 0,
             'active_jobs': 0,
+            'draft_jobs': 0,
+            'paused_jobs': 0,
             'total_applications': 0,
             'new_applications': 0,
             'shortlisted_applications': 0,
             'interviews_scheduled': 0,
-            'hires_made': 0
+            'hires_made': 0,
+            'total_job_views': 0,
+            'profile_views': 0,
+            'avg_time_to_hire': 0,
+            'application_trends': [],
+            'job_performance': []
         }
-    
-    # Job statistics
-    total_jobs = len(job_ids)
-    active_jobs = jobs_query.filter_by(status='published').count()
-    
+
+    total_jobs = len(jobs)
+    active_jobs = sum(1 for job in jobs if job.status == 'published')
+    draft_jobs = sum(1 for job in jobs if job.status == 'draft')
+    paused_jobs = sum(1 for job in jobs if job.status == 'paused')
+    total_job_views = sum(job.view_count or 0 for job in jobs)
+
     # Application statistics
     apps_query = Application.query.filter(Application.job_id.in_(job_ids))
     total_applications = apps_query.count()
@@ -232,15 +243,82 @@ def get_cached_employer_stats(user_id: int, company_id: Optional[int] = None) ->
     shortlisted_applications = apps_query.filter_by(status='shortlisted').count()
     interviews_scheduled = apps_query.filter_by(interview_scheduled=True).count()
     hires_made = apps_query.filter_by(status='hired').count()
-    
+
+    hired_apps = apps_query.filter(
+        Application.status == 'hired',
+        Application.created_at.isnot(None),
+        Application.updated_at.isnot(None),
+    ).all()
+    avg_time_to_hire = (
+        sum(
+            (application.updated_at - application.created_at).total_seconds()
+            for application in hired_apps
+        )
+        / len(hired_apps)
+        / 86400
+        if hired_apps
+        else 0
+    )
+
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    daily_stats = db.session.query(
+        func.date(Application.created_at).label('date'),
+        func.count(Application.id).label('count'),
+    ).filter(
+        Application.job_id.in_(job_ids),
+        Application.created_at >= thirty_days_ago,
+    ).group_by(func.date(Application.created_at)).all()
+    daily_stats_by_date = {str(stat.date): stat.count for stat in daily_stats}
+    application_trends = []
+    for index in range(30):
+        trend_date = (thirty_days_ago + timedelta(days=index)).strftime('%Y-%m-%d')
+        application_trends.append({
+            'date': trend_date,
+            'applications': daily_stats_by_date.get(trend_date, 0),
+        })
+
+    application_counts = dict(
+        db.session.query(Application.job_id, func.count(Application.id))
+        .filter(Application.job_id.in_(job_ids))
+        .group_by(Application.job_id)
+        .all()
+    )
+    job_performance = []
+    for job in sorted(jobs, key=lambda item: item.created_at or datetime.min, reverse=True)[:10]:
+        job_application_count = application_counts.get(job.id, 0)
+        conversion_rate = (
+            job_application_count / job.view_count * 100 if job.view_count else 0
+        )
+        job_performance.append({
+            'job_id': job.id,
+            'job_title': job.title,
+            'views': job.view_count or 0,
+            'applications': job_application_count,
+            'conversion_rate': round(conversion_rate, 2),
+            'status': job.status,
+            'created_at': job.created_at.isoformat() if job.created_at else None,
+        })
+
+    profile_views = 0
+    if company_id:
+        company = db.session.get(Company, company_id)
+        profile_views = company.profile_views or 0 if company else 0
+
     return {
         'total_jobs': total_jobs,
         'active_jobs': active_jobs,
+        'draft_jobs': draft_jobs,
+        'paused_jobs': paused_jobs,
         'total_applications': total_applications,
         'new_applications': new_applications,
         'shortlisted_applications': shortlisted_applications,
         'interviews_scheduled': interviews_scheduled,
-        'hires_made': hires_made
+        'hires_made': hires_made,
+        'total_job_views': total_job_views,
+        'profile_views': profile_views,
+        'avg_time_to_hire': round(avg_time_to_hire, 1),
+        'application_trends': application_trends,
+        'job_performance': job_performance,
     }
 
 @cached("job_search", ttl=300)  # 5 minutes

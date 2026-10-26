@@ -38,13 +38,6 @@ const ApplicationForm = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   
-  console.log('[ApplicationForm] Render:', {
-    jobId,
-    isAuthenticated,
-    userRole: user?.role,
-    timestamp: new Date().toISOString()
-  });
-  
   // Form state
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +45,7 @@ const ApplicationForm = () => {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
   const fileInputRef = useRef(null);
 
@@ -85,65 +78,13 @@ const ApplicationForm = () => {
   useEffect(() => {
     if (!isAuthenticated) {
       // Don't navigate immediately, let the user see a message
-      console.log('User not authenticated, will redirect to login');
       return;
     }
     
     if (user?.role !== 'job_seeker') {
-      console.log('User role not job_seeker, role is:', user?.role);
       return;
     }
   }, [isAuthenticated, user, navigate, jobId]);
-
-  // Show authentication required message
-  if (!isAuthenticated) {
-    console.log('[ApplicationForm] Showing login required message');
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-blue-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Sign In Required</h1>
-          <p className="text-gray-600 mb-8">You need to sign in to apply for this job.</p>
-          <div className="space-x-4">
-            <Button asChild>
-              <Link to="/login" state={{ returnTo: `/jobs/${jobId}/apply` }}>
-                Sign In
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/register">Create Account</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show role error message
-  if (user?.role !== 'job_seeker') {
-    console.log('[ApplicationForm] Showing role error message. User role:', user?.role);
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-orange-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Restricted</h1>
-          <p className="text-gray-600 mb-8">Only job seekers can apply for jobs. Current role: {user?.role}</p>
-          <div className="space-x-4">
-            <Button variant="outline" asChild>
-              <Link to="/jobs">Browse Jobs</Link>
-            </Button>
-            <Button asChild>
-              <Link to="/profile">Update Profile</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Load job details
   useEffect(() => {
@@ -155,7 +96,6 @@ const ApplicationForm = () => {
       
       try {
         const jobData = await jobsService.getJobById(jobId);
-        console.log('Job data loaded:', jobData);
         setJob(jobData.data || jobData);
         
         // Check if job allows applications
@@ -217,6 +157,52 @@ const ApplicationForm = () => {
 
     loadJob();
   }, [jobId, isAuthenticated, user]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-blue-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Sign In Required</h1>
+          <p className="text-gray-600 mb-8">You need to sign in to apply for this job.</p>
+          <div className="space-x-4">
+            <Button asChild>
+              <Link to="/login" state={{ returnTo: `/jobs/${jobId}/apply` }}>
+                Sign In
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/register">Create Account</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'job_seeker') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-orange-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Restricted</h1>
+          <p className="text-gray-600 mb-8">Only job seekers can apply for jobs. Current role: {user?.role}</p>
+          <div className="space-x-4">
+            <Button variant="outline" asChild>
+              <Link to="/jobs">Browse Jobs</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/profile">Update Profile</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Handle input changes
   const handleInputChange = (field, value) => {
@@ -291,7 +277,6 @@ const ApplicationForm = () => {
       const uploadedUrl = await uploadService.uploadResume(file, user?.id);
       
       handleInputChange('resume_url', uploadedUrl);
-      console.log('Resume uploaded successfully:', uploadedUrl);
       
     } catch (error) {
       console.error('Resume upload failed:', error);
@@ -359,11 +344,7 @@ const ApplicationForm = () => {
         source: applicationData.source
       };
       
-      console.log('Submitting application:', submitData);
-      
-      const result = await applicationsService.applyForJob(jobId, submitData);
-      
-      console.log('Application submitted successfully:', result);
+      await applicationsService.applyForJob(jobId, submitData);
       setSuccess(true);
       
       // Redirect after success

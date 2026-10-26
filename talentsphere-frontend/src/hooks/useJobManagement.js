@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
-import employerService from '../services/employer';
 
 export const useJobManagement = () => {
   // Jobs state
@@ -68,7 +67,6 @@ export const useJobManagement = () => {
         }
       });
       
-      console.log('Fetching jobs with params:', queryParams);
       
       const response = await apiService.get(`/my-jobs?${new URLSearchParams(queryParams).toString()}`);
       
@@ -163,22 +161,6 @@ export const useJobManagement = () => {
   }, []);
 
   // Job actions
-  const handleCreateJob = useCallback(() => {
-    // This would typically navigate to create job page
-    console.log('Navigate to create job page');
-    // For demo, you could implement a modal or navigation
-  }, []);
-
-  const handleEditJob = useCallback((jobId) => {
-    // This would typically navigate to edit job page
-    console.log('Navigate to edit job:', jobId);
-  }, []);
-
-  const handleViewJob = useCallback((jobId) => {
-    // This would typically navigate to job details page
-    console.log('Navigate to view job:', jobId);
-  }, []);
-
   const handleDuplicateJob = useCallback(async (jobId) => {
     try {
       setLoading(prev => ({ ...prev, action: true }));
@@ -206,7 +188,6 @@ export const useJobManagement = () => {
       // Refresh jobs list
       fetchJobs();
       
-      console.log(`Job ${jobId} duplicated successfully`);
       
     } catch (err) {
       console.error('Failed to duplicate job:', err);
@@ -232,7 +213,6 @@ export const useJobManagement = () => {
         j.id === jobId ? { ...j, status: newStatus, updated_at: new Date().toISOString() } : j
       ));
       
-      console.log(`Job ${jobId} status updated to ${newStatus}`);
       
     } catch (err) {
       console.error('Failed to toggle job status:', err);
@@ -256,31 +236,10 @@ export const useJobManagement = () => {
       setJobs(prev => prev.filter(j => j.id !== jobId));
       setSelectedJobs(prev => prev.filter(id => id !== jobId));
       
-      console.log(`Job ${jobId} deleted successfully`);
       
     } catch (err) {
       console.error('Failed to delete job:', err);
       setError(`Failed to delete job: ${err.message}`);
-    } finally {
-      setLoading(prev => ({ ...prev, action: false }));
-    }
-  }, []);
-
-  const handlePromoteJob = useCallback(async (jobId) => {
-    try {
-      setLoading(prev => ({ ...prev, action: true }));
-      
-      // This would typically call a featured ads endpoint
-      // For now, just update the local state
-      setJobs(prev => prev.map(j => 
-        j.id === jobId ? { ...j, is_featured: true } : j
-      ));
-      
-      console.log(`Job ${jobId} promoted to featured`);
-      
-    } catch (err) {
-      console.error('Failed to promote job:', err);
-      setError(`Failed to promote job: ${err.message}`);
     } finally {
       setLoading(prev => ({ ...prev, action: false }));
     }
@@ -323,7 +282,6 @@ export const useJobManagement = () => {
       // Clear selections
       setSelectedJobs([]);
       
-      console.log(`Bulk action ${action} completed for ${selectedJobs.length} jobs`);
       
     } catch (err) {
       console.error('Failed to perform bulk action:', err);
@@ -430,13 +388,9 @@ export const useJobManagement = () => {
     setSelectedJobs,
     
     // Job actions
-    handleCreateJob,
-    handleEditJob,
-    handleViewJob,
     handleDuplicateJob,
     handleToggleJobStatus,
     handleDeleteJob,
-    handlePromoteJob,
     handleBulkActions,
     handleExportJobs,
     handleRefresh,

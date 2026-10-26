@@ -4,16 +4,13 @@ import {
   TrendingUp,
   Target,
   Star,
-  Globe,
   Lightbulb,
   Download,
   FileText,
   Briefcase,
   Users,
   Clock,
-  Calendar,
   CheckCircle,
-  MessageSquare,
   AlertTriangle,
   Info
 } from 'lucide-react';
@@ -21,15 +18,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const AnalyticsDashboard = ({
   analyticsData,
-  dateRange,
-  onDateRangeChange,
   onExport,
   loading
 }) => {
+  const totalApplications = Number(analyticsData.totalApplications) || 0;
+  const funnelPercentage = (value) => (
+    totalApplications > 0 ? Math.round((value / totalApplications) * 100) : 0
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -47,17 +46,7 @@ const AnalyticsDashboard = ({
           <p className="text-gray-600">Track your hiring performance and get actionable insights</p>
         </div>
         <div className="flex gap-2">
-          <Select value={dateRange} onValueChange={onDateRangeChange}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
+          <Badge variant="outline">Last 30 days</Badge>
           <Button variant="outline" onClick={onExport}>
             <Download className="w-4 h-4 mr-2" />
             Export Report
@@ -91,7 +80,7 @@ const AnalyticsDashboard = ({
                 <p className="text-sm font-medium text-gray-600">Active Jobs</p>
                 <p className="text-3xl font-bold text-green-600">{analyticsData.activeJobs}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {analyticsData.jobGrowth > 0 ? '+' : ''}{analyticsData.jobGrowth}% vs last period
+                  {analyticsData.totalJobs} total jobs
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
@@ -108,7 +97,7 @@ const AnalyticsDashboard = ({
                 <p className="text-sm font-medium text-gray-600">Successful Hires</p>
                 <p className="text-3xl font-bold text-purple-600">{analyticsData.successfulHires}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {analyticsData.hireGrowth > 0 ? '+' : ''}{analyticsData.hireGrowth}% vs last period
+                  {analyticsData.hireRate}% application-to-hire rate
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
@@ -125,7 +114,7 @@ const AnalyticsDashboard = ({
                 <p className="text-sm font-medium text-gray-600">Avg. Time to Hire</p>
                 <p className="text-3xl font-bold text-orange-600">{analyticsData.avgTimeToHire}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {analyticsData.timeToHireChange > 0 ? '+' : ''}{analyticsData.timeToHireChange} days vs last period
+                  Based on completed hires
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
@@ -148,12 +137,18 @@ const AnalyticsDashboard = ({
             <CardDescription>Applications received over time</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p>Application trends chart would be displayed here</p>
-                <p className="text-sm text-gray-400">Integration with chart library needed</p>
-              </div>
+            <div className="h-64 flex items-end gap-1" aria-label="Applications received over the last 30 days">
+              {analyticsData.applicationTrends.map((point) => {
+                const maxApplications = Math.max(...analyticsData.applicationTrends.map((item) => item.applications), 1);
+                return (
+                  <div
+                    key={point.date}
+                    className="flex-1 min-w-1 rounded-t bg-blue-500"
+                    style={{ height: `${Math.max((point.applications / maxApplications) * 100, point.applications ? 4 : 1)}%` }}
+                    title={`${point.date}: ${point.applications} application${point.applications === 1 ? '' : 's'}`}
+                  />
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -176,14 +171,14 @@ const AnalyticsDashboard = ({
               <Progress value={100} className="h-2" />
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Under Review</span>
+                <span className="text-sm font-medium">Awaiting Review</span>
                 <span className="text-sm font-bold">
                   {analyticsData.funnelData.underReview} 
-                  ({Math.round((analyticsData.funnelData.underReview / analyticsData.funnelData.applications) * 100)}%)
+                  ({funnelPercentage(analyticsData.funnelData.underReview)}%)
                 </span>
               </div>
               <Progress 
-                value={(analyticsData.funnelData.underReview / analyticsData.funnelData.applications) * 100} 
+                value={funnelPercentage(analyticsData.funnelData.underReview)}
                 className="h-2" 
               />
               
@@ -191,11 +186,11 @@ const AnalyticsDashboard = ({
                 <span className="text-sm font-medium">Interviewed</span>
                 <span className="text-sm font-bold">
                   {analyticsData.funnelData.interviewed} 
-                  ({Math.round((analyticsData.funnelData.interviewed / analyticsData.funnelData.applications) * 100)}%)
+                  ({funnelPercentage(analyticsData.funnelData.interviewed)}%)
                 </span>
               </div>
               <Progress 
-                value={(analyticsData.funnelData.interviewed / analyticsData.funnelData.applications) * 100} 
+                value={funnelPercentage(analyticsData.funnelData.interviewed)}
                 className="h-2" 
               />
               
@@ -203,11 +198,11 @@ const AnalyticsDashboard = ({
                 <span className="text-sm font-medium">Hired</span>
                 <span className="text-sm font-bold">
                   {analyticsData.funnelData.hired} 
-                  ({Math.round((analyticsData.funnelData.hired / analyticsData.funnelData.applications) * 100)}%)
+                  ({funnelPercentage(analyticsData.funnelData.hired)}%)
                 </span>
               </div>
               <Progress 
-                value={(analyticsData.funnelData.hired / analyticsData.funnelData.applications) * 100} 
+                value={funnelPercentage(analyticsData.funnelData.hired)}
                 className="h-2" 
               />
             </div>
@@ -216,7 +211,7 @@ const AnalyticsDashboard = ({
       </div>
 
       {/* Performance Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Performing Jobs */}
         <Card>
           <CardHeader>
@@ -253,52 +248,14 @@ const AnalyticsDashboard = ({
           </CardContent>
         </Card>
 
-        {/* Application Sources */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              Application Sources
-            </CardTitle>
-            <CardDescription>Where candidates find your jobs</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {analyticsData.sources.map((source, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      index === 0 ? 'bg-blue-500' :
-                      index === 1 ? 'bg-green-500' :
-                      index === 2 ? 'bg-purple-500' :
-                      index === 3 ? 'bg-orange-500' : 'bg-gray-500'
-                    }`}></div>
-                    <span className="text-sm font-medium">{source.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold">{source.count}</span>
-                    <span className="text-xs text-gray-500 ml-1">({source.percentage}%)</span>
-                  </div>
-                </div>
-              ))}
-              {analyticsData.sources.length === 0 && (
-                <div className="text-center py-8">
-                  <Globe className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No source data yet</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Insights & Recommendations */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="w-5 h-5" />
-              AI Insights
+              Hiring Insights
             </CardTitle>
-            <CardDescription>Personalized recommendations</CardDescription>
+            <CardDescription>Calculated from your current hiring metrics</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -378,48 +335,6 @@ const AnalyticsDashboard = ({
           </CardContent>
         </Card>
 
-        {/* Time-based Analytics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Time-based Metrics</CardTitle>
-            <CardDescription>Average times for hiring stages</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-medium">Time to First Review</span>
-                </div>
-                <span className="text-sm font-bold">{analyticsData.timeMetrics.firstReview} hours</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium">Time to Interview</span>
-                </div>
-                <span className="text-sm font-bold">{analyticsData.timeMetrics.interview} days</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm font-medium">Time to Hire</span>
-                </div>
-                <span className="text-sm font-bold">{analyticsData.timeMetrics.hire} days</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-orange-500" />
-                  <span className="text-sm font-medium">Response Time</span>
-                </div>
-                <span className="text-sm font-bold">{analyticsData.timeMetrics.response} hours</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

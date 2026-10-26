@@ -5,8 +5,9 @@ Provides comprehensive notification management with email delivery
 
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
-from sqlalchemy import desc, and_, or_, func
+from sqlalchemy import desc, and_, or_, func, case
 import json
+import os
 
 from src.models.user import db
 from src.models.notification import Notification, Message
@@ -15,8 +16,33 @@ from src.models.job import Job
 from src.models.application import Application
 from src.routes.auth import token_required
 from src.services.email_service import email_service, EmailNotification, EmailPriority, NotificationType
+from src.utils.ttl_cache import TTLCache
 
 enhanced_notification_bp = Blueprint('enhanced_notification', __name__)
+
+# Both endpoints are polled by the frontend. Redis is optional in this
+# deployment, so these process-local caches keep a poll from issuing a round
+# trip per request. Keys are scoped per user; every mutation handler below
+# invalidates its owner's entries, and the TTL bounds staleness for writes
+# made in another worker process.
+_NOTIFICATION_CACHE_TTL = float(os.getenv('NOTIFICATION_CACHE_TTL', '20'))
+_notifications_cache = TTLCache(
+    name='enhanced_notifications:list',
+    max_entries=256,
+    default_ttl=_NOTIFICATION_CACHE_TTL,
+)
+_stats_cache = TTLCache(
+    name='enhanced_notifications:stats',
+    max_entries=256,
+    default_ttl=_NOTIFICATION_CACHE_TTL,
+)
+
+
+def _invalidate_notification_caches(user_id=None):
+    """Drop cached list/stats payloads, or only those of one user."""
+    prefix = f"u{user_id}:" if user_id is not None else ''
+    _notifications_cache.invalidate(prefix)
+    _stats_cache.invalidate(prefix)
 
 
 @enhanced_notification_bp.route('/notifications', methods=['GET'])
@@ -24,93 +50,126 @@ enhanced_notification_bp = Blueprint('enhanced_notification', __name__)
 def get_notifications(current_user):
     """Get notifications for current user with enhanced filtering"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 20, type=int), 100)
+        page = max(request.args.get('page', 1, type=int) or 1, 1)
+        per_page = max(min(request.args.get('per_page', 20, type=int) or 20, 100), 1)
         notification_type = request.args.get('type')
         priority = request.args.get('priority')
         is_read = request.args.get('is_read')
         search = request.args.get('search')
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
-        
-        # Build query
-        query = Notification.query.filter_by(user_id=current_user.id)
-        
-        # Apply filters
+
+        cache_key = f"u{current_user.id}:" + request.query_string.decode('utf-8', 'replace')
+        cached_payload = _notifications_cache.get(cache_key)
+        if cached_payload is not None:
+            return jsonify(cached_payload), 200
+
+        # Build the filter list once so the row query and the counts agree on
+        # exactly which notifications belong on this page.
+        filters = [Notification.user_id == current_user.id]
+
         if notification_type:
-            query = query.filter(Notification.notification_type == notification_type)
-        
+            filters.append(Notification.notification_type == notification_type)
+
         if priority:
-            query = query.filter(Notification.priority == priority)
-        
+            filters.append(Notification.priority == priority)
+
         if is_read is not None:
-            is_read_bool = is_read.lower() == 'true'
-            query = query.filter(Notification.is_read == is_read_bool)
-        
+            filters.append(Notification.is_read == (is_read.lower() == 'true'))
+
         if search:
             search_term = f'%{search}%'
-            query = query.filter(
-                or_(
-                    Notification.title.ilike(search_term),
-                    Notification.message.ilike(search_term)
-                )
-            )
-        
+            filters.append(or_(
+                Notification.title.ilike(search_term),
+                Notification.message.ilike(search_term)
+            ))
+
         if date_from:
             try:
                 from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
-                query = query.filter(Notification.created_at >= from_date)
+                filters.append(Notification.created_at >= from_date)
             except ValueError:
                 pass
-        
+
         if date_to:
             try:
                 to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-                query = query.filter(Notification.created_at <= to_date)
+                filters.append(Notification.created_at <= to_date)
             except ValueError:
                 pass
-        
-        # Order by created_at descending
-        query = query.order_by(desc(Notification.created_at))
-        
-        # Paginate
-        notifications = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        # Get unread count
-        unread_count = Notification.query.filter_by(
-            user_id=current_user.id, is_read=False
-        ).count()
-        
-        # Convert to list with additional metadata
-        notification_list = []
-        for notification in notifications.items:
-            notification_dict = notification.to_dict()
-            
-            # Add delivery status
-            delivery_logs = NotificationDeliveryLog.query.filter_by(
-                notification_id=notification.id
+
+        # paginate() would issue a COUNT for the page plus a second COUNT for
+        # the unread badge; when no filter narrows the set both come out of a
+        # single aggregate instead. The badge always counts every unread
+        # notification, filtered or not, so filtered requests still need the
+        # dedicated total.
+        if len(filters) == 1:
+            total, unread_count = db.session.query(
+                func.count(Notification.id),
+                func.coalesce(
+                    func.sum(case((Notification.is_read.is_(False), 1), else_=0)), 0
+                ),
+            ).filter(*filters).one()
+        else:
+            total = db.session.query(func.count(Notification.id)).filter(*filters).scalar()
+            unread_count = (
+                db.session.query(func.count(Notification.id))
+                .filter(
+                    Notification.user_id == current_user.id,
+                    Notification.is_read.is_(False),
+                )
+                .scalar()
+            )
+
+        notifications = (
+            db.session.query(Notification)
+            .filter(*filters)
+            .order_by(desc(Notification.created_at))
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+
+        # One batched lookup for the whole page. The previous per-notification
+        # query turned a 50-row page into 50 round trips to the database.
+        page_ids = [notification.id for notification in notifications]
+        logs_by_notification = {}
+        if page_ids:
+            delivery_logs = NotificationDeliveryLog.query.filter(
+                NotificationDeliveryLog.notification_id.in_(page_ids)
             ).all()
-            
+            for log in delivery_logs:
+                logs_by_notification.setdefault(log.notification_id, []).append(log)
+
+        notification_list = []
+        for notification in notifications:
+            notification_dict = notification.to_dict()
+
+            delivery_logs = logs_by_notification.get(notification.id, [])
             notification_dict['delivery_status'] = {
-                'email_sent': any(log.delivery_method == 'email' and log.delivery_status == 'sent' 
+                'email_sent': any(log.delivery_method == 'email' and log.delivery_status == 'sent'
                                 for log in delivery_logs),
-                'email_opened': any(log.delivery_method == 'email' and log.opened_at 
+                'email_opened': any(log.delivery_method == 'email' and log.opened_at
                                   for log in delivery_logs),
-                'email_clicked': any(log.delivery_method == 'email' and log.clicked_at 
+                'email_clicked': any(log.delivery_method == 'email' and log.clicked_at
                                    for log in delivery_logs)
             }
-            
+
             notification_list.append(notification_dict)
-        
-        return jsonify({
+
+        total = int(total or 0)
+        unread_count = int(unread_count or 0)
+        pages = (total + per_page - 1) // per_page
+
+        payload = {
             'notifications': notification_list,
             'pagination': {
-                'page': notifications.page,
-                'pages': notifications.pages,
-                'per_page': notifications.per_page,
-                'total': notifications.total,
-                'has_next': notifications.has_next,
-                'has_prev': notifications.has_prev
+                'page': page,
+                'pages': pages,
+                'per_page': per_page,
+                'total': total,
+                'has_next': page < pages,
+                'has_prev': page > 1
             },
             'unread_count': unread_count,
             'filters_applied': {
@@ -120,7 +179,9 @@ def get_notifications(current_user):
                 'search': search,
                 'date_range': bool(date_from or date_to)
             }
-        }), 200
+        }
+        _notifications_cache.set(cache_key, payload)
+        return jsonify(payload), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get notifications', 'details': str(e)}), 500
@@ -273,6 +334,7 @@ def create_notification(current_user):
                 # Continue without failing the notification creation
         
         db.session.commit()
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({
             'message': 'Notification created successfully',
@@ -298,6 +360,7 @@ def mark_notification_read(current_user, notification_id):
             return jsonify({'error': 'Notification not found'}), 404
         
         notification.mark_as_read()
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({
             'message': 'Notification marked as read',
@@ -326,6 +389,7 @@ def delete_notification(current_user, notification_id):
         
         db.session.delete(notification)
         db.session.commit()
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({'message': 'Notification deleted successfully'}), 200
         
@@ -347,6 +411,7 @@ def mark_all_notifications_read(current_user):
         })
         
         db.session.commit()
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({
             'message': f'Marked {updated_count} notifications as read'
@@ -393,6 +458,7 @@ def bulk_delete_notifications(current_user):
         ).delete(synchronize_session=False)
         
         db.session.commit()
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({
             'message': f'Deleted {deleted_count} notifications successfully'
@@ -443,30 +509,41 @@ def update_notification_preferences(current_user):
 def get_notification_stats(current_user):
     """Get notification statistics for current user"""
     try:
-        # Get basic counts
-        total_count = Notification.query.filter_by(user_id=current_user.id).count()
-        unread_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
-        
+        cache_key = f"u{current_user.id}:stats"
+        cached_payload = _stats_cache.get(cache_key)
+        if cached_payload is not None:
+            return jsonify(cached_payload), 200
+
+        # Total, unread and the 7-day window share one conditional aggregate
+        # instead of three separate COUNT round trips.
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        total_count, unread_count, recent_count = db.session.query(
+            func.count(Notification.id),
+            func.coalesce(
+                func.sum(case((Notification.is_read.is_(False), 1), else_=0)), 0
+            ),
+            func.coalesce(
+                func.sum(case((Notification.created_at >= seven_days_ago, 1), else_=0)), 0
+            ),
+        ).filter(Notification.user_id == current_user.id).one()
+
         # Get counts by type
         type_stats = db.session.query(
             Notification.notification_type,
             func.count(Notification.id).label('count'),
-            func.sum(func.cast(~Notification.is_read, db.Integer)).label('unread_count')
+            func.coalesce(
+                func.sum(case((Notification.is_read.is_(False), 1), else_=0)), 0
+            ).label('unread_count')
         ).filter_by(user_id=current_user.id).group_by(Notification.notification_type).all()
         
         # Get counts by priority
         priority_stats = db.session.query(
             Notification.priority,
             func.count(Notification.id).label('count'),
-            func.sum(func.cast(~Notification.is_read, db.Integer)).label('unread_count')
+            func.coalesce(
+                func.sum(case((Notification.is_read.is_(False), 1), else_=0)), 0
+            ).label('unread_count')
         ).filter_by(user_id=current_user.id).group_by(Notification.priority).all()
-        
-        # Get recent activity (last 7 days)
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        recent_count = Notification.query.filter(
-            Notification.user_id == current_user.id,
-            Notification.created_at >= seven_days_ago
-        ).count()
         
         # Get email delivery stats
         email_stats = db.session.query(
@@ -477,11 +554,11 @@ def get_notification_stats(current_user):
             NotificationDeliveryLog.delivery_method == 'email'
         ).group_by(NotificationDeliveryLog.delivery_status).all()
         
-        return jsonify({
-            'total_notifications': total_count,
-            'unread_notifications': unread_count,
-            'read_notifications': total_count - unread_count,
-            'recent_notifications': recent_count,
+        payload = {
+            'total_notifications': int(total_count or 0),
+            'unread_notifications': int(unread_count or 0),
+            'read_notifications': int(total_count or 0) - int(unread_count or 0),
+            'recent_notifications': int(recent_count or 0),
             'by_type': [
                 {
                     'type': stat.notification_type,
@@ -505,7 +582,9 @@ def get_notification_stats(current_user):
                 }
                 for stat in email_stats
             ]
-        }), 200
+        }
+        _stats_cache.set(cache_key, payload)
+        return jsonify(payload), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get notification stats', 'details': str(e)}), 500
@@ -533,6 +612,7 @@ def send_test_notification(current_user):
             send_email=send_email,
             priority=EmailPriority.NORMAL
         )
+        _invalidate_notification_caches(current_user.id)
         
         return jsonify({
             'message': 'Test notification sent successfully' if success else 'Test notification created but email failed',
@@ -564,8 +644,10 @@ def send_weekly_digest(current_user):
             Notification.created_at >= week_ago
         ).count()
         
-        # Get applications count (if application tracking is implemented)
-        applications_count = 0  # Placeholder
+        applications_count = Application.query.filter(
+            Application.applicant_id == current_user.id,
+            Application.created_at >= week_ago
+        ).count()
         
         # Get messages count
         messages_count = Message.query.filter(
@@ -576,8 +658,7 @@ def send_weekly_digest(current_user):
         digest_data = {
             'new_jobs_count': new_jobs_count,
             'applications_count': applications_count,
-            'messages_count': messages_count,
-            'jobs_list': []  # Could include recent job recommendations
+            'messages_count': messages_count
         }
         
         # Send digest email

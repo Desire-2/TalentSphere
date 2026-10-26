@@ -120,20 +120,6 @@ const ExternalAdminDashboard = () => {
       icon: GraduationCap,
       href: '/external-admin/scholarships/create',
       color: 'bg-indigo-600 hover:bg-indigo-700'
-    },
-    {
-      title: 'Import Jobs',
-      description: 'Bulk import jobs from external sources',
-      icon: Upload,
-      href: '/external-admin/jobs/import',
-      color: 'bg-green-600 hover:bg-green-700'
-    },
-    {
-      title: 'Manage Sources',
-      description: 'Configure external job sources',
-      icon: ExternalLink,
-      href: '/external-admin/sources',
-      color: 'bg-purple-600 hover:bg-purple-700'
     }
   ];
 

@@ -170,7 +170,6 @@ const CreateScholarship = () => {
   const [categories, setCategories] = useState([]);
   const [errors, setErrors] = useState({});
   const [isPreview, setIsPreview] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
 
   // AI Parser State
@@ -251,64 +250,6 @@ const CreateScholarship = () => {
   const validationTimeoutRef = useRef(null);
 
   // Form sections for better organization
-  const formSections = [
-    {
-      id: 'basic',
-      title: 'Scholarship Information',
-      icon: GraduationCap,
-      description: 'Basic details about the scholarship',
-      fields: ['title', 'summary', 'description', 'scholarship_type', 'category_id']
-    },
-    {
-      id: 'organization',
-      title: 'Organization Information',
-      icon: Building2,
-      description: 'Details about the scholarship provider',
-      fields: ['external_organization_name', 'external_organization_website', 'external_organization_logo', 'source_url']
-    },
-    {
-      id: 'academic',
-      title: 'Academic Information',
-      icon: BookOpen,
-      description: 'Academic level and field requirements',
-      fields: ['study_level', 'field_of_study']
-    },
-    {
-      id: 'location',
-      title: 'Location & Eligibility',
-      icon: MapPin,
-      description: 'Geographic and eligibility requirements',
-      fields: ['location_type', 'country', 'city', 'state', 'nationality_requirements', 'gender_requirements']
-    },
-    {
-      id: 'financial',
-      title: 'Financial Information',
-      icon: DollarSign,
-      description: 'Scholarship amount and funding details',
-      fields: ['amount_min', 'amount_max', 'currency', 'funding_type', 'renewable', 'duration_years']
-    },
-    {
-      id: 'requirements',
-      title: 'Requirements & Criteria',
-      icon: Target,
-      description: 'Academic and other requirements',
-      fields: ['min_gpa', 'max_age', 'other_requirements']
-    },
-    {
-      id: 'application',
-      title: 'Application Process',
-      icon: FileText,
-      description: 'How students can apply',
-      fields: ['application_type', 'application_deadline', 'application_email', 'application_url', 'application_instructions']
-    },
-    {
-      id: 'documents',
-      title: 'Required Documents',
-      icon: Shield,
-      description: 'Documents students need to submit',
-      fields: ['requires_transcript', 'requires_recommendation_letters', 'requires_essay', 'requires_portfolio']
-    }
-  ];
 
   useEffect(() => {
     fetchCategories();

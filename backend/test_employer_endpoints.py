@@ -248,7 +248,7 @@ def test_endpoints():
      }}
    }}
    
-5. {BOLD}Expected 401 Response:(RESET}
+5. {BOLD}Expected 401 Response:{RESET}
    {{
      "success": false,
      "error": "Missing or invalid token",

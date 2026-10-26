@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { redirectToLogin, storeIntendedDestination } from '../utils/redirectUtils';
+import { isPathAllowedForUser, redirectToLogin, storeIntendedDestination } from '../utils/redirectUtils';
 
 /**
  * Custom hook for handling authentication-aware navigation
@@ -73,8 +73,6 @@ export const useAuthNavigation = () => {
   const canAccess = (path) => {
     if (!isAuthenticated) return false;
     
-    // Import the utility function here to avoid circular dependencies
-    const { isPathAllowedForUser } = require('../utils/redirectUtils');
     return isPathAllowedForUser(path, user);
   };
 

@@ -8,9 +8,11 @@ import {
   BarChart3
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 import { useEmployerDashboard } from '../hooks/employer/useEmployerDashboard';
-import { exportToCSV } from '../utils/employer/dashboardUtils';
-import apiService from '../services/api';
 
 // Import the new components
 import DashboardOverview from '../components/employer/DashboardOverview';
@@ -54,45 +56,26 @@ const EmployerDashboard = () => {
   const {
     // Data
     dashboardData,
-    jobs,
-    applications,
     candidates,
     analyticsData,
     
     // States
     loading,
     errors,
-    selectedJobs,
-    jobFilters,
-    applicationFilters,
     candidateFilters,
-    candidateSearchMode,
-    analyticsDateRange,
     
     // Pagination
-    jobPagination,
-    applicationPagination,
     candidatePagination,
     
     // Actions
-    setSelectedJobs,
-    setCandidateSearchMode,
-    setAnalyticsDateRange,
     setCandidateFilters,
+    setCandidateSearchMode,
     
     // Handlers
-    handleJobFilterChange,
-    handleApplicationFilterChange,
-    handleJobPageChange,
-    handleApplicationPageChange,
     handleCandidatePageChange,
     
     // Load functions
     loadDashboardData,
-    loadJobs,
-    loadApplications,
-    loadCandidates,
-    loadAnalytics
   } = useEmployerDashboard();
 
   // Navigation handlers
@@ -102,10 +85,6 @@ const EmployerDashboard = () => {
 
   const handleViewJob = (jobId) => {
     navigate(`/employer/jobs/${jobId}`);
-  };
-
-  const handleEditJob = (jobId) => {
-    navigate(`/employer/jobs/${jobId}/edit`);
   };
 
   const handleViewAllJobs = () => {
@@ -120,105 +99,11 @@ const EmployerDashboard = () => {
     navigate(`/employer/applications/${applicationId}`);
   };
 
-  // Job management actions
-  const handleDuplicateJob = async (jobId) => {
-    try {
-      const response = await apiService.post(`/employer/jobs/${jobId}/duplicate`);
-      if (response.success) {
-        loadJobs();
-        console.log('Job duplicated successfully');
-      }
-    } catch (error) {
-      console.error('Error duplicating job:', error);
-    }
-  };
-
-  const handleToggleJobStatus = async (jobId) => {
-    try {
-      const response = await apiService.patch(`/employer/jobs/${jobId}/toggle-status`);
-      if (response.success) {
-        loadJobs();
-        console.log('Job status updated successfully');
-      }
-    } catch (error) {
-      console.error('Error updating job status:', error);
-    }
-  };
-
-  const handleDeleteJob = async (jobId) => {
-    if (window.confirm('Are you sure you want to delete this job?')) {
-      try {
-        const response = await apiService.delete(`/employer/jobs/${jobId}`);
-        if (response.success) {
-          loadJobs();
-          console.log('Job deleted successfully');
-        }
-      } catch (error) {
-        console.error('Error deleting job:', error);
-      }
-    }
-  };
-
-  const handlePromoteJob = async (jobId) => {
-    try {
-      const response = await apiService.post(`/employer/jobs/${jobId}/feature`);
-      if (response.success) {
-        loadJobs();
-        console.log('Job promoted successfully');
-      }
-    } catch (error) {
-      console.error('Error promoting job:', error);
-    }
-  };
-
-  const handleBulkJobActions = () => {
-    console.log('Bulk job actions for:', selectedJobs);
-    // Implement bulk actions modal or dropdown
-  };
-
-  const handleExportJobs = () => {
-    exportToCSV(jobs, `jobs_export_${new Date().toISOString().split('T')[0]}`);
-  };
-
-  // Application management actions
-  const handleUpdateApplicationStatus = async (applicationId, status) => {
-    try {
-      const response = await apiService.patch(`/employer/applications/${applicationId}`, {
-        status
-      });
-      if (response.success) {
-        loadApplications();
-        console.log('Application status updated successfully');
-      }
-    } catch (error) {
-      console.error('Error updating application status:', error);
-    }
-  };
-
-  const handleScheduleInterview = (applicationId) => {
-    navigate(`/employer/applications/${applicationId}/interview`);
-  };
-
-  const handleSendMessage = (applicationId) => {
-    navigate(`/employer/applications/${applicationId}/message`);
-  };
-
-  const handleBulkApplicationAction = async (action) => {
-    const selectedApplications = applications.filter(app => app.selected);
-    console.log('Bulk application action:', action, selectedApplications);
-    // Implement bulk application actions
-  };
-
-  const handleExportApplications = () => {
-    exportToCSV(applications, `applications_export_${new Date().toISOString().split('T')[0]}`);
-  };
-
   // Analytics actions
   const handleExportAnalytics = () => {
     const analyticsExport = {
       metrics: analyticsData,
-      generated_at: new Date().toISOString(),
-      date_range: analyticsDateRange
+      generated_at: new Date().toISOString()
     };
     
     const blob = new Blob([JSON.stringify(analyticsExport, null, 2)], { 
@@ -267,6 +152,8 @@ const EmployerDashboard = () => {
           <DashboardOverview
             dashboardData={dashboardData}
             loading={loading}
+            error={errors.dashboard}
+            onRefresh={loadDashboardData}
             onCreateJob={handleCreateJob}
             onViewAllJobs={handleViewAllJobs}
             onViewAllApplications={handleViewAllApplications}
@@ -280,38 +167,120 @@ const EmployerDashboard = () => {
         </TabsContent>
 
         <TabsContent value="applications">
-          <ApplicationManagement
-            applications={applications}
-            jobs={jobs}
-            loading={loading.applications}
-            error={errors.applications}
-            filters={applicationFilters}
-            onFilterChange={handleApplicationFilterChange}
-            pagination={applicationPagination}
-            onPageChange={handleApplicationPageChange}
-            onRefresh={loadApplications}
-            onExport={handleExportApplications}
-            onUpdateApplicationStatus={handleUpdateApplicationStatus}
-            onScheduleInterview={handleScheduleInterview}
-            onSendMessage={handleSendMessage}
-            onReviewApplication={handleReviewApplication}
-            onBulkAction={handleBulkApplicationAction}
-          />
+          <ApplicationManagement />
         </TabsContent>
 
         <TabsContent value="candidates">
-          <div className="text-center py-12">
-            <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Candidate Management</h3>
-            <p className="text-gray-600">This section will contain candidate search and management features.</p>
+          <div className="space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                value={candidateFilters.search}
+                onChange={(event) => {
+                  setCandidateSearchMode('search');
+                  setCandidateFilters((previous) => ({ ...previous, search: event.target.value }));
+                }}
+                placeholder="Search by name, title, skills, or location"
+                aria-label="Search candidates"
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCandidateSearchMode('top');
+                  setCandidateFilters((previous) => ({ ...previous, search: '' }));
+                }}
+              >
+                Show top candidates
+              </Button>
+            </div>
+
+            {errors.candidates && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {errors.candidates}
+              </div>
+            )}
+
+            {loading.candidates ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="h-44 animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : candidates.length ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {candidates.map((candidate) => (
+                  <Card key={candidate.id}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold">{candidate.name || 'Candidate'}</h3>
+                          <p className="text-sm text-gray-600">{candidate.title || 'Title not provided'}</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {candidate.experience_level || 'experience not set'}
+                        </Badge>
+                      </div>
+                      <div className="mt-4 space-y-2 text-sm text-gray-600">
+                        <p>{candidate.location || 'Location not provided'}</p>
+                        <p>{candidate.years_experience || 0} years of experience</p>
+                        <p>
+                          {candidate.availability_status
+                            ? `Availability: ${candidate.availability_status}`
+                            : 'Availability not provided'}
+                        </p>
+                      </div>
+                      {candidate.skills?.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {candidate.skills.slice(0, 6).map((skill) => (
+                            <Badge key={skill} variant="secondary">
+                              {skill.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed p-10 text-center text-gray-500">
+                No candidates match the current search.
+              </div>
+            )}
+
+            {candidatePagination.pages > 1 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Page {candidatePagination.page} of {candidatePagination.pages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={candidatePagination.page <= 1 || loading.candidates}
+                    onClick={() => handleCandidatePageChange(candidatePagination.page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      candidatePagination.page >= candidatePagination.pages ||
+                      loading.candidates
+                    }
+                    onClick={() => handleCandidatePageChange(candidatePagination.page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="analytics">
           <AnalyticsDashboard
             analyticsData={analyticsData}
-            dateRange={analyticsDateRange}
-            onDateRangeChange={setAnalyticsDateRange}
             onExport={handleExportAnalytics}
             loading={loading.analytics}
           />

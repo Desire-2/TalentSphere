@@ -44,15 +44,16 @@ import AdSlot from '../components/ads/AdSlot';
 import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [relevantAds, setRelevantAds] = useState([]);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [bookmarkedJobIds, setBookmarkedJobIds] = useState(new Set());
+  const [, setBookmarkedJobIds] = useState(new Set());
   
   // Recommendation filters and sorting
   const [recFilters, setRecFilters] = useState({
@@ -98,19 +99,15 @@ const JobSeekerDashboard = () => {
   });
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (isAuthenticated) loadDashboardData();
+  }, [isAuthenticated]);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Check if user is authenticated
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
-      if (!token) {
+      if (!isAuthenticated) {
         navigate('/login');
         return;
       }
@@ -527,9 +524,11 @@ const JobSeekerDashboard = () => {
         case 'date':
           return a.posted_days_ago - b.posted_days_ago;
         case 'salary':
-          const salaryA = parseInt(a.salary_range?.match(/\$(\d+)/)?.[1] || 0) * 1000;
-          const salaryB = parseInt(b.salary_range?.match(/\$(\d+)/)?.[1] || 0) * 1000;
-          return salaryB - salaryA;
+          {
+            const salaryA = parseInt(a.salary_range?.match(/\$(\d+)/)?.[1] || 0) * 1000;
+            const salaryB = parseInt(b.salary_range?.match(/\$(\d+)/)?.[1] || 0) * 1000;
+            return salaryB - salaryA;
+          }
         default:
           return 0;
       }
@@ -651,7 +650,7 @@ const JobSeekerDashboard = () => {
         
         // Default tags if no skills
         if (skillsList.length === 0) {
-          skillsList = ['Technology', 'Opportunity', 'Growth', 'Career'];
+          skillsList = [];
         }
 
         return {
@@ -661,205 +660,30 @@ const JobSeekerDashboard = () => {
           description: creative.body_text || campaign.name,
           image: creative.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22200%22 viewBox=%220 0 400 200%22%3E%3Crect width=%22400%22 height=%22200%22 fill=%22%23d1d5db%22/%3E%3Ctext x=%22200%22 y=%22100%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22%3EFeatured Ad%3C/text%3E%3C/svg%3E',
           company: {
-            name: campaign.employer?.name || 'Company',
-            logo: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%239ca3af%22/%3E%3Ctext x=%2230%22 y=%2230%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-weight=%22bold%22%3ECo%3C/text%3E%3C/svg%3E',
-            rating: 4.5 + (Math.random() * 0.5),
-            size: `${Math.floor(Math.random() * 500) + 50}-${Math.floor(Math.random() * 500) + 500} employees`
+            name: campaign.sponsor?.display_name || campaign.company_name || campaign.employer?.name || 'Company',
+            logo: campaign.sponsor?.company_logo_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22%3E%3Crect width=%2260%22 height=%2260%22 fill=%22%239ca3af%22/%3E%3Ctext x=%2230%22 y=%2230%22 font-size=%2224%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23fff%22 font-weight=%22bold%22%3ECo%3C/text%3E%3C/svg%3E'
           },
-          matchScore: Math.floor(Math.random() * 15) + 85,
           callToAction: creative.cta_text || 'Learn More',
           link: creative.cta_url || `#`,
           status: 'active',
-          relevanceReason: 'Sponsored opportunity from industry leaders',
           tags: skillsList.slice(0, 5),
           salary: campaign.job?.salary_min && campaign.job?.salary_max ? 
             `$${formatSalary(campaign.job.salary_min)} - $${formatSalary(campaign.job.salary_max)}` : 
-            '$80k - $120k',
-          location: campaign.job?.city ? `${campaign.job.city}, ${campaign.job.state || ''}` : 'Remote',
-          benefits: ['Featured Opportunity', 'Quality Match', 'Active Employer'],
+            undefined,
+          location: campaign.job?.city ? `${campaign.job.city}, ${campaign.job.state || ''}` : undefined,
           stats: {
-            views: Math.floor(Math.random() * 2000) + 500,
-            applications: Math.floor(Math.random() * 100) + 20,
-            interactions: Math.floor(Math.random() * 100) + 20,
-            responseRate: `${Math.floor(Math.random() * 20) + 75}%`
+            views: campaign.analytics?.impressions || campaign.views || 0,
+            applications: campaign.analytics?.applications || 0,
+            interactions: campaign.analytics?.clicks || 0
           }
         };
       });
-
-      // Add some variety with different ad types
-      if (transformedAds.length >= 2) {
-        transformedAds[1] = {
-          ...transformedAds[1],
-          type: 'company_branding',
-          title: `${transformedAds[1].company.name} - Growing Opportunity`,
-          callToAction: 'Explore',
-          relevanceReason: 'Featured company in your industry',
-          openRoles: Math.floor(Math.random() * 20) + 5
-        };
-      }
-
-      if (transformedAds.length >= 3) {
-        transformedAds[2] = {
-          ...transformedAds[2],
-          type: 'product_showcase',
-          title: 'Developer Tools & Innovation Hub',
-          callToAction: 'Join Innovation',
-          relevanceReason: 'Perfect match for your technical interests',
-          fundingStage: 'Series A'
-        };
-      }
 
       setRelevantAds(transformedAds);
     } catch (error) {
       console.error('Error loading relevant ads:', error);
       // Set empty array on error to prevent undefined issues
       setRelevantAds([]);
-    }
-  };
-
-  const loadDashboardDataOld = async () => {
-    try {
-      setLoading(true);
-      // Mock data for demonstration - replace with actual API calls
-      setDashboardData({
-        profile: {
-          name: 'John Doe',
-          title: 'Full Stack Developer',
-          location: 'San Francisco, CA',
-          avatar: '/api/placeholder/80/80',
-          profile_completion: 75,
-          open_to_opportunities: true,
-          skills: ['React', 'Node.js', 'JavaScript', 'TypeScript', 'Python']
-        },
-        stats: {
-          totalApplications: 15,
-          pendingApplications: 8,
-          interviewsScheduled: 3,
-          offersReceived: 1,
-          profileViews: 234,
-          bookmarkedJobs: 12
-        },
-        recommendedJobs: [
-          {
-            id: 1,
-            title: "Senior React Developer",
-            company: {
-              name: "TechCorp Inc.",
-              logo: "/api/placeholder/50/50"
-            },
-            location: "San Francisco, CA",
-            employment_type: "full-time",
-            salary_range: "$120k - $180k",
-            match_score: 95,
-            is_remote: true,
-            posted_days_ago: 2,
-            skills: ["React", "Node.js", "TypeScript"],
-            match_reasons: ["Skills match: React, Node.js", "Location preference", "Salary range match"]
-          },
-          {
-            id: 2,
-            title: "Full Stack Engineer",
-            company: {
-              name: "StartupXYZ",
-              logo: "/api/placeholder/50/50"
-            },
-            location: "Remote",
-            employment_type: "full-time",
-            salary_range: "$100k - $150k",
-            match_score: 88,
-            is_remote: true,
-            posted_days_ago: 5,
-            skills: ["JavaScript", "Python", "React"],
-            match_reasons: ["Remote work preference", "Skills match: JavaScript, React"]
-          },
-          {
-            id: 3,
-            title: "Frontend Developer",
-            company: {
-              name: "DesignCo",
-              logo: "/api/placeholder/50/50"
-            },
-            location: "New York, NY",
-            employment_type: "contract",
-            salary_range: "$80k - $120k",
-            match_score: 82,
-            is_remote: false,
-            posted_days_ago: 1,
-            skills: ["React", "CSS", "JavaScript"],
-            match_reasons: ["Skills match: React, JavaScript", "Experience level match"]
-          }
-        ],
-        recentApplications: [
-          {
-            id: 1,
-            job: {
-              title: "Senior React Developer",
-              company: "TechCorp Inc."
-            },
-            status: "under_review",
-            applied_date: "2025-08-08T10:00:00Z",
-            last_update: "2025-08-09T14:30:00Z",
-            stage: "Technical Interview"
-          },
-          {
-            id: 2,
-            job: {
-              title: "Full Stack Engineer",
-              company: "StartupXYZ"
-            },
-            status: "shortlisted",
-            applied_date: "2025-08-05T15:20:00Z",
-            last_update: "2025-08-07T09:15:00Z",
-            stage: "Initial Screening"
-          },
-          {
-            id: 3,
-            job: {
-              title: "Frontend Developer",
-              company: "WebAgency"
-            },
-            status: "rejected",
-            applied_date: "2025-08-01T11:45:00Z",
-            last_update: "2025-08-03T16:00:00Z",
-            stage: "Application Review"
-          }
-        ],
-        interviewSchedule: [
-          {
-            id: 1,
-            job_title: "Senior React Developer",
-            company: "TechCorp Inc.",
-            date: "2025-08-12T14:00:00Z",
-            type: "video",
-            interviewer: "Sarah Johnson",
-            status: "confirmed"
-          },
-          {
-            id: 2,
-            job_title: "Product Manager",
-            company: "InnovateCorp",
-            date: "2025-08-15T10:30:00Z",
-            type: "in-person",
-            interviewer: "Mike Chen",
-            status: "pending"
-          }
-        ],
-        skillGaps: [
-          { skill: "Docker", demand: 85, your_level: 30 },
-          { skill: "AWS", demand: 90, your_level: 45 },
-          { skill: "GraphQL", demand: 70, your_level: 20 }
-        ],
-        careerInsights: {
-          avgSalaryIncrease: 15,
-          marketDemand: "High",
-          topSkillsInDemand: ["React", "Node.js", "Python", "AWS"],
-          careerGrowthPotential: 92
-        }
-      });
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -909,13 +733,6 @@ const JobSeekerDashboard = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const getMatchScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600 bg-green-100';
-    if (score >= 80) return 'text-blue-600 bg-blue-100';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
   };
 
   if (loading) {
@@ -1005,13 +822,13 @@ const JobSeekerDashboard = () => {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Button 
-            onClick={() => navigate('/jobseeker/cv-builder')}
+            onClick={() => navigate('/jobseeker/career-agent')}
             variant="outline"
             size="sm"
             className="border-[#FF6B35] hover:bg-[#FF6B35]/10 text-[#FF6B35] flex-1 sm:flex-none"
           >
             <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">AI CV Builder</span>
+            <span className="hidden sm:inline">AI Career Agent</span>
             <span className="sm:hidden">CV</span>
           </Button>
           <Button 
@@ -1056,8 +873,8 @@ const JobSeekerDashboard = () => {
                 </div>
               </div>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => navigate('/jobseeker/profile')}
               className="bg-[#FF6B35] border-[#FF6B35] text-white hover:bg-[#FF6B35]/90 shadow-sm w-full sm:w-auto flex-shrink-0"
@@ -1079,7 +896,7 @@ const JobSeekerDashboard = () => {
                 <div>
                   <CardTitle className="text-white">Opportunities Tailored for You</CardTitle>
                   <CardDescription className="text-[#1BA398]">
-                    Personalized recommendations based on your profile and preferences
+                    Featured opportunities from active employers
                   </CardDescription>
                 </div>
               </div>
@@ -1109,11 +926,6 @@ const JobSeekerDashboard = () => {
                         {getAdTypeLabel(ad.type)}
                       </Badge>
                     </div>
-                    <div className="absolute top-3 right-3">
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs font-semibold">
-                        {ad.matchScore}% match
-                      </Badge>
-                    </div>
                   </div>
 
                   <CardContent className="p-4">
@@ -1129,12 +941,6 @@ const JobSeekerDashboard = () => {
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-gray-600">
                           <span className="font-medium">{ad.company.name}</span>
-                          {ad.company.rating && (
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                              <span>{ad.company.rating}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1144,9 +950,6 @@ const JobSeekerDashboard = () => {
                     </p>
 
                     <div className="mb-3">
-                      <div className="text-xs text-blue-600 font-medium mb-2">
-                        {ad.relevanceReason}
-                      </div>
                       <div className="flex flex-wrap gap-1">
                         {ad.tags?.slice(0, 3).map((tag) => (
                           <Badge key={tag} variant="outline" className="text-xs px-2 py-0.5">
@@ -1171,14 +974,18 @@ const JobSeekerDashboard = () => {
                     )}
 
                     <div className="grid grid-cols-2 gap-2 mb-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {ad.stats.views} views
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-3 h-3" />
-                        {ad.stats.applications || ad.stats.interactions} engaged
-                      </span>
+                      {ad.stats.views > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {ad.stats.views} views
+                        </span>
+                      )}
+                      {(ad.stats.applications || ad.stats.interactions) > 0 && (
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp className="w-3 h-3" />
+                          {ad.stats.applications || ad.stats.interactions} engaged
+                        </span>
+                      )}
                     </div>
 
                     <Button 

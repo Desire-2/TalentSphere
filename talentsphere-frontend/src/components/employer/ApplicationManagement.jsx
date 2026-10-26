@@ -9,7 +9,6 @@ import {
   XCircle,
   MoreHorizontal,
   ExternalLink,
-  MessageSquare,
   Calendar,
   CheckCircle,
   ChevronLeft,
@@ -25,6 +24,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { 
@@ -37,13 +37,13 @@ import {
 } from '../ui/dropdown-menu';
 import { formatDate, getStatusColor } from '../../utils/employer/dashboardUtils';
 import { useApplicationManagement } from '../../hooks/useApplicationManagement';
+import ApplicationResumeLink from '../applications/ApplicationResumeLink';
 
 const ApplicationManagement = () => {
   const {
     // Data
     applications,
     jobs,
-    selectedApplications,
     
     // States
     loading,
@@ -64,8 +64,6 @@ const ApplicationManagement = () => {
     handleBulkAction,
     handleScheduleInterview,
     handleExport,
-    handleSendMessage,
-    handleReviewApplication,
     handleRefresh,
     setError
   } = useApplicationManagement();
@@ -73,6 +71,12 @@ const ApplicationManagement = () => {
   // Local state for UI
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState(null);
+  const [interviewForm, setInterviewForm] = useState({
+    interview_datetime: '',
+    interview_type: 'video',
+    interview_location: '',
+    interview_notes: '',
+  });
 
   // Handle interview scheduling
   const handleScheduleInterviewClick = (applicationId) => {
@@ -81,10 +85,31 @@ const ApplicationManagement = () => {
   };
 
   const handleScheduleInterviewSubmit = async (interviewData) => {
-    if (selectedApplicationForInterview) {
-      await handleScheduleInterview(selectedApplicationForInterview, interviewData);
+    if (!selectedApplicationForInterview) return;
+    if (!interviewData.interview_datetime) {
+      setError('Select a date and time for the interview.');
+      return;
+    }
+    if (new Date(interviewData.interview_datetime).getTime() <= Date.now()) {
+      setError('Interview date and time must be in the future.');
+      return;
+    }
+
+    const scheduled = await handleScheduleInterview(selectedApplicationForInterview, {
+      ...interviewData,
+      interview_datetime: new Date(interviewData.interview_datetime).toISOString(),
+      interview_location: interviewData.interview_location.trim() || null,
+      interview_notes: interviewData.interview_notes.trim() || null,
+    });
+    if (scheduled) {
       setShowScheduleModal(false);
       setSelectedApplicationForInterview(null);
+      setInterviewForm({
+        interview_datetime: '',
+        interview_type: 'video',
+        interview_location: '',
+        interview_notes: '',
+      });
     }
   };
 
@@ -430,19 +455,11 @@ const ApplicationManagement = () => {
                   <div className="flex items-center gap-2">
                     {application.resume_url && (
                       <Button variant="ghost" size="sm" asChild>
-                        <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
+                        <ApplicationResumeLink application={application} mode="download" fallbackLabel="Download applicant resume">
                           <ExternalLink className="w-4 h-4" />
-                        </a>
+                        </ApplicationResumeLink>
                       </Button>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleSendMessage(application.id)}
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </Button>
-                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" disabled={loading.action}>
@@ -488,11 +505,6 @@ const ApplicationManagement = () => {
                         >
                           <XCircle className="w-4 h-4 mr-2" />
                           Reject
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleReviewApplication(application.id)}>
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          View Details
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -556,29 +568,120 @@ const ApplicationManagement = () => {
         </div>
       )}
 
-      {/* TODO: Add Interview Scheduling Modal */}
-      {/* This would be implemented as a separate component */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Schedule Interview</h3>
-            <p className="text-gray-600 mb-4">
-              Interview scheduling feature would be implemented here
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowScheduleModal(false)} variant="outline">
-                Cancel
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowScheduleModal(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="schedule-interview-title"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 id="schedule-interview-title" className="text-lg font-semibold">
+                Schedule interview
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowScheduleModal(false)}
+                aria-label="Close interview scheduling"
+              >
+                <XCircle className="h-4 w-4" />
               </Button>
-              <Button onClick={() => {
-                // Mock schedule interview
-                handleScheduleInterviewSubmit({
-                  interview_datetime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                  interview_type: 'video',
-                  interview_notes: 'Initial screening interview'
-                });
-              }}>
-                Schedule
-              </Button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="interview-datetime" className="text-sm font-medium">
+                  Date and time
+                </label>
+                <Input
+                  id="interview-datetime"
+                  type="datetime-local"
+                  value={interviewForm.interview_datetime}
+                  onChange={(event) =>
+                    setInterviewForm((previous) => ({
+                      ...previous,
+                      interview_datetime: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="interview-type" className="text-sm font-medium">
+                  Interview type
+                </label>
+                <Select
+                  value={interviewForm.interview_type}
+                  onValueChange={(value) =>
+                    setInterviewForm((previous) => ({ ...previous, interview_type: value }))
+                  }
+                >
+                  <SelectTrigger id="interview-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Video call</SelectItem>
+                    <SelectItem value="phone">Phone call</SelectItem>
+                    <SelectItem value="in-person">In person</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="interview-location" className="text-sm font-medium">
+                  Location or meeting link
+                </label>
+                <Input
+                  id="interview-location"
+                  value={interviewForm.interview_location}
+                  onChange={(event) =>
+                    setInterviewForm((previous) => ({
+                      ...previous,
+                      interview_location: event.target.value,
+                    }))
+                  }
+                  placeholder="https://meet.example.com/… or office address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="interview-notes" className="text-sm font-medium">
+                  Notes for the candidate
+                </label>
+                <Textarea
+                  id="interview-notes"
+                  rows={4}
+                  value={interviewForm.interview_notes}
+                  onChange={(event) =>
+                    setInterviewForm((previous) => ({
+                      ...previous,
+                      interview_notes: event.target.value,
+                    }))
+                  }
+                  placeholder="Agenda, preparation instructions, or accessibility needs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowScheduleModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handleScheduleInterviewSubmit(interviewForm)}
+                  disabled={loading.action || !interviewForm.interview_datetime}
+                >
+                  {loading.action && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Schedule interview
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -1395,37 +1395,11 @@ def get_credits(current_user):
 @token_required
 @role_required('employer')
 def purchase_credits(current_user):
-    """Purchase ad credits (stub for Stripe integration)"""
-    try:
-        data = request.get_json()
-        
-        if not data.get('amount'):
-            return jsonify({'error': 'amount is required'}), 400
-        
-        amount = safe_decimal(data['amount'])
-        if amount <= 0:
-            return jsonify({'error': 'Amount must be positive'}), 400
-        
-        # Create credit transaction
-        credit = AdCredit(
-            employer_id=current_user.id,
-            amount=amount,
-            transaction_type='PURCHASE',
-            reference_id=f"PURCHASE_{datetime.utcnow().timestamp()}",
-            note=data.get('note', 'Ad credits purchase')
-        )
-        
-        db.session.add(credit)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Credits purchased',
-            'transaction': credit.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    """Reject unverified credit purchases until a payment provider exists."""
+    return jsonify({
+        'error': 'Online credit purchases are not available yet.',
+        'code': 'PAYMENT_PROVIDER_NOT_CONFIGURED',
+    }), 501
 
 
 # ========================

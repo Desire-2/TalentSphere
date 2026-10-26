@@ -29,130 +29,6 @@ import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../../components/ads/AdComponents';
 import AdSlot from '../../components/ads/AdSlot';
 
-// Sample data for demonstration when API is not available
-const getSampleCategories = () => [
-  { id: 1, name: 'STEM', slug: 'stem', description: 'Science, Technology, Engineering, and Mathematics' },
-  { id: 2, name: 'Business', slug: 'business', description: 'Business and Management Studies' },
-  { id: 3, name: 'Medicine', slug: 'medicine', description: 'Medical and Health Sciences' },
-  { id: 4, name: 'Arts', slug: 'arts', description: 'Arts and Humanities' },
-  { id: 5, name: 'Engineering', slug: 'engineering', description: 'Engineering and Technology' },
-];
-
-const getSampleScholarships = () => [
-  {
-    id: 1,
-    title: 'Global Excellence Scholarship',
-    description: 'A prestigious scholarship for outstanding academic performance and leadership qualities.',
-    external_organization_name: 'International Education Foundation',
-    scholarship_type: 'merit-based',
-    amount_min: 10000,
-    amount_max: 25000,
-    currency: 'USD',
-    application_deadline: '2025-12-31',
-    study_level: 'undergraduate',
-    funding_type: 'partial',
-    location: 'Global',
-    category: { name: 'General', slug: 'general' },
-    is_active: true,
-    status: 'published',
-    external_application_url: 'https://scholarships.example.com/global-excellence',
-    external_organization_website: 'https://www.ief.org'
-  },
-  {
-    id: 2,
-    title: 'STEM Innovation Award',
-    description: 'Supporting the next generation of scientists and engineers with comprehensive funding.',
-    external_organization_name: 'Tech Innovation Institute',
-    scholarship_type: 'academic',
-    amount_min: 15000,
-    amount_max: 40000,
-    currency: 'USD',
-    application_deadline: '2025-11-15',
-    study_level: 'graduate',
-    funding_type: 'full',
-    location: 'United States',
-    category: { name: 'STEM', slug: 'stem' },
-    is_active: true,
-    status: 'published',
-    external_application_url: 'https://apply.techinnovation.edu/stem-award',
-    external_organization_website: 'https://www.techinnovation.edu'
-  },
-  {
-    id: 3,
-    title: 'Community Leadership Grant',
-    description: 'For students who have demonstrated exceptional community service and leadership.',
-    external_organization_name: 'Community Foundation',
-    scholarship_type: 'merit-based',
-    amount_min: 5000,
-    amount_max: 15000,
-    currency: 'USD',
-    application_deadline: '2026-01-30',
-    study_level: 'undergraduate',
-    funding_type: 'partial',
-    location: 'Any',
-    category: { name: 'Leadership', slug: 'leadership' },
-    is_active: true,
-    status: 'published'
-    // No external URL - internal application
-  },
-  {
-    id: 4,
-    title: 'Medical Research Fellowship',
-    description: 'Supporting aspiring medical researchers with funding for advanced studies.',
-    external_organization_name: 'Medical Research Council',
-    scholarship_type: 'research',
-    amount_min: 20000,
-    amount_max: 50000,
-    currency: 'USD',
-    application_deadline: '2025-10-15',
-    study_level: 'postgraduate',
-    funding_type: 'full',
-    location: 'Europe',
-    category: { name: 'Medicine', slug: 'medicine' },
-    is_active: true,
-    status: 'published',
-    external_application_url: 'research-council.eu/fellowships/apply',
-    external_organization_website: 'https://www.research-council.eu'
-  },
-  {
-    id: 5,
-    title: 'Arts and Culture Scholarship',
-    description: 'Nurturing creative talents in arts, music, and cultural studies.',
-    external_organization_name: 'Cultural Heritage Foundation',
-    scholarship_type: 'merit-based',
-    amount_min: 8000,
-    amount_max: 20000,
-    currency: 'USD',
-    application_deadline: '2025-09-30',
-    study_level: 'undergraduate',
-    funding_type: 'partial',
-    location: 'International',
-    category: { name: 'Arts', slug: 'arts' },
-    is_active: true,
-    status: 'published',
-    external_application_url: 'www.culturalheritage.org/scholarships/apply',
-    external_organization_website: 'https://www.culturalheritage.org'
-  },
-  {
-    id: 6,
-    title: 'Sustainable Development Grant',
-    description: 'For students passionate about environmental sustainability and green technology.',
-    external_organization_name: 'Green Future Initiative',
-    scholarship_type: 'academic',
-    amount_min: 12000,
-    amount_max: 30000,
-    currency: 'USD',
-    application_deadline: '2025-12-01',
-    study_level: 'graduate',
-    funding_type: 'partial',
-    location: 'Global',
-    category: { name: 'Environmental', slug: 'environmental' },
-    is_active: true,
-    status: 'published'
-    // No external URL - internal application
-  }
-];
-
 const ScholarshipList = () => {
   const [scholarships, setScholarships] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -166,13 +42,13 @@ const ScholarshipList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalScholarships, setTotalScholarships] = useState(0);
-  const [filters, setFilters] = useState({
+  const [filters] = useState({
     type: '',
     studyLevel: '',
     fundingType: '',
     location: ''
   });
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const searchDebounceRef = useRef(null);
 
@@ -220,7 +96,7 @@ const ScholarshipList = () => {
     };
   }, [searchInput]);
 
-    const fetchScholarships = async () => {
+  const fetchScholarships = async () => {
     try {
       setLoading(true);
       setError(null); // Clear any previous errors
@@ -261,13 +137,6 @@ const ScholarshipList = () => {
         }
       }
       
-      // If no data available, provide sample scholarships for demo
-      if (scholarshipsData.length === 0 && currentPage === 1) {
-        scholarshipsData = getSampleScholarships();
-        totalCount = scholarshipsData.length;
-        totalPages = Math.ceil(totalCount / itemsPerPage);
-      }
-      
       setScholarships(scholarshipsData);
       setTotalPages(totalPages);
       setTotalScholarships(totalCount);
@@ -275,13 +144,9 @@ const ScholarshipList = () => {
       console.error('Error fetching scholarships:', error);
       setError('Failed to load scholarships. Please try again later.');
       
-      // Only provide sample data if we don't have any data at all
-      if (scholarships.length === 0) {
-        const sampleData = getSampleScholarships();
-        setScholarships(sampleData);
-        setTotalPages(Math.ceil(sampleData.length / itemsPerPage));
-        setTotalScholarships(sampleData.length);
-      }
+      setScholarships([]);
+      setTotalPages(1);
+      setTotalScholarships(0);
     } finally {
       setLoading(false);
     }
@@ -289,23 +154,10 @@ const ScholarshipList = () => {
 
   const fetchCategories = async () => {
     try {
-      console.log('📚 Fetching scholarship categories...');
       const response = await scholarshipService.getScholarshipCategories();
-      console.log('📚 Categories response:', response);
-      
-      // Service now returns array directly or empty array on error
-      if (Array.isArray(response) && response.length > 0) {
-        setCategories(response);
-        console.log(`✅ Loaded ${response.length} scholarship categories`);
-      } else {
-        console.warn('⚠️ No categories returned, using sample categories');
-        // If no categories available, provide sample categories
-        setCategories(getSampleCategories());
-      }
-    } catch (error) {
-      console.error('❌ Error fetching categories:', error);
-      // Provide sample data on error for demonstration
-      setCategories(getSampleCategories());
+      setCategories(Array.isArray(response) ? response : []);
+    } catch {
+      setError('Failed to load scholarship filters. Please refresh the page.');
     }
   };
 
@@ -578,12 +430,13 @@ const ScholarshipList = () => {
                 <GraduationCap className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">No scholarships found</h3>
                 <p className="text-gray-300 mb-4">
-                  {searchTerm ? 
+                  {error ||
+                  (searchTerm ?
                     'Try adjusting your search terms or filters.' : 
                     'No scholarships are currently available.'
-                  }
+                  )}
                 </p>
-                {searchTerm && (
+                {(error || searchTerm) && (
                   <Button 
                     onClick={() => {
                       setSearchInput('');

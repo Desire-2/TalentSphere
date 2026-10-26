@@ -51,7 +51,6 @@ const AdminScholarshipManagement = () => {
   const [scholarships, setScholarships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedScholarships, setSelectedScholarships] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');

@@ -190,9 +190,9 @@ const CompanyProfileManagement = () => {
         setGalleryImages(companyPayload.gallery_images || []);
         calculateProfileCompletion(companyPayload);
       }
-    } catch (error) {
-      console.error('Error loading company:', error);
-      if (isNoCompanyAssociatedError(error)) {
+    } catch (_error) {
+      console.error('Error loading company:', _error);
+      if (isNoCompanyAssociatedError(_error)) {
         // No company profile yet - show creation form
         setCompany(null);
       } else {
@@ -276,9 +276,9 @@ const CompanyProfileManagement = () => {
       }
 
       toast.success('Company profile saved successfully');
-    } catch (error) {
-      console.error('Error saving company:', error);
-      toast.error(error.message || 'Failed to save company profile');
+    } catch (_error) {
+      console.error('Error saving company:', _error);
+      toast.error(_error.message || 'Failed to save company profile');
     } finally {
       setSaving(false);
     }
@@ -296,7 +296,7 @@ const CompanyProfileManagement = () => {
       setBenefits(prev => [...prev, response.benefit]);
       setNewBenefit({ title: '', description: '', category: '', icon: '' });
       toast.success('Benefit added successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to add benefit');
     }
   };
@@ -321,7 +321,7 @@ const CompanyProfileManagement = () => {
         is_leadership: false 
       });
       toast.success('Team member added successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to add team member');
     }
   };
@@ -332,7 +332,7 @@ const CompanyProfileManagement = () => {
       await apiService.deleteCompanyBenefit(benefitId);
       setBenefits(prev => prev.filter(benefit => benefit.id !== benefitId));
       toast.success('Benefit removed');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to remove benefit');
     }
   };
@@ -343,7 +343,7 @@ const CompanyProfileManagement = () => {
       await apiService.deleteCompanyTeamMember(memberId);
       setTeamMembers(prev => prev.filter(member => member.id !== memberId));
       toast.success('Team member removed');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to remove team member');
     }
   };

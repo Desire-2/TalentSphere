@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import config from '../../config/environment.js';
 import { 
   Briefcase, 
   Search, 
@@ -83,20 +83,25 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAdminStore } from '../../stores/adminStore';
+import { useAuthStore } from '../../stores/authStore';
+import { adminService } from '../../services/admin';
 import { formatCurrency, formatRelativeTime, formatNumber } from '../../utils/helpers';
 
 const EnhancedJobManagement = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { 
     jobs, 
     pagination, 
     isLoading, 
     error, 
-    fetchJobs, 
-    moderateJob 
+    fetchJobs
   } = useAdminStore();
+  const { refreshSession, isAuthenticated } = useAuthStore();
 
   const [filters, setFilters] = useState({
     search: '',
+    company_id: searchParams.get('company_id') || '',
     status: 'all',
     is_featured: 'all',
     is_urgent: 'all',
@@ -112,66 +117,28 @@ const EnhancedJobManagement = () => {
   const [selectedJobs, setSelectedJobs] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
-  const [categories, setCategories] = useState([]);
   const [authError, setAuthError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [bulkActionDialog, setBulkActionDialog] = useState({ open: false, action: '', reason: '', loading: false });
-  const [jobAnalytics, setJobAnalytics] = useState({});
-  const [showAnalytics, setShowAnalytics] = useState({});
   const [jobStats, setJobStats] = useState(null);
   const [currentView, setCurrentView] = useState('table'); // table, cards, analytics
   const [moderationDialog, setModerationDialog] = useState({ open: false, jobId: null, action: '', reason: '', notes: '', loading: false });
 
   // Authentication refresh function
   const refreshAuthentication = async () => {
+    if (isRefreshing) return false;
     setIsRefreshing(true);
     setAuthError(false);
     
     try {
-      const response = await fetch(`${config.API.API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: 'admin@talentsphere.com',
-          password: 'AdminPass123!'
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        
-        const authStore = {
-          state: {
-            token: data.token,
-            user: data.user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          },
-          version: 0
-        };
-        localStorage.setItem('auth-store', JSON.stringify(authStore));
-        
-        console.log('✅ Authentication refreshed successfully');
-        
-        try {
-          const result = await fetchJobsWithAuth(filters);
-          console.log('✅ Jobs fetched successfully after auth refresh:', result);
-        } catch (fetchError) {
-          console.error('❌ Failed to fetch jobs even after auth refresh:', fetchError);
-        }
-        
-      } else {
-        throw new Error(data.error || 'Failed to refresh authentication');
-      }
-    } catch (error) {
-      console.error('❌ Failed to refresh authentication:', error);
+      const refreshed = await refreshSession();
+      if (!refreshed) throw new Error('Your session could not be refreshed. Please log in again.');
+      await fetchJobsWithAuth(filters);
+      return true;
+    } catch (_error) {
       setAuthError(true);
+      return false;
     } finally {
       setIsRefreshing(false);
     }
@@ -233,33 +200,10 @@ const EnhancedJobManagement = () => {
   };
 
   // Enhanced analytics functions
-  const fetchJobAnalytics = async (jobId) => {
-    try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setJobAnalytics(prev => ({ ...prev, [jobId]: data }));
-      }
-    } catch (error) {
-      console.error('Failed to fetch job analytics:', error);
-    }
-  };
-
   const fetchJobStats = async () => {
     try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setJobStats(data);
-      }
+      const data = await adminService.getJobStats();
+      setJobStats(data);
     } catch (error) {
       console.error('Failed to fetch job stats:', error);
     }
@@ -271,18 +215,8 @@ const EnhancedJobManagement = () => {
     setModerationDialog(prev => ({ ...prev, loading: true }));
     
     try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/${jobId}/moderate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ action, reason, notes })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log(`✅ Job ${action}d successfully:`, data);
+      const data = await adminService.moderateJob(jobId, action, reason, notes);
+      console.log(`✅ Job ${action}d successfully:`, data);
         
         // Show success message
         toast.success(`Job ${action === 'delete' ? 'deleted' : action + 'd'} successfully!`, {
@@ -295,9 +229,6 @@ const EnhancedJobManagement = () => {
         
         // Close dialog
         setModerationDialog({ open: false, jobId: null, action: '', reason: '', notes: '', loading: false });
-      } else {
-        throw new Error(data.error || 'Failed to moderate job');
-      }
     } catch (error) {
       console.error('❌ Failed to moderate job:', error);
       
@@ -333,22 +264,12 @@ const EnhancedJobManagement = () => {
     setBulkActionDialog(prev => ({ ...prev, loading: true }));
     
     try {
-      const response = await fetch(`${config.API.API_URL}/api/admin/jobs/bulk-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          job_ids: selectedJobs,
-          action: bulkActionDialog.action,
-          reason: bulkActionDialog.reason
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        toast.success(`Bulk ${bulkActionDialog.action} completed!`, {
+      const data = await adminService.bulkJobAction(
+        selectedJobs,
+        bulkActionDialog.action,
+        bulkActionDialog.reason
+      );
+      toast.success(`Bulk ${bulkActionDialog.action} completed!`, {
           description: `Successfully ${bulkActionDialog.action === 'delete' ? 'deleted' : bulkActionDialog.action + 'd'} ${data.affected_jobs} job(s).`,
           duration: 4000
         });
@@ -357,9 +278,6 @@ const EnhancedJobManagement = () => {
         setSelectedJobs([]);
         setSelectAll(false);
         await fetchJobsWithAuth(filters);
-      } else {
-        throw new Error(data.error || 'Failed to perform bulk action');
-      }
     } catch (error) {
       console.error('Bulk action failed:', error);
       toast.error('Bulk action failed', {
@@ -380,8 +298,7 @@ const EnhancedJobManagement = () => {
   };
 
   const handleViewJob = (job) => {
-    console.log('Opening job details for:', job);
-    alert(`Job details viewing functionality would open here for "${job.title}"`);
+    navigate(`/jobs/${job.id}`);
   };
 
   const handleContactEmployer = (job) => {
@@ -433,9 +350,7 @@ const EnhancedJobManagement = () => {
   useEffect(() => {
     const initializeData = async () => {
       console.log('🚀 Initializing Enhanced JobManagement data...');
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
+      if (!isAuthenticated) {
         await refreshAuthentication();
       } else {
         try {
@@ -445,7 +360,7 @@ const EnhancedJobManagement = () => {
           } else {
             await fetchJobStats();
           }
-        } catch (error) {
+        } catch (_error) {
           await refreshAuthentication();
         }
       }
@@ -459,19 +374,6 @@ const EnhancedJobManagement = () => {
       fetchJobsWithAuth(filters);
     }
   }, [filters.search, filters.status, filters.is_featured, filters.category_id, filters.sort_by, filters.sort_order, filters.page]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(`${config.API.API_URL}/api/job-categories`);
-        const data = await response.json();
-        setCategories(data.categories || []);
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   useEffect(() => {
     if (jobs.length > 0 && selectedJobs.length === jobs.length) {
@@ -1011,11 +913,6 @@ const EnhancedJobManagement = () => {
                             <DropdownMenuItem onClick={() => handleViewJob(job)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem onClick={() => fetchJobAnalytics(job.id)}>
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              View Analytics
                             </DropdownMenuItem>
                             
                             <DropdownMenuItem onClick={() => handleContactEmployer(job)}>

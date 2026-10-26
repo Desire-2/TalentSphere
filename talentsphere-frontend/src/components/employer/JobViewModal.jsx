@@ -35,8 +35,7 @@ const JobViewModal = ({
   jobId, 
   onEdit, 
   onToggleStatus, 
-  onDuplicate, 
-  onPromote 
+  onDuplicate
 }) => {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,6 +43,7 @@ const JobViewModal = ({
   const [activeTab, setActiveTab] = useState('details');
   const [applications, setApplications] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState('');
 
   useEffect(() => {
     if (isOpen && jobId) {
@@ -76,11 +76,12 @@ const JobViewModal = ({
   };
 
   const fetchJobAnalytics = async () => {
+    setAnalyticsError('');
     try {
       const response = await apiService.getJobAnalytics(jobId);
       setAnalytics(response);
     } catch (err) {
-      console.error('Failed to fetch analytics:', err);
+      setAnalyticsError(err?.message || 'Failed to load analytics');
     }
   };
 
@@ -478,19 +479,62 @@ const JobViewModal = ({
                 {activeTab === 'analytics' && (
                   <div className="p-6">
                     <h4 className="text-lg font-medium text-gray-900 mb-6">Job Performance Analytics</h4>
-                    
-                    {analytics ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Add analytics charts and data here */}
-                        <div className="text-center py-8">
-                          <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-500">Analytics coming soon</p>
+
+                    {analyticsError ? (
+                      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        {analyticsError}
+                      </div>
+                    ) : analytics ? (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-lg border p-4">
+                            <p className="text-sm text-gray-500">Views</p>
+                            <p className="mt-1 text-2xl font-semibold">
+                              {analytics.performanceMetrics?.views?.toLocaleString() || 0}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4">
+                            <p className="text-sm text-gray-500">Applications</p>
+                            <p className="mt-1 text-2xl font-semibold">
+                              {analytics.performanceMetrics?.applications?.toLocaleString() || 0}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4">
+                            <p className="text-sm text-gray-500">Bookmarks</p>
+                            <p className="mt-1 text-2xl font-semibold">
+                              {analytics.performanceMetrics?.bookmarks?.toLocaleString() || 0}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4">
+                            <p className="text-sm text-gray-500">Conversion rate</p>
+                            <p className="mt-1 text-2xl font-semibold">
+                              {analytics.performanceMetrics?.conversionRate ?? 0}%
+                            </p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="mb-3 text-sm font-semibold text-gray-700">Application statuses</h5>
+                          {Object.keys(analytics.applicationAnalytics?.statusBreakdown || {}).length ? (
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(analytics.applicationAnalytics.statusBreakdown).map(([status, count]) => (
+                                <span
+                                  key={status}
+                                  className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                                >
+                                  {status.replace('_', ' ')}: {count}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">No applications have been submitted yet.</p>
+                          )}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No analytics data available</p>
+                        <p className="text-gray-500">Loading analytics…</p>
                       </div>
                     )}
                   </div>
@@ -532,14 +576,6 @@ const JobViewModal = ({
                   Duplicate
                 </button>
                 
-                <button
-                  onClick={() => onPromote(jobId)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  disabled={job.is_featured}
-                >
-                  <Star className="h-4 w-4 mr-2" />
-                  {job.is_featured ? 'Featured' : 'Promote'}
-                </button>
               </div>
               
               <div className="flex space-x-3">

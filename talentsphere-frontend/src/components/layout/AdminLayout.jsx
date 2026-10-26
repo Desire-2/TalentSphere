@@ -55,7 +55,7 @@ const AdminLayout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, current: location.pathname === '/admin' },
     { name: 'Users', href: '/admin/users', icon: Users, current: location.pathname === '/admin/users' },
-    { name: 'Jobs', href: '/admin/jobs-enhanced', icon: Briefcase, current: location.pathname === '/admin/jobs' },
+    { name: 'Jobs', href: '/admin/jobs-enhanced', icon: Briefcase, current: location.pathname === '/admin/jobs-enhanced' },
     { name: 'Scholarships', href: '/admin/scholarships', icon: GraduationCap, current: location.pathname.startsWith('/admin/scholarships') },
     { name: 'Companies', href: '/admin/companies', icon: Building, current: location.pathname === '/admin/companies' },
     { name: 'Ads Management', href: '/admin/ads', icon: Megaphone, current: location.pathname === '/admin/ads' },

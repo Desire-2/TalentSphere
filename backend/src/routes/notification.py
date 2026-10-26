@@ -494,30 +494,8 @@ def get_conversations(current_user):
 def get_notification_preferences(current_user):
     """Get user notification preferences"""
     try:
-        # In a real implementation, you would have a separate table for user preferences
-        # For this demo, we'll return default preferences
-        
-        preferences = {
-            'email_notifications': {
-                'application_status': True,
-                'job_alerts': True,
-                'messages': True,
-                'promotions': False
-            },
-            'push_notifications': {
-                'application_status': True,
-                'job_alerts': True,
-                'messages': True,
-                'promotions': False
-            },
-            'sms_notifications': {
-                'application_status': False,
-                'job_alerts': False,
-                'messages': False,
-                'promotions': False
-            }
-        }
-        
+        from src.models.notification_preferences import NotificationPreference
+        preferences = NotificationPreference.get_or_create_for_user(current_user.id).to_dict()
         return jsonify(preferences), 200
         
     except Exception as e:
@@ -528,14 +506,16 @@ def get_notification_preferences(current_user):
 def update_notification_preferences(current_user):
     """Update user notification preferences"""
     try:
-        data = request.get_json()
-        
-        # In a real implementation, you would save these preferences to a database
-        # For this demo, we'll just return success
-        
+        data = request.get_json(silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({'error': 'No preference data provided'}), 400
+
+        from src.models.notification_preferences import NotificationPreference
+        preferences = NotificationPreference.get_or_create_for_user(current_user.id)
+        preferences.update_from_dict(data)
         return jsonify({
             'message': 'Notification preferences updated successfully',
-            'preferences': data
+            'preferences': preferences.to_dict()
         }), 200
         
     except Exception as e:
@@ -618,4 +598,3 @@ def not_found(error):
 @notification_bp.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
-

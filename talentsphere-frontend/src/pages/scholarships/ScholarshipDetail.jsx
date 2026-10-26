@@ -48,7 +48,6 @@ const ScholarshipDetail = () => {
   const [error, setError] = useState(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [showExternalConfirm, setShowExternalConfirm] = useState(false);
   const { isAuthenticated, user } = useAuthStore();
   const { requireAuth, navigateToProtectedRoute } = useAuthNavigation();
 
@@ -69,7 +68,7 @@ const ScholarshipDetail = () => {
       const formattedUrl = formatExternalUrl(url);
       const urlObj = new URL(formattedUrl);
       return urlObj.hostname.replace('www.', '');
-    } catch (error) {
+    } catch (_error) {
       return url;
     }
   };
@@ -223,24 +222,6 @@ const ScholarshipDetail = () => {
       }
     } catch (error) {
       console.error('Error toggling bookmark:', error);
-    }
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: scholarship.title,
-          text: scholarship.description,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      // Fallback to copying URL
-      navigator.clipboard.writeText(window.location.href);
-      // You might want to show a toast notification here
     }
   };
 
@@ -407,22 +388,22 @@ const ScholarshipDetail = () => {
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
-                      h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
-                      h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
-                      h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
-                      p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
-                      ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
-                      ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
-                      li: ({node, ...props}) => <li {...props} className="ml-4" />,
-                      strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
-                      em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
-                      blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-blue-500 pl-4 italic text-gray-600 my-4" />,
-                      code: ({node, inline, ...props}) => 
+                      a: ({_node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                      h1: ({_node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                      h2: ({_node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                      h3: ({_node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                      p: ({_node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                      ul: ({_node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                      ol: ({_node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                      li: ({_node, ...props}) => <li {...props} className="ml-4" />,
+                      strong: ({_node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                      em: ({_node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                      blockquote: ({_node, ...props}) => <blockquote {...props} className="border-l-4 border-blue-500 pl-4 italic text-gray-600 my-4" />,
+                      code: ({_node, inline, ...props}) =>
                         inline 
                           ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
                           : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
-                      hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                      hr: ({_node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
                     }}
                   >
                     {safeRender(scholarship.description)}
@@ -445,22 +426,22 @@ const ScholarshipDetail = () => {
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
-                        h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
-                        h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
-                        h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
-                        p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
-                        ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
-                        ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
-                        li: ({node, ...props}) => <li {...props} className="ml-4" />,
-                        strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
-                        em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
-                        blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-green-500 pl-4 italic text-gray-600 my-4" />,
-                        code: ({node, inline, ...props}) => 
+                        a: ({_node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                        h1: ({_node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                        h2: ({_node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                        h3: ({_node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                        p: ({_node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                        ul: ({_node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                        ol: ({_node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                        li: ({_node, ...props}) => <li {...props} className="ml-4" />,
+                        strong: ({_node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                        em: ({_node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                        blockquote: ({_node, ...props}) => <blockquote {...props} className="border-l-4 border-green-500 pl-4 italic text-gray-600 my-4" />,
+                        code: ({_node, inline, ...props}) =>
                           inline 
                             ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
                             : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
-                        hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                        hr: ({_node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
                       }}
                     >
                       {safeRender(scholarship.eligibility_requirements)}
@@ -484,22 +465,22 @@ const ScholarshipDetail = () => {
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
-                        h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
-                        h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
-                        h3: ({node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
-                        p: ({node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
-                        ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
-                        ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
-                        li: ({node, ...props}) => <li {...props} className="ml-4" />,
-                        strong: ({node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
-                        em: ({node, ...props}) => <em {...props} className="italic text-gray-800" />,
-                        blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-purple-500 pl-4 italic text-gray-600 my-4" />,
-                        code: ({node, inline, ...props}) => 
+                        a: ({_node, ...props}) => <a {...props} className="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer" />,
+                        h1: ({_node, ...props}) => <h1 {...props} className="text-2xl font-bold text-gray-900 mb-4 mt-6" />,
+                        h2: ({_node, ...props}) => <h2 {...props} className="text-xl font-bold text-gray-900 mb-3 mt-5" />,
+                        h3: ({_node, ...props}) => <h3 {...props} className="text-lg font-semibold text-gray-900 mb-2 mt-4" />,
+                        p: ({_node, ...props}) => <p {...props} className="text-gray-700 leading-relaxed mb-4" />,
+                        ul: ({_node, ...props}) => <ul {...props} className="list-disc list-inside text-gray-700 mb-4 space-y-2" />,
+                        ol: ({_node, ...props}) => <ol {...props} className="list-decimal list-inside text-gray-700 mb-4 space-y-2" />,
+                        li: ({_node, ...props}) => <li {...props} className="ml-4" />,
+                        strong: ({_node, ...props}) => <strong {...props} className="font-bold text-gray-900" />,
+                        em: ({_node, ...props}) => <em {...props} className="italic text-gray-800" />,
+                        blockquote: ({_node, ...props}) => <blockquote {...props} className="border-l-4 border-purple-500 pl-4 italic text-gray-600 my-4" />,
+                        code: ({_node, inline, ...props}) =>
                           inline 
                             ? <code {...props} className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded text-sm font-mono" />
                             : <code {...props} className="block bg-gray-100 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto my-4" />,
-                        hr: ({node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
+                        hr: ({_node, ...props}) => <hr {...props} className="my-6 border-gray-300" />,
                       }}
                     >
                       {safeRender(scholarship.application_process)}

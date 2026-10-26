@@ -8,8 +8,12 @@ import os
 bind = f"0.0.0.0:{os.getenv('PORT', '10000')}"
 backlog = 1024
 
-# Worker processes - Optimized for Render's resource limits
-workers = min(multiprocessing.cpu_count(), 4)  # Max 4 workers for Render free/starter
+# Worker processes - bounded by the database connection budget. SQLAlchemy
+# creates one pool per worker, so CPU-based worker counts can exhaust managed
+# PostgreSQL slots even when each individual pool looks small.
+requested_workers = int(os.getenv('WEB_CONCURRENCY', os.getenv('GUNICORN_WORKERS', '1')))
+max_web_workers = max(1, int(os.getenv('MAX_WEB_WORKERS', '2')))
+workers = max(1, min(requested_workers, max_web_workers))
 worker_class = "sync"
 worker_connections = 1000
 max_requests = 2000
@@ -64,37 +68,58 @@ def pre_fork(server, worker):
 def post_fork(server, worker):
     """Called just after a worker has been forked."""
     server.log.info(f"Worker {worker.pid} booted")
+
+    try:
+        from src.main import app
+    except Exception as e:
+        server.log.error(f"Failed to load Flask app in worker {worker.pid}: {e}")
+        return
+
+    # preload_app forks after importing Flask-SQLAlchemy. Do not share any
+    # connection or pool state inherited from the Gunicorn master.
+    try:
+        from src.models.user import db
+        with app.app_context():
+            db.engine.dispose(close=False)
+    except Exception as e:
+        server.log.warning(f"Could not reset inherited DB pool in worker {worker.pid}: {e}")
+
+    # Each worker runs a lightweight DB-backed Career Agent recovery loop.
+    # execute_package claims rows atomically, so multiple workers do not run
+    # the same generation, while a worker restart can resume stranded work.
+    try:
+        from src.services.career_agent.worker import start_career_agent_worker
+        start_career_agent_worker(app)
+        server.log.info(f"Career Agent background worker started in worker {worker.pid}")
+    except Exception as e:
+        server.log.error(f"Career Agent background worker failed in worker {worker.pid}: {e}")
     
-    # Use environment flag to ensure scheduler starts only once, even across worker recycling
-    if not os.getenv('TALENTSPHERE_SCHEDULER_STARTED'):
-        os.environ['TALENTSPHERE_SCHEDULER_STARTED'] = 'true'
-        os.environ['TALENTSPHERE_SCHEDULER_WORKER_PID'] = str(worker.pid)
-        
+    # Environment variables are copied when Gunicorn forks, so they cannot
+    # coordinate scheduler ownership between worker processes. Gunicorn's
+    # monotonic worker age identifies the first worker in the process group.
+    if worker.age == 1:
         try:
-            from src.main import app
             from src.services.job_digest_scheduler import job_digest_scheduler
             job_digest_scheduler.start(app)
             server.log.info(f"✅ Job digest scheduler started in worker {worker.pid} (scheduler process)")
         except Exception as e:
             server.log.error(f"❌ Failed to start job digest scheduler in worker {worker.pid}: {e}")
-            # Clear flag on failure so another worker can try
-            del os.environ['TALENTSPHERE_SCHEDULER_STARTED']
 
-        try:
-            from src.services.cleanup_service import start_cleanup_service
-            service = start_cleanup_service(app)
-            if service and service.is_running:
-                server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
-            else:
-                server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
-        except Exception as e:
-            server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
-            import traceback
-            traceback.print_exc()
+        if os.getenv('ENABLE_CLEANUP_SERVICE', 'false').lower() == 'true':
+            try:
+                from src.services.cleanup_service import start_cleanup_service
+                service = start_cleanup_service(app)
+                if service and service.is_running:
+                    server.log.info(f"✅ Cleanup service started in worker {worker.pid} (scheduler process)")
+                else:
+                    server.log.warning(f"⚠️  Cleanup service initialization issue in worker {worker.pid}")
+            except Exception as e:
+                server.log.error(f"❌ Failed to start cleanup service in worker {worker.pid}: {e}")
+        else:
+            server.log.info("Cleanup service disabled (ENABLE_CLEANUP_SERVICE is not true)")
     else:
         # Scheduler already running in another worker process
-        scheduler_pid = os.getenv('TALENTSPHERE_SCHEDULER_WORKER_PID', 'unknown')
-        server.log.info(f"Worker {worker.pid} - background schedulers running in worker {scheduler_pid}")
+        server.log.info("Worker %s - background schedulers owned by worker age 1", worker.pid)
 
 def worker_abort(worker):
     """Called when a worker received the SIGABRT signal."""

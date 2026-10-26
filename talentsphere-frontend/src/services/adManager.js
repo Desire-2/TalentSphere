@@ -344,20 +344,6 @@ export const adManagerService = {
     }
   },
 
-  /**
-   * Purchase credits
-   */
-  purchaseCredits: async (amount, paymentReference) => {
-    try {
-      const response = await axiosInstance.post(`${BASE_URL}/credits/purchase`, {
-        amount,
-        reference_id: paymentReference,
-      });
-      return response;
-    } catch (error) {
-      throw normalizeServiceError(error, 'Failed to purchase credits');
-    }
-  },
 };
 
 export default adManagerService;

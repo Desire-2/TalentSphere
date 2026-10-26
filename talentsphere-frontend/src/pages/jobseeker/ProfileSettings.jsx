@@ -73,16 +73,11 @@ const ProfileSettings = () => {
   const [securitySettings, setSecuritySettings] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
-    twoFactorEnabled: false
+    confirmPassword: ''
   });
 
   const [privacySettings, setPrivacySettings] = useState({
-    profileVisibility: 'public',
-    showLastActive: true,
-    allowMessages: true,
-    showContactInfo: false,
-    analyticsOptOut: false
+    profileVisibility: 'public'
   });
 
   const [notificationPreferences, setNotificationPreferences] = useState({
@@ -185,11 +180,7 @@ const ProfileSettings = () => {
       // Load privacy settings
       const jobSeekerProfile = profileResponse.job_seeker_profile || {};
       setPrivacySettings({
-        profileVisibility: jobSeekerProfile.profile_visibility || 'public',
-        showLastActive: true,
-        allowMessages: true,
-        showContactInfo: false,
-        analyticsOptOut: false
+        profileVisibility: jobSeekerProfile.profile_visibility || 'public'
       });
       
       // Load notification preferences
@@ -300,9 +291,9 @@ const ProfileSettings = () => {
       }));
       
       // Logout after 2 seconds
-      setTimeout(() => {
-        logout();
-        navigate('/login');
+      setTimeout(async () => {
+        await logout({ redirect: false });
+        navigate('/login', { replace: true });
       }, 2000);
       
     } catch (error) {
@@ -377,8 +368,7 @@ const ProfileSettings = () => {
       setMessage({ type: 'success', text: 'Account deactivated successfully. Redirecting...' });
       
       setTimeout(() => {
-        logout();
-        navigate('/');
+        void logout({ redirect: false }).then(() => navigate('/', { replace: true }));
       }, 1500);
     } catch (error) {
       console.error('Failed to deactivate account:', error);
@@ -419,8 +409,7 @@ const ProfileSettings = () => {
       setMessage({ type: 'success', text: 'Account deleted successfully. Goodbye!' });
       
       setTimeout(() => {
-        logout();
-        navigate('/');
+        void logout({ redirect: false }).then(() => navigate('/', { replace: true }));
       }, 1500);
     } catch (error) {
       console.error('Failed to delete account:', error);
@@ -743,34 +732,6 @@ const ProfileSettings = () => {
 
               <Separator />
 
-              {/* Two-Factor Authentication */}
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      Two-Factor Authentication
-                      <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Add an extra layer of security to your account
-                    </p>
-                  </div>
-                  <Switch
-                    checked={securitySettings.twoFactorEnabled}
-                    onCheckedChange={(checked) => handleSecurityChange('twoFactorEnabled', checked)}
-                    disabled
-                  />
-                </div>
-                {securitySettings.twoFactorEnabled && (
-                  <Alert>
-                    <Key className="w-4 h-4" />
-                    <AlertDescription>
-                      Two-factor authentication is enabled. You'll need to provide a verification code when logging in.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-
               <Separator />
 
               {/* Login Sessions */}
@@ -882,57 +843,6 @@ const ProfileSettings = () => {
               </div>
 
               <Separator />
-
-              {/* Additional Privacy Options */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Additional Privacy Options</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">Show Last Active</p>
-                      <p className="text-sm text-gray-500">Let others see when you were last active</p>
-                    </div>
-                    <Switch
-                      checked={privacySettings.showLastActive}
-                      onCheckedChange={(checked) => handlePrivacyChange('showLastActive', checked)}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">Allow Messages</p>
-                      <p className="text-sm text-gray-500">Let employers and other users send you messages</p>
-                    </div>
-                    <Switch
-                      checked={privacySettings.allowMessages}
-                      onCheckedChange={(checked) => handlePrivacyChange('allowMessages', checked)}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">Show Contact Information</p>
-                      <p className="text-sm text-gray-500">Display your contact details on your public profile</p>
-                    </div>
-                    <Switch
-                      checked={privacySettings.showContactInfo}
-                      onCheckedChange={(checked) => handlePrivacyChange('showContactInfo', checked)}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">Opt out of Analytics</p>
-                      <p className="text-sm text-gray-500">Don't track my profile views and interactions for analytics</p>
-                    </div>
-                    <Switch
-                      checked={privacySettings.analyticsOptOut}
-                      onCheckedChange={(checked) => handlePrivacyChange('analyticsOptOut', checked)}
-                    />
-                  </div>
-                </div>
-              </div>
 
               <Button onClick={handleSavePrivacy} disabled={saving}>
                 <Save className="w-4 h-4 mr-2" />
@@ -1137,7 +1047,7 @@ const ProfileSettings = () => {
                     { key: 'company_updates', label: 'Company Updates', icon: Info },
                     { key: 'system_notifications', label: 'System Notifications', icon: Settings },
                     { key: 'promotions', label: 'Promotions', icon: Zap }
-                  ].map(({ key, label, icon: Icon }) => (
+                  ].map(({ key, label, icon: _Icon }) => (
                     <div key={key} className="flex flex-col gap-3 rounded-lg border p-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-gray-600" />

@@ -28,6 +28,7 @@ import {
 import { formatCurrency, formatRelativeTime } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { applicationsService } from '../../services/applications';
+import ApplicationResumeLink from '../../components/applications/ApplicationResumeLink';
 
 const MyApplications = () => {
   const location = useLocation();
@@ -120,9 +121,7 @@ const MyApplications = () => {
         ...(searchTerm && { search: searchTerm })
       };
       
-      console.log('Loading applications with params:', params);
       const response = await applicationsService.getMyApplications(params);
-      console.log('Applications loaded:', response);
       
       setApplications(response.applications || []);
       setPagination(response.pagination || pagination);
@@ -421,14 +420,14 @@ const MyApplications = () => {
                     {application.resume_url && (
                       <div>
                         <span className="font-medium text-gray-900">Resume:</span>
-                        <a 
-                          href={application.resume_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <ApplicationResumeLink
+                          application={application}
+                          mode="view"
                           className="ml-2 text-blue-600 hover:text-blue-500 inline-flex items-center"
+                          fallbackLabel="View Resume"
                         >
                           View Resume <ExternalLink className="w-3 h-3 ml-1" />
-                        </a>
+                        </ApplicationResumeLink>
                       </div>
                     )}
                     {application.portfolio_url && (
@@ -547,4 +546,3 @@ const MyApplications = () => {
 };
 
 export default MyApplications;
-

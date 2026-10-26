@@ -55,8 +55,8 @@ const AdminCleanupManagement = () => {
       }
 
       setHealthStatus(healthData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (_error) {
+      console.error('Error fetching data:', _error);
       showMessage('error', 'Failed to load cleanup data');
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ const AdminCleanupManagement = () => {
         showMessage('success', `Cleanup completed: ${response.data.total_deleted} items deleted`);
         fetchAllData(); // Refresh data
       }
-    } catch (error) {
+    } catch (_error) {
       showMessage('error', 'Failed to run cleanup');
     } finally {
       setActionLoading(false);
@@ -100,7 +100,7 @@ const AdminCleanupManagement = () => {
         showMessage('success', `Jobs cleanup completed: ${response.data.deleted_count} jobs deleted`);
         fetchAllData();
       }
-    } catch (error) {
+    } catch (_error) {
       showMessage('error', 'Failed to cleanup jobs');
     } finally {
       setActionLoading(false);
@@ -119,7 +119,7 @@ const AdminCleanupManagement = () => {
         showMessage('success', `Scholarships cleanup completed: ${response.data.deleted_count} scholarships deleted`);
         fetchAllData();
       }
-    } catch (error) {
+    } catch (_error) {
       showMessage('error', 'Failed to cleanup scholarships');
     } finally {
       setActionLoading(false);

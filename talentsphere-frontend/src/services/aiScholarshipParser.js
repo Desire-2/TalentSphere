@@ -1,6 +1,6 @@
 /**
  * AI Scholarship Parser Service
- * Uses Google Gemini AI to parse scholarship postings and extract structured data
+ * Uses the server-side NVIDIA provider to parse scholarship postings.
  * 
  * This service takes raw scholarship text and converts it into a structured format
  * that matches the TalentSphere scholarship data structure.
@@ -8,40 +8,27 @@
  * @module aiScholarshipParser
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+import apiService from './api';
 
 /**
- * Parse scholarship content using Google Gemini AI
+ * Parse scholarship content using server-side NVIDIA AI
  * 
  * @param {string} rawContent - Raw text from scholarship posting
  * @param {Array} categories - Available scholarship categories from backend
  * @returns {Promise<Object>} Parsed scholarship data
- * @throws {Error} If API key is missing, parsing fails, or API quota exceeded
+ * @throws {Error} If parsing fails or the provider is unavailable
  * 
  * @example
  * const scholarshipData = await parseScholarshipWithAI(rawText, categories);
  * setFormData(prevData => ({ ...prevData, ...scholarshipData }));
  */
 export async function parseScholarshipWithAI(rawContent, categories = []) {
-  // Validate API key
-  if (!import.meta.env.VITE_GEMINI_API_KEY) {
-    throw new Error('Gemini API key is not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
-  }
-
   // Validate input
   if (!rawContent || rawContent.trim().length === 0) {
     throw new Error('Please provide scholarship content to parse.');
   }
 
   try {
-    // Use gemini-2.5-flash-lite for optimal free tier performance
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite"
-    });
-
     // Build category context for better matching
     const categoryContext = categories.length > 0
       ? `\n\nAvailable scholarship categories:\n${categories.map(cat => `- ${cat.name} (ID: ${cat.id})`).join('\n')}`
@@ -131,63 +118,24 @@ Return ONLY a valid JSON object with this exact structure (no additional text, n
   "requires_portfolio": true or false
 }`;
 
-    console.log('🤖 Sending scholarship data to Gemini AI for parsing...');
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    console.log('📥 Received response from Gemini AI');
-    
-    // Extract JSON from response (handle potential markdown wrapping or extra text)
-    let jsonText = text.trim();
-
-    // Remove markdown code blocks if present
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/```\n?/g, '');
-    }
-
-    // Try to extract JSON if there's extra text
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[0];
-    }
-    
-    // Parse JSON (with repair fallback for minor formatting issues)
-    let parsedData;
-    try {
-      parsedData = JSON.parse(jsonText);
-    } catch (parseError) {
-      const repaired = jsonText
-        .replace(/[“”]/g, '"')
-        .replace(/[‘’]/g, "'")
-        .replace(/\u00A0/g, ' ')
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']')
-        .trim();
-      parsedData = JSON.parse(repaired);
-    }
+    const response = await apiService.post('/ai/parse', {
+      task: 'scholarship',
+      prompt,
+    });
+    const parsedData = response.data;
     
     // Validate and clean the parsed data
     const cleanedData = validateAndCleanScholarshipData(parsedData);
     
-    console.log('✅ Scholarship data parsed and validated successfully');
-    console.log('📊 Extracted fields:', Object.keys(cleanedData).filter(key => cleanedData[key]));
-    
     return cleanedData;
     
   } catch (error) {
-    console.error('❌ Error parsing scholarship with AI:', error);
-    
-    // Provide specific error messages
-    if (error.message?.includes('API_KEY_INVALID')) {
-      throw new Error('Invalid Gemini API key. Please check your API key configuration.');
+    if (error.status === 429) {
+      throw new Error('AI parsing rate limit reached. Please try again shortly.');
     }
-    
-    if (error.message?.includes('RESOURCE_EXHAUSTED') || error.status === 429) {
-      throw new Error('API quota exceeded. Please try again later or check your API limits at https://aistudio.google.com/');
+
+    if (error.status === 503) {
+      throw new Error('AI parsing is temporarily unavailable. Please try again later.');
     }
     
     if (error instanceof SyntaxError) {
@@ -454,7 +402,7 @@ function convertToMarkdown(text) {
   markdown = markdown.replace(/^([A-Z][^.!?\n]{3,50}):?\s*$/gm, '## $1');
   
   // Convert bullet points
-  markdown = markdown.replace(/^[•\-]\s+/gm, '- ');
+  markdown = markdown.replace(/^[•-]\s+/gm, '- ');
   
   // Add emphasis to important keywords
   const keywords = ['Important', 'Note', 'Required', 'Deadline', 'Eligibility'];

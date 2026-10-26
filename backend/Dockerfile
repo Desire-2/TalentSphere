@@ -4,8 +4,12 @@ WORKDIR /app
 
 # Install system dependencies including Redis client
 RUN apt-get update && apt-get install -y \
+    antiword \
+    curl \
     gcc \
     redis-tools \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -25,10 +29,10 @@ RUN python optimize_database.py || echo "Database optimization will run on start
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONOPTIMIZE=1
 ENV SLOW_QUERY_THRESHOLD=1.0
-ENV DB_POOL_SIZE=10
-ENV DB_MAX_OVERFLOW=20
-ENV DB_POOL_TIMEOUT=30
-ENV DB_POOL_RECYCLE=3600
+ENV DB_POOL_SIZE=2
+ENV DB_MAX_OVERFLOW=1
+ENV DB_POOL_TIMEOUT=20
+ENV DB_POOL_RECYCLE=300
 ENV SQL_ECHO=false
 ENV FLASK_ENV=production
 

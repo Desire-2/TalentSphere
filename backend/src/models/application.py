@@ -123,6 +123,14 @@ class Application(db.Model):
                 'last_communication': self.last_communication.isoformat() if self.last_communication else None,
                 'communication_count': self.communication_count
             })
+            career_link = getattr(self, 'career_document_link', None)
+            if career_link:
+                data['career_documents'] = {
+                    'package_id': career_link.package_id,
+                    'cv_document_id': career_link.cv_document_id,
+                    'cover_letter_document_id': career_link.cover_letter_document_id,
+                    'download_base': f"/api/career-agent/applications/{self.id}/documents",
+                }
         
         # Employer-specific information
         if for_employer:
@@ -268,4 +276,3 @@ class ApplicationTemplate(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
-

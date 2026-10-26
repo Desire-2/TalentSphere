@@ -1,44 +1,50 @@
 import { create } from 'zustand';
 import { authService } from '../services/auth';
 
-// Listen for session expiration events from API service
-if (typeof window !== 'undefined') {
-  window.addEventListener('session-expired', () => {
-    console.log('🔒 Session expired event received, clearing auth state');
-    const store = useAuthStore.getState();
-    store.logout();
-  });
-  
-  // Listen for storage changes to sync auth state across tabs
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'token' || e.key === 'user') {
-      const store = useAuthStore.getState();
-      if (!e.newValue) {
-        // Token/user was removed in another tab
-        console.log('🔒 Auth data cleared in another tab, syncing...');
-        store.logout();
-      } else {
-        // Token/user was updated in another tab — only update token to avoid
-        // triggering profile page re-fetches from user object reference change
-        console.log('🔒 Auth data updated in another tab, syncing...');
-        const newToken = localStorage.getItem('token');
-        if (newToken) {
-          useAuthStore.setState({ token: newToken, isAuthenticated: true });
-        }
-      }
-    }
-  });
-}
+let logoutPromise = null;
+let initializePromise = null;
+let storageSyncTimer = null;
+
+const getCachedSession = () => ({
+  token: authService.getToken(),
+  user: authService.getCurrentUser()
+});
+
+const saveUser = (user) => {
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('user');
+  }
+};
+
+const sessionReturnPath = () => {
+  if (typeof window === 'undefined') return '/';
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+};
+
+const redirectAfterSessionExpiry = () => {
+  if (typeof window === 'undefined' || window.location.pathname === '/login') return;
+
+  const returnTo = sessionReturnPath();
+  window.location.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+};
+
+const initialSession = getCachedSession();
 
 export const useAuthStore = create((set, get) => ({
-  // State
-  user: authService.getCurrentUser(),
-  token: authService.getToken(),
-  isAuthenticated: authService.isAuthenticated(),
+  user: initialSession.user,
+  token: initialSession.token,
+  // Route guards wait for initialize() before making a redirect decision.
+  isAuthenticated: Boolean(
+    initialSession.token &&
+    initialSession.user &&
+    !authService.isTokenExpired(0)
+  ),
+  isInitialized: false,
   isLoading: false,
   error: null,
 
-  // Actions
   login: async (credentials) => {
     set({ isLoading: true, error: null });
     try {
@@ -47,16 +53,13 @@ export const useAuthStore = create((set, get) => ({
         user: data.user,
         token: data.token,
         isAuthenticated: true,
+        isInitialized: true,
         isLoading: false,
         error: null
       });
       return data;
     } catch (error) {
-      console.error('Login error:', error);
-      set({
-        isLoading: false,
-        error: error.message || 'Login failed'
-      });
+      set({ isLoading: false, error: error.message || 'Login failed' });
       throw error;
     }
   },
@@ -64,133 +67,131 @@ export const useAuthStore = create((set, get) => ({
   register: async (userData) => {
     set({ isLoading: true, error: null });
     try {
-      console.log('🔐 Starting registration process...', { email: userData.email, role: userData.role });
-      
       const data = await authService.register(userData);
-      
-      console.log('✅ Registration successful', { user: data.user, hasToken: !!data.token });
-      
       set({
         user: data.user,
         token: data.token,
         isAuthenticated: true,
+        isInitialized: true,
         isLoading: false,
         error: null
       });
-      
       return data;
     } catch (error) {
-      console.error('❌ Registration error:', error);
-      
-      // Check if the error indicates account already exists
       const errorMessage = error.message || 'Registration failed';
 
-      // If the registration request likely reached the server but the response failed (CORS, proxy, etc.)
-      // try a follow-up login with the same credentials. This handles the case where the user account was
-      // created successfully but the client interpreted the response as a network failure.
+      // If the account was created but the response was interrupted, recover
+      // with a login instead of leaving a half-created client session.
       if (
         errorMessage.includes('Cannot connect to server') &&
         userData?.email &&
         userData?.password
       ) {
         try {
-          console.warn('⚠️ Registration response failed, attempting fallback login...');
           const fallbackLogin = await authService.login({
             email: userData.email,
             password: userData.password
           });
-
-          console.log('✅ Fallback login succeeded after registration error');
-
           set({
             user: fallbackLogin.user,
             token: fallbackLogin.token,
             isAuthenticated: true,
+            isInitialized: true,
             isLoading: false,
             error: null
           });
-
           return fallbackLogin;
-        } catch (loginError) {
-          console.error('❌ Fallback login after registration failed:', loginError);
+        } catch {
+          // Fall through to the normal registration error.
         }
       }
-      
-      // If the account was created but there's a token/session issue, 
-      // check localStorage for the token
-      const token = authService.getToken();
-      const user = authService.getCurrentUser();
-      
+
+      const { token, user } = getCachedSession();
       if (token && user) {
-        console.log('⚠️ Account exists but initial setup had issues. Using cached credentials.');
         set({
-          user: user,
-          token: token,
+          user,
+          token,
           isAuthenticated: true,
+          isInitialized: true,
           isLoading: false,
           error: null
         });
         return { user, token };
       }
-      
-      set({
-        isLoading: false,
-        error: errorMessage
-      });
+
+      set({ isLoading: false, error: errorMessage });
       throw error;
     }
   },
 
-  logout: async () => {
+  logout: async ({ redirect = true } = {}) => {
+    if (logoutPromise) return logoutPromise;
+
+    const hadToken = Boolean(authService.getToken());
     set({ isLoading: true });
-    try {
-      await authService.logout();
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null
-      });
-      // Redirect to home page after successful logout
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
+
+    logoutPromise = (async () => {
+      try {
+        if (hadToken) {
+          await authService.logout();
+        } else {
+          authService.clearStoredSession();
+        }
+      } finally {
+        authService.clearStoredSession();
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isInitialized: true,
+          isLoading: false,
+          error: null
+        });
+
+        if (redirect && typeof window !== 'undefined') {
+          window.location.replace('/');
+        }
       }
-    } catch (error) {
-      console.warn('Logout request failed, clearing client state anyway:', error);
-      // Even if logout fails on server, clear local state
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null
-      });
-      // Redirect to home page even if logout fails
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
+    })().finally(() => {
+      logoutPromise = null;
+    });
+
+    return logoutPromise;
+  },
+
+  // Clear only local state. This is used for expired sessions and cross-tab
+  // changes; it must never make another authenticated request.
+  clearSession: ({ redirect = false } = {}) => {
+    authService.clearStoredSession();
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isInitialized: true,
+      isLoading: false,
+      error: null
+    });
+
+    if (redirect) redirectAfterSessionExpiry();
+  },
+
+  handleSessionExpired: () => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+      get().clearSession();
+      return;
     }
+    get().clearSession({ redirect: true });
   },
 
   updateProfile: async (profileData) => {
     set({ isLoading: true, error: null });
     try {
       const data = await authService.updateProfile(profileData);
-      set({
-        user: data.user,
-        isLoading: false,
-        error: null
-      });
-      // Update localStorage
-      localStorage.setItem('user', JSON.stringify(data.user));
+      saveUser(data.user);
+      set({ user: data.user, isLoading: false, error: null });
       return data;
     } catch (error) {
-      console.error('Profile update error:', error);
-      set({
-        isLoading: false,
-        error: error.message || 'Profile update failed'
-      });
+      set({ isLoading: false, error: error.message || 'Profile update failed' });
       throw error;
     }
   },
@@ -199,128 +200,158 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const data = await authService.changePassword(passwordData);
-      set({
-        isLoading: false,
-        error: null
-      });
+      set({ isLoading: false, error: null });
       return data;
     } catch (error) {
-      console.error('Password change error:', error);
-      set({
-        isLoading: false,
-        error: error.message || 'Password change failed'
-      });
+      set({ isLoading: false, error: error.message || 'Password change failed' });
       throw error;
     }
   },
 
   refreshProfile: async () => {
-    if (!get().isAuthenticated) return;
-    
+    if (!get().isAuthenticated) return null;
+
     set({ isLoading: true, error: null });
     try {
       const data = await authService.getProfile();
-      set({
-        user: data,
-        isLoading: false,
-        error: null
-      });
-      // Update localStorage
-      localStorage.setItem('user', JSON.stringify(data));
+      saveUser(data);
+      set({ user: data, isLoading: false, error: null });
       return data;
     } catch (error) {
-      console.error('Profile refresh error:', error);
-      set({
-        isLoading: false,
-        error: error.message || 'Failed to refresh profile'
-      });
+      set({ isLoading: false, error: error.message || 'Failed to refresh profile' });
       throw error;
     }
   },
 
-  clearError: () => {
-    set({ error: null });
-  },
+  clearError: () => set({ error: null }),
 
-  // Update user data directly (for cases where profile is updated via different service)
   setUser: (userData) => {
-    set({ user: userData });
-    // Update localStorage
-    localStorage.setItem('user', JSON.stringify(userData));
-  },
-
-  // Initialize auth state from localStorage
-  initialize: () => {
-    const user = authService.getCurrentUser();
+    saveUser(userData);
     const token = authService.getToken();
-    const isAuthenticated = authService.isAuthenticated();
-    
     set({
-      user,
+      user: userData,
       token,
-      isAuthenticated,
-      isLoading: false,
-      error: null
+      isAuthenticated: Boolean(token && userData)
     });
   },
 
-  // Validate current session
+  initialize: async () => {
+    if (initializePromise) return initializePromise;
+
+    initializePromise = (async () => {
+      const { token, user } = getCachedSession();
+
+      if (!token || !user) {
+        get().clearSession();
+        return false;
+      }
+
+      set({ user, token, isAuthenticated: true, isInitialized: false, isLoading: true });
+
+      try {
+        // Recover a recently expired access token before deciding that the
+        // cached browser session is invalid. This matters after a sleeping
+        // tab is resumed and uses the backend's bounded refresh grace period.
+        if (authService.isTokenExpired(0)) {
+          const refreshed = await authService.refreshSession();
+          if (!refreshed) {
+            get().clearSession();
+            return false;
+          }
+        }
+
+        const response = await authService.verifyToken(authService.getToken());
+        if (!response?.valid) {
+          get().clearSession();
+          return false;
+        }
+
+        // The verify endpoint intentionally returns a small payload; merge it
+        // with the cached profile so session validation does not erase fields
+        // used by headers and dashboards.
+        const verifiedUser = response.user ? { ...user, ...response.user } : user;
+        saveUser(verifiedUser);
+        set({
+          user: verifiedUser,
+          token: authService.getToken(),
+          isAuthenticated: true,
+          isInitialized: true,
+          isLoading: false,
+          error: null
+        });
+        return true;
+      } catch (error) {
+        // A temporary backend outage must not destroy an otherwise unexpired
+        // local session. The session manager will validate it later.
+        if (
+          error?.code !== 'NETWORK_ERROR' &&
+          (error?.status == null || error.status < 500)
+        ) {
+          get().clearSession();
+          return false;
+        }
+
+        set({ isInitialized: true, isLoading: false, error: null });
+        return true;
+      }
+    })().finally(() => {
+      initializePromise = null;
+    });
+
+    return initializePromise;
+  },
+
   validateSession: async () => {
     if (!get().isAuthenticated) return false;
-    
+
     try {
       const isValid = await authService.validateSession();
-      
-      if (!isValid) {
-        // Session is invalid, logout
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          error: 'Session expired'
-        });
-      }
-      
       return isValid;
     } catch (error) {
-      console.error('Session validation error:', error);
+      if (error?.code === 'NETWORK_ERROR') throw error;
       return false;
     }
   },
 
-  // Refresh session token
   refreshSession: async () => {
     if (!get().isAuthenticated) return false;
-    
-    try {
-      const refreshed = await authService.refreshSession();
-      
-      if (refreshed) {
-        // Only update the token — do NOT replace the user object with a new reference.
-        // Replacing user triggers useEffect([..., user]) in profile/dashboard pages,
-        // which calls loadProfile() and wiping any unsaved form data.
-        const newToken = authService.getToken();
-        set({
-          token: newToken,
-          isAuthenticated: true
-        });
-      }
-      
-      return refreshed;
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      return false;
+
+    const refreshed = await authService.refreshSession();
+    if (refreshed) {
+      set({ token: authService.getToken(), isAuthenticated: true });
     }
+    return refreshed;
   },
 
-  // Check if token is expired or about to expire
-  isTokenExpired: (bufferMinutes = 5) => {
-    return authService.isTokenExpired(bufferMinutes);
-  },
-
-  // Get token expiration time
-  getTokenExpiration: () => {
-    return authService.getTokenExpiration();
-  }
+  isTokenExpired: (bufferMinutes = 5) => authService.isTokenExpired(bufferMinutes),
+  getTokenExpiration: () => authService.getTokenExpiration()
 }));
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('session-expired', () => {
+    useAuthStore.getState().handleSessionExpired();
+  });
+
+  // Storage events are delivered after the originating tab has finished its
+  // writes. Debouncing lets token and user updates arrive as one session.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== 'token' && event.key !== 'user') return;
+
+    clearTimeout(storageSyncTimer);
+    storageSyncTimer = setTimeout(() => {
+      const { token, user } = getCachedSession();
+      if (!token || !user || authService.isTokenExpired(0)) {
+        useAuthStore.getState().clearSession({ redirect: true });
+        return;
+      }
+
+      useAuthStore.setState({
+        token,
+        user,
+        isAuthenticated: true,
+        isInitialized: true,
+        error: null
+      });
+    }, 0);
+  });
+}

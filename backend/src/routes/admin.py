@@ -1,20 +1,31 @@
-from flask import Blueprint, request, jsonify
+import os
+import json
+import time
+
+from flask import Blueprint, current_app, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc, asc, and_, or_
 from sqlalchemy.orm import joinedload, selectinload
 from decimal import Decimal
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
+from src.models.admin import ModerationLog
 from src.models.company import Company
 from src.models.job import Job, JobCategory
 from src.models.application import Application
 #from src.models.featured_ad import FeaturedAd, Payment
 from src.models.notification import Review
-from src.routes.auth import token_required, role_required
+from src.routes.auth import token_required, role_required, invalidate_identity_cache
 from src.services.job_scheduler import job_scheduler
 from src.services.job_notification_service import job_notification_service
+from src.services.email_service import email_service
+from src.services.vercel_blob_storage_service import (
+    VercelBlobStorageError,
+    upload_user_profile_image,
+)
 
 admin_bp = Blueprint('admin', __name__)
+_PROCESS_STARTED_AT = time.time()
 
 @admin_bp.route('/admin/dashboard', methods=['GET'])
 @token_required
@@ -26,14 +37,14 @@ def get_admin_dashboard(current_user):
         days = request.args.get('days', 30, type=int)
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
-        
+
         # User statistics
         total_users = User.query.count()
         new_users = User.query.filter(User.created_at >= start_date).count()
         active_users = User.query.filter(User.last_login >= start_date).count()
         job_seekers = User.query.filter_by(role='job_seeker').count()
         employers = User.query.filter_by(role='employer').count()
-        
+
         # Job statistics
         total_jobs = Job.query.count()
         active_jobs = Job.query.filter_by(status='published', is_active=True).count()
@@ -267,6 +278,7 @@ def toggle_user_status(current_user, user_id):
         user.updated_at = datetime.utcnow()
         
         db.session.commit()
+        invalidate_identity_cache(user.id)
         
         return jsonify({
             'message': f'User {"activated" if user.is_active else "deactivated"} successfully',
@@ -326,8 +338,12 @@ def change_user_role(current_user, user_id):
                 from src.models.user import JobSeekerProfile
                 job_seeker_profile = JobSeekerProfile(user_id=user.id)
                 db.session.add(job_seeker_profile)
+            # A (re)created career profile changes the memory's evidence set.
+            from src.services.career_agent.memory import notify_profile_changed
+            notify_profile_changed(user.id)
         
         db.session.commit()
+        invalidate_identity_cache(user.id)
         
         # Log the role change (you might want to create an audit log table)
         print(f"Admin {current_user.email} changed user {user.email} role from {old_role} to {new_role}")
@@ -356,6 +372,7 @@ def get_jobs_admin(current_user):
         status = request.args.get('status')
         is_featured = request.args.get('is_featured', type=bool)
         category_id = request.args.get('category_id', type=int)
+        company_id = request.args.get('company_id', type=int)
         search = request.args.get('search')
         sort_by = request.args.get('sort_by', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
@@ -373,6 +390,8 @@ def get_jobs_admin(current_user):
             query = query.filter_by(is_featured=is_featured)
         if category_id:
             query = query.filter_by(category_id=category_id)
+        if company_id:
+            query = query.filter_by(company_id=company_id)
         if search:
             search_filter = or_(
                 Job.title.ilike(f'%{search}%'),
@@ -470,55 +489,58 @@ def moderate_job(current_user, job_id):
         elif action == 'remove_urgent':
             job.is_urgent = False
         elif action == 'delete':
-            # Hard delete: remove from database
-            deletion_log = {
-                'admin_id': current_user.id,
-                'admin_email': current_user.email,
-                'job_id': job_id,
-                'job_title': job.title,
-                'action': 'delete',
-                'timestamp': datetime.utcnow().isoformat()
-            }
-            print(f"🗑️ JOB DELETION (via moderate): {deletion_log}")
-            
-            # Delete the job (cascades will handle related records)
+            moderation_log = ModerationLog(
+                admin_id=current_user.id,
+                target_type='job',
+                target_id=job_id,
+                action='delete',
+                reason=reason,
+                notes=notes,
+                old_state=json.dumps({
+                    'status': old_status,
+                    'featured': old_featured,
+                    'active': old_active,
+                    'title': job.title,
+                }),
+            )
             db.session.delete(job)
+            db.session.add(moderation_log)
             db.session.commit()
             
             return jsonify({
                 'message': 'Job deleted successfully',
-                'deletion_log': deletion_log
+                'deletion_log': moderation_log.to_dict()
             }), 200
         else:
             return jsonify({'error': 'Invalid action'}), 400
         
         job.updated_at = datetime.utcnow()
         
-        # Log the moderation action (in a real app, you'd store this in a moderation_log table)
-        moderation_log = {
-            'admin_id': current_user.id,
-            'admin_email': current_user.email,
-            'job_id': job_id,
-            'action': action,
-            'reason': reason,
-            'notes': notes,
-            'old_status': old_status,
-            'new_status': job.status,
-            'old_featured': old_featured,
-            'new_featured': job.is_featured,
-            'old_active': old_active,
-            'new_active': job.is_active,
-            'timestamp': datetime.utcnow().isoformat()
-        }
-        
-        print(f"📋 MODERATION LOG: {moderation_log}")
-        
+        moderation_log = ModerationLog(
+            admin_id=current_user.id,
+            target_type='job',
+            target_id=job_id,
+            action=action,
+            reason=reason,
+            notes=notes,
+            old_state=json.dumps({
+                'status': old_status,
+                'featured': old_featured,
+                'active': old_active,
+            }),
+            new_state=json.dumps({
+                'status': job.status,
+                'featured': job.is_featured,
+                'active': job.is_active,
+            }),
+        )
+        db.session.add(moderation_log)
         db.session.commit()
         
         return jsonify({
             'message': f'Job {action}d successfully',
             'job': job.to_dict(include_details=True, include_stats=True),
-            'moderation_log': moderation_log
+            'moderation_log': moderation_log.to_dict()
         }), 200
         
     except Exception as e:
@@ -947,9 +969,17 @@ def reject_company_verification(current_user, company_id):
         company.is_verified = False
         company.updated_at = datetime.utcnow()
         
-        # In a real app, you might store rejection reasons/notes
-        # For now, we'll just update the verification status
+        moderation_log = ModerationLog(
+            admin_id=current_user.id,
+            target_type='company',
+            target_id=company_id,
+            action='reject_verification',
+            reason=notes,
+            old_state=json.dumps({'verified': company.is_verified}),
+            new_state=json.dumps({'verified': False}),
+        )
         
+        db.session.add(moderation_log)
         db.session.commit()
         
         return jsonify({
@@ -1000,9 +1030,17 @@ def toggle_company_status(current_user, company_id):
         company.is_active = not company.is_active
         company.updated_at = datetime.utcnow()
         
-        # In a real app, you might store suspension reasons
-        # For now, we'll just update the active status
+        moderation_log = ModerationLog(
+            admin_id=current_user.id,
+            target_type='company',
+            target_id=company_id,
+            action='suspend' if not company.is_active else 'activate',
+            reason=reason,
+            old_state=json.dumps({'active': not company.is_active}),
+            new_state=json.dumps({'active': company.is_active}),
+        )
         
+        db.session.add(moderation_log)
         db.session.commit()
         
         return jsonify({
@@ -1027,27 +1065,31 @@ def send_company_email(current_user, company_id):
         if not company.email:
             return jsonify({'error': 'Company has no email address'}), 400
         
-        subject = request.json.get('subject', '')
-        body = request.json.get('body', '')
+        data = request.get_json(silent=True) or {}
+        subject = str(data.get('subject') or '').strip()
+        body = str(data.get('body') or '').strip()
         
         if not subject or not body:
             return jsonify({'error': 'Subject and body are required'}), 400
-        
-        # In a real app, you would integrate with an email service like SendGrid, AWS SES, etc.
-        # For now, we'll just log the email details
-        print(f"📧 ADMIN EMAIL TO COMPANY:")
-        print(f"   To: {company.email}")
-        print(f"   Subject: {subject}")
-        print(f"   Body: {body}")
-        print(f"   From Admin: {current_user.email}")
+
+        if len(subject) > 200 or len(body) > 5000:
+            return jsonify({'error': 'Subject or message is too long'}), 400
+
+        sent = email_service.send_system_message(
+            recipient_email=company.email,
+            recipient_name=company.name,
+            subject=subject,
+            message=body,
+        )
+        if not sent:
+            return jsonify({'error': 'Email delivery failed or is not configured'}), 502
         
         return jsonify({
-            'message': 'Email sent successfully to company',
-            'recipient': company.email
+            'message': 'Email sent successfully to company'
         }), 200
         
-    except Exception as e:
-        return jsonify({'error': 'Failed to send email', 'details': str(e)}), 500
+    except Exception:
+        return jsonify({'error': 'Failed to send email'}), 500
 
 @admin_bp.route('/admin/companies/bulk-action', methods=['POST'])
 @token_required
@@ -1383,22 +1425,21 @@ def get_admin_profile(current_user):
     try:
         profile_data = {
             'id': current_user.id,
-            'username': current_user.username,
             'email': current_user.email,
-            'fullName': current_user.full_name or '',
+            'firstName': current_user.first_name or '',
+            'lastName': current_user.last_name or '',
+            'fullName': current_user.get_full_name(),
             'phone': getattr(current_user, 'phone', ''),
             'location': getattr(current_user, 'location', ''),
             'bio': getattr(current_user, 'bio', ''),
             'profilePicture': getattr(current_user, 'profile_picture', ''),
             'role': current_user.role,
             'createdAt': current_user.created_at.isoformat() if current_user.created_at else None,
-            'lastLogin': current_user.last_login.isoformat() if current_user.last_login else None,
-            'permissions': ['read', 'write', 'delete', 'admin'],  # Default admin permissions
-            'settings': {}
+            'lastLogin': current_user.last_login.isoformat() if current_user.last_login else None
         }
         return jsonify(profile_data), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to get admin profile', 'details': str(e)}), 500
+    except Exception:
+        return jsonify({'error': 'Failed to get admin profile'}), 500
 
 @admin_bp.route('/admin/profile', methods=['PUT'])
 @token_required
@@ -1406,33 +1447,62 @@ def get_admin_profile(current_user):
 def update_admin_profile(current_user):
     """Update admin profile"""
     try:
-        data = request.get_json()
-        
-        # Update basic profile fields
+        data = request.get_json(silent=True) or {}
+
+        if 'firstName' in data:
+            first_name = str(data['firstName']).strip()
+            if not first_name:
+                return jsonify({'error': 'First name is required'}), 400
+            current_user.first_name = first_name
+        if 'lastName' in data:
+            last_name = str(data['lastName']).strip()
+            if not last_name:
+                return jsonify({'error': 'Last name is required'}), 400
+            current_user.last_name = last_name
         if 'fullName' in data:
-            current_user.full_name = data['fullName']
+            name_parts = str(data['fullName']).strip().split(maxsplit=1)
+            if not name_parts:
+                return jsonify({'error': 'Full name is required'}), 400
+            current_user.first_name = name_parts[0]
+            current_user.last_name = name_parts[1] if len(name_parts) > 1 else ''
         if 'email' in data and data['email'] != current_user.email:
-            # Check if email is already taken
-            if User.query.filter(User.email == data['email'], User.id != current_user.id).first():
+            email = str(data['email']).strip().lower()
+            if not email:
+                return jsonify({'error': 'Email is required'}), 400
+            if User.query.filter(User.email == email, User.id != current_user.id).first():
                 return jsonify({'error': 'Email already in use'}), 400
-            current_user.email = data['email']
-        if 'username' in data and data['username'] != current_user.username:
-            # Check if username is already taken
-            if User.query.filter(User.username == data['username'], User.id != current_user.id).first():
-                return jsonify({'error': 'Username already in use'}), 400
-            current_user.username = data['username']
-        
-        # Update extended profile fields (these might need to be added to User model)
+            current_user.email = email
+
         for field in ['phone', 'location', 'bio']:
             if field in data:
-                setattr(current_user, field, data[field])
-        
+                setattr(current_user, field, str(data[field]).strip())
+
+        # Name/contact/bio feed the career memory identity block.
+        from src.services.career_agent.memory import notify_profile_changed
+        notify_profile_changed(current_user.id)
         db.session.commit()
-        return jsonify({'message': 'Profile updated successfully'}), 200
+        return jsonify({'message': 'Profile updated successfully', 'profile': get_admin_profile_payload(current_user)}), 200
         
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({'error': 'Failed to update profile', 'details': str(e)}), 500
+        return jsonify({'error': 'Failed to update profile'}), 500
+
+
+def get_admin_profile_payload(current_user):
+    return {
+        'id': current_user.id,
+        'email': current_user.email,
+        'firstName': current_user.first_name or '',
+        'lastName': current_user.last_name or '',
+        'fullName': current_user.get_full_name(),
+        'phone': current_user.phone or '',
+        'location': current_user.location or '',
+        'bio': current_user.bio or '',
+        'profilePicture': current_user.profile_picture or '',
+        'role': current_user.role,
+        'createdAt': current_user.created_at.isoformat() if current_user.created_at else None,
+        'lastLogin': current_user.last_login.isoformat() if current_user.last_login else None,
+    }
 
 @admin_bp.route('/admin/upload-avatar', methods=['POST'])
 @token_required
@@ -1444,21 +1514,31 @@ def upload_admin_avatar(current_user):
             return jsonify({'error': 'No file provided'}), 400
         
         file = request.files['avatar']
-        if file.filename == '':
+        if not file or not file.filename:
             return jsonify({'error': 'No file selected'}), 400
-        
-        # For now, return a mock URL (implement actual file upload logic)
-        avatar_url = f'/api/uploads/avatars/admin_{current_user.id}_{datetime.utcnow().timestamp()}.jpg'
-        
-        # Update user profile picture
+
+        allowed_mime_types = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}
+        if file.mimetype not in allowed_mime_types:
+            return jsonify({'error': 'Unsupported image type'}), 400
+
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > 5 * 1024 * 1024:
+            return jsonify({'error': 'Image too large. Maximum size is 5MB'}), 400
+
+        upload_result = upload_user_profile_image(file, current_user.id)
+        avatar_url = upload_result['url']
         current_user.profile_picture = avatar_url
         db.session.commit()
         
-        return jsonify({'url': avatar_url}), 200
-        
-    except Exception as e:
+        return jsonify({'url': avatar_url, 'message': 'Avatar updated successfully'}), 200
+    except VercelBlobStorageError as exc:
         db.session.rollback()
-        return jsonify({'error': 'Failed to upload avatar', 'details': str(e)}), 500
+        return jsonify({'error': 'Avatar upload is unavailable', 'details': str(exc)}), 502
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to upload avatar'}), 500
 
 @admin_bp.route('/admin/stats', methods=['GET'])
 @token_required
@@ -1467,201 +1547,63 @@ def get_admin_stats(current_user):
     """Get admin statistics"""
     try:
         stats = {
-            'totalActions': 1247,  # Mock data - implement actual tracking
+            'totalUsers': User.query.count(),
             'activeUsers': User.query.filter_by(is_active=True).count(),
-            'totalLogins': 156,  # Mock data - implement login tracking
-            'lastActivity': datetime.utcnow().isoformat(),
-            'systemHealth': 'healthy'
+            'totalJobs': Job.query.count(),
+            'activeJobs': Job.query.filter_by(status='published', is_active=True).count(),
+            'totalApplications': Application.query.count(),
+            'totalCompanies': Company.query.count()
         }
         return jsonify(stats), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to get admin stats', 'details': str(e)}), 500
-
-@admin_bp.route('/admin/activity-log', methods=['GET'])
-@token_required
-@role_required('admin')
-def get_admin_activity_log(current_user):
-    """Get admin activity log"""
-    try:
-        # Mock activity log - implement actual audit logging
-        activities = [
-            {
-                'id': 1,
-                'action': 'User management update',
-                'timestamp': (datetime.utcnow() - timedelta(hours=1)).isoformat(),
-                'type': 'update'
-            },
-            {
-                'id': 2,
-                'action': 'System health check',
-                'timestamp': (datetime.utcnow() - timedelta(hours=2)).isoformat(),
-                'type': 'system'
-            },
-            {
-                'id': 3,
-                'action': 'Job approval',
-                'timestamp': (datetime.utcnow() - timedelta(hours=3)).isoformat(),
-                'type': 'approval'
-            },
-            {
-                'id': 4,
-                'action': 'Company verification',
-                'timestamp': (datetime.utcnow() - timedelta(hours=4)).isoformat(),
-                'type': 'verification'
-            },
-            {
-                'id': 5,
-                'action': 'Revenue analytics review',
-                'timestamp': (datetime.utcnow() - timedelta(hours=5)).isoformat(),
-                'type': 'analytics'
-            }
-        ]
-        return jsonify(activities), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to get activity log', 'details': str(e)}), 500
-
-# Admin Settings Management
-@admin_bp.route('/admin/settings/<setting_type>', methods=['GET'])
-@token_required
-@role_required('admin')
-def get_admin_settings(current_user, setting_type):
-    """Get admin settings by type"""
-    try:
-        # Mock settings - implement actual settings storage
-        settings_data = {
-            'system': {
-                'siteName': 'TalentSphere',
-                'siteDescription': 'Premier job portal connecting talent with opportunities',
-                'maintenanceMode': False,
-                'registrationEnabled': True,
-                'emailVerificationRequired': True,
-                'maxFileUploadSize': 10,
-                'sessionTimeout': 30,
-                'passwordMinLength': 8,
-                'enableTwoFactor': False,
-                'apiRateLimit': 1000,
-                'enableAnalytics': True,
-                'enableNotifications': True
-            },
-            'email': {
-                'smtpHost': '',
-                'smtpPort': 587,
-                'smtpUsername': '',
-                'smtpPassword': '',
-                'smtpSecure': True,
-                'fromEmail': 'noreply@talentsphere.com',
-                'fromName': 'TalentSphere',
-                'enableWelcomeEmail': True,
-                'enableJobAlerts': True,
-                'enableSystemAlerts': True
-            },
-            'security': {
-                'enableBruteForceProtection': True,
-                'maxLoginAttempts': 5,
-                'lockoutDuration': 15,
-                'enableCaptcha': False,
-                'enableIPWhitelist': False,
-                'ipWhitelist': [],
-                'enableSSL': True,
-                'enableCSRF': True,
-                'enableRateLimit': True,
-                'apiKey': 'ts_demo_key_123456789',
-                'jwtSecret': '',
-                'enableAuditLog': True
-            },
-            'database': {
-                'host': 'localhost',
-                'port': 5432,
-                'name': 'talentsphere',
-                'username': 'admin',
-                'password': '',
-                'maxConnections': 100,
-                'connectionTimeout': 30,
-                'enableBackup': True,
-                'backupFrequency': 'daily',
-                'backupRetention': 30,
-                'lastBackup': None
-            }
-        }
-        
-        if setting_type in settings_data:
-            return jsonify(settings_data[setting_type]), 200
-        else:
-            return jsonify({'error': 'Invalid settings type'}), 400
-            
-    except Exception as e:
-        return jsonify({'error': f'Failed to get {setting_type} settings', 'details': str(e)}), 500
-
-@admin_bp.route('/admin/settings/<setting_type>', methods=['PUT'])
-@token_required
-@role_required('admin')
-def update_admin_settings(current_user, setting_type):
-    """Update admin settings by type"""
-    try:
-        data = request.get_json()
-        
-        # Mock settings update - implement actual settings storage
-        # In a real implementation, you would store these in a settings table or configuration file
-        
-        return jsonify({'message': f'{setting_type.capitalize()} settings updated successfully'}), 200
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to update {setting_type} settings', 'details': str(e)}), 500
-
-@admin_bp.route('/admin/settings/email/test', methods=['POST'])
-@token_required
-@role_required('admin')
-def test_email_settings(current_user):
-    """Test email configuration"""
-    try:
-        # Mock email test - implement actual email sending test
-        return jsonify({'message': 'Email test successful'}), 200
-    except Exception as e:
-        return jsonify({'error': 'Email test failed', 'details': str(e)}), 500
-
-@admin_bp.route('/admin/database/backup', methods=['POST'])
-@token_required
-@role_required('admin')
-def backup_database(current_user):
-    """Perform database backup"""
-    try:
-        # Mock database backup - implement actual backup logic
-        return jsonify({'message': 'Database backup started'}), 200
-    except Exception as e:
-        return jsonify({'error': 'Database backup failed', 'details': str(e)}), 500
-
-@admin_bp.route('/admin/system/clear-cache', methods=['POST'])
-@token_required
-@role_required('admin')
-def clear_system_cache(current_user):
-    """Clear system cache"""
-    try:
-        # Mock cache clearing - implement actual cache clearing logic
-        return jsonify({'message': 'System cache cleared'}), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to clear cache', 'details': str(e)}), 500
+    except Exception:
+        return jsonify({'error': 'Failed to get admin stats'}), 500
 
 @admin_bp.route('/admin/system/health', methods=['GET'])
 @token_required
 @role_required('admin')
 def get_detailed_system_health(current_user):
-    """Get detailed system health metrics"""
+    """Return verified health, configuration, and aggregate platform metrics."""
     try:
+        started_at = time.perf_counter()
+        db.session.execute(db.text('SELECT 1'))
+        db.session.commit()
+        response_time_ms = round((time.perf_counter() - started_at) * 1000, 2)
+
+        try:
+            from src.utils.cache_middleware import advanced_cache
+            cache_enabled = bool(advanced_cache.enabled)
+        except Exception:
+            cache_enabled = False
+
         health_data = {
             'status': 'healthy',
-            'uptime': '99.9%',
-            'responseTime': '120ms',
-            'databaseStatus': 'connected',
-            'memoryUsage': 65,
-            'diskUsage': 42,
-            'cpuUsage': 23,
-            'activeConnections': 45,
+            'timestamp': datetime.utcnow().isoformat(),
+            'uptimeSeconds': round(time.time() - _PROCESS_STARTED_AT, 2),
+            'database': {
+                'status': 'connected',
+                'dialect': db.engine.dialect.name,
+                'responseTimeMs': response_time_ms
+            },
+            'cache': {'enabled': cache_enabled},
+            'configuration': {
+                'environment': current_app.config.get('FLASK_ENV', 'unknown'),
+                'jwtExpirySeconds': current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES'),
+                'maxImageUploadBytes': 5 * 1024 * 1024,
+                'blobStorageConfigured': bool(os.getenv('VERCEL_BLOB_READ_WRITE_TOKEN')),
+                'emailConfigured': bool(
+                    os.getenv('BREVO_API_KEY')
+                    or (os.getenv('SENDER_EMAIL') and os.getenv('SENDER_PASSWORD'))
+                )
+            },
             'totalUsers': User.query.count(),
-            'activeUsers': User.query.filter_by(is_active=True).count()
+            'activeUsers': User.query.filter_by(is_active=True).count(),
+            'totalJobs': Job.query.count(),
+            'totalApplications': Application.query.count(),
+            'totalCompanies': Company.query.count()
         }
         return jsonify(health_data), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to get system health', 'details': str(e)}), 500
+    except Exception:
+        return jsonify({'error': 'System health check failed'}), 503
 
 
 # ============================================================================
@@ -1909,5 +1851,3 @@ def extend_job_expiry(current_user, job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to extend job expiry', 'details': str(e)}), 500
-
-

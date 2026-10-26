@@ -286,6 +286,7 @@ def get_job(job_id):
         # Increment view count
         job.view_count += 1
         db.session.commit()
+        invalidate_job_caches()
         
         # Get detailed job information
         job_data = job.to_dict(include_details=True, include_stats=True)
@@ -615,6 +616,7 @@ def create_job(current_user):
         
         # Commit the transaction first (handled by decorator)
         db.session.commit()
+        invalidate_job_caches()
         
         # Send notifications if job is published
         if job.status == 'published':
@@ -735,6 +737,7 @@ def update_job(current_user, job_id):
         
         job.updated_at = datetime.utcnow()
         db.session.commit()
+        invalidate_job_caches()
         
         # Send notifications if job was just published
         if old_status != 'published' and job.status == 'published':
@@ -753,6 +756,71 @@ def update_job(current_user, job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update job', 'details': str(e)}), 500
+
+
+@job_bp.route('/jobs/<int:job_id>/analytics', methods=['GET'])
+@token_required
+@role_required('employer', 'admin', 'external_admin')
+def get_job_analytics(current_user, job_id):
+    """Return verified performance analytics for an owned job."""
+    try:
+        job = db.session.get(Job, job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        if (
+            current_user.role in {'employer', 'external_admin'}
+            and job.posted_by != current_user.id
+        ):
+            return jsonify({'error': 'You can only view analytics for your own jobs'}), 403
+
+        applications = Application.query.filter_by(job_id=job.id).all()
+        status_breakdown = {}
+        for application in applications:
+            status_breakdown[application.status] = status_breakdown.get(application.status, 0) + 1
+
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        daily_applications = db.session.query(
+            func.date(Application.created_at).label('date'),
+            func.count(Application.id).label('count')
+        ).filter(
+            Application.job_id == job.id,
+            Application.created_at >= thirty_days_ago
+        ).group_by(func.date(Application.created_at)).all()
+
+        total_applications = len(applications)
+        total_views = job.view_count or 0
+        conversion_rate = (total_applications / total_views * 100) if total_views else 0
+        bookmark_rate = (
+            (job.bookmark_count or 0) / total_views * 100
+            if total_views else 0
+        )
+
+        return jsonify({
+            'job': {
+                'id': job.id,
+                'title': job.title,
+                'status': job.status,
+                'createdAt': job.created_at.isoformat() if job.created_at else None
+            },
+            'applicationAnalytics': {
+                'totalApplications': total_applications,
+                'statusBreakdown': status_breakdown,
+                'dailyApplications': [
+                    {'date': str(date), 'count': count}
+                    for date, count in daily_applications
+                ]
+            },
+            'performanceMetrics': {
+                'views': total_views,
+                'applications': total_applications,
+                'bookmarks': job.bookmark_count or 0,
+                'conversionRate': round(conversion_rate, 2),
+                'bookmarkRate': round(bookmark_rate, 2)
+            }
+        }), 200
+    except Exception:
+        return jsonify({'error': 'Failed to get job analytics'}), 500
+
 
 @job_bp.route('/jobs/<int:job_id>', methods=['DELETE'])
 @token_required
@@ -791,6 +859,7 @@ def delete_job(current_user, job_id):
         # Hard delete: remove from database (cascades handle related records)
         db.session.delete(job)
         db.session.commit()
+        invalidate_job_caches()
         
         return jsonify({'message': 'Job deleted successfully'}), 200
         
@@ -859,7 +928,8 @@ def bulk_job_action(current_user):
             job.updated_at = datetime.utcnow()
         
         db.session.commit()
-        
+        invalidate_job_caches()
+
         # Send notifications for newly published jobs
         if published_job_ids:
             for job_id in published_job_ids:
@@ -949,6 +1019,7 @@ def duplicate_job(current_user, job_id):
         
         db.session.add(duplicate_job)
         db.session.commit()
+        invalidate_job_caches()
         
         # Return the duplicated job with full details
         job_data = duplicate_job.to_dict(include_details=True, include_stats=True)
@@ -1397,7 +1468,8 @@ def bulk_import_external_jobs(current_user):
                 })
         
         db.session.commit()
-        
+        invalidate_job_caches()
+
         return jsonify({
             'message': f'Bulk import completed: {len(imported_jobs)} jobs imported, {len(failed_imports)} failed',
             'imported_jobs': imported_jobs,

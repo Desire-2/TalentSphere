@@ -39,7 +39,6 @@ import SEOHelmet from '../components/seo/SEOHelmet';
 import { generateWebsiteStructuredData, generateKeywords } from '../utils/seoUtils';
 import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
 import AdSlot from '../components/ads/AdSlot';
-import { useAdTracking } from '../utils/adTracking';
 
 // Helper function to convert snake_case to Title Case
 const snakeToTitle = (str) => {
@@ -60,7 +59,6 @@ const Home = () => {
     featuredJobs: true,
     scholarships: true
   });
-  const [error, setError] = useState(null);
 
   const handleJobCardClick = (jobId, e) => {
     // Prevent navigation when clicking on interactive elements
@@ -78,9 +76,6 @@ const Home = () => {
     navigate(`/scholarships/${scholarshipId}`);
   };
   
-  // Initialize ad tracking
-  const adTracking = useAdTracking();
-
   // API states for stats
   const [stats, setStats] = useState({
     activeJobs: 0,

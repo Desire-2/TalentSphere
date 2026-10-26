@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../useAuth.jsx';
+import { useAuthStore } from '../../stores/authStore';
 import apiService from '../../services/api';
 
 export const useEmployerDashboard = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   
   // Main dashboard state
   const [dashboardData, setDashboardData] = useState({
@@ -20,6 +20,7 @@ export const useEmployerDashboard = () => {
     recentJobs: [],
     recentApplications: [],
     topPerformingJobs: [],
+    applicationTrends: [],
     alerts: [],
     insights: []
   });
@@ -99,11 +100,11 @@ export const useEmployerDashboard = () => {
     totalApplications: 0,
     applicationGrowth: 0,
     activeJobs: 0,
-    jobGrowth: 0,
+    totalJobs: 0,
     successfulHires: 0,
-    hireGrowth: 0,
+    hireRate: 0,
     avgTimeToHire: '0 days',
-    timeToHireChange: 0,
+    applicationTrends: [],
     funnelData: {
       applications: 0,
       underReview: 0,
@@ -111,18 +112,9 @@ export const useEmployerDashboard = () => {
       hired: 0
     },
     topJobs: [],
-    sources: [],
     insights: [],
-    jobDetails: [],
-    timeMetrics: {
-      firstReview: '24',
-      interview: '7',
-      hire: '14',
-      response: '2'
-    }
+    jobDetails: []
   });
-  const [analyticsDateRange, setAnalyticsDateRange] = useState('30');
-
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     if (!user?.id) return;
@@ -144,15 +136,18 @@ export const useEmployerDashboard = () => {
           totalJobs: statsResponse.total_jobs || 0,
           activeJobs: statsResponse.active_jobs || 0,
           newApplications: statsResponse.new_applications || 0,
-          totalViews: statsResponse.profile_views || 0,
+          shortlistedApplications: statsResponse.shortlisted_applications || 0,
+          totalViews: statsResponse.total_job_views || 0,
           totalApplications: statsResponse.total_applications || 0,
           pendingReviews: statsResponse.new_applications || 0,
+          hiresMade: statsResponse.hires_made || 0,
           scheduledInterviews: statsResponse.interviews_scheduled || 0,
           recentActivity: statsResponse.new_applications || 0
         },
         recentJobs: recentJobsResponse.jobs || [],
         recentApplications: recentApplicationsResponse.applications || [],
         topPerformingJobs: statsResponse.job_performance || [],
+        applicationTrends: statsResponse.application_trends || [],
         alerts: generateAlerts(statsResponse),
         insights: generateInsights(statsResponse)
       };
@@ -209,8 +204,7 @@ export const useEmployerDashboard = () => {
         insights.push({
           type: 'success',
           title: 'High-Performing Job',
-          description: `"${bestPerforming.job_title}" has a ${bestPerforming.conversion_rate}% conversion rate.`,
-          action: 'View Details'
+          description: `"${bestPerforming.job_title}" has a ${bestPerforming.conversion_rate}% conversion rate.`
         });
       }
     }
@@ -273,7 +267,11 @@ export const useEmployerDashboard = () => {
   }, [user?.id, applicationFilters, applicationPagination]);
 
   // Load candidates
-  const loadCandidates = useCallback(async (mode = candidateSearchMode, filters = candidateFilters) => {
+  const loadCandidates = useCallback(async (
+    mode = candidateSearchMode,
+    filters = candidateFilters,
+    pagination = candidatePagination
+  ) => {
     if (!user?.id) return;
     
     setLoading(prev => ({ ...prev, candidates: true }));
@@ -282,8 +280,8 @@ export const useEmployerDashboard = () => {
     try {
       const params = {
         ...filters,
-        page: candidatePagination.page,
-        per_page: candidatePagination.per_page
+        page: pagination.page,
+        per_page: pagination.per_page
       };
       
       let response;
@@ -294,7 +292,7 @@ export const useEmployerDashboard = () => {
       }
       
       setCandidates(response.candidates || []);
-      setCandidatePagination(response.pagination || candidatePagination);
+      setCandidatePagination(response.pagination || pagination);
     } catch (error) {
       console.error('Error loading candidates:', error);
       setErrors(prev => ({ ...prev, candidates: 'Failed to load candidates' }));
@@ -315,31 +313,37 @@ export const useEmployerDashboard = () => {
       const response = await apiService.getEmployerDashboardStats();
       
       // Transform the stats data into analytics format
+      const totalApplications = response.total_applications || 0;
+      const successfulHires = response.hires_made || 0;
+      const jobPerformance = (response.job_performance || []).map((job) => ({
+        id: job.job_id,
+        title: job.job_title,
+        views: job.views || 0,
+        applications: job.applications || 0,
+        conversion: job.conversion_rate || 0,
+        conversionRate: job.conversion_rate || 0
+      }));
+
       const transformedAnalytics = {
-        totalApplications: response.total_applications || 0,
+        totalApplications,
         applicationGrowth: calculateGrowth(response.application_trends),
         activeJobs: response.active_jobs || 0,
-        jobGrowth: 0, // Would need historical data for this
-        successfulHires: response.hires_made || 0,
-        hireGrowth: 0, // Would need historical data for this
+        totalJobs: response.total_jobs || 0,
+        successfulHires,
+        hireRate: totalApplications > 0
+          ? Math.round((successfulHires / totalApplications) * 100)
+          : 0,
         avgTimeToHire: `${response.avg_time_to_hire || 0} days`,
-        timeToHireChange: 0, // Would need historical data for this
         funnelData: {
-          applications: response.total_applications || 0,
-          underReview: response.shortlisted_applications || 0,
+          applications: totalApplications,
+          underReview: response.new_applications || 0,
           interviewed: response.interviews_scheduled || 0,
-          hired: response.hires_made || 0
+          hired: successfulHires
         },
-        topJobs: response.job_performance || [],
-        sources: [], // Not available in current backend
-        insights: [],
-        jobDetails: response.job_performance || [],
-        timeMetrics: {
-          firstReview: '24',
-          interview: '7',
-          hire: Math.floor(response.avg_time_to_hire || 14).toString(),
-          response: '2'
-        }
+        topJobs: jobPerformance,
+        insights: generateInsights(response),
+        jobDetails: jobPerformance,
+        applicationTrends: response.application_trends || []
       };
       
       setAnalyticsData(transformedAnalytics);
@@ -349,7 +353,7 @@ export const useEmployerDashboard = () => {
     } finally {
       setLoading(prev => ({ ...prev, analytics: false }));
     }
-  }, [user?.id, analyticsDateRange]);
+  }, [user?.id]);
 
   // Helper function to calculate growth from trends data
   const calculateGrowth = (trends) => {
@@ -381,8 +385,13 @@ export const useEmployerDashboard = () => {
   }, []);
 
   const handleCandidatePageChange = useCallback((page) => {
-    setCandidatePagination(prev => ({ ...prev, page }));
-  }, []);
+    const nextPage = Math.max(1, page);
+    setCandidatePagination(prev => ({ ...prev, page: nextPage }));
+    loadCandidates(candidateSearchMode, candidateFilters, {
+      ...candidatePagination,
+      page: nextPage
+    });
+  }, [candidateSearchMode, candidateFilters, candidatePagination, loadCandidates]);
 
   // Initial load
   useEffect(() => {
@@ -414,12 +423,6 @@ export const useEmployerDashboard = () => {
     }
   }, [candidateFilters, candidateSearchMode]);
 
-  useEffect(() => {
-    if (user?.id) {
-      loadAnalytics();
-    }
-  }, [analyticsDateRange]);
-
   return {
     // Data
     dashboardData,
@@ -436,7 +439,6 @@ export const useEmployerDashboard = () => {
     applicationFilters,
     candidateFilters,
     candidateSearchMode,
-    analyticsDateRange,
     
     // Pagination
     jobPagination,
@@ -446,7 +448,6 @@ export const useEmployerDashboard = () => {
     // Actions
     setSelectedJobs,
     setCandidateSearchMode,
-    setAnalyticsDateRange,
     setCandidateFilters,
     
     // Handlers

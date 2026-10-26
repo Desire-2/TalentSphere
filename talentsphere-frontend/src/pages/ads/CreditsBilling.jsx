@@ -1,12 +1,11 @@
 /**
  * Credits & Billing Page
- * Display credit balance, purchase credits, and transaction history
+ * Display credit balance and transaction history
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   CreditCard,
-  Plus,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
@@ -14,8 +13,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -25,27 +22,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Alert,
-  AlertDescription,
-} from '@/components/ui/alert';
 import adManagerService from '../../services/adManager';
 import { toast } from 'sonner';
 
 const CreditsBilling = () => {
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [purchaseAmount, setPurchaseAmount] = useState('');
-  const [processingPurchase, setProcessingPurchase] = useState(false);
-  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
 
   useEffect(() => {
     loadCredits();
@@ -59,59 +41,9 @@ const CreditsBilling = () => {
     } catch (error) {
       console.error('Failed to load credits:', error);
       toast.error('Failed to load credit information');
-      // Set mock data for demo
-      setCredits({
-        balance: 450.75,
-        transactions: [
-          {
-            id: 1,
-            amount: 100,
-            transaction_type: 'PURCHASE',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            note: 'Credit purchase',
-          },
-          {
-            id: 2,
-            amount: 50.25,
-            transaction_type: 'SPEND',
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-            note: 'Campaign spend',
-          },
-          {
-            id: 3,
-            amount: 400,
-            transaction_type: 'PURCHASE',
-            created_at: new Date(Date.now() - 604800000).toISOString(),
-            note: 'Initial credit purchase',
-          },
-        ],
-      });
+      setCredits({ balance: 0, transactions: [] });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePurchaseCredits = async () => {
-    if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-
-    try {
-      setProcessingPurchase(true);
-      // In a real app, this would integrate with Stripe
-      await adManagerService.purchaseCredits(
-        parseFloat(purchaseAmount),
-        `PURCHASE_${Date.now()}`
-      );
-      toast.success(`Successfully purchased $${purchaseAmount} in credits!`);
-      setPurchaseAmount('');
-      setShowPurchaseDialog(false);
-      loadCredits();
-    } catch (error) {
-      toast.error(error?.error || 'Failed to process purchase');
-    } finally {
-      setProcessingPurchase(false);
     }
   };
 
@@ -149,8 +81,6 @@ const CreditsBilling = () => {
   };
 
   const darkCardClass = 'border-[#1b4f86] bg-[#0a335f]/75 text-slate-100';
-  const brandPrimaryButtonClass = 'bg-gradient-to-r from-[#1BA398] to-[#FF6B35] text-slate-100 hover:from-[#158b7e] hover:to-[#e55a24]';
-  const brandOutlineButtonClass = 'border-[#1BA398]/50 text-[#1BA398] hover:bg-[#1BA398]/15 hover:text-slate-100';
 
   if (loading) {
     return (
@@ -165,7 +95,7 @@ const CreditsBilling = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-100">Credits & Billing</h1>
-        <p className="text-slate-300 mt-1">Manage your ad credits and billing information</p>
+        <p className="text-slate-300 mt-1">Review your ad credit balance and transaction history</p>
       </div>
 
       {/* Credit Balance Card - Large & Prominent */}
@@ -183,80 +113,6 @@ const CreditsBilling = () => {
                 Ready to spend on campaigns
               </p>
             </div>
-            <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
-              <DialogTrigger asChild>
-                <Button size="lg" className={`gap-2 ${brandPrimaryButtonClass}`}>
-                  <Plus className="w-5 h-5" />
-                  Purchase Credits
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Purchase Credits</DialogTitle>
-                  <DialogDescription>
-                    Add credits to your account to run more ads
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="amount">Amount ($)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="50.00"
-                      value={purchaseAmount}
-                      onChange={(e) => setPurchaseAmount(e.target.value)}
-                      step="0.01"
-                      min="1"
-                    />
-                  </div>
-
-                  {/* Quick select amounts */}
-                  <div>
-                    <Label className="text-xs text-slate-300 mb-2 block">
-                      Quick Select
-                    </Label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[25, 50, 100, 250].map((amount) => (
-                        <Button
-                          key={amount}
-                          variant={purchaseAmount === amount.toString() ? 'default' : 'outline'}
-                          size="sm"
-                          className={purchaseAmount === amount.toString() ? brandPrimaryButtonClass : brandOutlineButtonClass}
-                          onClick={() => setPurchaseAmount(amount.toString())}
-                        >
-                          ${amount}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Alert>
-                    <CreditCard className="h-4 w-4" />
-                    <AlertDescription>
-                      You'll be redirected to secure payment (Stripe integration)
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      className={brandOutlineButtonClass}
-                      onClick={() => setShowPurchaseDialog(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handlePurchaseCredits}
-                      disabled={!purchaseAmount || processingPurchase}
-                      className={brandPrimaryButtonClass}
-                    >
-                      {processingPurchase ? 'Processing...' : `Pay ${formatCurrency(purchaseAmount || 0)}`}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </CardContent>
       </Card>
@@ -371,7 +227,7 @@ const CreditsBilling = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan="4" className="text-center py-8 text-slate-300">
-                    No transactions yet. Purchase credits to get started!
+                    No transactions yet.
                   </TableCell>
                 </TableRow>
               )}
@@ -380,80 +236,6 @@ const CreditsBilling = () => {
         </div>
       </Card>
 
-      {/* Billing Information */}
-      <Card className={darkCardClass}>
-        <CardHeader>
-          <CardTitle className="text-sm text-slate-100">Billing Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <AlertDescription>
-              💳 Secure payments powered by Stripe. Your credit card information is never stored on our servers.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-4">
-            <div>
-              <Label className="text-slate-300">Payment Methods</Label>
-              <p className="text-sm mt-2">
-                <Button variant="outline" size="sm" className={brandOutlineButtonClass}>
-                  Add Payment Method
-                </Button>
-              </p>
-            </div>
-
-            <div>
-              <Label className="text-slate-300">Billing Address</Label>
-              <p className="text-sm mt-2 text-slate-300">
-                To update your billing address, please contact support
-              </p>
-            </div>
-
-            <div>
-              <Label className="text-slate-300">Invoices</Label>
-              <p className="text-sm mt-2 text-slate-300">
-                All invoices are automatically emailed after each transaction
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* FAQ Section */}
-      <Card className={darkCardClass}>
-        <CardHeader>
-          <CardTitle className="text-sm text-slate-100">Frequently Asked Questions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div>
-            <p className="font-medium mb-1">When will my credits be available?</p>
-            <p className="text-slate-300">
-              Credits are available immediately after payment is processed.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium mb-1">Can I request a refund?</p>
-            <p className="text-slate-300">
-              Unused credits can be refunded within 30 days of purchase. Contact support for details.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium mb-1">What payment methods do you accept?</p>
-            <p className="text-slate-300">
-              We accept all major credit cards (Visa, Mastercard, Amex) and bank transfers.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-medium mb-1">How do I know how much each campaign will cost?</p>
-            <p className="text-slate-300">
-              When creating a campaign, you set your budget and bid amount. You only pay for actual impressions or clicks.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

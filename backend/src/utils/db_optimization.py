@@ -54,10 +54,11 @@ def create_optimized_engine(database_url: str):
     # Connection pool settings
     pool_settings = {
         'poolclass': QueuePool,
-        'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
-        'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '20')),
-        'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '30')),
-        'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '3600')),  # 1 hour
+        'pool_size': max(1, int(os.getenv('DB_POOL_SIZE', '2'))),
+        'max_overflow': max(0, int(os.getenv('DB_MAX_OVERFLOW', '1'))),
+        'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '20')),
+        'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '300')),
+        'pool_use_lifo': True,
         'pool_pre_ping': True,  # Validate connections before use
     }
     

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Save, 
-  Eye, 
   Upload, 
   RefreshCw,
   AlertCircle,
@@ -19,7 +18,6 @@ import {
   Phone,
   Plus,
   Trash2,
-  Star,
   Calendar,
   Edit3
 } from 'lucide-react';
@@ -29,8 +27,7 @@ const JobEditModal = ({
   isOpen, 
   onClose, 
   jobId, 
-  onSave,
-  onPreview 
+  onSave
 }) => {
   const [job, setJob] = useState({
     title: '',
@@ -217,12 +214,6 @@ const JobEditModal = ({
     }));
   };
 
-  const handlePreview = () => {
-    if (onPreview) {
-      onPreview(job);
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -255,14 +246,6 @@ const JobEditModal = ({
                     <span className="text-sm font-medium">Saved successfully!</span>
                   </div>
                 )}
-                
-                <button
-                  onClick={handlePreview}
-                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                  title="Preview Job"
-                >
-                  <Eye className="h-5 w-5" />
-                </button>
                 
                 <button
                   onClick={onClose}

@@ -172,18 +172,14 @@ const CompanyProfile = () => {
         instagram_url: formData.instagram_url
       };
       
-      console.log('💾 Saving company profile:', updateData);
-      
       if (company?.id) {
         const updatedCompany = await apiService.updateCompany(company.id, updateData);
         setCompany(updatedCompany);
         toast.success('Company profile updated successfully!');
-        console.log('✅ Company updated:', updatedCompany);
       } else {
         const newCompany = await apiService.createCompany(updateData);
         setCompany(newCompany);
         toast.success('Company profile created successfully!');
-        console.log('✅ Company created:', newCompany);
         
         // Check if user came from PostJob and redirect back
         const searchParams = new URLSearchParams(window.location.search);

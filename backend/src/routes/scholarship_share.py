@@ -1,28 +1,27 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from html import escape
+import os
 from src.models.user import db
 from src.models.scholarship import Scholarship
 from src.models.scholarship_share import ScholarshipShare
+from src.routes.auth import optional_token, token_required, validate_email
+from src.services.email_service import email_service
 from datetime import datetime
 
 scholarship_share_bp = Blueprint('scholarship_share', __name__)
 
 @scholarship_share_bp.route('/scholarships/<int:scholarship_id>/share', methods=['POST'])
-def record_scholarship_share(scholarship_id):
+@optional_token
+def record_scholarship_share(current_user, scholarship_id):
     """Record a scholarship share action"""
     try:
         # Check if scholarship exists
         scholarship = Scholarship.query.get_or_404(scholarship_id)
         
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         
         # Get user ID if authenticated
-        user_id = None
-        try:
-            claims = get_jwt()
-            user_id = get_jwt_identity()
-        except:
-            pass  # Anonymous share
+        user_id = current_user.id if current_user else None
         
         # Validate required fields
         if not data.get('platform'):
@@ -58,6 +57,107 @@ def record_scholarship_share(scholarship_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to record share', 'details': str(e)}), 500
+
+@scholarship_share_bp.route('/scholarships/<int:scholarship_id>/share/email', methods=['POST'])
+@token_required
+def send_scholarship_share_email(current_user, scholarship_id):
+    """Send a scholarship share through the configured email provider."""
+    try:
+        scholarship = Scholarship.query.get_or_404(scholarship_id)
+        data = request.get_json(silent=True) or {}
+        recipients = data.get('recipients') or []
+        if isinstance(recipients, str):
+            recipients = [recipients]
+        recipients = [str(recipient).strip() for recipient in recipients if str(recipient).strip()]
+
+        if not recipients:
+            return jsonify({'success': False, 'message': 'Recipients are required'}), 400
+        if len(recipients) > 20:
+            return jsonify({'success': False, 'message': 'A maximum of 20 recipients is allowed'}), 400
+        if any(not validate_email(recipient) for recipient in recipients):
+            return jsonify({'success': False, 'message': 'One or more email addresses are invalid'}), 400
+
+        custom_message = str(data.get('custom_message') or '').strip()
+        recipient_name = str(data.get('recipient_name') or '').strip()
+        organization = scholarship.external_organization_name or 'TalentSphere'
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+        scholarship_url = f'{frontend_url}/scholarships/{scholarship.id}'
+        personal_message = (
+            f'\n\nPersonal message:\n{custom_message}\n' if custom_message else ''
+        )
+        greeting = f'Hi {recipient_name},' if recipient_name else 'Hello,'
+        deadline = (
+            f'Deadline: {scholarship.application_deadline}'
+            if scholarship.application_deadline
+            else ''
+        )
+        location = scholarship.country or scholarship.city or ''
+        text_body = f"""{greeting}
+
+{current_user.get_full_name() or current_user.email} thought you might be interested in this scholarship:
+
+{scholarship.title}
+Provider: {organization}
+{deadline}
+{f'Location: {location}' if location else ''}
+{personal_message}
+{scholarship.summary or scholarship.description or ''}
+
+View scholarship: {scholarship_url}
+
+Shared through TalentSphere
+"""
+        html_body = (
+            f'<p>{escape(text_body)}</p>'
+            f'<p><a href="{escape(scholarship_url, quote=True)}">View scholarship</a></p>'
+        )
+
+        success_count = 0
+        failed_count = 0
+        for recipient in recipients:
+            sent = email_service.send_custom_email(
+                recipient_email=recipient,
+                recipient_name=recipient_name,
+                subject=f'Scholarship Opportunity: {scholarship.title}',
+                html_body=html_body,
+                text_body=text_body,
+            )
+            if sent:
+                success_count += 1
+            else:
+                failed_count += 1
+
+        if success_count == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Email delivery failed',
+                'success_count': 0,
+                'failed_count': failed_count,
+            }), 502
+
+        share = ScholarshipShare(
+            scholarship_id=scholarship.id,
+            user_id=current_user.id,
+            platform='direct_email',
+            custom_message=custom_message,
+            recipient_info=f'{success_count} recipient(s)',
+            share_url=scholarship_url,
+            user_agent=request.headers.get('User-Agent'),
+            ip_address=request.remote_addr,
+            referrer=request.headers.get('Referer'),
+        )
+        db.session.add(share)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Emails sent to {success_count} recipient(s)',
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'share': share.to_dict(),
+        }), 200
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Failed to send scholarship email'}), 500
 
 
 @scholarship_share_bp.route('/scholarships/<int:scholarship_id>/share/stats', methods=['GET'])
@@ -147,11 +247,11 @@ def get_platform_statistics():
 
 
 @scholarship_share_bp.route('/scholarships/my-shares', methods=['GET'])
-@jwt_required()
-def get_my_shares():
+@token_required
+def get_my_shares(current_user):
     """Get current user's sharing history"""
     try:
-        user_id = get_jwt_identity()
+        user_id = current_user.id
         
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
@@ -190,13 +290,12 @@ def get_my_shares():
 
 
 @scholarship_share_bp.route('/analytics/shares/summary', methods=['GET'])
-@jwt_required()
-def get_share_analytics_summary():
+@token_required
+def get_share_analytics_summary(current_user):
     """Get overall sharing analytics summary (for admin/organization users)"""
     try:
-        user_id = get_jwt_identity()
-        claims = get_jwt()
-        user_type = claims.get('user_type')
+        user_id = current_user.id
+        user_type = current_user.role
         
         # Only allow external admins and admins
         if user_type not in ['admin', 'external_admin']:

@@ -9,6 +9,7 @@ from src.models.notification import Notification
 from src.routes.auth import token_required, role_required
 from src.services.notification_templates import EnhancedNotificationService
 from src.services.email_service import email_service
+from src.utils.cache import invalidate_cache
 
 application_bp = Blueprint('application', __name__)
 
@@ -65,11 +66,64 @@ def apply_for_job(current_user, job_id):
         
         data = request.get_json()
         
+        # ── Career Agent document attachment ────────────────────────────────
+        # A generated CV/cover-letter package can be attached to the
+        # application. Ownership is verified here; the cover-letter text and
+        # resume reference are derived server-side from the verified documents.
+        from src.models.career_agent import CareerApplicationDocument, CareerDocument, CareerDocumentPackage
+
+        cv_document = None
+        letter_document = None
+        career_document_id = data.get('career_document_id') or data.get('cv_document_id')
+        if career_document_id:
+            cv_document = CareerDocument.query.filter_by(
+                id=int(career_document_id), user_id=current_user.id, document_type='CV'
+            ).first()
+            if not cv_document:
+                return jsonify({'error': 'The selected CV document was not found for your account'}), 404
+            if data.get('cover_letter_document_id'):
+                letter_document = CareerDocument.query.filter_by(
+                    id=int(data.get('cover_letter_document_id')),
+                    user_id=current_user.id,
+                    document_type='COVER_LETTER',
+                    package_id=cv_document.package_id,
+                ).first()
+                if not letter_document:
+                    return jsonify({'error': 'The selected cover letter was not found in the same package'}), 404
+
+        # Derived application fields (server-side, never trusted from client):
+        cover_letter_text = data.get('cover_letter')
+        resume_reference = data.get('resume_url')
+        if cv_document:
+            letter_text = ''
+            if letter_document:
+                paragraphs = (letter_document.get_content() or {}).get('body', {}).get('paragraphs', [])
+                letter_text = '\n\n'.join(
+                    str(p.get('text', '')).strip() for p in paragraphs if p.get('text')
+                )
+            elif cv_document.package:
+                linked_letter = CareerDocument.query.filter_by(
+                    package_id=cv_document.package_id,
+                    user_id=current_user.id,
+                    document_type='COVER_LETTER',
+                ).first()
+                if linked_letter:
+                    paragraphs = (linked_letter.get_content() or {}).get('body', {}).get('paragraphs', [])
+                    letter_text = '\n\n'.join(
+                        str(p.get('text', '')).strip() for p in paragraphs if p.get('text')
+                    )
+                    letter_document = linked_letter
+            if letter_text:
+                cover_letter_text = letter_text
+            # Store a valid API resource path. The UI resolves it through an
+            # authenticated download so browser anchors never bypass auth.
+            resume_reference = f"/api/career-agent/documents/{cv_document.id}"
+
         # Validate required fields based on job requirements
-        if job.requires_resume and not data.get('resume_url'):
+        if job.requires_resume and not resume_reference:
             return jsonify({'error': 'Resume is required for this job'}), 400
         
-        if job.requires_cover_letter and not data.get('cover_letter'):
+        if job.requires_cover_letter and not cover_letter_text:
             return jsonify({'error': 'Cover letter is required for this job'}), 400
         
         if job.requires_portfolio and not data.get('portfolio_url'):
@@ -79,8 +133,8 @@ def apply_for_job(current_user, job_id):
         application = Application(
             job_id=job_id,
             applicant_id=current_user.id,
-            cover_letter=data.get('cover_letter'),
-            resume_url=data.get('resume_url'),
+            cover_letter=cover_letter_text,
+            resume_url=resume_reference,
             portfolio_url=data.get('portfolio_url'),
             additional_documents=data.get('additional_documents'),
             custom_responses=data.get('custom_responses'),
@@ -90,6 +144,15 @@ def apply_for_job(current_user, job_id):
         db.session.add(application)
         db.session.flush()  # Get application ID
         
+        # Link the generated package to the application for employer access.
+        if cv_document:
+            db.session.add(CareerApplicationDocument(
+                application_id=application.id,
+                package_id=cv_document.package_id,
+                cv_document_id=cv_document.id,
+                cover_letter_document_id=letter_document.id if letter_document else None,
+            ))
+
         # Create activity record
         create_application_activity(
             application.id,
@@ -127,7 +190,8 @@ def apply_for_job(current_user, job_id):
         )
         
         db.session.commit()
-        
+        invalidate_cache(['employer_stats'])
+
         return jsonify({
             'message': 'Application submitted successfully',
             'application': application.to_dict()
@@ -160,6 +224,18 @@ def get_application(current_user, application_id):
             for_employer=is_employer
         )
         
+        # Attach generated Career Agent documents (owner or authorized employer).
+        from src.models.career_agent import CareerApplicationDocument
+
+        career_link = CareerApplicationDocument.query.filter_by(application_id=application_id).first()
+        if career_link and (is_applicant or is_employer):
+            application_data['career_documents'] = {
+                'package_id': career_link.package_id,
+                'cv_document_id': career_link.cv_document_id,
+                'cover_letter_document_id': career_link.cover_letter_document_id,
+                'download_base': f"/api/career-agent/applications/{application_id}/documents",
+            }
+
         # Add related data
         application_data['job'] = application.job.to_dict(include_details=True)
         application_data['applicant'] = application.applicant.to_dict()
@@ -255,7 +331,8 @@ def update_application_status(current_user, application_id):
             )
         
         db.session.commit()
-        
+        invalidate_cache(['employer_stats'])
+
         return jsonify({
             'message': 'Application status updated successfully',
             'application': application.to_dict(for_employer=True)
@@ -316,7 +393,8 @@ def schedule_interview(current_user, application_id):
         )
         
         db.session.commit()
-        
+        invalidate_cache(['employer_stats'])
+
         return jsonify({
             'message': 'Interview scheduled successfully',
             'application': application.to_dict(for_employer=True)
@@ -466,7 +544,8 @@ def withdraw_application(current_user, application_id):
             )
         
         db.session.commit()
-        
+        invalidate_cache(['employer_stats'])
+
         return jsonify({
             'message': 'Application withdrawn successfully',
             'application': application.to_dict()
@@ -673,4 +752,3 @@ def not_found(error):
 @application_bp.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
-

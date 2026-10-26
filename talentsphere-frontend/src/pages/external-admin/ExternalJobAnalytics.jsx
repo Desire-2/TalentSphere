@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { externalAdminService } from '../../services/externalAdmin';
-import { format, subDays, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 
 const ExternalJobAnalytics = () => {
   const [loading, setLoading] = useState(false);
@@ -84,7 +84,7 @@ const ExternalJobAnalytics = () => {
     }
   };
 
-  const MetricCard = ({ title, value, change, changeType, icon: Icon }) => (
+  const MetricCard = ({ title, value, change, changeType, icon: _Icon }) => (
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">

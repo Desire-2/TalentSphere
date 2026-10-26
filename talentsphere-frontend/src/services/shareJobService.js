@@ -3,13 +3,6 @@ import apiService from './api';
 class ShareJobService {
   constructor() {
     this.shareHistory = this.loadShareHistory();
-    this.analytics = {
-      totalShares: 0,
-      sharesByPlatform: {},
-      sharesByJob: {},
-      sharesByDate: {}
-    };
-    this.loadAnalytics();
   }
 
   // Convert different requirement formats to a clean list for sharing
@@ -151,29 +144,8 @@ class ShareJobService {
     }
   }
 
-  // Load analytics from localStorage
-  loadAnalytics() {
-    try {
-      const analytics = localStorage.getItem('talentsphere_share_analytics');
-      if (analytics) {
-        this.analytics = { ...this.analytics, ...JSON.parse(analytics) };
-      }
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-    }
-  }
-
-  // Save analytics to localStorage
-  saveAnalytics() {
-    try {
-      localStorage.setItem('talentsphere_share_analytics', JSON.stringify(this.analytics));
-    } catch (error) {
-      console.error('Error saving analytics:', error);
-    }
-  }
-
   // Record a share event
-  recordShare(jobId, platform, customMessage = '', recipientCount = 1) {
+  recordShare(jobId, platform, customMessage = '', recipientCount = 1, persistRemote = true) {
     const shareEvent = {
       id: Date.now().toString(),
       jobId,
@@ -193,53 +165,28 @@ class ShareJobService {
       this.shareHistory = this.shareHistory.slice(0, 100);
     }
 
-    // Update analytics
-    this.updateAnalytics(shareEvent);
-    
     // Save data
     this.saveShareHistory();
-    this.saveAnalytics();
 
-    // Send to backend (optional)
-    this.sendShareAnalytics(shareEvent).catch(console.error);
+    if (persistRemote) {
+      this.sendShareAnalytics(shareEvent).catch(console.error);
+    }
 
     return shareEvent;
-  }
-
-  // Update analytics
-  updateAnalytics(shareEvent) {
-    const { jobId, platform, recipientCount, timestamp } = shareEvent;
-    const date = new Date(timestamp).toDateString();
-
-    // Update total shares
-    this.analytics.totalShares += recipientCount;
-
-    // Update shares by platform
-    if (!this.analytics.sharesByPlatform[platform]) {
-      this.analytics.sharesByPlatform[platform] = 0;
-    }
-    this.analytics.sharesByPlatform[platform] += recipientCount;
-
-    // Update shares by job
-    if (!this.analytics.sharesByJob[jobId]) {
-      this.analytics.sharesByJob[jobId] = 0;
-    }
-    this.analytics.sharesByJob[jobId] += recipientCount;
-
-    // Update shares by date
-    if (!this.analytics.sharesByDate[date]) {
-      this.analytics.sharesByDate[date] = 0;
-    }
-    this.analytics.sharesByDate[date] += recipientCount;
   }
 
   // Send share analytics to backend
   async sendShareAnalytics(shareEvent) {
     try {
-      await apiService.post('/analytics/job-shares', shareEvent);
-    } catch (error) {
-      // Silently fail - analytics shouldn't break the app
-      console.log('Analytics not sent:', error.message);
+      await apiService.post(`/jobs/${shareEvent.jobId}/share`, {
+        platform: shareEvent.platform,
+        custom_message: shareEvent.customMessage,
+        recipient_count: shareEvent.recipientCount,
+        share_url: shareEvent.url,
+        user_agent: shareEvent.userAgent
+      });
+    } catch {
+      // Sharing should still succeed if analytics persistence fails.
     }
   }
 
@@ -252,10 +199,19 @@ class ShareJobService {
         timestamp: new Date().toISOString()
       });
 
-      // Record the share event
-      this.recordShare(jobId, 'direct_email', customMessage, recipients.length);
+      if (!response.success_count) {
+        throw new Error(response.message || 'Email delivery failed');
+      }
 
-      return response.data;
+      this.recordShare(
+        jobId,
+        'direct_email',
+        customMessage,
+        response.success_count,
+        false
+      );
+
+      return response;
     } catch (error) {
       throw new Error(`Failed to send emails: ${error.message}`);
     }
@@ -283,35 +239,12 @@ class ShareJobService {
     };
   }
 
-  // Get user's share analytics
-  getUserShareAnalytics() {
-    const last30Days = new Date();
-    last30Days.setDate(last30Days.getDate() - 30);
+  async fetchJobShareStats(jobId) {
+    return apiService.get(`/jobs/${jobId}/share/stats`);
+  }
 
-    const recentShares = this.shareHistory.filter(
-      share => new Date(share.timestamp) >= last30Days
-    );
-
-    const topPlatforms = Object.entries(this.analytics.sharesByPlatform)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
-
-    const dailyStats = {};
-    recentShares.forEach(share => {
-      const date = new Date(share.timestamp).toDateString();
-      if (!dailyStats[date]) {
-        dailyStats[date] = 0;
-      }
-      dailyStats[date] += share.recipientCount;
-    });
-
-    return {
-      totalShares: this.analytics.totalShares,
-      recentShares: recentShares.length,
-      topPlatforms,
-      dailyStats,
-      averageSharesPerDay: Object.values(dailyStats).reduce((a, b) => a + b, 0) / Object.keys(dailyStats).length || 0
-    };
+  async fetchUserShareAnalytics() {
+    return apiService.get('/analytics/shares');
   }
 
   // Generate share URL with tracking parameters
@@ -332,42 +265,8 @@ class ShareJobService {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  // Get popular sharing times
-  getOptimalSharingTimes() {
-    const hourStats = {};
-    
-    this.shareHistory.forEach(share => {
-      const hour = new Date(share.timestamp).getHours();
-      if (!hourStats[hour]) {
-        hourStats[hour] = 0;
-      }
-      hourStats[hour]++;
-    });
-
-    const sortedHours = Object.entries(hourStats)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([hour, count]) => ({
-        hour: parseInt(hour),
-        count,
-        timeLabel: this.formatHour(parseInt(hour))
-      }));
-
-    return sortedHours;
-  }
-
-  // Format hour for display
-  formatHour(hour) {
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:00 ${period}`;
-  }
-
-  // Get share suggestions based on user behavior
+  // Get deterministic sharing tips based on the job itself.
   getShareSuggestions(job) {
-    const jobStats = this.getJobShareStats(job.id);
-    const userAnalytics = this.getUserShareAnalytics();
-    
     const suggestions = [];
 
     // Suggest based on job type
@@ -385,32 +284,6 @@ class ShareJobService {
         reason: 'Urgent jobs need quick sharing',
         tip: 'Share with your close network first'
       });
-    }
-
-    // Suggest based on user's top platforms
-    userAnalytics.topPlatforms.forEach(([platform, count], index) => {
-      if (index < 2) {
-        suggestions.push({
-          platform,
-          reason: `You've had success sharing on ${platform} (${count} shares)`,
-          tip: 'Use your proven platform'
-        });
-      }
-    });
-
-    // Time-based suggestions
-    const optimalTimes = this.getOptimalSharingTimes();
-    if (optimalTimes.length > 0) {
-      const currentHour = new Date().getHours();
-      const bestTime = optimalTimes[0];
-      
-      if (Math.abs(currentHour - bestTime.hour) <= 1) {
-        suggestions.push({
-          platform: 'any',
-          reason: `Great time to share! You typically share successfully around ${bestTime.timeLabel}`,
-          tip: 'Strike while the iron is hot'
-        });
-      }
     }
 
     return suggestions;
@@ -470,40 +343,6 @@ class ShareJobService {
     return templates;
   }
 
-  // Clear all share data
-  clearAllData() {
-    this.shareHistory = [];
-    this.analytics = {
-      totalShares: 0,
-      sharesByPlatform: {},
-      sharesByJob: {},
-      sharesByDate: {}
-    };
-    
-    localStorage.removeItem('talentsphere_share_history');
-    localStorage.removeItem('talentsphere_share_analytics');
-  }
-
-  // Export share data
-  exportShareData() {
-    const data = {
-      shareHistory: this.shareHistory,
-      analytics: this.analytics,
-      exportDate: new Date().toISOString(),
-      version: '1.0'
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json'
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `talentsphere-share-data-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
 }
 
 export default new ShareJobService();

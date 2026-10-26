@@ -45,7 +45,7 @@ const EmployerDashboardStats = () => {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, trend, color = "blue" }) => (
+  const StatCard = ({ icon: _Icon, title, value, subtitle, trend, color = "blue" }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">

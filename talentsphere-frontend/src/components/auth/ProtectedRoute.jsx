@@ -2,8 +2,10 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 
 const ProtectedRoute = ({ children, requiredRole = null }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isInitialized } = useAuthStore();
   const location = useLocation();
+
+  if (!isInitialized) return null;
 
   if (!isAuthenticated) {
     // Redirect to login page with return url in state
@@ -39,4 +41,3 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 };
 
 export default ProtectedRoute;
-

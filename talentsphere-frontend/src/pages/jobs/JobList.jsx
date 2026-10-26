@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,6 @@ import SEOHelmet from '../../components/seo/SEOHelmet';
 import { generateKeywords, generateBreadcrumbStructuredData } from '../../utils/seoUtils';
 import { SquareAd, ResponsiveAd, JobSponsoredAd } from '../../components/ads/AdComponents.jsx';
 import AdSlot from '../../components/ads/AdSlot.jsx';
-import { useAdTracking } from '../../utils/adTracking.js';
 import { 
   Search, 
   MapPin, 
@@ -82,11 +81,8 @@ const JobList = () => {
   });
   const [categories, setCategories] = useState([]);
   const [bookmarkedJobs, setBookmarkedJobs] = useState(new Set());
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { requireAuth } = useAuthNavigation();
-
-  // Initialize ad tracking
-  const adTracking = useAdTracking();
 
   // Helper functions for job data handling
   const getCompanyLogo = (job) => {
@@ -318,7 +314,7 @@ const JobList = () => {
 
   <div className="relative w-full px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
           {/* Enhanced Header with Stats */}
-          <motion.div 
+          <Motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 sm:mb-8"
@@ -352,10 +348,10 @@ const JobList = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </Motion.div>
 
           {/* Enhanced Search Section */}
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -468,7 +464,7 @@ const JobList = () => {
               {/* Expandable Advanced Filters */}
               <AnimatePresence>
                 {showFilters && (
-                  <motion.div
+                  <Motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -545,11 +541,11 @@ const JobList = () => {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 )}
               </AnimatePresence>
             </form>
-          </motion.div>
+          </Motion.div>
 
           {/* Ad Slot - Top Banner */}
           <div className="mb-6 sm:mb-8">
@@ -568,7 +564,7 @@ const JobList = () => {
             <div className="lg:col-span-3">
               <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -582,9 +578,9 @@ const JobList = () => {
                 </div>
                 <p className="text-lg text-gray-300 font-medium">Finding amazing opportunities...</p>
                 <p className="text-sm text-gray-400 mt-2">This might take a moment</p>
-              </motion.div>
+              </Motion.div>
             ) : error ? (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -599,9 +595,9 @@ const JobList = () => {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Try Again
                 </Button>
-              </motion.div>
+              </Motion.div>
             ) : jobs.length === 0 ? (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -618,9 +614,9 @@ const JobList = () => {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Clear all filters
                 </Button>
-              </motion.div>
+              </Motion.div>
             ) : (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ staggerChildren: 0.1 }}
@@ -662,13 +658,13 @@ const JobList = () => {
                   
                   return jobElements;
                 }).flat()}
-            </motion.div>
+            </Motion.div>
           )}
           </AnimatePresence>
 
           {/* Enhanced Load More Section */}
           {jobs.length > 0 && pagination.has_next && (
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -704,7 +700,7 @@ const JobList = () => {
                   className="h-1"
                 />
               </div>
-            </motion.div>
+            </Motion.div>
           )}
             </div>            {/* Sidebar */}
             <div className="lg:col-span-1 space-y-4 sm:space-y-6 mt-4 lg:mt-0">
@@ -735,7 +731,7 @@ const JobCard = ({
   viewMode, 
   isBookmarked, 
   onToggleBookmark, 
-  isAuthenticated,
+  _isAuthenticated,
   getCompanyName,
   getCompanyLogo,
   getJobDescription,
@@ -772,7 +768,7 @@ const JobCard = ({
 
   if (viewMode === 'list') {
     return (
-      <motion.div
+      <Motion.div
         variants={cardVariants}
         initial="hidden"
         animate="visible"
@@ -979,13 +975,13 @@ const JobCard = ({
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </Motion.div>
     );
   }
 
   // Grid View
   return (
-    <motion.div
+    <Motion.div
       variants={cardVariants}
       initial="hidden"
       animate="visible"
@@ -1194,9 +1190,8 @@ const JobCard = ({
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </Motion.div>
   );
 };
 
 export default JobList;
-

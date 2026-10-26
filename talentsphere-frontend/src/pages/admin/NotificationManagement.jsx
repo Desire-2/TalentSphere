@@ -8,7 +8,6 @@ import {
   CheckCircle,
   AlertCircle,
   Loader,
-  RefreshCw,
   BarChart3,
   TrendingUp
 } from 'lucide-react';
@@ -21,14 +20,6 @@ import { toast } from 'sonner';
 import { adminService } from '../../services/admin';
 
 const NotificationManagement = () => {
-  // Debug logging
-  useEffect(() => {
-    console.log('✅ NotificationManagement component mounted');
-    return () => {
-      console.log('❌ NotificationManagement component unmounted');
-    };
-  }, []);
-
   // Morning Update State
   const [morningUpdateLoading, setMorningUpdateLoading] = useState(false);
   const [morningUpdateResult, setMorningUpdateResult] = useState(null);
@@ -40,9 +31,6 @@ const NotificationManagement = () => {
   const [weeklyDigestResult, setWeeklyDigestResult] = useState(null);
   const [weeklyDigestError, setWeeklyDigestError] = useState(null);
   const [weeklyDigestHistory, setWeeklyDigestHistory] = useState([]);
-
-  // General State
-  const [refreshing, setRefreshing] = useState(false);
 
   // Load history from localStorage
   useEffect(() => {
@@ -179,14 +167,6 @@ const NotificationManagement = () => {
     } finally {
       setWeeklyDigestLoading(false);
     }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Simulate refresh - in a real app, you might fetch updated stats
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
-    toast.success('Data refreshed successfully');
   };
 
   // Morning Update Card
@@ -460,34 +440,12 @@ const NotificationManagement = () => {
 
   return (
     <div className="space-y-6 max-w-full">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h1 className="text-2xl font-bold text-blue-900">✅ Email Notification Management</h1>
-        <p className="text-blue-700 mt-2">Component loaded successfully!</p>
-      </div>
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Email Notification Management</h1>
           <p className="text-gray-600 mt-1">Monitor and manually trigger scheduled email campaigns</p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          variant="outline"
-        >
-          {refreshing ? (
-            <>
-              <Loader className="h-4 w-4 mr-2 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </>
-          )}
-        </Button>
       </div>
 
       {/* Main Cards */}

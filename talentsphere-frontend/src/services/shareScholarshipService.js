@@ -3,12 +3,9 @@
  * Handles scholarship sharing functionality, tracking, and analytics
  */
 
-class ShareScholarshipService {
-  constructor() {
-    this.storageKey = 'talentsphere_scholarship_shares';
-    this.analyticsKey = 'talentsphere_scholarship_analytics';
-  }
+import api from './api';
 
+class ShareScholarshipService {
   // Normalize mixed requirement formats into clean text items
   normalizeRequirementItems(rawValue) {
     if (!rawValue) return [];
@@ -88,119 +85,31 @@ class ShareScholarshipService {
     return lines.filter(Boolean).join('\n');
   }
 
-  // Initialize or get existing share data
-  getShareData() {
-    const data = localStorage.getItem(this.storageKey);
-    return data ? JSON.parse(data) : { shares: [], lastUpdated: new Date().toISOString() };
-  }
-
-  // Save share data
-  saveShareData(data) {
-    data.lastUpdated = new Date().toISOString();
-    localStorage.setItem(this.storageKey, JSON.stringify(data));
-  }
-
-  // Record a share action
-  recordShare(scholarshipId, platform, customMessage = '', recipientInfo = '') {
-    const shareData = this.getShareData();
-    
-    const share = {
-      id: Date.now() + Math.random(),
-      scholarshipId,
+  async recordShare(scholarshipId, platform, customMessage = '', recipientInfo = '') {
+    const response = await api.post(`/scholarships/${scholarshipId}/share`, {
       platform,
-      customMessage,
-      recipientInfo,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      referrer: document.referrer
-    };
-
-    shareData.shares.push(share);
-    this.saveShareData(shareData);
-
-    // Update analytics
-    this.updateAnalytics(scholarshipId, platform);
-
-    return share;
+      custom_message: customMessage,
+      recipient_info: recipientInfo,
+      share_url: this.generateTrackingUrl(scholarshipId, platform),
+    });
+    return response.share;
   }
 
-  // Update analytics
-  updateAnalytics(scholarshipId, platform) {
-    const analytics = this.getAnalytics();
-    
-    if (!analytics.scholarships) {
-      analytics.scholarships = {};
-    }
-
-    if (!analytics.scholarships[scholarshipId]) {
-      analytics.scholarships[scholarshipId] = {
-        totalShares: 0,
-        platforms: {},
-        lastShared: null
-      };
-    }
-
-    const scholarshipStats = analytics.scholarships[scholarshipId];
-    scholarshipStats.totalShares++;
-    scholarshipStats.lastShared = new Date().toISOString();
-
-    if (!scholarshipStats.platforms[platform]) {
-      scholarshipStats.platforms[platform] = 0;
-    }
-    scholarshipStats.platforms[platform]++;
-
-    // Update global analytics
-    if (!analytics.global) {
-      analytics.global = {
-        totalShares: 0,
-        platforms: {}
-      };
-    }
-
-    analytics.global.totalShares++;
-    if (!analytics.global.platforms[platform]) {
-      analytics.global.platforms[platform] = 0;
-    }
-    analytics.global.platforms[platform]++;
-
-    this.saveAnalytics(analytics);
-  }
-
-  // Get analytics data
-  getAnalytics() {
-    const data = localStorage.getItem(this.analyticsKey);
-    return data ? JSON.parse(data) : { global: { totalShares: 0, platforms: {} }, scholarships: {} };
-  }
-
-  // Save analytics data
-  saveAnalytics(analytics) {
-    localStorage.setItem(this.analyticsKey, JSON.stringify(analytics));
-  }
-
-  // Get share statistics for a specific scholarship
-  getScholarshipShareStats(scholarshipId) {
-    const analytics = this.getAnalytics();
-    const scholarshipStats = analytics.scholarships[scholarshipId];
-
-    if (!scholarshipStats) {
-      return {
-        totalShares: 0,
-        platforms: {},
-        lastShared: null,
-        topPlatform: null
-      };
-    }
-
-    // Find top platform
-    const topPlatform = Object.entries(scholarshipStats.platforms)
-      .sort(([, a], [, b]) => b - a)[0];
-
+  async getScholarshipShareStats(scholarshipId) {
+    const response = await api.get(`/scholarships/${scholarshipId}/share/stats`);
+    const stats = response.stats || {};
     return {
-      totalShares: scholarshipStats.totalShares,
-      platforms: scholarshipStats.platforms,
-      lastShared: scholarshipStats.lastShared,
-      topPlatform: topPlatform ? { name: topPlatform[0], count: topPlatform[1] } : null
+      totalShares: stats.total_shares || 0,
+      platforms: stats.platforms || {},
+      lastShared: stats.last_shared || null,
+      topPlatform: stats.most_shared_platform || null,
+      totalClicks: stats.total_clicks || 0,
+      totalConversions: stats.total_conversions || 0,
     };
+  }
+
+  async sendEmail(scholarshipId, payload) {
+    return api.post(`/scholarships/${scholarshipId}/share/email`, payload);
   }
 
   // Generate tracking URL with UTM parameters
@@ -231,7 +140,6 @@ class ShareScholarshipService {
       ? new Date(scholarship.application_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : 'soon';
 
-    const scholarshipLink = `${window.location.origin}/scholarships/${scholarship.id}`;
     const applyLink = `https://jobs.afritechbridge.online/scholarships/${scholarship.id}`;
     const communityLink = 'https://chat.whatsapp.com/IQ4H8XNYzXe6aU5rrPpUJl';
     const eligibilitySections = this.getEligibilitySections(scholarship);
@@ -362,112 +270,11 @@ Shared via TalentSphere - Connecting Students with Opportunities
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(amount);
-    } catch (error) {
+    } catch (_error) {
       return `${currency} ${amount.toLocaleString()}`;
     }
   }
 
-  // Get all shares for a scholarship
-  getScholarshipShares(scholarshipId) {
-    const shareData = this.getShareData();
-    return shareData.shares.filter(share => share.scholarshipId === scholarshipId);
-  }
-
-  // Get shares by platform
-  getSharesByPlatform(platform) {
-    const shareData = this.getShareData();
-    return shareData.shares.filter(share => share.platform === platform);
-  }
-
-  // Get recent shares
-  getRecentShares(limit = 10) {
-    const shareData = this.getShareData();
-    return shareData.shares
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, limit);
-  }
-
-  // Export share data
-  exportShareData() {
-    const shareData = this.getShareData();
-    const analytics = this.getAnalytics();
-    
-    const exportData = {
-      shares: shareData.shares,
-      analytics: analytics,
-      exportedAt: new Date().toISOString()
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `scholarship-shares-${Date.now()}.json`;
-    link.click();
-    
-    URL.revokeObjectURL(url);
-  }
-
-  // Clear all share data
-  clearAllData() {
-    localStorage.removeItem(this.storageKey);
-    localStorage.removeItem(this.analyticsKey);
-  }
-
-  // Get global statistics
-  getGlobalStats() {
-    const analytics = this.getAnalytics();
-    return analytics.global || { totalShares: 0, platforms: {} };
-  }
-
-  // Get top shared scholarships
-  getTopSharedScholarships(limit = 5) {
-    const analytics = this.getAnalytics();
-    
-    if (!analytics.scholarships) {
-      return [];
-    }
-
-    return Object.entries(analytics.scholarships)
-      .map(([id, stats]) => ({
-        scholarshipId: id,
-        ...stats
-      }))
-      .sort((a, b) => b.totalShares - a.totalShares)
-      .slice(0, limit);
-  }
-
-  // Check if scholarship has been shared before
-  hasBeenShared(scholarshipId) {
-    const stats = this.getScholarshipShareStats(scholarshipId);
-    return stats.totalShares > 0;
-  }
-
-  // Get share trend (last 7 days)
-  getShareTrend(scholarshipId = null) {
-    const shareData = this.getShareData();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    let shares = shareData.shares.filter(
-      share => new Date(share.timestamp) >= sevenDaysAgo
-    );
-
-    if (scholarshipId) {
-      shares = shares.filter(share => share.scholarshipId === scholarshipId);
-    }
-
-    // Group by day
-    const trend = {};
-    shares.forEach(share => {
-      const date = new Date(share.timestamp).toLocaleDateString();
-      trend[date] = (trend[date] || 0) + 1;
-    });
-
-    return trend;
-  }
 }
 
 // Export singleton instance

@@ -3,6 +3,7 @@
  */
 
 import config from '../config/environment.js';
+import api from './api';
 
 class UploadService {
   constructor() {
@@ -27,19 +28,7 @@ class UploadService {
     }
     formData.append('type', type);
 
-    const response = await fetch(this.getUploadUrl(), {
-      method: 'POST',
-      headers: {
-        ...this.getAuthHeaders(),
-      },
-      body: formData,
-      credentials: 'include',
-    });
-
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || 'Upload failed');
-    }
+    const payload = await api.postForm('/uploads/documents', formData);
 
     if (!payload.url) {
       throw new Error('Upload failed: missing file url');
@@ -112,32 +101,6 @@ class UploadService {
     }
   }
 
-  /**
-   * Delete an uploaded file
-   * @param {string} fileUrl - The URL of the file to delete
-   * @returns {Promise<boolean>} - Success status
-   */
-  async deleteFile(fileUrl) {
-    try {
-      // Mock deletion
-      console.log('Mock file deletion:', fileUrl);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return true;
-    } catch (error) {
-      console.error('File deletion failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get upload progress (for future implementation)
-   * @param {string} uploadId - The upload ID
-   * @returns {Promise<number>} - Progress percentage
-   */
-  async getUploadProgress(uploadId) {
-    // Mock progress tracking
-    return 100;
-  }
 }
 
 const uploadService = new UploadService();

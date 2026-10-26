@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -11,12 +11,9 @@ import {
   Search,
   MoreHorizontal,
   Plus,
-  Eye,
   Edit,
-  Copy,
   Play,
   Pause,
-  Star,
   Trash2,
   BarChart3,
   Target,
@@ -35,17 +32,8 @@ import JobManagement from './JobManagement';
 import JobViewModal from './JobViewModal';
 import JobEditModal from './JobEditModal';
 import useJobManagement from '../../hooks/useJobManagement';
-import { setupDevAuth, isDevAuthActive } from '../../utils/devAuth';
 
 const JobManagementContainer = () => {
-  // Set up development authentication if not already active
-  useEffect(() => {
-    if (!isDevAuthActive()) {
-      setupDevAuth();
-      console.log('🔧 Auto-setup development authentication for testing');
-    }
-  }, []);
-
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -72,24 +60,14 @@ const JobManagementContainer = () => {
     // Handlers
     handleFilterChange,
     handlePageChange,
-    handlePerPageChange,
     setSelectedJobs,
-    
-    // Job actions
-    handleCreateJob,
-    handleEditJob,
-    handleViewJob,
     handleDuplicateJob,
     handleToggleJobStatus,
     handleDeleteJob,
-    handlePromoteJob,
     handleBulkActions,
     handleExportJobs,
     handleRefresh,
-    
-    // Utilities
-    setError,
-    clearSelection
+    setError
   } = useJobManagement();
 
   // Enhanced action handlers with loading states
@@ -116,8 +94,7 @@ const JobManagementContainer = () => {
       pause: `Are you sure you want to pause ${selectedJobs.length} job(s)? They will no longer be visible to candidates.`,
       archive: `Are you sure you want to archive ${selectedJobs.length} job(s)? This action can be reversed later.`,
       delete: `Are you sure you want to permanently delete ${selectedJobs.length} job(s)? This action cannot be undone.`,
-      duplicate: `Create copies of ${selectedJobs.length} selected job(s)?`,
-      feature: `Promote ${selectedJobs.length} job(s) to featured status? This may incur additional charges.`
+      duplicate: `Create copies of ${selectedJobs.length} selected job(s)?`
     };
 
     if (window.confirm(actionMessages[action])) {
@@ -128,18 +105,12 @@ const JobManagementContainer = () => {
 
   // Enhanced export with options
   const handleExportWithOptions = async (format = 'csv') => {
-    const exportOptions = {
-      csv: { name: 'CSV Export', extension: 'csv' },
-      excel: { name: 'Excel Export', extension: 'xlsx' },
-      pdf: { name: 'PDF Report', extension: 'pdf' }
-    };
-
     await handleActionWithLoading('export', handleExportJobs, format);
     setShowExportModal(false);
   };
 
   // Enhanced job creation with templates
-  const handleCreateJobWithTemplate = (template = null) => {
+  const handleCreateJobWithTemplate = (_template = null) => {
     setSelectedJobId(null); // For new job
     setEditModalOpen(true);
   };
@@ -167,15 +138,9 @@ const JobManagementContainer = () => {
     setSelectedJobId(null);
   };
 
-  const handleJobSaved = (savedJob) => {
+  const handleJobSaved = () => {
     // Refresh the jobs list after saving
     handleRefresh();
-    console.log('Job saved:', savedJob);
-  };
-
-  const handleJobPreview = (jobData) => {
-    // Could open a preview modal or navigate to preview page
-    console.log('Preview job:', jobData);
   };
 
   // Quick actions for individual jobs
@@ -185,7 +150,6 @@ const JobManagementContainer = () => {
       edit: () => handleEditJobEnhanced(jobId),
       duplicate: () => handleActionWithLoading(`duplicate-${jobId}`, handleDuplicateJob, jobId),
       toggle: () => handleActionWithLoading(`toggle-${jobId}`, handleToggleJobStatus, jobId),
-      promote: () => handleActionWithLoading(`promote-${jobId}`, handlePromoteJob, jobId),
       delete: () => {
         if (window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
           handleActionWithLoading(`delete-${jobId}`, handleDeleteJob, jobId);
@@ -495,24 +459,6 @@ const JobManagementContainer = () => {
                 </button>
                 
                 <button
-                  onClick={() => handleBulkAction('duplicate')}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                  disabled={actionLoading['bulk-duplicate']}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  {actionLoading['bulk-duplicate'] ? 'Duplicating...' : 'Duplicate All'}
-                </button>
-                
-                <button
-                  onClick={() => handleBulkAction('feature')}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
-                  disabled={actionLoading['bulk-feature']}
-                >
-                  <Star className="h-4 w-4 mr-2" />
-                  {actionLoading['bulk-feature'] ? 'Featuring...' : 'Feature All'}
-                </button>
-                
-                <button
                   onClick={() => handleBulkAction('archive')}
                   className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700"
                   disabled={actionLoading['bulk-archive']}
@@ -760,7 +706,6 @@ const JobManagementContainer = () => {
         onDuplicateJob={(jobId) => handleQuickAction(jobId, 'duplicate')}
         onToggleJobStatus={(jobId) => handleQuickAction(jobId, 'toggle')}
         onDeleteJob={(jobId) => handleQuickAction(jobId, 'delete')}
-        onPromoteJob={(jobId) => handleQuickAction(jobId, 'promote')}
         onBulkActions={handleBulkActions}
         onExportJobs={handleExportJobs}
         onQuickAction={handleQuickAction}
@@ -775,7 +720,6 @@ const JobManagementContainer = () => {
         onEdit={handleEditJobEnhanced}
         onToggleStatus={handleToggleJobStatus}
         onDuplicate={handleDuplicateJob}
-        onPromote={handlePromoteJob}
       />
 
       {/* Enhanced Edit Modal */}
@@ -784,7 +728,6 @@ const JobManagementContainer = () => {
         onClose={handleCloseEditModal}
         jobId={selectedJobId}
         onSave={handleJobSaved}
-        onPreview={handleJobPreview}
       />
     </div>
   );

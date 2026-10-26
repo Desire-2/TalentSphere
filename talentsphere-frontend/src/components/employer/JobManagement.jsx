@@ -56,21 +56,12 @@ const JobManagement = ({
   onDuplicateJob,
   onToggleJobStatus,
   onDeleteJob,
-  onPromoteJob,
   onBulkActions,
   onExportJobs,
   onQuickAction,
   actionLoading = {}
 }) => {
   const filteredJobs = jobs; // Filtering is handled in the hook
-
-  const handleSelectAllJobs = (checked) => {
-    if (checked) {
-      setSelectedJobs(jobs.map(job => job.id));
-    } else {
-      setSelectedJobs([]);
-    }
-  };
 
   const handleJobSelection = (jobId, checked) => {
     if (checked) {
@@ -475,23 +466,6 @@ const JobManagement = ({
                               : job.status === 'published' 
                                 ? 'Pause Job' 
                                 : 'Activate Job'
-                            }
-                          </DropdownMenuItem>
-                          
-                          <DropdownMenuItem 
-                            onClick={() => onQuickAction ? onQuickAction(job.id, 'promote') : onPromoteJob(job.id)} 
-                            disabled={job.is_featured || actionLoading[`promote-${job.id}`]}
-                          >
-                            {actionLoading[`promote-${job.id}`] ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <Star className="w-4 h-4 mr-2" />
-                            )}
-                            {actionLoading[`promote-${job.id}`]
-                              ? 'Promoting...'
-                              : job.is_featured 
-                                ? 'Already Featured' 
-                                : 'Feature Job'
                             }
                           </DropdownMenuItem>
                           

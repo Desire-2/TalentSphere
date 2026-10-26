@@ -87,11 +87,6 @@ const Companies = () => {
     loadCompanies();
   };
 
-  const handleFilterChange = () => {
-    setCurrentPage(1);
-    loadCompanies();
-  };
-
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedIndustry('');

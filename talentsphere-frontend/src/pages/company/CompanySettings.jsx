@@ -102,7 +102,6 @@ const CompanySettings = () => {
   });
 
   // Data export state
-  const [exportRequests, setExportRequests] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
 
   // Account deletion state
@@ -160,9 +159,9 @@ const CompanySettings = () => {
         }));
       }
       
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      toast.error(error.response?.data?.error || error.message || 'Failed to load settings');
+    } catch (_error) {
+      console.error('Error loading settings:', _error);
+      toast.error(_error.response?.data?.error || _error.message || 'Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -193,9 +192,9 @@ const CompanySettings = () => {
       }
       
       toast.success('Settings saved successfully');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast.error(error.response?.data?.error || 'Failed to save settings');
+    } catch (_error) {
+      console.error('Error saving settings:', _error);
+      toast.error(_error.response?.data?.error || 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -240,7 +239,7 @@ const CompanySettings = () => {
       document.body.removeChild(a);
       
       toast.success('Data exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     } finally {
       setIsExporting(false);
@@ -259,7 +258,7 @@ const CompanySettings = () => {
       toast.success('Account deleted successfully');
       await logout();
       navigate('/');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete account');
     }
   };

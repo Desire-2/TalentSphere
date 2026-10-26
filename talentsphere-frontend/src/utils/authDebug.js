@@ -14,7 +14,7 @@ export const authDebug = {
     console.group('🔐 Authentication Status');
     console.log('Token exists:', !!token);
     console.log('Token length:', token?.length || 0);
-    console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'None');
+    console.log('Token preview: [redacted]', token ? '(present)' : '(none)');
     console.log('User data exists:', !!user);
     
     if (user) {
@@ -46,7 +46,7 @@ export const authDebug = {
     const token = localStorage.getItem('token');
     return {
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : 'Missing'
+      'Authorization': token ? 'Bearer [redacted]' : 'Missing'
     };
   },
 

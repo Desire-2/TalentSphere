@@ -1,20 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import apiService from './api';
 
 /**
  * AI Job Parser Service
- * Uses Google Gemini AI to parse external job postings and convert them to our data structure
+ * Uses the server-side NVIDIA provider to parse external job postings.
  */
-
-// Initialize the AI client
-// API key should be stored in environment variables for production
-const initializeAI = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-  if (!apiKey) {
-    console.warn('GEMINI_API_KEY not found in environment variables. AI parsing will not work.');
-    return null;
-  }
-  return new GoogleGenerativeAI(apiKey);
-};
 
 /**
  * Parse external job posting content using AI
@@ -27,14 +16,7 @@ export const parseJobWithAI = async (rawContent, categories = []) => {
     throw new Error('Please provide job content to parse');
   }
 
-  const genAI = initializeAI();
-  if (!genAI) {
-    throw new Error('AI service not configured. Please add VITE_GEMINI_API_KEY to your .env file');
-  }
-
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
     // Prepare category information for AI
     const categoryInfo = categories.length > 0 
       ? `\n\nAvailable Job Categories:\n${categories.map(cat => `- ID: ${cat.id}, Name: "${cat.name}"`).join('\n')}`
@@ -199,34 +181,11 @@ Return the JSON now:`;
 
 
 
-    console.log('🤖 Sending job content to AI for parsing...');
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    console.log('✅ AI Response received:', text.substring(0, 200) + '...');
-
-    // Extract JSON from response (handle cases where AI adds extra text)
-    let jsonText = text.trim();
-    
-    // Remove markdown code blocks if present
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/```\n?/g, '');
-    }
-    
-    // Try to extract JSON if there's extra text
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[0];
-    }
-
-    // Parse the JSON
-    const parsedData = JSON.parse(jsonText);
-    
-    console.log('✅ Successfully parsed job data:', parsedData);
+    const response = await apiService.post('/ai/parse', {
+      task: 'job',
+      prompt,
+    });
+    const parsedData = response.data;
     
     // Validate and clean the data
     const cleanedData = validateAndCleanJobData(parsedData);
@@ -234,12 +193,10 @@ Return the JSON now:`;
     return cleanedData;
     
   } catch (error) {
-    console.error('❌ AI parsing error:', error);
-    
-    if (error.message?.includes('API_KEY_INVALID')) {
-      throw new Error('Invalid API key. Please check your VITE_GEMINI_API_KEY configuration.');
-    } else if (error.message?.includes('QUOTA_EXCEEDED')) {
-      throw new Error('API quota exceeded. Please try again later or check your API limits.');
+    if (error.status === 429) {
+      throw new Error('AI parsing rate limit reached. Please try again shortly.');
+    } else if (error.status === 503) {
+      throw new Error('AI parsing is temporarily unavailable. Please try again later.');
     } else if (error instanceof SyntaxError) {
       throw new Error('Failed to parse AI response. The AI returned invalid JSON. Please try again.');
     }
@@ -376,30 +333,18 @@ const validateAndCleanJobData = (data) => {
  * @returns {Promise<string>} - Generated summary
  */
 export const generateJobSummary = async (title, description) => {
-  const genAI = initializeAI();
-  if (!genAI) {
-    return ''; // Return empty if AI not configured
-  }
-
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    
-    const prompt = `Create a compelling one-line job summary (max 150 characters) for this position:
-
-Title: ${title}
-Description: ${description.substring(0, 500)}...
-
-Return ONLY the summary text, nothing else. Make it engaging and informative.`;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const summary = response.text().trim();
+    const response = await apiService.post('/ai/text', {
+      task: 'job_summary',
+      title,
+      description,
+    });
+    const summary = response.text.trim();
     
     // Ensure it's within character limit
     return summary.length > 150 ? summary.substring(0, 147) + '...' : summary;
     
-  } catch (error) {
-    console.error('Failed to generate summary:', error);
+  } catch {
     return ''; // Return empty on error
   }
 };

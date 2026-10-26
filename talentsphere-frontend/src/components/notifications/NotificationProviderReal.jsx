@@ -1,11 +1,24 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import api from '../../services/api';
+import { useAuthStore } from '../../stores/authStore';
 
 const NotificationContext = createContext();
 
 export const useNotificationContext = () => {
   const context = useContext(NotificationContext);
+  const subscribe = context?.subscribe;
+  const unsubscribe = context?.unsubscribe;
+
+  // Polling and the initial fetch start on first subscription instead of on
+  // provider mount: an app that renders no notification UI should not put a
+  // request round trip on the wire every 30 seconds for data nobody reads.
+  useEffect(() => {
+    if (!subscribe || !unsubscribe) return undefined;
+    subscribe();
+    return () => unsubscribe();
+  }, [subscribe, unsubscribe]);
+
   if (!context) {
     throw new Error('useNotificationContext must be used within a NotificationProvider');
   }
@@ -13,6 +26,7 @@ export const useNotificationContext = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [stats, setStats] = useState(null);
@@ -32,14 +46,14 @@ export const NotificationProvider = ({ children }) => {
       audio.play().catch(() => {
         // Ignore errors if audio can't play
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore audio errors
     }
   }, []);
 
   // Fetch notifications with caching
   const fetchNotifications = useCallback(async (options = {}) => {
-    const { silent = false, force = false } = options;
+    const { silent = false } = options;
     
     try {
       if (!silent) setLoading(true);
@@ -69,7 +83,10 @@ export const NotificationProvider = ({ children }) => {
                   description: notification.message,
                   action: {
                     label: 'View',
-                    onClick: () => markAsRead(notification.id)
+                    onClick: () => {
+                      markAsRead(notification.id);
+                      if (notification.action_url) window.location.assign(notification.action_url);
+                    }
                   },
                   duration: 5000
                 });
@@ -222,6 +239,8 @@ export const NotificationProvider = ({ children }) => {
     setIsPolling(true);
     
     pollingIntervalRef.current = setInterval(() => {
+      // A hidden tab has no visible UI to update; refresh on visibilitychange.
+      if (document.visibilityState === 'hidden') return;
       fetchNotifications({ silent: true });
     }, POLL_INTERVAL);
   }, [isPolling, fetchNotifications]);
@@ -235,9 +254,18 @@ export const NotificationProvider = ({ children }) => {
     setIsPolling(false);
   }, []);
 
-  // Initialize on mount
+  // Number of components rendering from this context. Nothing polls while it
+  // is zero.
+  const [subscriberCount, setSubscriberCount] = useState(0);
+  const hasSubscribers = subscriberCount > 0;
+
+  const subscribe = useCallback(() => setSubscriberCount(count => count + 1), []);
+  const unsubscribe = useCallback(() => setSubscriberCount(count => Math.max(0, count - 1)), []);
+
+  // Fetch and poll only while someone is actually consuming notifications.
   useEffect(() => {
-    // Run initial fetch
+    if (!isAuthenticated || !hasSubscribers) return undefined;
+
     const initialize = async () => {
       try {
         await fetchNotifications();
@@ -246,24 +274,17 @@ export const NotificationProvider = ({ children }) => {
         console.error('Failed to initialize notifications:', error);
       }
     };
-    
+
     initialize();
-    
-    // Start polling
     startPolling();
-    
-    return () => {
-      // Cleanup on unmount
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+
+    return () => stopPolling();
+  }, [isAuthenticated, hasSubscribers, fetchNotifications, fetchStats, startPolling, stopPolling]);
 
   // Browser visibility change handling
   useEffect(() => {
+    if (!isAuthenticated || !hasSubscribers) return undefined;
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         // Refresh when user comes back to the tab
@@ -277,10 +298,12 @@ export const NotificationProvider = ({ children }) => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchNotifications, fetchStats]);
+  }, [fetchNotifications, fetchStats, isAuthenticated, hasSubscribers]);
 
-  // Request notification permissions
+  // Request notification permissions only once a component actually renders
+  // from this context; asking for a permission nothing will use is noise.
   useEffect(() => {
+    if (!isAuthenticated || !hasSubscribers) return undefined;
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
@@ -288,7 +311,8 @@ export const NotificationProvider = ({ children }) => {
         }
       });
     }
-  }, []);
+    return undefined;
+  }, [isAuthenticated, hasSubscribers]);
 
   // Filter notifications
   const getFilteredNotifications = useCallback((filters = {}) => {
@@ -324,7 +348,7 @@ export const NotificationProvider = ({ children }) => {
     stats,
     loading,
     isPolling,
-    lastFetch,
+    lastFetch: lastFetchRef.current,
     
     // Actions
     fetchNotifications,
@@ -338,6 +362,10 @@ export const NotificationProvider = ({ children }) => {
     
     // Utilities
     getFilteredNotifications,
+
+    // Subscription (used by useNotificationContext to start/stop polling)
+    subscribe,
+    unsubscribe,
     
     // Helpers
     getUnreadNotifications: () => getFilteredNotifications({ isRead: false }),

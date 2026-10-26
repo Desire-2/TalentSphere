@@ -103,6 +103,13 @@ def optimize_database():
                 ("idx_companies_verified", "CREATE INDEX IF NOT EXISTS idx_companies_verified ON companies(is_verified) WHERE is_verified = true"),
                 ("idx_companies_slug", "CREATE INDEX IF NOT EXISTS idx_companies_slug ON companies(slug)"),
                 ("idx_companies_industry", "CREATE INDEX IF NOT EXISTS idx_companies_industry ON companies(industry)"),
+
+                # Career Agent polling and recovery queues
+                ("ix_career_evidence_profile_current_verified", "CREATE INDEX IF NOT EXISTS ix_career_evidence_profile_current_verified ON career_evidence(career_profile_id, is_current, is_verified, category, id)"),
+                ("ix_career_evidence_profile_source_current", "CREATE INDEX IF NOT EXISTS ix_career_evidence_profile_source_current ON career_evidence(career_profile_id, source_type, is_current)"),
+                ("ix_career_package_recovery_queue", "CREATE INDEX IF NOT EXISTS ix_career_package_recovery_queue ON career_document_packages(status, processing_started_at, requested_at, id)"),
+                ("ix_career_package_user_requested", "CREATE INDEX IF NOT EXISTS ix_career_package_user_requested ON career_document_packages(user_id, requested_at, id)"),
+                ("ix_career_stage_package_status", "CREATE INDEX IF NOT EXISTS ix_career_stage_package_status ON career_generation_stages(package_id, status)"),
             ]
             
             # Execute index creation

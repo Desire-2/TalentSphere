@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
   Building2, 
   Users, 
@@ -25,56 +25,18 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { formatDate, getStatusColor, generateInsights } from '../../utils/employer/dashboardUtils';
-import { useDashboardData } from '../../hooks/useDashboardData';
-import apiService from '../../services/api';
 
 const DashboardOverview = ({ 
+  dashboardData,
+  loading,
+  error,
+  onRefresh,
   onCreateJob, 
   onViewAllJobs, 
   onViewAllApplications, 
   onReviewApplication,
   onViewJob 
 }) => {
-  const { 
-    dashboardData, 
-    loading, 
-    error, 
-    lastFetch,
-    refreshAll,
-    refreshStats,
-    refreshJobs,
-    refreshApplications
-  } = useDashboardData();
-
-  const [performanceData, setPerformanceData] = useState(null);
-  const [loadingPerformance, setLoadingPerformance] = useState(false);
-
-  // Fetch additional performance data
-  useEffect(() => {
-    const fetchPerformanceData = async () => {
-      try {
-        setLoadingPerformance(true);
-        
-        // Get application trends for the last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        // Mock performance data - in real implementation, this would come from backend
-        setPerformanceData({
-          applicationTrend: 23, // +23% increase
-          responseRate: 12, // +12% improvement  
-          timeToHireReduction: 5 // -5 days improvement
-        });
-      } catch (err) {
-        console.error('Failed to fetch performance data:', err);
-      } finally {
-        setLoadingPerformance(false);
-      }
-    };
-
-    fetchPerformanceData();
-  }, []);
-
   // Handle action clicks
   const handleCreateJob = () => {
     if (onCreateJob) {
@@ -108,26 +70,22 @@ const DashboardOverview = ({
 
   // Handle refresh
   const handleRefresh = () => {
-    refreshAll();
-  };
-
-  // Navigate to search candidates
-  const handleSearchCandidates = async () => {
-    try {
-      // This would typically navigate to a candidates search page
-      console.log('Navigate to candidate search');
-    } catch (err) {
-      console.error('Failed to navigate to candidate search:', err);
-    }
-  };
-
-  // Navigate to analytics
-  const handleViewAnalytics = () => {
-    // This would typically navigate to an analytics page
-    console.log('Navigate to analytics');
+    onRefresh?.();
   };
 
   const insights = generateInsights(dashboardData);
+  const trends = dashboardData.applicationTrends || [];
+  const recentApplications = trends.slice(-7).reduce((sum, day) => sum + (day.applications || 0), 0);
+  const previousApplications = trends.slice(-14, -7).reduce((sum, day) => sum + (day.applications || 0), 0);
+  const applicationGrowth = previousApplications
+    ? Math.round(((recentApplications - previousApplications) / previousApplications) * 100)
+    : recentApplications ? 100 : 0;
+  const pipelineProgress = dashboardData.stats.totalApplications
+    ? Math.round(
+        ((dashboardData.stats.shortlistedApplications || 0) /
+          dashboardData.stats.totalApplications) * 100
+      )
+    : 0;
 
   if (loading.dashboard && !dashboardData.stats.activeJobs) {
     return (
@@ -162,11 +120,6 @@ const DashboardOverview = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
-          {lastFetch && (
-            <p className="text-sm text-gray-500">
-              Last updated: {formatDate(lastFetch)}
-            </p>
-          )}
         </div>
         <Button 
           onClick={handleRefresh} 
@@ -179,7 +132,7 @@ const DashboardOverview = ({
         </Button>
       </div>
 
-      {/* Real-time Status Bar */}
+      {/* Current Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-4">
@@ -308,7 +261,7 @@ const DashboardOverview = ({
           <CardDescription>Common tasks to manage your hiring process</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Button onClick={handleCreateJob} className="flex flex-col items-center gap-2 h-auto py-4">
               <Plus className="w-6 h-6" />
               <span>Post New Job</span>
@@ -316,14 +269,6 @@ const DashboardOverview = ({
             <Button variant="outline" onClick={handleViewAllApplications} className="flex flex-col items-center gap-2 h-auto py-4">
               <FileText className="w-6 h-6" />
               <span>Review Applications</span>
-            </Button>
-            <Button variant="outline" onClick={handleSearchCandidates} className="flex flex-col items-center gap-2 h-auto py-4">
-              <Users className="w-6 h-6" />
-              <span>Search Candidates</span>
-            </Button>
-            <Button variant="outline" onClick={handleViewAnalytics} className="flex flex-col items-center gap-2 h-auto py-4">
-              <TrendingUp className="w-6 h-6" />
-              <span>View Analytics</span>
             </Button>
           </div>
         </CardContent>
@@ -334,31 +279,30 @@ const DashboardOverview = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Application Trends</CardTitle>
-            <CardDescription>Last 30 days vs previous period</CardDescription>
+            <CardDescription>Verified counts from your current dashboard data</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Applications Received</span>
                 <span className="font-bold text-green-600">
-                  {performanceData ? `+${performanceData.applicationTrend}%` : 'Loading...'}
+                  {applicationGrowth >= 0 ? `+${applicationGrowth}%` : `${applicationGrowth}%`}
                 </span>
               </div>
-              <Progress value={performanceData?.applicationTrend || 0} className="h-2" />
+              <Progress value={Math.min(Math.abs(applicationGrowth), 100)} className="h-2" />
               <div className="flex items-center justify-between">
-                <span className="text-sm">Response Rate</span>
+                <span className="text-sm">Shortlist Progress</span>
                 <span className="font-bold text-blue-600">
-                  {performanceData ? `+${performanceData.responseRate}%` : 'Loading...'}
+                  {pipelineProgress}%
                 </span>
               </div>
-              <Progress value={performanceData?.responseRate || 0} className="h-2" />
+              <Progress value={pipelineProgress} className="h-2" />
               <div className="flex items-center justify-between">
-                <span className="text-sm">Time to Hire</span>
+                <span className="text-sm">Average Time to Hire</span>
                 <span className="font-bold text-purple-600">
-                  {performanceData ? `-${performanceData.timeToHireReduction} days` : 'Loading...'}
+                  {dashboardData.stats.avgTimeToHire || 0} days
                 </span>
               </div>
-              <Progress value={performanceData?.timeToHireReduction ? (performanceData.timeToHireReduction / 10) * 100 : 0} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -373,10 +317,6 @@ const DashboardOverview = ({
               <div className="flex items-center justify-between">
                 <span className="text-sm">Applied</span>
                 <span className="font-bold">{dashboardData.stats.totalApplications || 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Reviewed</span>
-                <span className="font-bold">{Math.floor((dashboardData.stats.totalApplications || 0) * 0.7)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Shortlisted</span>
@@ -405,28 +345,24 @@ const DashboardOverview = ({
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-sm">New application received</span>
-                  <span className="text-xs text-gray-500 ml-auto">Recent</span>
                 </div>
               )}
               {dashboardData.stats.totalViews > 0 && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <span className="text-sm">Jobs viewed {dashboardData.stats.totalViews} times</span>
-                  <span className="text-xs text-gray-500 ml-auto">Today</span>
                 </div>
               )}
               {dashboardData.stats.interviewsScheduled > 0 && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                   <span className="text-sm">Interview scheduled</span>
-                  <span className="text-xs text-gray-500 ml-auto">Recent</span>
                 </div>
               )}
               {dashboardData.stats.shortlistedApplications > 0 && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                   <span className="text-sm">Application shortlisted</span>
-                  <span className="text-xs text-gray-500 ml-auto">Recent</span>
                 </div>
               )}
               {dashboardData.stats.totalApplications === 0 && dashboardData.stats.activeJobs === 0 && (

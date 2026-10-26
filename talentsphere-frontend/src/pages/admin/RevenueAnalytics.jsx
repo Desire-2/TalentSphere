@@ -7,7 +7,6 @@ import {
   TrendingDown,
   DollarSign,
   Calendar,
-  Download,
   Filter,
   CreditCard,
   Target,
@@ -21,9 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAdminStore } from '../../stores/adminStore';
-import { formatCurrency, formatNumber, formatPercentage } from '../../utils/helpers';
+import { formatCurrency, formatPercentage } from '../../utils/helpers';
 
-// Mock chart components (in a real app, you'd use recharts or similar)
+// Lightweight chart components backed by the returned revenue series.
 const SimpleBarChart = ({ data, title }) => (
   <div className="space-y-2">
     <h4 className="text-sm font-medium">{title}</h4>
@@ -99,7 +98,9 @@ const RevenueAnalytics = () => {
 
   // Calculate totals and trends
   const totalRevenue = daily_revenue.reduce((sum, day) => sum + day.revenue, 0);
-  const averageDailyRevenue = totalRevenue / daily_revenue.length;
+  const averageDailyRevenue = daily_revenue.length > 0
+    ? totalRevenue / daily_revenue.length
+    : 0;
   const recentRevenue = daily_revenue.slice(-7).reduce((sum, day) => sum + day.revenue, 0);
   const previousRevenue = daily_revenue.slice(-14, -7).reduce((sum, day) => sum + day.revenue, 0);
   const growthRate = previousRevenue > 0 ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
@@ -123,10 +124,6 @@ const RevenueAnalytics = () => {
               <SelectItem value="90">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
         </div>
       </div>
 
@@ -196,7 +193,6 @@ const RevenueAnalytics = () => {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
           <TabsTrigger value="customers">Top Customers</TabsTrigger>
         </TabsList>
@@ -248,39 +244,6 @@ const RevenueAnalytics = () => {
                       </div>
                     );
                   })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Trends Tab */}
-        <TabsContent value="trends" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Trends</CardTitle>
-                <CardDescription>Weekly and monthly patterns</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-500 py-8">
-                    Advanced trend analysis would be implemented here with proper charting library
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Forecasting</CardTitle>
-                <CardDescription>Projected revenue based on trends</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-500 py-8">
-                    Revenue forecasting would be implemented here
-                  </div>
                 </div>
               </CardContent>
             </Card>

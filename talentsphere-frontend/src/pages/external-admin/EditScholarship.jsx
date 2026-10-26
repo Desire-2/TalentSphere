@@ -170,7 +170,6 @@ const EditScholarship = () => {
   const [categories, setCategories] = useState([]);
   const [errors, setErrors] = useState({});
   const [isPreview, setIsPreview] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
 
   const [formData, setFormData] = useState({

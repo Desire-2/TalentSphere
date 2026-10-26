@@ -8,7 +8,7 @@ const GoogleAds = ({
   style = {},
   className = '',
   responsive = true,
-  adTest = process.env.NODE_ENV === 'development' ? 'on' : 'off'
+  adTest = import.meta.env.MODE === 'development' ? 'on' : 'off'
 }) => {
   const adClient = import.meta.env.VITE_GOOGLE_ADS_CLIENT_ID;
 
@@ -47,7 +47,7 @@ const GoogleAds = ({
 
   // Don't render if no ad client ID
   if (!adClient || !adSlot) {
-    return process.env.NODE_ENV === 'development' ? (
+    return import.meta.env.MODE === 'development' ? (
       <div className={`bg-gray-100 border-2 border-dashed border-gray-300 p-4 text-center text-gray-500 ${className}`} style={style}>
         <div className="text-sm">Google Ad Placeholder</div>
         <div className="text-xs">Slot: {adSlot}</div>

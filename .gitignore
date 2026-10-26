@@ -59,6 +59,7 @@ Thumbs.db
 
 # Database
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 
@@ -89,3 +90,5 @@ coverage/
 # yarn.lock
 # Uncomment the next line if you want to ignore pnpm-lock.yaml
 # pnpm-lock.yaml
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

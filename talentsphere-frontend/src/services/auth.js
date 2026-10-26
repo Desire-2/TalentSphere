@@ -1,5 +1,13 @@
 import api from './api';
 
+let refreshPromise = null;
+let validationPromise = null;
+
+const clearStoredSession = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+};
+
 export const authService = {
   // Register new user
   register: async (userData) => {
@@ -75,17 +83,34 @@ export const authService = {
 
   // Refresh token
   refreshToken: async () => {
-    const response = await api.post('/auth/refresh-token');
-    if (response.token) {
-      localStorage.setItem('token', response.token);
-    }
-    return response;
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = (async () => {
+      const response = await api.post('/auth/refresh-token');
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+      }
+      return response;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+
+    return refreshPromise;
   },
 
   // Get current user from localStorage
   getCurrentUser: () => {
     const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    if (!user) return null;
+
+    try {
+      const parsedUser = JSON.parse(user);
+      return parsedUser && typeof parsedUser === 'object' ? parsedUser : null;
+    } catch (error) {
+      console.warn('Ignoring invalid cached user session:', error);
+      localStorage.removeItem('user');
+      return null;
+    }
   },
 
   // Get current token from localStorage
@@ -95,7 +120,7 @@ export const authService = {
 
   // Check if user is authenticated
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!localStorage.getItem('token') && !!authService.getCurrentUser();
   },
 
   // Check if user is admin
@@ -146,24 +171,33 @@ export const authService = {
 
   // Validate current session
   validateSession: async () => {
-    try {
-      const token = authService.getToken();
-      if (!token) {
+    if (validationPromise) return validationPromise;
+
+    validationPromise = (async () => {
+      try {
+        const token = authService.getToken();
+        if (!token) return false;
+
+        const response = await api.post('/auth/verify-token', { token });
+        return response.valid || false;
+      } catch (error) {
+        if (error?.code === 'NETWORK_ERROR' || error?.status >= 500) {
+          throw error;
+        }
+        console.error('Session validation error:', error);
         return false;
       }
+    })().finally(() => {
+      validationPromise = null;
+    });
 
-      const response = await api.post('/auth/verify-token', { token });
-      return response.valid || false;
-    } catch (error) {
-      console.error('Session validation error:', error);
-      return false;
-    }
+    return validationPromise;
   },
 
   // Refresh session token
   refreshSession: async () => {
     try {
-      const response = await api.post('/auth/refresh-token');
+      const response = await authService.refreshToken();
       if (response.token) {
         localStorage.setItem('token', response.token);
         if (response.user) {
@@ -173,6 +207,9 @@ export const authService = {
       }
       return false;
     } catch (error) {
+      if (error?.code === 'NETWORK_ERROR' || error?.status >= 500) {
+        throw error;
+      }
       console.error('Token refresh error:', error);
       return false;
     }
@@ -184,10 +221,14 @@ export const authService = {
       const token = authService.getToken();
       if (!token) return null;
 
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const encodedPayload = token.split('.')[1];
+      if (!encodedPayload) return null;
+      const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+      const payload = JSON.parse(atob(padded));
       return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
     } catch (error) {
-      console.error('Error parsing token:', error);
+      console.warn('Ignoring malformed authentication token:', error);
       return null;
     }
   },
@@ -201,9 +242,10 @@ export const authService = {
       const bufferMs = bufferMinutes * 60 * 1000;
       return Date.now() >= (expiration - bufferMs);
     } catch (error) {
-      console.error('Error checking token expiration:', error);
+      console.warn('Unable to determine token expiration:', error);
       return true;
     }
-  }
-};
+  },
 
+  clearStoredSession
+};

@@ -223,58 +223,6 @@
   66% { transform: translateY(5px) rotate(-1deg); }
 }
 
-/* Rich Text Editor Enhancements */
-.tox .tox-editor-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-  border-bottom: 1px solid #e5e7eb !important;
-  backdrop-filter: var(--glassmorphism-blur);
-}
-
-.tox .tox-toolbar {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
-  backdrop-filter: var(--glassmorphism-blur);
-}
-
-.tox .tox-tbtn {
-  border-radius: var(--border-radius-sm) !important;
-  margin: 2px !important;
-  transition: all var(--animation-fast) !important;
-}
-
-.tox .tox-tbtn:hover {
-  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.tox .tox-tbtn--enabled {
-  background: var(--primary-gradient) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.tox-tinymce {
-  border: 2px solid transparent !important;
-  background: linear-gradient(white, white) padding-box, var(--primary-gradient) border-box !important;
-  border-radius: var(--border-radius-lg) !important;
-  overflow: hidden;
-  transition: all var(--animation-normal);
-  box-shadow: var(--card-shadow);
-}
-
-.tox-tinymce:focus-within {
-  transform: translateY(-2px);
-  box-shadow: var(--card-shadow-hover), 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
-}
-
-.tox .tox-edit-area {
-  background: white !important;
-}
-
-.tox .tox-edit-area__iframe {
-  background: white !important;
-}
-
 /* Responsive tweaks for Import Job Data modal */
 .import-modal-wrapper {
   width: 100%;
@@ -1606,21 +1554,6 @@
       linear-gradient(135deg, #1f2937 0%, #111827 100%),
       radial-gradient(circle at 20% 80%, rgba(129, 140, 248, 0.1) 0%, transparent 50%),
       radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-  }
-  
-  .tox .tox-editor-header,
-  .tox .tox-toolbar {
-    background: linear-gradient(135deg, #374151 0%, #1f2937 100%) !important;
-    color: #f9fafb !important;
-  }
-  
-  .tox .tox-tbtn:hover {
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
-  }
-  
-  .tox-tinymce {
-    border-color: #4b5563 !important;
-    background: linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)) padding-box, var(--primary-gradient) border-box !important;
   }
   
   /* Enhanced Dark Mode Markdown Editor */

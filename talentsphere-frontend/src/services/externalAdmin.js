@@ -141,13 +141,6 @@ export const externalAdminService = {
     return await externalAdminService.getExternalJobs(searchParams);
   },
 
-  // Export external jobs data (use the bulk export feature if available, or return jobs data)
-  exportExternalJobs: async (format = 'csv', filters = {}) => {
-    // Since there's no specific export endpoint, get the jobs data and let the frontend handle export
-    const jobs = await externalAdminService.getExternalJobs(filters);
-    return jobs;
-  },
-
   // Bulk operations
   bulkDeleteJobs: async (jobIds) => {
     const response = await api.post('/jobs/bulk-action', {
@@ -210,23 +203,10 @@ export const externalAdminService = {
     return response;
   },
 
-  // API Key management - not implemented in backend yet
-  generateApiKey: async () => {
-    throw new Error('API key management not implemented yet');
-  },
-
-  revokeApiKey: async () => {
-    throw new Error('API key management not implemented yet');
-  },
-
   // Export user data - use basic profile export
   exportUserData: async () => {
     const response = await api.get('/auth/profile');
     return response;
-  },
-
-  deleteAccount: async () => {
-    throw new Error('Account deletion not implemented yet');
   },
 
     // Templates management - implemented with new backend endpoints
@@ -310,7 +290,12 @@ export const externalAdminService = {
 
   // Analytics data - use the external job stats endpoint
   getJobAnalytics: async (filters = {}) => {
-    const response = await api.get('/external-jobs/stats');
+    const query = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') query.append(key, value);
+    });
+    const queryString = query.toString();
+    const response = await api.get(`/external-jobs/stats${queryString ? `?${queryString}` : ''}`);
     return response;
   },
 
@@ -324,16 +309,4 @@ export const externalAdminService = {
     const stats = await externalAdminService.getJobAnalytics(filters);
     return stats;
   },
-
-  // Template management - additional methods (implemented)
-  exportJobTemplates: async (includePublic = false) => {
-    const params = includePublic ? '?include_public=true' : '';
-    const response = await api.get(`/job-templates/export${params}`);
-    return response;
-  },
-
-  importJobTemplates: async (templatesData) => {
-    const response = await api.post('/job-templates/bulk-import', templatesData);
-    return response;
-  }
 };

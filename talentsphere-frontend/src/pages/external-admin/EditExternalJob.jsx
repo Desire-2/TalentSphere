@@ -176,11 +176,9 @@ const EditExternalJob = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState({});
   const [isPreview, setIsPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState(new Set());
   const [originalData, setOriginalData] = useState(null); // Store original job data
   
   const [formData, setFormData] = useState({
@@ -306,50 +304,6 @@ const EditExternalJob = () => {
   }, [id, navigate]);
 
   // Form sections for better organization
-  const formSections = [
-    {
-      id: 'basic',
-      title: 'Job Information',
-      icon: Briefcase,
-      description: 'Basic details about the job position',
-      fields: ['title', 'summary', 'description', 'employment_type', 'experience_level', 'category_id']
-    },
-    {
-      id: 'company',
-      title: 'Company Information',
-      icon: Building2,
-      description: 'Details about the hiring company',
-      fields: ['external_company_name', 'external_company_website', 'external_company_logo']
-    },
-    {
-      id: 'location',
-      title: 'Location & Work Type',
-      icon: MapPin,
-      description: 'Where the work will be performed',
-      fields: ['location_type', 'location_city', 'location_state', 'location_country']
-    },
-    {
-      id: 'compensation',
-      title: 'Compensation',
-      icon: DollarSign,
-      description: 'Salary and benefits information',
-      fields: ['salary_min', 'salary_max', 'salary_currency', 'salary_period', 'show_salary', 'salary_negotiable']
-    },
-    {
-      id: 'requirements',
-      title: 'Requirements',
-      icon: Users,
-      description: 'Skills and experience needed',
-      fields: ['required_skills', 'preferred_skills', 'years_experience_min', 'years_experience_max', 'education_requirement']
-    },
-    {
-      id: 'application',
-      title: 'Application Method',
-      icon: ExternalLink,
-      description: 'How candidates can apply',
-      fields: ['application_type', 'application_url', 'application_email', 'application_instructions']
-    }
-  ];
 
   // Calculate form progress
   const formProgress = (() => {
@@ -494,7 +448,7 @@ const EditExternalJob = () => {
       await externalAdminService.updateExternalJob(id, jobData);
       toast.success('Draft saved successfully!');
       return true;
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to save draft');
       return false;
     }
@@ -600,18 +554,6 @@ const EditExternalJob = () => {
       setErrors({});
       toast.info('Form reset to original values');
     }
-  };
-
-  const toggleSection = (sectionId) => {
-    setCollapsedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) {
-        newSet.delete(sectionId);
-      } else {
-        newSet.add(sectionId);
-      }
-      return newSet;
-    });
   };
 
   // Preview component

@@ -24,4 +24,34 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://jobs.afritechbridge.online/about</loc>
+    <lastmod>2026-10-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://jobs.afritechbridge.online/contact</loc>
+    <lastmod>2026-10-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://jobs.afritechbridge.online/privacy</loc>
+    <lastmod>2026-10-26T00:00:00.000Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://jobs.afritechbridge.online/terms</loc>
+    <lastmod>2026-10-26T00:00:00.000Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://jobs.afritechbridge.online/cookies</loc>
+    <lastmod>2026-10-26T00:00:00.000Z</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>

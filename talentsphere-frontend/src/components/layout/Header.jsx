@@ -208,7 +208,7 @@ const Header = () => {
             </Link>
             {isAuthenticated && user?.role === 'employer' && (
               <Link 
-                to="/post-job" 
+                to="/employer/jobs/post" 
                 className="group relative px-2.5 md:px-3 lg:px-4 py-2 rounded-xl text-xs md:text-sm text-gray-700 hover:text-[#FF6B35] font-medium transition-all duration-300 hover:bg-[#FF6B35]/10"
               >
                 <span className="relative z-10 flex items-center space-x-1">
@@ -494,7 +494,7 @@ const Header = () => {
                 </Link>
                 {isAuthenticated && user?.role === 'employer' && (
                   <Link 
-                    to="/post-job" 
+                    to="/employer/jobs/post" 
                     className="group flex items-center space-x-3 px-3 py-2.5 mx-0.5 rounded-lg text-gray-700 hover:text-emerald-600 font-medium transition-all duration-300 hover:bg-emerald-50/80 text-sm"
                   >
                     <Star className="w-4 h-4 flex-shrink-0" />

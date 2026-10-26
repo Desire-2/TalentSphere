@@ -59,7 +59,14 @@ const JobList = lazy(() => import('./pages/jobs/JobList'));
 const JobDetails = lazy(() => import('./pages/jobs/JobDetails'));
 const PostJob = lazy(() => import('./pages/jobs/PostJob'));
 const JobApply = lazy(() => import('./pages/jobs/JobApply'));
-const TestApplyRoute = lazy(() => import('./pages/TestApplyRoute'));
+
+// Legal / static pages
+const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'));
+const CookiePolicy = lazy(() => import('./pages/legal/CookiePolicy'));
+const About = lazy(() => import('./pages/legal/About'));
+const Contact = lazy(() => import('./pages/legal/Contact'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Application Pages
 const MyApplications = lazy(() => import('./pages/applications/MyApplications'));
@@ -87,7 +94,6 @@ import ExternalAdminRoute from './components/auth/ExternalAdminRoute';
 import AnyAdminRoute from './components/auth/AnyAdminRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import EmployerOnboardingRoute from './components/auth/EmployerOnboardingRoute';
-const TestEmployerComponents = lazy(() => import('./pages/TestEmployerComponents'));
 const EmployerOnboarding = lazy(() => import('./pages/employer/EmployerOnboarding'));
 
 // Analytics
@@ -144,6 +150,14 @@ function App() {
             } />
             <Route path="companies" element={<Companies />} />
             <Route path="companies/:id" element={<CompanyDetail />} />
+            {/* Legal & static pages */}
+            <Route path="privacy" element={<PrivacyPolicy />} />
+            <Route path="terms" element={<TermsOfService />} />
+            <Route path="cookies" element={<CookiePolicy />} />
+            <Route path="about" element={<About />} />
+            <Route path="contact" element={<Contact />} />
+            {/* 404 for unknown public routes */}
+            <Route path="*" element={<NotFound />} />
           </Route>
 
           {/* Auth routes (no layout) */}
@@ -152,7 +166,6 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/test-employer" element={<TestEmployerComponents />} />
 
           {/* Common Dashboard Route - automatically routes to correct dashboard based on user role */}
           <Route path="/dashboard" element={
@@ -250,8 +263,6 @@ function App() {
             <Route path="profile" element={<ExternalAdminProfile />} />
           </Route>
 
-          {/* 404 - redirect all unknown routes to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
         <FloatingWhatsAppButton />

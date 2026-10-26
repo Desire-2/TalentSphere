@@ -358,9 +358,12 @@ class ApiService {
     });
   }
 
-  // DELETE request
-  async delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+  // DELETE request (optional JSON body, e.g. password confirmation)
+  async delete(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+      ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
+    });
   }
 
   // Authentication endpoints

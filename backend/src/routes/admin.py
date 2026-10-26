@@ -195,7 +195,7 @@ def get_admin_dashboard(current_user):
         error_trace = traceback.format_exc()
         print(f"Dashboard error: {e}")
         print(error_trace)
-        return jsonify({'error': 'Failed to get dashboard data', 'details': str(e)}), 500
+        return jsonify({'error': 'Failed to get dashboard data'}), 500
 
 @admin_bp.route('/admin/users', methods=['GET'])
 @token_required
@@ -305,7 +305,8 @@ def get_users(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get users', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get users: {str(e)}")
+        return jsonify({'error': 'Failed to get users'}), 500
 
 @admin_bp.route('/admin/users/<int:user_id>/toggle-status', methods=['POST'])
 @token_required
@@ -333,7 +334,8 @@ def toggle_user_status(current_user, user_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to toggle user status', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to toggle user status: {str(e)}")
+        return jsonify({'error': 'Failed to toggle user status'}), 500
 
 @admin_bp.route('/admin/users/<int:user_id>/change-role', methods=['POST'])
 @token_required
@@ -403,7 +405,8 @@ def change_user_role(current_user, user_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to change user role', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to change user role: {str(e)}")
+        return jsonify({'error': 'Failed to change user role'}), 500
 
 @admin_bp.route('/admin/jobs', methods=['GET'])
 @token_required
@@ -492,7 +495,8 @@ def get_jobs_admin(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get jobs', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get jobs: {str(e)}")
+        return jsonify({'error': 'Failed to get jobs'}), 500
 
 @admin_bp.route('/admin/jobs/<int:job_id>/moderate', methods=['POST'])
 @token_required
@@ -591,7 +595,8 @@ def moderate_job(current_user, job_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to moderate job', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to moderate job: {str(e)}")
+        return jsonify({'error': 'Failed to moderate job'}), 500
 
 @admin_bp.route('/admin/jobs/<int:job_id>', methods=['DELETE'])
 @token_required
@@ -629,7 +634,7 @@ def delete_job_admin(current_user, job_id):
     except Exception as e:
         db.session.rollback()
         print(f"❌ JOB DELETION ERROR: {str(e)}")
-        return jsonify({'error': 'Failed to delete job', 'details': str(e)}), 500
+        return jsonify({'error': 'Failed to delete job'}), 500
 
 @admin_bp.route('/admin/jobs/bulk-action', methods=['POST'])
 @token_required
@@ -742,7 +747,8 @@ def bulk_job_action(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to perform bulk action', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to perform bulk action: {str(e)}")
+        return jsonify({'error': 'Failed to perform bulk action'}), 500
 
 @admin_bp.route('/admin/jobs/<int:job_id>/analytics', methods=['GET'])
 @token_required
@@ -807,7 +813,8 @@ def get_job_analytics(current_user, job_id):
         return jsonify(analytics), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get job analytics', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get job analytics: {str(e)}")
+        return jsonify({'error': 'Failed to get job analytics'}), 500
 
 @admin_bp.route('/admin/jobs/stats', methods=['GET'])
 @token_required
@@ -889,7 +896,8 @@ def get_jobs_stats(current_user):
         return jsonify(stats), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get job statistics', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get job statistics: {str(e)}")
+        return jsonify({'error': 'Failed to get job statistics'}), 500
 
 @admin_bp.route('/admin/companies', methods=['GET'])
 @token_required
@@ -974,7 +982,8 @@ def get_companies_admin(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get companies', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get companies: {str(e)}")
+        return jsonify({'error': 'Failed to get companies'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>/verify', methods=['POST'])
 @token_required
@@ -998,7 +1007,8 @@ def verify_company(current_user, company_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to verify company', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to verify company: {str(e)}")
+        return jsonify({'error': 'Failed to verify company'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>/reject', methods=['POST'])
 @token_required
@@ -1035,7 +1045,8 @@ def reject_company_verification(current_user, company_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to reject company verification', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to reject company verification: {str(e)}")
+        return jsonify({'error': 'Failed to reject company verification'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>/toggle-featured', methods=['POST'])
 @token_required
@@ -1059,7 +1070,8 @@ def toggle_company_featured(current_user, company_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to toggle featured status', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to toggle featured status: {str(e)}")
+        return jsonify({'error': 'Failed to toggle featured status'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>/toggle-status', methods=['POST'])
 @token_required
@@ -1096,7 +1108,8 @@ def toggle_company_status(current_user, company_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to toggle company status', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to toggle company status: {str(e)}")
+        return jsonify({'error': 'Failed to toggle company status'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>/send-email', methods=['POST'])
 @token_required
@@ -1206,7 +1219,8 @@ def bulk_company_action(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to perform bulk action', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to perform bulk action: {str(e)}")
+        return jsonify({'error': 'Failed to perform bulk action'}), 500
 
 @admin_bp.route('/admin/companies/<int:company_id>', methods=['DELETE'])
 @token_required
@@ -1238,7 +1252,8 @@ def delete_company(current_user, company_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to delete company', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to delete company: {str(e)}")
+        return jsonify({'error': 'Failed to delete company'}), 500
 
 @admin_bp.route('/admin/analytics/revenue', methods=['GET'])
 @token_required
@@ -1349,7 +1364,8 @@ def get_revenue_analytics(current_user):
         return jsonify(analytics), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get revenue analytics', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get revenue analytics: {str(e)}")
+        return jsonify({'error': 'Failed to get revenue analytics'}), 500
 
 @admin_bp.route('/admin/analytics/users', methods=['GET'])
 @token_required
@@ -1417,7 +1433,8 @@ def get_user_analytics(current_user):
         return jsonify(analytics), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get user analytics', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get user analytics: {str(e)}")
+        return jsonify({'error': 'Failed to get user analytics'}), 500
 
 @admin_bp.route('/admin/system-health', methods=['GET'])
 @token_required
@@ -1467,7 +1484,8 @@ def get_system_health(current_user):
         return jsonify(health_data), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get system health', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get system health: {str(e)}")
+        return jsonify({'error': 'Failed to get system health'}), 500
 
 # Error handlers
 @admin_bp.errorhandler(400)
@@ -1775,7 +1793,8 @@ def get_job_expiration_stats(current_user):
         return jsonify(stats), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get job expiration stats', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get job expiration stats: {str(e)}")
+        return jsonify({'error': 'Failed to get job expiration stats'}), 500
 
 
 @admin_bp.route('/admin/jobs/cleanup', methods=['POST'])
@@ -1798,7 +1817,8 @@ def manual_job_cleanup(current_user):
             }), 500
             
     except Exception as e:
-        return jsonify({'error': 'Failed to run job cleanup', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to run job cleanup: {str(e)}")
+        return jsonify({'error': 'Failed to run job cleanup'}), 500
 
 
 @admin_bp.route('/admin/notifications/send-morning-update', methods=['POST'])
@@ -1816,9 +1836,9 @@ def send_morning_update_to_all(current_user):
         }), 200
             
     except Exception as e:
+        current_app.logger.error(f"Failed to send morning update: {str(e)}")
         return jsonify({
-            'error': 'Failed to send morning update',
-            'details': str(e)
+            'error': 'Failed to send morning update'
         }), 500
 
 
@@ -1837,9 +1857,9 @@ def send_weekly_digest_to_all(current_user):
         }), 200
             
     except Exception as e:
+        current_app.logger.error(f"Failed to send weekly digest: {str(e)}")
         return jsonify({
-            'error': 'Failed to send weekly digest',
-            'details': str(e)
+            'error': 'Failed to send weekly digest'
         }), 500
 
 
@@ -1882,7 +1902,8 @@ def manage_scheduler_config(current_user):
             }), 200
             
     except Exception as e:
-        return jsonify({'error': 'Failed to manage scheduler config', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to manage scheduler config: {str(e)}")
+        return jsonify({'error': 'Failed to manage scheduler config'}), 500
 
 
 @admin_bp.route('/admin/jobs/<int:job_id>/extend-expiry', methods=['POST'])
@@ -1924,4 +1945,5 @@ def extend_job_expiry(current_user, job_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to extend job expiry', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to extend job expiry: {str(e)}")
+        return jsonify({'error': 'Failed to extend job expiry'}), 500

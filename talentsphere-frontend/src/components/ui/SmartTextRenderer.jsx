@@ -148,9 +148,18 @@ const SmartTextRenderer = ({ content, className = '' }) => {
     );
   };
 
+  const escapeHtml = (text) =>
+    text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
   const formatInlineText = (text) => {
-    // Handle bold text patterns
-    let formatted = text
+    // Escape user content BEFORE any formatting so markup in the source
+    // text can never become live HTML.
+    let formatted = escapeHtml(text)
       // **bold** or __bold__
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.*?)__/g, '<strong>$1</strong>')
@@ -160,13 +169,12 @@ const SmartTextRenderer = ({ content, className = '' }) => {
       // `code`
       .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
 
-    // Handle links
+    // Handle links (URLs were already escaped; &amp; is correct inside href)
     formatted = formatted.replace(
-      /https?:\/\/[^\s]+/g, 
+      /https?:\/\/[^\s]+/g,
       '<a href="$&" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">$&</a>'
     );
 
-    // Return JSX with dangerouslySetInnerHTML for simple formatting
     return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
   };
 

@@ -11,6 +11,7 @@ from src.models.company import Company
 from src.routes.auth import token_required, role_required
 from src.utils.cache import cached, get_cached_featured_jobs, get_cached_job_categories, invalidate_job_caches
 from src.utils.db_utils import db_transaction, safe_db_operation
+from src.utils.html_sanitize import sanitize_html
 from src.services.job_notification_service import job_notification_service
 
 job_bp = Blueprint('job', __name__)
@@ -595,8 +596,8 @@ def create_job(current_user):
             posted_by=current_user.id,
             title=data['title'].strip(),
             slug=slug,
-            description=data['description'].strip(),
-            summary=data.get('summary', '').strip() if data.get('summary') else None,
+            description=sanitize_html(data['description'].strip()),
+            summary=sanitize_html(data.get('summary', '').strip()) if data.get('summary') else None,
             employment_type=data['employment_type'],
             experience_level=data['experience_level'],
             education_requirement=data.get('education_requirement', '').strip() if data.get('education_requirement') else None,
@@ -729,6 +730,9 @@ def update_job(current_user, job_id):
                 # Strip strings to avoid empty whitespace
                 if isinstance(value, str):
                     value = value.strip() if value else None
+                # Rich text fields are sanitized on write to block stored XSS
+                if field in ('description', 'summary', 'application_instructions'):
+                    value = sanitize_html(value)
                 setattr(job, field, value)
         
         # Handle location type changes

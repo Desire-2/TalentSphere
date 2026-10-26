@@ -16,6 +16,7 @@ from src.models.job import Job, JobCategory
 from src.models.company import Company
 from src.models.application import Application
 from src.utils.cache import cache, cached, invalidate_cache
+from src.routes.auth import token_required, role_required
 from src.utils.performance import (
     timed, QueryOptimizer, ResponseOptimizer, 
     optimize_query_with_cache, performance_monitor
@@ -296,8 +297,10 @@ def optimized_get_job(job_id):
 
 # Cache invalidation endpoints
 @optimized_api_bp.route('/v2/cache/invalidate', methods=['POST'])
-def invalidate_api_cache():
-    """Invalidate specific cache patterns"""
+@token_required
+@role_required('admin')
+def invalidate_api_cache(current_user):
+    """Invalidate specific cache patterns (admin only)"""
     try:
         data = request.get_json() or {}
         patterns = data.get('patterns', [])
@@ -317,7 +320,7 @@ def invalidate_api_cache():
         }), 200
         
     except Exception as e:
+        current_app.logger.error(f"Cache invalidation error: {e}")
         return jsonify({
-            'error': 'Failed to invalidate cache',
-            'details': str(e)
+            'error': 'Failed to invalidate cache'
         }), 500

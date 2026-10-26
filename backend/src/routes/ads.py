@@ -288,6 +288,41 @@ def _is_valid_http_url(url):
     return parsed.scheme in {'http', 'https'} and bool(parsed.netloc)
 
 
+def _allowed_redirect_hosts():
+    """Host allow-list: AD_REDIRECT_ALLOWED_HOSTS env + frontend/site domains."""
+    hosts = set()
+    for raw in (os.getenv('AD_REDIRECT_ALLOWED_HOSTS') or '').split(','):
+        raw = raw.strip().lower().lstrip('.')
+        if raw:
+            hosts.add(raw)
+    for env_key in ('FRONTEND_URL', 'SITE_URL', 'API_BASE_URL'):
+        value = os.getenv(env_key) or ''
+        netloc = urlparse(value).netloc.lower()
+        if netloc:
+            hosts.add(netloc)
+    hosts.add('jobs.afritechbridge.online')
+    return hosts
+
+
+def safe_ad_redirect_url(url):
+    """Validate a click destination.
+
+    - request-supplied URLs are never trusted (fallback to site root)
+    - creative cta_url from the DB is allowed unless AD_REDIRECT_ALLOWED_HOSTS
+      is configured, in which case the host must match the allow-list.
+    """
+    if not _is_valid_http_url(url):
+        return '/'
+    parsed = urlparse(url)
+    host = (parsed.hostname or '').lower()
+    allow_list = os.getenv('AD_REDIRECT_ALLOWED_HOSTS') or ''
+    if allow_list.strip():
+        allowed = _allowed_redirect_hosts()
+        if not any(host == h or host.endswith('.' + h) for h in allowed):
+            return '/'
+    return url
+
+
 def _resolve_placement(value):
     if value is None:
         return None
@@ -1875,7 +1910,6 @@ def record_click():
                 'creative_id': request.args.get('cr', type=int),
                 'placement_id': request.args.get('p'),
                 'session_id': request.args.get('s'),
-                'cta_url': request.args.get('cta_url'),
             }
         else:
             data = request.get_json(silent=True) or {}
@@ -1892,14 +1926,14 @@ def record_click():
         placement = _resolve_placement(placement_ref)
         if not placement:
             if request.method == 'GET':
-                return redirect(data.get('cta_url') or '/', code=302)
+                return redirect('/', code=302)
             return jsonify({'error': 'Invalid placement'}), 400
 
         campaign = AdCampaign.query.get(campaign_id)
         creative = AdCreative.query.get(creative_id)
         if not campaign or not creative or creative.campaign_id != campaign.id:
             if request.method == 'GET':
-                return redirect(data.get('cta_url') or '/', code=302)
+                return redirect('/', code=302)
             return jsonify({'error': 'Invalid campaign or creative'}), 400
         
         # Get viewer user_id if logged in
@@ -1926,13 +1960,14 @@ def record_click():
             if campaign.budget_spent >= campaign.budget_total:
                 campaign.status = 'COMPLETED'
         
-        # Get creative to get CTA URL
-        cta_url = data.get('cta_url') or (creative.cta_url if creative else None)
+        # Destination comes only from the stored creative (never request
+        # parameters) and is validated against the redirect allow-list.
+        cta_url = safe_ad_redirect_url(creative.cta_url if creative else None)
         
         db.session.commit()
         
         if request.method == 'GET':
-            return redirect(cta_url or '/', code=302)
+            return redirect(cta_url, code=302)
 
         return jsonify({'redirect_url': cta_url}), 200
         

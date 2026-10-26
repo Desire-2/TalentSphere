@@ -14,6 +14,7 @@ import time
 
 from src.models.user import db, User, JobSeekerProfile, EmployerProfile
 from src.utils.db_utils import db_transaction, safe_db_operation
+from src.rate_limit import auth_limiter, auth_limits
 from src.services.notification_templates import EnhancedNotificationService
 from src.services.email_service import email_service
 
@@ -411,6 +412,7 @@ def build_employer_onboarding_status(user):
     return status
 
 @auth_bp.route('/register', methods=['POST'])
+@auth_limiter.limit(auth_limits)
 def register():
     """Enhanced register endpoint with comprehensive employer support"""
     try:
@@ -618,7 +620,7 @@ def register():
         current_app.logger.error(f"Registration error: {str(e)}")
         import traceback
         current_app.logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
+        return jsonify({'error': 'Registration failed'}), 500
 
 @auth_bp.route('/verify-employer', methods=['POST'])
 @token_required
@@ -653,7 +655,8 @@ def verify_employer(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to submit verification', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to submit verification: {str(e)}")
+        return jsonify({'error': 'Failed to submit verification'}), 500
 
 @auth_bp.route('/employer/verification-status', methods=['GET'])
 @token_required
@@ -684,7 +687,8 @@ def get_verification_status(current_user):
         return jsonify(status_info), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get verification status', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get verification status: {str(e)}")
+        return jsonify({'error': 'Failed to get verification status'}), 500
 
 
 @auth_bp.route('/employer/onboarding-status', methods=['GET'])
@@ -695,7 +699,8 @@ def get_employer_onboarding_status(current_user):
     try:
         return jsonify(build_employer_onboarding_status(current_user)), 200
     except Exception as e:
-        return jsonify({'error': 'Failed to get onboarding status', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get onboarding status: {str(e)}")
+        return jsonify({'error': 'Failed to get onboarding status'}), 500
 
 def calculate_employer_profile_completion(user):
     """Calculate employer profile completion percentage"""
@@ -819,7 +824,8 @@ def get_employer_onboarding_guide(current_user):
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get onboarding guide', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get onboarding guide: {str(e)}")
+        return jsonify({'error': 'Failed to get onboarding guide'}), 500
 
 @auth_bp.route('/employer/dashboard-stats', methods=['GET'])
 @token_required
@@ -923,7 +929,8 @@ def get_employer_dashboard_stats(current_user):
         return jsonify(stats), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get dashboard stats', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get dashboard stats: {str(e)}")
+        return jsonify({'error': 'Failed to get dashboard stats'}), 500
 
 @auth_bp.route('/send-welcome-email', methods=['POST'])
 @token_required
@@ -957,9 +964,11 @@ def send_welcome_email(current_user):
         }), status_code
         
     except Exception as e:
-        return jsonify({'error': 'Failed to send welcome email', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to send welcome email: {str(e)}")
+        return jsonify({'error': 'Failed to send welcome email'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
+@auth_limiter.limit(auth_limits)
 def login():
     """Authenticate user and return JWT token"""
     try:
@@ -1001,7 +1010,7 @@ def login():
         
     except Exception as e:
         current_app.logger.error(f"Login error: {str(e)}")
-        return jsonify({'error': 'Login failed', 'details': str(e)}), 500
+        return jsonify({'error': 'Login failed'}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
@@ -1038,7 +1047,8 @@ def get_profile(current_user):
         return jsonify(profile_data), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get profile', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to get profile: {str(e)}")
+        return jsonify({'error': 'Failed to get profile'}), 500
 
 @auth_bp.route('/profile', methods=['PUT'])
 @token_required
@@ -1129,7 +1139,8 @@ def update_profile(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to update profile', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to update profile: {str(e)}")
+        return jsonify({'error': 'Failed to update profile'}), 500
 
 @auth_bp.route('/change-password', methods=['POST'])
 @token_required
@@ -1159,7 +1170,8 @@ def change_password(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to change password', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to change password: {str(e)}")
+        return jsonify({'error': 'Failed to change password'}), 500
 
 @auth_bp.route('/send-verification-email', methods=['POST'])
 @token_required
@@ -1212,7 +1224,8 @@ def send_verification_email(current_user):
         return jsonify({'message': 'Verification email sent successfully'}), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to send verification email', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to send verification email: {str(e)}")
+        return jsonify({'error': 'Failed to send verification email'}), 500
 
 @auth_bp.route('/verify-email', methods=['POST'])
 def verify_email():
@@ -1253,7 +1266,8 @@ def verify_email():
         return jsonify({'message': 'Email verified successfully'}), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to verify email', 'details': str(e)}), 500
+        current_app.logger.error(f"Failed to verify email: {str(e)}")
+        return jsonify({'error': 'Failed to verify email'}), 500
 
 @auth_bp.route('/verify-email-link', methods=['GET'])
 def verify_email_link():
@@ -1338,7 +1352,7 @@ def refresh_token():
         return jsonify({'error': 'Invalid token', 'message': 'Token validation failed'}), 401
     except Exception as e:
         current_app.logger.error(f"Token refresh error: {str(e)}")
-        return jsonify({'error': 'Failed to refresh token', 'details': str(e)}), 500
+        return jsonify({'error': 'Failed to refresh token'}), 500
 
 @auth_bp.route('/deactivate-account', methods=['POST'])
 @token_required
@@ -1363,7 +1377,45 @@ def deactivate_account(current_user):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to deactivate account', 'details': str(e)}), 500
+        current_app.logger.error(f'Account deactivation failed: {str(e)}')
+        return jsonify({'error': 'Failed to deactivate account'}), 500
+
+@auth_bp.route('/delete-account', methods=['DELETE'])
+@token_required
+def delete_account(current_user):
+    """Delete the caller's account: password-verified soft delete that
+    deactivates the row and anonymizes PII (email, name, contact fields).
+    Related rows are left intact for data-integrity/audit purposes."""
+    try:
+        data = request.get_json(silent=True) or {}
+
+        if not data.get('password'):
+            return jsonify({'error': 'Password is required to delete account'}), 400
+
+        if not current_user.check_password(data['password']):
+            return jsonify({'error': 'Incorrect password'}), 401
+
+        current_user.email = f'deleted+{current_user.id}@deleted.invalid'
+        current_user.first_name = 'Deleted'
+        current_user.last_name = 'User'
+        current_user.phone = None
+        current_user.profile_picture = None
+        current_user.bio = None
+        current_user.location = None
+        current_user.reset_token = None
+        current_user.reset_token_expires_at = None
+        current_user.is_active = False
+        current_user.is_verified = False
+        current_user.set_password(os.urandom(32).hex())
+        current_user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'message': 'Account deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Account deletion failed: {str(e)}')
+        return jsonify({'error': 'Failed to delete account'}), 500
 
 def send_basic_welcome_email(user):
     """Send welcome email to new users"""
@@ -1539,6 +1591,7 @@ def send_basic_welcome_email(user):
 # Password reset email is now handled by email_service.send_password_reset_email()
 
 @auth_bp.route('/forgot-password', methods=['POST'])
+@auth_limiter.limit(auth_limits)
 def forgot_password():
     """Request password reset"""
     try:

@@ -28,6 +28,7 @@ import {
   Pause
 } from 'lucide-react';
 import apiService from '../../services/api';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const JobViewModal = ({ 
   isOpen, 
@@ -394,7 +395,7 @@ const JobViewModal = ({
                       <h4 className="text-lg font-medium text-gray-900">Job Description</h4>
                       <div 
                         className="prose max-w-none text-sm text-gray-600"
-                        dangerouslySetInnerHTML={{ __html: job.description || 'No description available' }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(job.description) || 'No description available' }}
                       />
                     </div>
 
@@ -402,10 +403,24 @@ const JobViewModal = ({
                     {job.requirements && (
                       <div className="space-y-4">
                         <h4 className="text-lg font-medium text-gray-900">Requirements</h4>
-                        <div 
-                          className="prose max-w-none text-sm text-gray-600"
-                          dangerouslySetInnerHTML={{ __html: job.requirements }}
-                        />
+                        {typeof job.requirements === 'string' ? (
+                          <div 
+                            className="prose max-w-none text-sm text-gray-600"
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(job.requirements) }}
+                          />
+                        ) : (
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {job.requirements.resume && (
+                              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-500" /> Resume required</li>
+                            )}
+                            {job.requirements.cover_letter && (
+                              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-500" /> Cover letter required</li>
+                            )}
+                            {job.requirements.portfolio && (
+                              <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-500" /> Portfolio required</li>
+                            )}
+                          </ul>
+                        )}
                       </div>
                     )}
 

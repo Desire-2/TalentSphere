@@ -157,9 +157,12 @@ fallback_dev_origins = (
     "http://0.0.0.0:5174",
 )
 
-for dev_origin in fallback_dev_origins:
-    if dev_origin not in allowed_origins:
-        allowed_origins.append(dev_origin)
+if app.config['FLASK_ENV'] != 'production':
+    # Local dev origins are a convenience only; never whitelist them in prod
+    # (an untrusted client could otherwise reach the API with credentials).
+    for dev_origin in fallback_dev_origins:
+        if dev_origin not in allowed_origins:
+            allowed_origins.append(dev_origin)
 
 # Log effective CORS origins at startup for debugging
 print(f"🔒 CORS allowed origins: {allowed_origins}")
@@ -198,6 +201,16 @@ def ensure_cors_headers(response):
         response.headers['Access-Control-Max-Age'] = '600'
         response.headers['Access-Control-Expose-Headers'] = 'Content-Type, Authorization'
 
+    # Baseline security headers on every response
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    if app.config.get('FLASK_ENV') == 'production':
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
+        )
+
     return response
 
 # Initialize performance monitoring
@@ -228,6 +241,8 @@ app.register_blueprint(career_agent_bp, url_prefix='/api/career-agent')
 app.register_blueprint(ai_bp, url_prefix='/api/ai')
 from src.routes.career_agent import limiter as career_limiter
 career_limiter.init_app(app)  # Bind per-user Career Agent rate limiter
+from src.rate_limit import auth_limiter
+auth_limiter.init_app(app)  # Bind login/register/forgot-password rate limiter
 app.register_blueprint(cleanup_bp, url_prefix='/api')
 app.register_blueprint(ads_bp, url_prefix='/api/ads')
 app.register_blueprint(upload_bp, url_prefix='/api/uploads')

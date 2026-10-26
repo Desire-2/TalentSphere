@@ -8,6 +8,7 @@ from src.models.user import db
 from src.models.company import Company, CompanyBenefit, CompanyTeamMember
 from src.routes.auth import token_required, role_required, _company_profile_completion
 from src.utils.response_wrapper import success_response, error_response
+from src.utils.html_sanitize import sanitize_html, sanitize_text
 
 company_bp = Blueprint('company', __name__)
 
@@ -180,8 +181,8 @@ def create_company(current_user):
         company = Company(
             name=company_name,
             slug=slug,
-            description=clean_value(data.get('description')),
-            tagline=clean_value(data.get('tagline')),
+            description=sanitize_html(clean_value(data.get('description'))),
+            tagline=sanitize_text(clean_value(data.get('tagline'))),
             website=clean_value(data.get('website')),
             email=clean_value(data.get('email')),
             phone=clean_value(data.get('phone')),
@@ -293,6 +294,8 @@ def update_company(current_user, company_id):
                     setattr(company, field, parse_optional_int(data[field]))
                 elif field == 'gallery_images':
                     setattr(company, field, parse_gallery_images(data[field]))
+                elif field == 'description':
+                    setattr(company, field, sanitize_html(clean_value(data[field])))
                 else:
                     setattr(company, field, clean_value(data[field]))
         
@@ -367,8 +370,8 @@ def add_company_benefit(current_user, company_id):
         
         benefit = CompanyBenefit(
             company_id=company_id,
-            title=data['title'],
-            description=data.get('description'),
+            title=sanitize_text(data['title']),
+            description=sanitize_text(data.get('description')),
             category=data.get('category'),
             icon=data.get('icon'),
             is_highlighted=data.get('is_highlighted', False),

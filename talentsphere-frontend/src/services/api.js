@@ -519,15 +519,6 @@ class ApiService {
     return this.get(`/featured-ads/${id}/analytics`);
   }
 
-  async processPayment(paymentId, paymentData) {
-    return this.post(`/payments/${paymentId}/process`, paymentData);
-  }
-
-  async getPayments(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.get(`/payments${queryString ? `?${queryString}` : ''}`);
-  }
-
   // Public endpoints (no authentication required) - connects to real ad system
   async getPublicFeaturedAds(limit = 10) {
     return this.get(`/ads/public/featured-ads?limit=${limit}`);

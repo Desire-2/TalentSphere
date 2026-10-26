@@ -1118,3 +1118,97 @@ def admin_suspend_subscription(current_user, subscription_id: int):
         db.session.rollback()
         return _error(str(exc), 404)
     return jsonify(subscription.to_dict()), 200
+
+
+# ---------------------------------------------------------------------------
+# Sandbox hosted checkout (only registered when CAREER_PAYMENT_PROVIDER=sandbox)
+# ---------------------------------------------------------------------------
+if os.getenv("CAREER_PAYMENT_PROVIDER", "").strip().lower() == "sandbox":
+
+    @career_agent_bp.route("/sandbox/checkout/<provider_reference>", methods=["GET"])
+    def sandbox_checkout_page(provider_reference: str):
+        """Local hosted checkout page: simulate success or failure."""
+        import html as html_mod
+
+        transaction = CareerPaymentTransaction.query.filter_by(provider_reference=provider_reference).first()
+        if not transaction:
+            return _error("Checkout not found.", 404)
+        plan = CareerSubscriptionPlan.query.get(transaction.plan_code)
+        plan_name = html_mod.escape(getattr(plan, "name", transaction.plan_code) or transaction.plan_code)
+        amount = html_mod.escape(f"{int(transaction.amount_rwf):,} RWF")
+        ref = html_mod.escape(transaction.provider_reference or "")
+
+        page = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandbox Checkout — AfriTech Opportunities</title>
+<style>
+ body {{ font-family: system-ui, sans-serif; background:#f1f5f9; display:flex; align-items:center;
+        justify-content:center; min-height:100vh; margin:0; }}
+ .card {{ background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.12);
+         padding:32px; max-width:420px; width:92%; }}
+ .tag {{ display:inline-block; background:#fef3c7; color:#92400e; font-size:12px; font-weight:700;
+        padding:4px 10px; border-radius:999px; letter-spacing:.05em; }}
+ h1 {{ font-size:20px; margin:14px 0 4px; color:#0f172a; }}
+ p {{ color:#475569; font-size:14px; line-height:1.5; }}
+ .amount {{ font-size:26px; font-weight:800; color:#003366; margin:12px 0; }}
+ form {{ margin-top:18px; display:flex; gap:10px; }}
+ button {{ flex:1; padding:12px; border-radius:8px; border:0; font-size:15px; font-weight:600;
+          cursor:pointer; }}
+ .ok {{ background:#16a34a; color:#fff; }} .fail {{ background:#dc2626; color:#fff; }}
+ .ref {{ font-size:12px; color:#94a3b8; margin-top:16px; word-break:break-all; }}
+</style></head>
+<body><div class="card">
+ <span class="tag">SANDBOX — NO REAL MONEY</span>
+ <h1>{plan_name}</h1>
+ <div class="amount">{amount}</div>
+ <p>This environment simulates payments. Choose an outcome to continue the checkout flow.</p>
+ <form method="post" action="/api/career-agent/sandbox/checkout/{ref}/simulate">
+   <input type="hidden" name="outcome" value="SUCCESS">
+   <button class="ok" type="submit">Simulate success</button>
+ </form>
+ <form method="post" action="/api/career-agent/sandbox/checkout/{ref}/simulate">
+   <input type="hidden" name="outcome" value="FAILURE">
+   <button class="fail" type="submit">Simulate failure</button>
+ </form>
+ <div class="ref">Reference: {ref}</div>
+</div></body></html>"""
+        return page, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+    @career_agent_bp.route("/sandbox/checkout/<provider_reference>/simulate", methods=["POST"])
+    def sandbox_checkout_simulate(provider_reference: str):
+        transaction = CareerPaymentTransaction.query.filter_by(provider_reference=provider_reference).first()
+        if not transaction:
+            return _error("Checkout not found.", 404)
+        if transaction.status == "COMPLETED":
+            return _error("This payment was already completed.", 409)
+
+        outcome = (request.form.get("outcome") or "").strip().upper()
+        if outcome not in ("SUCCESS", "FAILURE"):
+            data = request.get_json(silent=True) or {}
+            outcome = str(data.get("outcome") or "").strip().upper()
+        if outcome not in ("SUCCESS", "FAILURE"):
+            return _error("outcome must be SUCCESS or FAILURE.", 400)
+
+        try:
+            payload = json.loads(transaction.provider_payload_json or "{}")
+        except (TypeError, ValueError):
+            payload = {}
+        payload["simulated_status"] = outcome
+        payload["sandbox"] = True
+        transaction.provider_payload_json = json.dumps(payload)
+        if outcome == "FAILURE":
+            transaction.failure_reason = "Sandbox simulation: failure requested"
+        db.session.commit()
+
+        frontend = (os.getenv("FRONTEND_URL") or "").rstrip("/")
+        redirect_url = (
+            f"{frontend}/jobseeker/career-agent"
+            f"?checkout_reference={transaction.idempotency_key}&sandbox={outcome.lower()}"
+        )
+        return _redirect_response(redirect_url)
+
+    def _redirect_response(location: str):
+        from flask import redirect
+
+        return redirect(location, code=302)

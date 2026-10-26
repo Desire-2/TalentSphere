@@ -186,12 +186,15 @@ const CompanySettings = () => {
           setPrivacySettings(data);
           break;
         case 'billing':
-          await apiService.updateCompanyBillingSettings(data);
           setBillingSettings(data);
           break;
       }
       
-      toast.success('Settings saved successfully');
+      toast.success(
+        settingsType === 'billing'
+          ? 'Billing settings are read-only on the free plan'
+          : 'Settings saved successfully'
+      );
     } catch (_error) {
       console.error('Error saving settings:', _error);
       toast.error(_error.response?.data?.error || 'Failed to save settings');
@@ -614,15 +617,17 @@ const CompanySettings = () => {
                 <div>
                   <Label>Current Plan</Label>
                   <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="font-medium capitalize">{billingSettings?.subscription_plan || 'basic'}</div>
-                    <div className="text-sm text-gray-600">Billed {billingSettings?.billing_cycle || 'monthly'}</div>
+                    <div className="font-medium capitalize">{billingSettings?.subscription_plan || 'free'}</div>
+                    <div className="text-sm text-gray-600">
+                      {billingSettings?.billing_cycle ? `Billed ${billingSettings.billing_cycle}` : 'No recurring billing'}
+                    </div>
                   </div>
                 </div>
                 
                 <div>
                   <Label>Next Billing Date</Label>
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium">January 15, 2025</div>
+                    <div className="font-medium">None — free plan</div>
                     <div className="text-sm text-gray-600">Auto-renewal enabled</div>
                   </div>
                 </div>
@@ -651,19 +656,22 @@ const CompanySettings = () => {
               </div>
               
               <div className="space-y-4">
-                <Button variant="outline">
+                <p className="text-sm text-gray-600">
+                  This account is on the <strong>free plan</strong>. Billing and credit purchases live in one place.
+                </p>
+                <Button variant="outline" onClick={() => navigate('/employer/ads/billing/credits')}>
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Update Payment Method
+                  Buy Ad Credits
                 </Button>
-                
-                <Button variant="outline">
+
+                <Button variant="outline" onClick={() => navigate('/employer/ads/billing/credits')}>
                   <FileText className="mr-2 h-4 w-4" />
-                  View Billing History
+                  View Credit History
                 </Button>
-                
-                <Button variant="outline">
+
+                <Button variant="outline" onClick={() => navigate('/employer/ads/campaigns')}>
                   <Zap className="mr-2 h-4 w-4" />
-                  Upgrade Plan
+                  Manage Ad Campaigns
                 </Button>
               </div>
             </CardContent>

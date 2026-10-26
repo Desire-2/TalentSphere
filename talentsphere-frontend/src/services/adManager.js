@@ -344,6 +344,32 @@ export const adManagerService = {
     }
   },
 
+  /**
+   * List purchasable credit packs
+   */
+  getCreditPackages: async () => {
+    try {
+      const response = await axiosInstance.get(`${BASE_URL}/credits/packages`);
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to load credit packages');
+    }
+  },
+
+  /**
+   * Start a credit-pack purchase; returns { checkout_url, package, sandbox }
+   */
+  purchaseCredits: async (packageCode) => {
+    try {
+      const response = await axiosInstance.post(`${BASE_URL}/credits/purchase`, {
+        package: packageCode,
+      });
+      return response;
+    } catch (error) {
+      throw normalizeServiceError(error, 'Failed to start credit purchase');
+    }
+  },
+
 };
 
 export default adManagerService;

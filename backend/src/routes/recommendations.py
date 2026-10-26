@@ -744,11 +744,9 @@ def get_api_documentation():
                     "GET /featured-ad-packages": "Get available packages",
                     "POST /featured-ad-packages": "Create package (admin)",
                     "POST /featured-ads": "Create featured ad (employer)",
-                    "POST /payments/{id}/process": "Process payment",
                     "GET /featured-ads": "Get user's featured ads (employer)",
                     "GET /featured-ads/{id}/analytics": "Get ad analytics (employer)",
                     "GET /subscriptions": "Get subscription plans",
-                    "GET /payments": "Get payment history",
                     "POST /featured-ads/{id}/pause": "Pause featured ad (employer)",
                     "POST /featured-ads/{id}/resume": "Resume featured ad (employer)"
                 },

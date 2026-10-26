@@ -8,6 +8,9 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 import hashlib
 import json
+import os
+import time
+import uuid
 from urllib.parse import urlparse
 from sqlalchemy import and_, or_, desc, func
 from sqlalchemy.orm import joinedload
@@ -179,6 +182,92 @@ def safe_decimal(value):
         return Decimal(str(value))
     except:
         return Decimal('0')
+
+
+# ========================
+# AD CREDITS: PACKAGES, BALANCE, SANDBOX CHECKOUT
+# ========================
+
+AD_CREDIT_PACKAGES = {
+    'starter': {'name': 'Starter', 'credits': 10000, 'price_rwf': 10000},
+    'pro': {'name': 'Professional', 'credits': 50000, 'price_rwf': 50000},
+    'business': {'name': 'Business', 'credits': 150000, 'price_rwf': 150000},
+}
+RESERVED_CAMPAIGN_STATUSES = ('DRAFT', 'ACTIVE', 'PAUSED')
+
+
+def _payments_in_sandbox_mode():
+    return os.getenv('CAREER_PAYMENT_PROVIDER', '').strip().lower() == 'sandbox'
+
+
+def _credit_balance(employer_id):
+    """Purchased + granted credits minus spend and refunds."""
+    rows = db.session.query(AdCredit.transaction_type, func.sum(AdCredit.amount)) \
+        .filter(AdCredit.employer_id == employer_id) \
+        .group_by(AdCredit.transaction_type).all()
+    by_type = {t: Decimal(s or 0) for t, s in rows}
+    return (
+        by_type.get('PURCHASE', Decimal('0'))
+        + by_type.get('BONUS', Decimal('0'))
+        - by_type.get('SPEND', Decimal('0'))
+        - by_type.get('REFUND', Decimal('0'))
+    )
+
+
+def _reserved_budget(employer_id):
+    """Remaining budgets of live campaigns (credits already committed to them)."""
+    remaining = db.session.query(
+        func.sum(AdCampaign.budget_total - AdCampaign.budget_spent)
+    ).filter(
+        AdCampaign.employer_id == employer_id,
+        AdCampaign.status.in_(RESERVED_CAMPAIGN_STATUSES)
+    ).scalar()
+    return Decimal(remaining or 0)
+
+
+def _available_credits(employer_id):
+    return _credit_balance(employer_id) - _reserved_budget(employer_id)
+
+
+def _record_credit_spend(campaign, amount, note):
+    """Attach a SPEND ledger row so serve/click spend deducts ad credits."""
+    amount = safe_decimal(amount)
+    if amount <= 0:
+        return
+    db.session.add(AdCredit(
+        employer_id=campaign.employer_id,
+        amount=amount,
+        transaction_type='SPEND',
+        reference_id=f'campaign-{campaign.id}',
+        note=note,
+    ))
+
+
+def _credit_api_base():
+    env_url = (os.getenv('API_BASE_URL') or os.getenv('RENDER_EXTERNAL_URL') or '').rstrip('/')
+    if env_url:
+        return env_url
+    return request.host_url.rstrip('/')
+
+
+def _sign_credit_checkout(payload):
+    from itsdangerous import URLSafeSerializer
+    secret = os.getenv('SECRET_KEY') or 'insecure-dev-secret'
+    return URLSafeSerializer(secret, salt='ad-credit-checkout').dumps(payload)
+
+
+def _load_credit_checkout(token):
+    from itsdangerous import BadSignature, URLSafeSerializer
+    secret = os.getenv('SECRET_KEY') or 'insecure-dev-secret'
+    try:
+        data = URLSafeSerializer(secret, salt='ad-credit-checkout').loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(data, dict):
+        return None
+    if int(data.get('exp') or 0) < int(time.time()):
+        return None
+    return data
 
 
 def _parse_iso_datetime(raw_value, field_name):
@@ -442,6 +531,19 @@ def create_campaign(current_user):
 
         if start_date and end_date and start_date >= end_date:
             return jsonify({'error': 'start_date must be before end_date'}), 400
+        
+        # Prepaid credits: the full budget must be available
+        # (balance minus remaining budgets of this employer's live campaigns)
+        if current_user.role not in ('admin', 'external_admin'):
+            available = _available_credits(current_user.id)
+            if available < budget_total:
+                return jsonify({
+                    'error': 'Insufficient ad credits for this campaign budget.',
+                    'code': 'INSUFFICIENT_CREDITS',
+                    'available_credits': float(available),
+                    'required_credits': float(budget_total),
+                    'upgrade_url': '/employer/ads/billing/credits',
+                }), 403
         
         # Create campaign
         campaign = AdCampaign(
@@ -1391,15 +1493,169 @@ def get_credits(current_user):
         return jsonify({'error': str(e)}), 500
 
 
+@ads_bp.route('/credits/packages', methods=['GET'])
+def list_credit_packages():
+    """Public list of purchasable credit packs."""
+    return jsonify({
+        'packages': [
+            {'code': code, 'name': pack['name'], 'credits': pack['credits'], 'price_rwf': pack['price_rwf']}
+            for code, pack in AD_CREDIT_PACKAGES.items()
+        ]
+    }), 200
+
+
 @ads_bp.route('/credits/purchase', methods=['POST'])
 @token_required
 @role_required('employer')
 def purchase_credits(current_user):
-    """Reject unverified credit purchases until a payment provider exists."""
+    """Start a credit-pack purchase (sandbox provider now; real provider later).
+
+    Returns a hosted checkout URL on this API where success/failure can be
+    simulated. On success an AdCredit PURCHASE ledger row is written.
+    """
+    if not _payments_in_sandbox_mode():
+        return jsonify({
+            'error': 'Online credit purchases are not available yet.',
+            'code': 'PAYMENT_PROVIDER_NOT_CONFIGURED',
+        }), 501
+
+    data = request.get_json(silent=True) or {}
+    code = str(data.get('package') or '').strip().lower()
+    package = AD_CREDIT_PACKAGES.get(code)
+    if not package:
+        return jsonify({
+            'error': 'Unknown credit package.',
+            'code': 'UNKNOWN_PACKAGE',
+            'packages': sorted(AD_CREDIT_PACKAGES.keys()),
+        }), 400
+
+    token = _sign_credit_checkout({
+        'employer_id': current_user.id,
+        'package': code,
+        'exp': int(time.time()) + 1800,
+    })
     return jsonify({
-        'error': 'Online credit purchases are not available yet.',
-        'code': 'PAYMENT_PROVIDER_NOT_CONFIGURED',
-    }), 501
+        'checkout_url': f"{_credit_api_base()}/api/ads/sandbox/checkout/{token}",
+        'package': {'code': code, **package},
+        'sandbox': True,
+    }), 201
+
+
+@ads_bp.route('/admin/credits/grant', methods=['POST'])
+@token_required
+@role_required('admin')
+def admin_grant_credits(current_user):
+    """Grant bonus ad credits to an employer (admin tooling)."""
+    data = request.get_json(silent=True) or {}
+    try:
+        employer_id = int(data.get('employer_id'))
+        amount = safe_decimal(data.get('amount'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'employer_id and amount are required.'}), 400
+    if amount <= 0:
+        return jsonify({'error': 'amount must be greater than 0.'}), 400
+
+    employer = User.query.get(employer_id)
+    if not employer or employer.role != 'employer':
+        return jsonify({'error': 'Employer not found.'}), 404
+
+    grant = AdCredit(
+        employer_id=employer.id,
+        amount=amount,
+        transaction_type='BONUS',
+        reference_id=f'admin-grant-{uuid.uuid4().hex[:16]}',
+        note=str(data.get('note') or f'Bonus credits granted by {current_user.email}'),
+    )
+    db.session.add(grant)
+    db.session.commit()
+    return jsonify({'message': 'Credits granted.', 'credit': grant.to_dict()}), 201
+
+
+# ---------------------------------------------------------------------------
+# Sandbox hosted checkout for ad credits (registered only in sandbox mode)
+# ---------------------------------------------------------------------------
+if _payments_in_sandbox_mode():
+
+    @ads_bp.route('/sandbox/checkout/<token>', methods=['GET'])
+    def ad_sandbox_checkout_page(token):
+        """Local hosted page to simulate a credit-pack purchase."""
+        import html as html_mod
+
+        data = _load_credit_checkout(token)
+        if not data:
+            return (
+                '<!doctype html><meta charset="utf-8"><title>Checkout error</title>'
+                '<body style="font-family:system-ui;padding:40px"><h1>Checkout link invalid or expired</h1>'
+                '<p><a href="/employer/ads/billing/credits">Return to billing</a></p></body>',
+                400, {'Content-Type': 'text/html; charset=utf-8'}
+            )
+
+        package = AD_CREDIT_PACKAGES[data['package']]
+        safe_token = html_mod.escape(token)
+        page = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandbox Checkout — AfriTech Opportunities</title>
+<style>
+ body {{ font-family: system-ui, sans-serif; background:#f1f5f9; display:flex; align-items:center;
+        justify-content:center; min-height:100vh; margin:0; }}
+ .card {{ background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.12);
+         padding:32px; max-width:420px; width:92%; }}
+ .tag {{ display:inline-block; background:#fef3c7; color:#92400e; font-size:12px; font-weight:700;
+        padding:4px 10px; border-radius:999px; letter-spacing:.05em; }}
+ h1 {{ font-size:20px; margin:14px 0 4px; color:#0f172a; }}
+ p {{ color:#475569; font-size:14px; line-height:1.5; }}
+ .amount {{ font-size:26px; font-weight:800; color:#003366; margin:12px 0; }}
+ form {{ margin-top:18px; display:flex; gap:10px; }}
+ button {{ flex:1; padding:12px; border-radius:8px; border:0; font-size:15px; font-weight:600;
+          cursor:pointer; }}
+ .ok {{ background:#16a34a; color:#fff; }} .fail {{ background:#dc2626; color:#fff; }}
+</style></head>
+<body><div class="card">
+ <span class="tag">SANDBOX — NO REAL MONEY</span>
+ <h1>{html_mod.escape(package['name'])} credit pack</h1>
+ <div class="amount">{package['price_rwf']:,} RWF</div>
+ <p>Adds <strong>{package['credits']:,} ad credits</strong> to your account when simulated as successful.</p>
+ <form method="post" action="/api/ads/sandbox/checkout/{safe_token}">
+   <input type="hidden" name="outcome" value="SUCCESS">
+   <button class="ok" type="submit">Simulate success</button>
+ </form>
+ <form method="post" action="/api/ads/sandbox/checkout/{safe_token}">
+   <input type="hidden" name="outcome" value="FAILURE">
+   <button class="fail" type="submit">Simulate failure</button>
+ </form>
+</div></body></html>"""
+        return page, 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+    @ads_bp.route('/sandbox/checkout/<token>', methods=['POST'])
+    def ad_sandbox_checkout_simulate(token):
+        data = _load_credit_checkout(token)
+        if not data:
+            return jsonify({'error': 'Checkout link invalid or expired.'}), 400
+
+        outcome = (request.form.get('outcome') or '').strip().upper()
+        if outcome not in ('SUCCESS', 'FAILURE'):
+            body = request.get_json(silent=True) or {}
+            outcome = str(body.get('outcome') or '').strip().upper()
+        if outcome not in ('SUCCESS', 'FAILURE'):
+            return jsonify({'error': 'outcome must be SUCCESS or FAILURE.'}), 400
+
+        if outcome == 'SUCCESS':
+            package = AD_CREDIT_PACKAGES[data['package']]
+            db.session.add(AdCredit(
+                employer_id=int(data['employer_id']),
+                amount=Decimal(package['price_rwf']),
+                transaction_type='PURCHASE',
+                reference_id=f'pack-{uuid.uuid4().hex[:16]}',
+                note=f"Sandbox purchase: {package['name']} pack ({package['credits']} credits)",
+            ))
+            db.session.commit()
+
+        frontend = (os.getenv('FRONTEND_URL') or '').rstrip('/')
+        return redirect(
+            f"{frontend}/employer/ads/billing/credits?purchase={outcome.lower()}",
+            code=302,
+        )
 
 
 # ========================
@@ -1593,7 +1849,9 @@ def record_impression():
         # Update campaign spend if CPM billing
         if campaign and campaign.billing_type == 'CPM':
             # CPM charges per 1000 impressions
-            campaign.budget_spent += (campaign.bid_amount / Decimal('1000'))
+            spend_delta = (campaign.bid_amount / Decimal('1000'))
+            campaign.budget_spent += spend_delta
+            _record_credit_spend(campaign, spend_delta, 'CPM impression spend')
             if campaign.budget_spent >= campaign.budget_total:
                 campaign.status = 'COMPLETED'
         
@@ -1664,6 +1922,7 @@ def record_click():
         if campaign and campaign.billing_type == 'CPC':
             # CPC charges per click
             campaign.budget_spent += campaign.bid_amount
+            _record_credit_spend(campaign, campaign.bid_amount, 'CPC click spend')
             if campaign.budget_spent >= campaign.budget_total:
                 campaign.status = 'COMPLETED'
         
@@ -2517,14 +2776,19 @@ def admin_overview(current_user):
             for row in top_campaigns_query
         ]
         
-        # Credits and revenue
+        # Credits and revenue: platform revenue = credit packs actually
+        # purchased (bonuses are not collected money).
         total_purchased = db.session.query(func.sum(AdCredit.amount)).filter(
             AdCredit.transaction_type.in_(['PURCHASE', 'BONUS'])
         ).scalar() or Decimal('0')
 
+        total_collected = db.session.query(func.sum(AdCredit.amount)).filter(
+            AdCredit.transaction_type == 'PURCHASE'
+        ).scalar() or Decimal('0')
+
         total_spent_all_time = db.session.query(func.sum(AdAnalyticsDaily.spend)).scalar() or Decimal('0')
 
-        platform_revenue = total_spent_all_time * Decimal('0.2')  # 20% platform cut
+        platform_revenue = total_collected
         
         return jsonify({
             'total_impressions': total_impressions,

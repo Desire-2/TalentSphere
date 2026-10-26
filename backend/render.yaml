@@ -45,6 +45,15 @@ services:
           type: redis
           name: talentsphere-redis
           property: connectionString
+      # Payments: sandbox hosted checkout until a real provider is configured.
+      - key: CAREER_PAYMENT_PROVIDER
+        value: sandbox
+      - key: CAREER_PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: "https://jobs.afritechbridge.online"
+      - key: API_BASE_URL
+        value: "https://talentsphere-ev6o.onrender.com"
 
   - type: redis
     name: talentsphere-redis

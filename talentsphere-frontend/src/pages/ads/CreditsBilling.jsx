@@ -4,12 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   CreditCard,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
   ArrowDownLeft,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -27,10 +29,26 @@ import { toast } from 'sonner';
 
 const CreditsBilling = () => {
   const [credits, setCredits] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [purchasing, setPurchasing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     loadCredits();
+    loadPackages();
+
+    const purchaseResult = searchParams.get('purchase');
+    if (purchaseResult) {
+      if (purchaseResult === 'success') {
+        toast.success('Payment simulated — credits added to your balance');
+      } else {
+        toast.error('Payment simulation failed — no credits were added');
+      }
+      searchParams.delete('purchase');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadCredits = async () => {
@@ -44,6 +62,33 @@ const CreditsBilling = () => {
       setCredits({ balance: 0, transactions: [] });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPackages = async () => {
+    try {
+      const data = await adManagerService.getCreditPackages();
+      setPackages(data?.packages || []);
+    } catch (error) {
+      console.error('Failed to load packages:', error);
+      setPackages([]);
+    }
+  };
+
+  const handlePurchase = async (code) => {
+    try {
+      setPurchasing(code);
+      const data = await adManagerService.purchaseCredits(code);
+      if (data?.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        toast.error('Could not start checkout');
+      }
+    } catch (error) {
+      console.error('Purchase failed:', error);
+      toast.error(error.message || 'Could not start credit purchase');
+    } finally {
+      setPurchasing(null);
     }
   };
 
@@ -65,7 +110,10 @@ const CreditsBilling = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
+    return `RWF ${parseFloat(amount).toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   const formatDate = (dateString) => {
@@ -114,6 +162,48 @@ const CreditsBilling = () => {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Credit Packs */}
+      <Card className={darkCardClass}>
+        <CardHeader className="pb-4 border-b border-[#1b4f86]">
+          <CardTitle className="text-slate-100">Buy Credit Packs</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {packages.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {packages.map((pack) => (
+                <div
+                  key={pack.code}
+                  className="rounded-xl border border-[#1b4f86] bg-[#001F3F]/60 p-4 flex flex-col gap-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-[#1BA398]" />
+                    <span className="font-semibold text-slate-100">{pack.name}</span>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-100">
+                    {formatCurrency(pack.price_rwf)}
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    {Number(pack.credits).toLocaleString()} ad credits
+                  </p>
+                  <Button
+                    size="sm"
+                    className="bg-[#1BA398] hover:bg-[#1BA398]/80 text-white mt-auto"
+                    disabled={purchasing === pack.code}
+                    onClick={() => handlePurchase(pack.code)}
+                  >
+                    {purchasing === pack.code ? 'Starting…' : 'Buy Credits'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-300">
+              Credit packs are not available right now.
+            </p>
+          )}
         </CardContent>
       </Card>
 

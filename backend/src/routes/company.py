@@ -772,16 +772,17 @@ def update_company_privacy_settings(current_user):
 @token_required
 @role_required('employer')
 def get_company_billing_settings(current_user):
-    """Get company billing settings"""
+    """Get company billing settings (honest free-plan state; no paid plans yet)."""
     try:
         settings = {
-            'subscription_plan': 'basic',
-            'billing_cycle': 'monthly',
-            'auto_renewal': True,
+            'subscription_plan': 'free',
+            'billing_cycle': None,
+            'auto_renewal': False,
             'invoice_email': current_user.email,
             'payment_method': None,
             'billing_address': {},
-            'usage_alerts': True
+            'usage_alerts': False,
+            'upgrade_url': '/employer/ads/billing/credits'
         }
         
         return success_response(settings, 'Billing settings retrieved')
@@ -793,16 +794,8 @@ def get_company_billing_settings(current_user):
 @token_required
 @role_required('employer')
 def update_company_billing_settings(current_user):
-    """Update company billing settings"""
-    try:
-        data = request.get_json()
-        
-        # Return updated settings as confirmation
-        settings = data if data else {}
-        return success_response(settings, 'Billing settings updated successfully')
-        
-    except Exception as e:
-        return error_response(str(e), 500, details={'error_type': 'billing_update_error'})
+    """Billing settings are not editable: the platform is on the free plan."""
+    return error_response('Billing settings cannot be changed on the free plan.', 403, details={'code': 'FREE_PLAN'})
 
 @company_bp.route('/my-company/export-data/<data_type>', methods=['GET'])
 @token_required

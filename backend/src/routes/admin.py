@@ -14,6 +14,8 @@ from src.models.company import Company
 from src.models.job import Job, JobCategory
 from src.models.application import Application
 #from src.models.featured_ad import FeaturedAd, Payment
+from src.models.career_agent import CareerPaymentTransaction
+from src.models.ads import AdCredit
 from src.models.notification import Review
 from src.routes.auth import token_required, role_required, invalidate_identity_cache
 from src.services.job_scheduler import job_scheduler
@@ -61,14 +63,43 @@ def get_admin_dashboard(current_user):
         verified_companies = Company.query.filter_by(is_verified=True).count()
         new_companies = Company.query.filter(Company.created_at >= start_date).count()
         
-        # Revenue statistics (Payment model not available, setting to 0)
-        total_revenue = 0
-        period_revenue = 0
+        # Revenue statistics: completed Career Agent payments + ad credit purchases
+        total_revenue = Decimal(str(
+            db.session.query(func.coalesce(func.sum(CareerPaymentTransaction.amount_rwf), 0))
+            .filter(CareerPaymentTransaction.status == 'COMPLETED')
+            .scalar() or 0
+        ))
+        period_revenue = Decimal(str(
+            db.session.query(func.coalesce(func.sum(CareerPaymentTransaction.amount_rwf), 0))
+            .filter(
+                CareerPaymentTransaction.status == 'COMPLETED',
+                CareerPaymentTransaction.created_at >= start_date,
+            )
+            .scalar() or 0
+        ))
+        ad_credit_revenue = Decimal(str(
+            db.session.query(func.coalesce(func.sum(AdCredit.amount), 0))
+            .filter(AdCredit.transaction_type == 'PURCHASE')
+            .scalar() or 0
+        ))
+        period_ad_credit_revenue = Decimal(str(
+            db.session.query(func.coalesce(func.sum(AdCredit.amount), 0))
+            .filter(
+                AdCredit.transaction_type == 'PURCHASE',
+                AdCredit.created_at >= start_date,
+            )
+            .scalar() or 0
+        ))
+        total_revenue += ad_credit_revenue
+        period_revenue += period_ad_credit_revenue
+        pending_payments = CareerPaymentTransaction.query.filter_by(status='PENDING').count()
         
         # Recent activity - convert to simple dicts to avoid serialization issues
         recent_users = User.query.order_by(desc(User.created_at)).limit(5).all()
         recent_jobs = Job.query.order_by(desc(Job.created_at)).limit(5).all()
-        recent_payments = []  # Payment model not available
+        recent_payment_rows = CareerPaymentTransaction.query.order_by(
+            desc(CareerPaymentTransaction.created_at)
+        ).limit(5).all()
         
         admins = total_users - job_seekers - employers
         external_admins = User.query.filter_by(role='external_admin').count()
@@ -86,6 +117,20 @@ def get_admin_dashboard(current_user):
         except Exception as e:
             print(f"Error converting jobs: {e}")
             job_data = []
+        
+        try:
+            payment_data = [{
+                'id': p.id,
+                'amount': float(p.amount_rwf),
+                'currency': p.currency,
+                'plan_code': p.plan_code,
+                'provider': p.provider,
+                'status': p.status,
+                'created_at': p.created_at.isoformat() if p.created_at else None
+            } for p in recent_payment_rows]
+        except Exception as e:
+            print(f"Error converting payments: {e}")
+            payment_data = []
         
         dashboard_data = {
             'overview': {
@@ -133,12 +178,13 @@ def get_admin_dashboard(current_user):
             'revenue_metrics': {
                 'total_revenue': float(total_revenue),
                 'period_revenue': float(period_revenue),
-                'pending_payments': 0  # Payment model not available
+                'ad_credit_revenue': float(ad_credit_revenue),
+                'pending_payments': pending_payments
             },
             'recent_activity': {
                 'users': user_data,
                 'jobs': job_data,
-                'payments': []  # Payment model not available
+                'payments': payment_data
             }
         }
         
@@ -1198,78 +1244,106 @@ def delete_company(current_user, company_id):
 @token_required
 @role_required('admin')
 def get_revenue_analytics(current_user):
-    """Get revenue analytics"""
+    """Get revenue analytics from actual collections:
+    completed Career Agent payments (RWF) + ad credit pack purchases (RWF).
+    """
     try:
         days = request.args.get('days', 30, type=int)
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
-        
-        # Daily revenue for the period
-        daily_revenue = db.session.query(
-            func.date(Payment.created_at).label('date'),
-            func.sum(Payment.amount).label('revenue')
+
+        # Daily Career Agent subscription revenue
+        daily_career = db.session.query(
+            func.date(CareerPaymentTransaction.created_at).label('date'),
+            func.sum(CareerPaymentTransaction.amount_rwf).label('revenue')
         ).filter(
-            and_(
-                Payment.status == 'completed',
-                Payment.created_at >= start_date,
-                Payment.created_at <= end_date
-            )
-        ).group_by(func.date(Payment.created_at)).all()
-        
-        # Revenue by purpose
-        revenue_by_purpose = db.session.query(
-            Payment.purpose,
-            func.sum(Payment.amount).label('revenue'),
-            func.count(Payment.id).label('count')
+            CareerPaymentTransaction.status == 'COMPLETED',
+            CareerPaymentTransaction.created_at >= start_date,
+            CareerPaymentTransaction.created_at <= end_date
+        ).group_by(func.date(CareerPaymentTransaction.created_at)).all()
+
+        # Daily ad credit pack revenue
+        daily_ads = db.session.query(
+            func.date(AdCredit.created_at).label('date'),
+            func.sum(AdCredit.amount).label('revenue')
         ).filter(
-            and_(
-                Payment.status == 'completed',
-                Payment.created_at >= start_date
-            )
-        ).group_by(Payment.purpose).all()
-        
-        # Top paying companies
-        top_companies = db.session.query(
-            Company.name,
-            func.sum(Payment.amount).label('total_spent')
-        ).join(Payment, Company.id == Payment.company_id).filter(
-            and_(
-                Payment.status == 'completed',
-                Payment.created_at >= start_date
-            )
-        ).group_by(Company.id, Company.name).order_by(
-            desc(func.sum(Payment.amount))
+            AdCredit.transaction_type == 'PURCHASE',
+            AdCredit.created_at >= start_date,
+            AdCredit.created_at <= end_date
+        ).group_by(func.date(AdCredit.created_at)).all()
+
+        revenue_by_day = {}
+        for day, revenue in daily_career:
+            revenue_by_day[str(day)] = float(revenue or 0)
+        for day, revenue in daily_ads:
+            key = str(day)
+            revenue_by_day[key] = revenue_by_day.get(key, 0.0) + float(revenue or 0)
+
+        # Revenue by subscription plan
+        revenue_by_plan = db.session.query(
+            CareerPaymentTransaction.plan_code,
+            func.sum(CareerPaymentTransaction.amount_rwf).label('revenue'),
+            func.count(CareerPaymentTransaction.id).label('count')
+        ).filter(
+            CareerPaymentTransaction.status == 'COMPLETED',
+            CareerPaymentTransaction.created_at >= start_date
+        ).group_by(CareerPaymentTransaction.plan_code).all()
+
+        # Top paying users
+        top_payers = db.session.query(
+            User.email,
+            func.sum(CareerPaymentTransaction.amount_rwf).label('total_paid')
+        ).join(
+            CareerPaymentTransaction, User.id == CareerPaymentTransaction.user_id
+        ).filter(
+            CareerPaymentTransaction.status == 'COMPLETED',
+            CareerPaymentTransaction.created_at >= start_date
+        ).group_by(User.id, User.email).order_by(
+            desc(func.sum(CareerPaymentTransaction.amount_rwf))
         ).limit(10).all()
-        
-        # Payment method breakdown
-        payment_methods = db.session.query(
-            Payment.payment_method,
-            func.count(Payment.id).label('count'),
-            func.sum(Payment.amount).label('revenue')
+
+        # Collections by payment provider
+        provider_totals = db.session.query(
+            CareerPaymentTransaction.provider,
+            func.count(CareerPaymentTransaction.id).label('count'),
+            func.sum(CareerPaymentTransaction.amount_rwf).label('revenue')
         ).filter(
-            and_(
-                Payment.status == 'completed',
-                Payment.created_at >= start_date
-            )
-        ).group_by(Payment.payment_method).all()
-        
+            CareerPaymentTransaction.status == 'COMPLETED',
+            CareerPaymentTransaction.created_at >= start_date
+        ).group_by(CareerPaymentTransaction.provider).all()
+
+        # Ad credit collections for the same period
+        ad_credit_total = db.session.query(
+            func.coalesce(func.sum(AdCredit.amount), 0)
+        ).filter(
+            AdCredit.transaction_type == 'PURCHASE',
+            AdCredit.created_at >= start_date
+        ).scalar() or 0
+
         analytics = {
             'daily_revenue': [
-                {'date': str(date), 'revenue': float(revenue)}
-                for date, revenue in daily_revenue
+                {'date': day, 'revenue': revenue}
+                for day, revenue in sorted(revenue_by_day.items())
             ],
             'revenue_by_purpose': [
-                {'purpose': purpose, 'revenue': float(revenue), 'count': count}
-                for purpose, revenue, count in revenue_by_purpose
-            ],
+                {'purpose': f'career_plan:{plan}', 'revenue': float(revenue or 0), 'count': count}
+                for plan, revenue, count in revenue_by_plan
+            ] + ([{
+                'purpose': 'ad_credits',
+                'revenue': float(ad_credit_total),
+                'count': None
+            }] if ad_credit_total else []),
             'top_companies': [
-                {'company': name, 'total_spent': float(total)}
-                for name, total in top_companies
+                {'company': email, 'total_spent': float(total or 0)}
+                for email, total in top_payers
             ],
             'payment_methods': [
-                {'method': method, 'count': count, 'revenue': float(revenue)}
-                for method, count, revenue in payment_methods
-            ]
+                {'method': provider, 'count': count, 'revenue': float(revenue or 0)}
+                for provider, count, revenue in provider_totals
+            ],
+            'total_collected': float(
+                sum(revenue_by_day.values())
+            )
         }
         
         return jsonify(analytics), 200
@@ -1358,7 +1432,7 @@ def get_system_health(current_user):
                 'companies': Company.query.count(),
                 'jobs': Job.query.count(),
                 'applications': Application.query.count(),
-                'payments': Payment.query.count()
+                'payments': CareerPaymentTransaction.query.count()
             },
             'active_records': {
                 'active_users': User.query.filter_by(is_active=True).count(),
@@ -1374,12 +1448,12 @@ def get_system_health(current_user):
             'new_users': User.query.filter(User.created_at >= yesterday).count(),
             'new_jobs': Job.query.filter(Job.created_at >= yesterday).count(),
             'new_applications': Application.query.filter(Application.created_at >= yesterday).count(),
-            'new_payments': Payment.query.filter(Payment.created_at >= yesterday).count()
+            'new_payments': CareerPaymentTransaction.query.filter(CareerPaymentTransaction.created_at >= yesterday).count()
         }
         
         # Error indicators
         error_indicators = {
-            'failed_payments': Payment.query.filter_by(status='failed').count(),
+            'failed_payments': CareerPaymentTransaction.query.filter_by(status='FAILED').count(),
             'inactive_users': User.query.filter_by(is_active=False).count()
         }
         

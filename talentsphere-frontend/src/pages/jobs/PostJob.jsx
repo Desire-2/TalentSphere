@@ -2031,7 +2031,7 @@ const PostJobPage = () => {
         // Show additional success message for users without company profile
         if (!user?.employer_profile?.company_id) {
           setTimeout(() => {
-            toast.info('Pro tip: Complete your company profile to increase applications by up to 40%!', {
+            toast.info('Pro tip: Completing your company profile helps candidates trust your postings.', {
               duration: 7000,
               action: {
                 label: 'Complete Profile',

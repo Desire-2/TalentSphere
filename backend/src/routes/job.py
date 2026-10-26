@@ -98,6 +98,35 @@ def generate_job_slug(title, company_name):
     slug = re.sub(r'\s+', '-', slug)
     return slug.strip('-')
 
+
+# Free tier: active (published) jobs allowed per employer account.
+FREE_JOB_QUOTA = 3
+CLIENT_CREATABLE_STATUSES = ('draft', 'published')
+CLIENT_UPDATABLE_STATUSES = ('draft', 'published', 'paused', 'closed')
+
+
+def _active_job_count(user_id):
+    return Job.query.filter_by(posted_by=user_id, status='published', is_active=True).count()
+
+
+def _enforce_job_quota(user):
+    """Return an error response tuple when the free-tier quota is used up."""
+    if user.role != 'employer':
+        return None
+    active = _active_job_count(user.id)
+    if active >= FREE_JOB_QUOTA:
+        return jsonify({
+            'error': (
+                f'Your plan allows {FREE_JOB_QUOTA} active job postings. '
+                'Close or archive an active job, or upgrade to post more.'
+            ),
+            'code': 'JOB_QUOTA_EXCEEDED',
+            'quota': FREE_JOB_QUOTA,
+            'active_jobs': active,
+            'upgrade_url': '/employer/ads/billing/credits',
+        }), 403
+    return None
+
 @job_bp.route('/job-categories', methods=['GET'])
 def get_job_categories():
     """Get all job categories (cached)"""
@@ -307,6 +336,18 @@ def create_job(current_user):
     """Create a new job posting with comprehensive validation"""
     try:
         data = request.get_json()
+        
+        # Server-side status whitelist: clients may only create drafts or
+        # published jobs (publishing is quota-checked below).
+        requested_status = str(data.get('status') or 'draft').strip().lower()
+        if requested_status not in CLIENT_CREATABLE_STATUSES:
+            return jsonify({'error': 'status must be "draft" or "published"'}), 400
+        data['status'] = requested_status
+
+        # Free-tier quota: max active jobs per employer
+        quota_error = _enforce_job_quota(current_user)
+        if quota_error:
+            return quota_error
         
         # Validate required fields
         required_fields = ['title', 'description', 'employment_type', 'experience_level', 'location_type']
@@ -694,10 +735,17 @@ def update_job(current_user, job_id):
         if 'location_type' in data:
             job.is_remote = data['location_type'] == 'remote'
         
-        # Handle status change
+        # Handle status change (whitelisted; publishing enforces the quota)
         old_status = job.status
         if 'status' in data:
-            job.status = data['status']
+            new_status = str(data['status']).strip().lower()
+            if current_user.role not in ('admin', 'external_admin') and new_status not in CLIENT_UPDATABLE_STATUSES:
+                return jsonify({'error': 'Invalid status value'}), 400
+            if old_status != 'published' and new_status == 'published' and current_user.role == 'employer':
+                quota_error = _enforce_job_quota(current_user)
+                if quota_error:
+                    return quota_error
+            job.status = new_status
             
             # Set published_at when publishing
             if old_status != 'published' and job.status == 'published':

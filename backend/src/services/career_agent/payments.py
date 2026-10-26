@@ -14,6 +14,7 @@ import os
 from typing import Any, Dict, Optional
 
 import requests
+from flask import has_request_context, request
 
 from src.models.career_agent import CareerPaymentTransaction, CareerSubscription, CareerSubscriptionPlan
 from src.models.user import User, db
@@ -111,9 +112,74 @@ class CareerPaymentProvider:
         return hmac.compare_digest(expected, signature.strip())
 
 
+def _api_base_url() -> str:
+    """Absolute base URL of this API, used to build sandbox checkout links."""
+    env_url = (os.getenv("API_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if env_url:
+        return env_url
+    if has_request_context():
+        return request.host_url.rstrip("/")
+    return ""
+
+
+class SandboxPaymentProvider:
+    """Local simulated checkout provider (CAREER_PAYMENT_PROVIDER=sandbox).
+
+    create_checkout returns a hosted page on this API where the user can
+    simulate success/failure; verify() reads the simulated outcome stored on
+    the transaction. Swap to the HTTP adapter later by changing the env var —
+    no code changes.
+    """
+
+    provider_name = "sandbox"
+
+    @property
+    def configured(self) -> bool:
+        return True
+
+    def create_checkout(self, transaction: CareerPaymentTransaction, user: User, plan: CareerSubscriptionPlan) -> Dict[str, Any]:
+        provider_reference = f"sandbox-{transaction.id}"
+        api_base = _api_base_url()
+        checkout_url = f"{api_base}/api/career-agent/sandbox/checkout/{provider_reference}"
+        return {
+            "checkout_url": checkout_url,
+            "provider_reference": provider_reference,
+            "provider_payload": {"sandbox": True, "checkout_url": checkout_url},
+        }
+
+    def verify(self, transaction: CareerPaymentTransaction) -> Dict[str, Any]:
+        try:
+            payload = json.loads(transaction.provider_payload_json or "{}")
+        except (TypeError, ValueError):
+            payload = {}
+        simulated = str(payload.get("simulated_status") or "").upper()
+        if simulated != "SUCCESS":
+            raise CareerPaymentError("Sandbox payment has not been completed.")
+        if int(transaction.amount_rwf or 0) <= 0:
+            raise CareerPaymentError("Verified payment amount does not match the selected plan.")
+        return {
+            "provider_reference": transaction.provider_reference or "",
+            "payload": {"status": "SUCCESS", "amount_verified": True, "currency": "RWF", "sandbox": True},
+        }
+
+    def verify_webhook_signature(self, raw_body: bytes, signature: str) -> bool:
+        secret = os.getenv("CAREER_PAYMENT_WEBHOOK_SECRET") or ""
+        if not secret or not signature:
+            return False
+        expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature.strip())
+
+
+def build_payment_provider() -> CareerPaymentProvider | SandboxPaymentProvider:
+    """Provider selection is deployment configuration, never request data."""
+    if os.getenv("CAREER_PAYMENT_PROVIDER", "").strip().lower() == "sandbox":
+        return SandboxPaymentProvider()
+    return CareerPaymentProvider()
+
+
 class CareerPaymentService:
-    def __init__(self, provider: CareerPaymentProvider | None = None):
-        self.provider = provider or CareerPaymentProvider()
+    def __init__(self, provider: CareerPaymentProvider | SandboxPaymentProvider | None = None):
+        self.provider = provider or build_payment_provider()
 
     def start_checkout(self, *, user: User, plan_code: str, idempotency_key: str) -> Dict[str, Any]:
         CareerPlanService.ensure_seeded()

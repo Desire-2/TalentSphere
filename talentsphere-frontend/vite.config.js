@@ -55,7 +55,11 @@ export default defineConfig(({ _command, mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return undefined;
-            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'react';
+            // Exact package paths only: a substring check like '/react/' would
+            // also capture @emotion/react and drag its @emotion/* deps into the
+            // react chunk, creating a react<->vendor circular chunk dependency
+            // (TDZ ReferenceError: Cannot access 'X' before initialization).
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react';
             if (id.includes('/react-router') || id.includes('@remix-run')) return 'router';
             if (id.includes('/recharts/') || id.includes('/d3-')) return 'charts';
             if (id.includes('/@mui/') || id.includes('/@emotion/')) return 'mui';

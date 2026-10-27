@@ -1464,6 +1464,15 @@ def bulk_import_external_jobs(current_user):
                     except ValueError:
                         pass  # Use default expiry
                 
+                # Server-side status whitelist (same contract as create_job)
+                requested_status = str(job_info.get('status') or 'published').strip().lower()
+                if requested_status not in CLIENT_CREATABLE_STATUSES:
+                    failed_imports.append({
+                        'job_title': job_info['title'],
+                        'error': 'status must be "draft" or "published"'
+                    })
+                    continue
+
                 # Create external job
                 job = Job(
                     company_id=None,  # External jobs don't have company profiles
@@ -1471,8 +1480,8 @@ def bulk_import_external_jobs(current_user):
                     posted_by=current_user.id,
                     title=job_info['title'].strip(),
                     slug=slug,
-                    description=job_info['description'].strip(),
-                    summary=job_info.get('summary', '').strip() if job_info.get('summary') else None,
+                    description=sanitize_html(job_info['description'].strip()),
+                    summary=sanitize_html(job_info.get('summary', '').strip()) if job_info.get('summary') else None,
                     employment_type=job_info['employment_type'],
                     experience_level=job_info.get('experience_level', 'mid'),
                     education_requirement=job_info.get('education_requirement', '').strip() if job_info.get('education_requirement') else None,
@@ -1494,7 +1503,7 @@ def bulk_import_external_jobs(current_user):
                     application_url=job_info.get('application_url'),
                     application_email=job_info.get('application_email'),
                     application_instructions=job_info.get('application_instructions', '').strip() if job_info.get('application_instructions') else None,
-                    status=job_info.get('status', 'published'),
+                    status=requested_status,
                     expires_at=expires_at,
                     # External job specific fields
                     job_source='external',
@@ -1533,6 +1542,26 @@ def bulk_import_external_jobs(current_user):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to bulk import jobs', 'details': str(e)}), 500
+
+
+@job_bp.route('/jobs/<int:job_id>/track-external-click', methods=['POST'])
+@token_required
+def track_external_click(current_user, job_id):
+    """Count an external application click (no schema change: uses application_count)."""
+    try:
+        job = Job.query.filter_by(id=job_id, status='published', is_active=True).first()
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        if job.job_source != 'external' or job.application_type != 'external':
+            return jsonify({'error': 'Not an external job'}), 400
+
+        job.application_count = (job.application_count or 0) + 1
+        db.session.commit()
+        invalidate_job_caches()
+        return jsonify({'status': 'tracked'}), 200
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to track click'}), 500
 
 
 # ==================== BOOKMARKS ENDPOINTS ====================

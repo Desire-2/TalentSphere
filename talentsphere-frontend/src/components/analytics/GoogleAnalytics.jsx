@@ -5,11 +5,14 @@ import { CONSENT_EVENT, getAnalyticsConsent } from '../../utils/consent';
 // Google Analytics configuration
 const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID;
 
-// Initialize Google Analytics
+// Initialize Google Analytics (once — repeat consent changes must not
+// re-inject the loader or duplicate the config / page_view hit)
+let gaInitialized = false;
 export const initGA = () => {
-  if (!GA_TRACKING_ID) {
+  if (!GA_TRACKING_ID || gaInitialized) {
     return;
   }
+  gaInitialized = true;
 
   // Load Google Analytics script
   const script = document.createElement('script');

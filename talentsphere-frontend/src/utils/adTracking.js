@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import config from '../config/environment.js';
+import { CONSENT_EVENT, getAdsConsent } from './consent.js';
 
 // Ad tracking module version - increment to force build cache invalidation
 export const AD_TRACKING_VERSION = '1.0.1';
@@ -87,12 +88,21 @@ export function initializeAdTracking() {
 // GOOGLE ADS TRACKING
 // ===========================
 
-// Initialize Google Ads conversion tracking
+// Initialize Google Ads conversion tracking (consent-gated + idempotent)
 export const initGoogleAds = () => {
   const gtagId = import.meta.env.VITE_GOOGLE_ADS_GTAG_ID;
-  
+
   if (!gtagId) {
-    console.warn('Google Ads GTAG ID not found. Set VITE_GOOGLE_ADS_GTAG_ID in your environment variables.');
+    return;
+  }
+
+  // Never load Google tags before advertising consent is granted
+  if (!getAdsConsent()) {
+    return;
+  }
+
+  // Only inject the loader once
+  if (document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${gtagId}"]`)) {
     return;
   }
 
@@ -108,7 +118,7 @@ export const initGoogleAds = () => {
     window.dataLayer.push(arguments);
   }
   window.gtag = gtag;
-  
+
   gtag('js', new Date());
   gtag('config', gtagId);
 };
@@ -236,11 +246,18 @@ export const trackAdPageView = (pageName, adSlots = []) => {
 // React hook for ad tracking
 export const useAdTracking = () => {
   const location = useLocation();
+  const [adsConsented, setAdsConsented] = useState(() => getAdsConsent());
 
   useEffect(() => {
-    // Initialize Google Ads on mount
-    initGoogleAds();
+    const onConsent = () => setAdsConsented(getAdsConsent());
+    window.addEventListener(CONSENT_EVENT, onConsent);
+    return () => window.removeEventListener(CONSENT_EVENT, onConsent);
   }, []);
+
+  useEffect(() => {
+    // Initialize Google Ads on mount, only after advertising consent
+    if (adsConsented) initGoogleAds();
+  }, [adsConsented]);
 
   useEffect(() => {
     // Track page views for ad optimization

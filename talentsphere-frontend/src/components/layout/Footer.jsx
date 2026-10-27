@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Briefcase, Mail, Phone, MapPin } from 'lucide-react';
+import { openCookieConsent } from '../../utils/consent';
 
 const Footer = () => {
   return (
@@ -142,6 +143,13 @@ const Footer = () => {
               <Link to="/cookies" className="hover:text-[#FF6B35] transition-colors underline underline-offset-2">
                 Cookie Policy
               </Link>
+              <button
+                type="button"
+                onClick={openCookieConsent}
+                className="hover:text-[#FF6B35] transition-colors underline underline-offset-2"
+              >
+                Cookie Preferences
+              </button>
             </div>
           </div>
         </div>

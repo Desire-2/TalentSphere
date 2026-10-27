@@ -1,17 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAdsConsent, getAnalyticsConsent, hasAnyConsent, setConsent } from '../../utils/consent';
+import {
+  CONSENT_OPEN_EVENT,
+  getAdPersonalizationConsent,
+  getAdsConsent,
+  getAnalyticsConsent,
+  hasAnyConsent,
+  setConsent,
+} from '../../utils/consent';
 
 const CookieConsent = () => {
   const [visible, setVisible] = useState(() => !hasAnyConsent());
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [ads, setAds] = useState(() => getAdsConsent());
   const [analytics, setAnalytics] = useState(() => getAnalyticsConsent());
+  const [adPersonalization, setAdPersonalization] = useState(() => getAdPersonalizationConsent());
+
+  useEffect(() => {
+    const onOpen = () => {
+      setAds(getAdsConsent());
+      setAnalytics(getAnalyticsConsent());
+      setAdPersonalization(getAdPersonalizationConsent());
+      setVisible(true);
+    };
+    window.addEventListener(CONSENT_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(CONSENT_OPEN_EVENT, onOpen);
+  }, []);
 
   if (!visible) return null;
 
-  const save = (nextAds, nextAnalytics) => {
-    setConsent({ ads: nextAds, analytics: nextAnalytics });
+  const save = (nextAds, nextAnalytics, nextAdPersonalization) => {
+    setConsent({ ads: nextAds, analytics: nextAnalytics, adPersonalization: nextAdPersonalization });
     setVisible(false);
   };
 
@@ -41,6 +60,15 @@ const CookieConsent = () => {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    checked={adPersonalization}
+                    onChange={(e) => setAdPersonalization(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Ads personalization (show ads based on your activity)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
                     checked={analytics}
                     onChange={(e) => setAnalytics(e.target.checked)}
                     className="rounded border-gray-300"
@@ -54,21 +82,21 @@ const CookieConsent = () => {
           <div className="mt-4 sm:mt-0 flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
             <button
               type="button"
-              onClick={() => save(true, true)}
+              onClick={() => save(true, true, true)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
             >
               Accept all
             </button>
             <button
               type="button"
-              onClick={() => save(false, false)}
+              onClick={() => save(false, false, false)}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
             >
               Reject non-essential
             </button>
             <button
               type="button"
-              onClick={() => (detailsOpen ? save(ads, analytics) : setDetailsOpen(true))}
+              onClick={() => (detailsOpen ? save(ads, analytics, adPersonalization) : setDetailsOpen(true))}
               className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50"
             >
               {detailsOpen ? 'Save choices' : 'Customize'}

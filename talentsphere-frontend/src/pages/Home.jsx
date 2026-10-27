@@ -37,7 +37,6 @@ import apiService from '../services/api';
 import { scholarshipService } from '../services/scholarship';
 import SEOHelmet from '../components/seo/SEOHelmet';
 import { generateWebsiteStructuredData, generateKeywords } from '../utils/seoUtils';
-import { LeaderboardAd, ResponsiveAd, SquareAd } from '../components/ads/AdComponents';
 import AdSlot from '../components/ads/AdSlot';
 
 // Helper function to convert snake_case to Title Case

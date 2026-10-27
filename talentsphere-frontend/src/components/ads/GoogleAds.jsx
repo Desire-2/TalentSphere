@@ -1,5 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CONSENT_EVENT, getAdsConsent } from '../../utils/consent';
+
+// Module-level singleton: inject the AdSense loader script exactly once,
+// regardless of how many <GoogleAds> instances mount.
+let adsenseScriptInjected = false;
+const loadAdSenseScript = (adClient) => {
+  if (adsenseScriptInjected) return;
+  if (document.querySelector('script[data-ats-adsense]')) {
+    adsenseScriptInjected = true;
+    return;
+  }
+  const script = document.createElement('script');
+  script.async = true;
+  script.crossOrigin = 'anonymous';
+  script.setAttribute('data-ats-adsense', 'true');
+  script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adClient)}`;
+  script.onerror = () => {
+    console.warn('Failed to load Google AdSense script');
+  };
+  document.head.appendChild(script);
+  adsenseScriptInjected = true;
+};
+
+// Official AdSense queue pattern: pushes are queued on window.adsbygoogle and
+// processed by the loader whenever it finishes loading (no timing race).
+const queueAdPush = (ins) => {
+  if (!ins || ins.dataset.atsPushed === 'true') return;
+  ins.dataset.atsPushed = 'true';
+  try {
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  } catch (error) {
+    console.warn('Error initializing Google Ad:', error);
+    ins.dataset.atsPushed = '';
+  }
+};
 
 const GoogleAds = ({
   adSlot,
@@ -12,6 +46,7 @@ const GoogleAds = ({
   adTest = import.meta.env.MODE === 'development' ? 'on' : 'off'
 }) => {
   const adClient = import.meta.env.VITE_GOOGLE_ADS_CLIENT_ID;
+  const insRef = useRef(null);
   const [consented, setConsented] = useState(() => getAdsConsent());
 
   useEffect(() => {
@@ -20,34 +55,18 @@ const GoogleAds = ({
     return () => window.removeEventListener(CONSENT_EVENT, onConsent);
   }, []);
 
+  const active = Boolean(consented && adClient && adSlot);
+
   useEffect(() => {
-    if (!consented || !adClient) return;
+    if (!active) return;
+    loadAdSenseScript(adClient);
+  }, [active, adClient]);
 
-    // Load Google AdSense script if not already loaded
-    if (!window.adsbygoogle) {
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
-      script.crossOrigin = 'anonymous';
-      script.onerror = () => {
-        console.warn('Failed to load Google AdSense script');
-      };
-      document.head.appendChild(script);
-    }
-
-    const initializeAd = () => {
-      try {
-        if (window.adsbygoogle && adClient && adSlot) {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        }
-      } catch (error) {
-        console.warn('Error initializing Google Ad:', error);
-      }
-    };
-
-    const timer = setTimeout(initializeAd, 100);
-    return () => clearTimeout(timer);
-  }, [consented, adClient, adSlot]);
+  useEffect(() => {
+    if (!active) return;
+    // Effect runs after DOM commit, so the <ins> is in place for the queue push.
+    queueAdPush(insRef.current);
+  }, [active]);
 
   // Don't render without client/slot, or before ad consent
   if (!adClient || !adSlot || !consented) {
@@ -60,6 +79,7 @@ const GoogleAds = ({
   }
 
   const adProps = {
+    ref: insRef,
     className: `adsbygoogle ${className}`,
     style: { display: 'block', ...style },
     'data-ad-client': adClient,

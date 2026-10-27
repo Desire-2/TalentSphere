@@ -97,14 +97,13 @@ export const MultiplexAd = ({ className = '', style = {} }) => (
   />
 );
 
-// Job listing sponsored ad
+// Job listing sponsored ad (Google unit — Google renders its own "Ad" label;
+// no custom "Sponsored" wrapper so it stays visually distinct from house ads)
 export const JobSponsoredAd = ({ className = '', style = {} }) => (
-  <div className={`bg-blue-50 border border-blue-200 rounded-lg p-4 ${className}`}>
-    <div className="text-xs text-blue-600 mb-2 font-medium">Sponsored</div>
-    <GoogleAds
-      adSlot={AD_SLOTS.jobSponsored}
-      adFormat="auto"
-      style={{ minHeight: '150px', ...style }}
-    />
-  </div>
+  <GoogleAds
+    adSlot={AD_SLOTS.jobSponsored}
+    adFormat="auto"
+    className={className}
+    style={{ minHeight: '150px', ...style }}
+  />
 );

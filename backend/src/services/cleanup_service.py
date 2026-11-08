@@ -14,6 +14,9 @@ from sqlalchemy.exc import OperationalError
 from src.models.user import db
 from src.models.job import Job
 from src.models.scholarship import Scholarship
+from src.models.career_agent import CareerTargetJob
+from src.models.notification import Notification, Message, Review
+from src.models.application import ApplicationQuestion
 
 
 class CleanupService:
@@ -156,7 +159,10 @@ class CleanupService:
             if not expired_jobs:
                 self.logger.debug("No external jobs to delete")
                 return 0
-            
+
+            job_ids = [job.id for job in expired_jobs]
+            self._detach_job_references(job_ids)
+
             deleted_count = 0
             deleted_jobs_info = []
             
@@ -279,6 +285,40 @@ class CleanupService:
             self._reset_session()
             self.logger.exception("❌ Error in cleanup_external_scholarships")
             return 0
+
+    def _detach_job_references(self, job_ids: List[int]) -> None:
+        """Clear FK rows that would block hard-deleting the given jobs.
+
+        Career snapshots, notifications, messages, and reviews keep their own
+        content; only the job link is nulled. Application questions belong to
+        the job and are removed with it.
+        """
+        if not job_ids:
+            return
+
+        id_list = tuple(job_ids)
+
+        CareerTargetJob.query.filter(
+            CareerTargetJob.platform_job_id.in_(id_list)
+        ).update({CareerTargetJob.platform_job_id: None}, synchronize_session=False)
+
+        Notification.query.filter(
+            Notification.related_job_id.in_(id_list)
+        ).update({Notification.related_job_id: None}, synchronize_session=False)
+
+        Message.query.filter(
+            Message.related_job_id.in_(id_list)
+        ).update({Message.related_job_id: None}, synchronize_session=False)
+
+        Review.query.filter(
+            Review.job_id.in_(id_list)
+        ).update({Review.job_id: None}, synchronize_session=False)
+
+        ApplicationQuestion.query.filter(
+            ApplicationQuestion.job_id.in_(id_list)
+        ).delete(synchronize_session=False)
+
+        db.session.flush()
 
     def _reset_session(self):
         """Rollback a failed operation without masking the original failure."""

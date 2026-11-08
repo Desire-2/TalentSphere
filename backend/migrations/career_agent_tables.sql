@@ -75,7 +75,7 @@ CREATE INDEX IF NOT EXISTS ix_career_imported_documents_review_status ON career_
 CREATE TABLE IF NOT EXISTS career_target_jobs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
-    platform_job_id INTEGER REFERENCES jobs(id),
+    platform_job_id INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
     source_type VARCHAR(30) NOT NULL,
     title VARCHAR(500) NOT NULL,
     employer_name VARCHAR(300),

@@ -260,7 +260,11 @@ class CareerTargetJob(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
-    platform_job_id = db.Column(db.Integer, db.ForeignKey("jobs.id"), nullable=True, index=True)
+    # Expired platform jobs are hard-deleted by cleanup; keep the career
+    # snapshot and only unlink the live job reference.
+    platform_job_id = db.Column(
+        db.Integer, db.ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     source_type = db.Column(db.String(30), nullable=False)  # platform, pasted, general
     title = db.Column(db.String(500), nullable=False)
     employer_name = db.Column(db.String(300))
@@ -274,7 +278,11 @@ class CareerTargetJob(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     user = db.relationship("User", backref=db.backref("career_target_jobs", lazy="dynamic"))
-    platform_job = db.relationship("Job", backref=db.backref("career_target_snapshots", lazy="dynamic"))
+    platform_job = db.relationship(
+        "Job",
+        backref=db.backref("career_target_snapshots", lazy="dynamic", passive_deletes=True),
+        passive_deletes=True,
+    )
 
     def get_snapshot(self):
         return _json_loads(self.source_snapshot_json, {})
@@ -808,4 +816,53 @@ def ensure_career_agent_indexes() -> None:
     """
     for statement in CAREER_AGENT_INDEX_SQL:
         db.session.execute(db.text(statement))
+    ensure_career_target_job_fk()
     db.session.commit()
+
+
+def ensure_career_target_job_fk() -> None:
+    """Point career_target_jobs.platform_job_id at ON DELETE SET NULL.
+
+    Cleanup hard-deletes expired external jobs. Older databases created the
+    foreign key with the default NO ACTION rule, so any career snapshot that
+    still referenced the job blocked the whole delete batch. Snapshots keep
+    their own title/description/analysis; only the live job link is cleared.
+
+    SQLite (tests) gets the rule from ``create_all()`` via the model DDL.
+    PostgreSQL needs an explicit constraint swap on existing tables.
+    """
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+
+    row = db.session.execute(
+        db.text(
+            """
+            SELECT c.confdeltype
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE n.nspname = current_schema()
+              AND t.relname = 'career_target_jobs'
+              AND c.contype = 'f'
+              AND c.conname = 'career_target_jobs_platform_job_id_fkey'
+            """
+        )
+    ).first()
+    # confdeltype: n = SET NULL, others need a swap.
+    if row is not None and row[0] == "n":
+        return
+
+    db.session.execute(
+        db.text(
+            "ALTER TABLE career_target_jobs "
+            "DROP CONSTRAINT IF EXISTS career_target_jobs_platform_job_id_fkey"
+        )
+    )
+    db.session.execute(
+        db.text(
+            "ALTER TABLE career_target_jobs "
+            "ADD CONSTRAINT career_target_jobs_platform_job_id_fkey "
+            "FOREIGN KEY (platform_job_id) REFERENCES jobs(id) ON DELETE SET NULL"
+        )
+    )

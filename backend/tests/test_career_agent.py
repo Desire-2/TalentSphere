@@ -237,7 +237,7 @@ class EntitlementTests(CareerAgentTestBase):
         response = self.client.get("/api/career-agent/usage", headers=self.auth)
         self.assertFalse(response.get_json()["can_generate_new_package"])
 
-        payload = {"target_job": {"title": "Another Role", "description": "x"}, "idempotency_key": f"gen-{uuid.uuid4().hex[:10]}"}
+        payload = {"target_job": {"title": "Another Role", "description": "x"}, "idempotency_key": f"gen-{uuid.uuid4().hex[:10]}", "template_key": "modern_professional"}
         blocked = self.client.post("/api/career-agent/generate", headers={**self.auth, "Content-Type": "application/json"}, data=json.dumps(payload))
         self.assertEqual(blocked.status_code, 402)
         self.assertEqual(blocked.get_json()["code"], "GENERATION_ENTITLEMENT_REQUIRED")

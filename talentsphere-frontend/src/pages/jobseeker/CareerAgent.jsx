@@ -12,16 +12,40 @@ import apiService from '../../services/api';
 import { careerAgentService } from '../../services/careerAgentService';
 import './CareerAgent.css';
 
+// Mirrors backend/src/services/career_agent/templates.py — keys must match the
+// server registry exactly; the server rejects any other template_key.
 const TEMPLATE_OPTIONS = [
   { key: 'modern_professional', label: 'Modern', hint: 'Balanced, recruiter-friendly' },
-  { key: 'ats_safe', label: 'ATS Professional', hint: 'Clean parsing and predictable reading order' },
-  { key: 'executive', label: 'Executive', hint: 'Leadership presence' },
-  { key: 'graduate', label: 'Graduate', hint: 'Education-forward structure' },
+  { key: 'ats_safe', label: 'ATS Professional', hint: 'Maximum parse safety, neutral ink' },
+  { key: 'executive', label: 'Executive', hint: 'Leadership presence, serif polish' },
+  { key: 'graduate', label: 'Graduate', hint: 'Education-forward, approachable' },
   { key: 'technical', label: 'Technical', hint: 'Skills and project emphasis' },
   { key: 'ngo_development', label: 'Development', hint: 'Program and field impact' },
   { key: 'academic_research', label: 'Academic', hint: 'Research and publications first' },
   { key: 'minimal', label: 'Minimal', hint: 'Quiet, typography-led' },
+  { key: 'creative_professional', label: 'Creative', hint: 'Distinctive but print-safe' },
+  { key: 'international_professional', label: 'International', hint: 'Clean, globally neutral' },
 ];
+
+// Designs that render in grayscale regardless of the accent color.
+const GRAYSCALE_TEMPLATES = new Set(['ats_safe', 'minimal']);
+
+// Default accent per design (mirrors the backend registry) so switching
+// templates keeps colors in step with the design unless the user customized.
+const TEMPLATE_DEFAULT_ACCENTS = {
+  modern_professional: '#0f766e',
+  ats_safe: '#1a1a1a',
+  executive: '#1e3a5f',
+  graduate: '#2563a6',
+  technical: '#2563a6',
+  ngo_development: '#37624a',
+  academic_research: '#8a3346',
+  minimal: '#333333',
+  creative_professional: '#0f766e',
+  international_professional: '#1e3a5f',
+};
+
+const templateDefaultAccent = (key) => TEMPLATE_DEFAULT_ACCENTS[key] || '#0f766e';
 
 const ACCENT_OPTIONS = [
   ['Ink', '#17212b'], ['Slate', '#425466'], ['Teal', '#0f766e'],
@@ -425,8 +449,8 @@ function Paywall({ reason }) {
   return <section className="ca-paywall"><div className="ca-paywall-copy"><SectionLabel>More applications</SectionLabel><h2>Ready for another tailored package?</h2><p>{reason || 'Your saved documents stay editable and exportable. Choose a plan when you want to prepare another role-specific package.'}</p></div><div className="ca-free-paid"><span><CheckCircle2 size={15} /> Edit saved documents <strong>Free</strong></span><span><Target size={15} /> New package <strong>Plan required</strong></span></div><div className="ca-plan-grid">{plans.filter((plan) => !plan.is_free).map((plan) => <article key={plan.code} className="ca-plan"><span>{plan.name}</span><strong>{Number(plan.price_rwf).toLocaleString()} <small>RWF</small></strong><p>{plan.description}</p><Button className="ca-button ca-button--primary" disabled={Boolean(busyPlan)} onClick={() => subscribe(plan.code)}>{busyPlan === plan.code ? <Loader2 className="ca-spin" size={15} /> : 'Choose plan'}</Button></article>)}</div>{error && <div className="ca-error"><AlertTriangle size={16} /> {error}</div>}<p className="ca-paywall-footnote">Payment is verified server-side before a new package is unlocked.</p></section>;
 }
 
-function GeneratorPanel({ jobId, jobTitle, targetJob, activePackage, targetChoice, setTargetChoice, pastedJob, setPastedJob, canGenerate, generationSubmitting, onGenerate, onClose }) {
-  return <section className="ca-generator-panel"><div className="ca-generator-heading"><div><SectionLabel>New application</SectionLabel><h2>Choose your starting point</h2><p>Use a platform opportunity, paste a role, or create a general CV.</p></div>{activePackage && <IconButton label="Close new application" onClick={onClose}><X size={17} /></IconButton>}</div><div className="ca-generator-grid"><div className="ca-target-options"><button type="button" className={cn('ca-target-option', targetChoice === 'platform' && 'ca-target-option--active')} disabled={!jobId} onClick={() => setTargetChoice('platform')}><span className="ca-option-index">01</span><span><strong>{jobId ? 'Use this AfriTech opportunity' : 'Choose an AfriTech opportunity'}</strong><small>{jobId ? targetJob?.title || jobTitle : 'Open a job first to connect it to this application.'}</small></span><ChevronRight size={16} /></button><button type="button" className={cn('ca-target-option', targetChoice === 'pasted' && 'ca-target-option--active')} onClick={() => setTargetChoice('pasted')}><span className="ca-option-index">02</span><span><strong>Paste a job description</strong><small>Use a role you found elsewhere.</small></span><ChevronRight size={16} /></button><button type="button" className={cn('ca-target-option', targetChoice === 'general' && 'ca-target-option--active')} onClick={() => setTargetChoice('general')}><span className="ca-option-index">03</span><span><strong>Create a general CV</strong><small>A solid starting point without a target role.</small></span><ChevronRight size={16} /></button></div>{targetChoice === 'pasted' && <div className="ca-pasted-job"><label>Role title<input value={pastedJob.title} onChange={(event) => setPastedJob((previous) => ({ ...previous, title: event.target.value }))} placeholder="e.g. Backend Engineer" /></label><label>Employer <span className="ca-field-caption">Optional</span><input value={pastedJob.employer} onChange={(event) => setPastedJob((previous) => ({ ...previous, employer: event.target.value }))} placeholder="Company name" /></label><label>Job description <span className="ca-field-caption">Optional, but useful for a closer match</span><textarea value={pastedJob.description} onChange={(event) => setPastedJob((previous) => ({ ...previous, description: event.target.value }))} rows={5} placeholder="Paste the role details here…" /></label></div>}{targetChoice !== 'pasted' && <div className="ca-generator-note"><Target size={18} /><div><strong>Written only from evidence you can check.</strong><span>Your chosen role stays attached to the package, and every fact comes from your profile or a document you confirmed — never from a guess.</span></div></div>}</div><div className="ca-generator-footer"><span>{canGenerate === false ? 'Choose a plan above to create another package.' : 'Editing and exporting saved documents never uses another generation.'}</span><Button className="ca-button ca-button--primary" disabled={generationSubmitting || !targetChoice || (targetChoice === 'pasted' && !pastedJob.title.trim()) || canGenerate === false} onClick={onGenerate}>{generationSubmitting ? 'Preparing…' : 'Prepare my application'} <ArrowRight size={16} /></Button></div></section>;
+function GeneratorPanel({ jobId, jobTitle, targetJob, activePackage, targetChoice, setTargetChoice, pastedJob, setPastedJob, templateChoice, setTemplateChoice, canGenerate, generationSubmitting, onGenerate, onClose }) {
+  return <section className="ca-generator-panel"><div className="ca-generator-heading"><div><SectionLabel>New application</SectionLabel><h2>Choose your starting point</h2><p>Use a platform opportunity, paste a role, or create a general CV.</p></div>{activePackage && <IconButton label="Close new application" onClick={onClose}><X size={17} /></IconButton>}</div><div className="ca-generator-grid"><div className="ca-target-options"><button type="button" className={cn('ca-target-option', targetChoice === 'platform' && 'ca-target-option--active')} disabled={!jobId} onClick={() => setTargetChoice('platform')}><span className="ca-option-index">01</span><span><strong>{jobId ? 'Use this AfriTech opportunity' : 'Choose an AfriTech opportunity'}</strong><small>{jobId ? targetJob?.title || jobTitle : 'Open a job first to connect it to this application.'}</small></span><ChevronRight size={16} /></button><button type="button" className={cn('ca-target-option', targetChoice === 'pasted' && 'ca-target-option--active')} onClick={() => setTargetChoice('pasted')}><span className="ca-option-index">02</span><span><strong>Paste a job description</strong><small>Use a role you found elsewhere.</small></span><ChevronRight size={16} /></button><button type="button" className={cn('ca-target-option', targetChoice === 'general' && 'ca-target-option--active')} onClick={() => setTargetChoice('general')}><span className="ca-option-index">03</span><span><strong>Create a general CV</strong><small>A solid starting point without a target role.</small></span><ChevronRight size={16} /></button></div>{targetChoice === 'pasted' && <div className="ca-pasted-job"><label>Role title<input value={pastedJob.title} onChange={(event) => setPastedJob((previous) => ({ ...previous, title: event.target.value }))} placeholder="e.g. Backend Engineer" /></label><label>Employer <span className="ca-field-caption">Optional</span><input value={pastedJob.employer} onChange={(event) => setPastedJob((previous) => ({ ...previous, employer: event.target.value }))} placeholder="Company name" /></label><label>Job description <span className="ca-field-caption">Optional, but useful for a closer match</span><textarea value={pastedJob.description} onChange={(event) => setPastedJob((previous) => ({ ...previous, description: event.target.value }))} rows={5} placeholder="Paste the role details here…" /></label></div>}{targetChoice !== 'pasted' && <div className="ca-generator-note"><Target size={18} /><div><strong>Written only from evidence you can check.</strong><span>Your chosen role stays attached to the package, and every fact comes from your profile or a document you confirmed — never from a guess.</span></div></div>}</div><div className="ca-generator-templates"><div className="ca-generator-template-heading"><span className="ca-option-index">04</span><span><strong>Choose a design</strong><small>Required — your CV and cover letter are built in this style. You can switch designs later without losing content.</small></span></div><div className="ca-template-grid" role="radiogroup" aria-label="Document design">{TEMPLATE_OPTIONS.map((item) => <button key={item.key} type="button" role="radio" aria-checked={templateChoice === item.key} className={cn('ca-template-card', templateChoice === item.key && 'ca-template-card--active')} onClick={() => setTemplateChoice(item.key)}><span className="ca-template-mini" data-template={item.key} aria-hidden="true"><span className="ca-template-mini-name" /><span className="ca-template-mini-rule" /><span className="ca-template-mini-line" /><span className="ca-template-mini-line ca-template-mini-line--short" /><span className="ca-template-mini-line" /></span><strong>{item.label}</strong><small>{item.hint}</small>{templateChoice === item.key && <Check size={14} className="ca-template-card-check" />}</button>)}</div></div><div className="ca-generator-footer"><span>{!templateChoice ? 'Select a design above to continue.' : canGenerate === false ? 'Choose a plan above to create another package.' : 'Editing and exporting saved documents never uses another generation.'}</span><Button className="ca-button ca-button--primary" disabled={generationSubmitting || !targetChoice || !templateChoice || (targetChoice === 'pasted' && !pastedJob.title.trim()) || canGenerate === false} onClick={onGenerate}>{generationSubmitting ? 'Preparing…' : 'Prepare my application'} <ArrowRight size={16} /></Button></div></section>;
 }
 
 function WorkspaceLoading() {
@@ -601,13 +625,13 @@ function applyReplacement(content, selectedText, replacement) {
 }
 
 function DocumentPreview({ document: doc, selectedSectionId }) {
-  const [zoom, setZoom] = useState(100); const [page, setPage] = useState(0); const content = doc?.content || {}; const header = content.header || {}; const isCover = doc?.document_type === 'COVER_LETTER'; const pages = useMemo(() => { const sourceSections = content.sections || []; return isCover ? [sourceSections] : Array.from({ length: Math.max(1, Math.ceil(sourceSections.length / 4)) }, (_, index) => sourceSections.slice(index * 4, index * 4 + 4)); }, [content.sections, isCover]); const safePage = Math.min(page, pages.length - 1); const accent = doc?.settings?.accent_color || doc?.accent_color || '#0f766e';
+  const [zoom, setZoom] = useState(100); const [page, setPage] = useState(0); const content = doc?.content || {}; const header = content.header || {}; const isCover = doc?.document_type === 'COVER_LETTER'; const pages = useMemo(() => { const sourceSections = content.sections || []; return isCover ? [sourceSections] : Array.from({ length: Math.max(1, Math.ceil(sourceSections.length / 4)) }, (_, index) => sourceSections.slice(index * 4, index * 4 + 4)); }, [content.sections, isCover]); const safePage = Math.min(page, pages.length - 1); const template = doc?.settings?.template_key || doc?.template_key || 'modern_professional'; const accent = GRAYSCALE_TEMPLATES.has(template) ? templateDefaultAccent(template) : (doc?.settings?.accent_color || doc?.accent_color || '#0f766e');
   useEffect(() => { const index = pages.findIndex((items) => items.some((section) => section.id === selectedSectionId)); if (index >= 0) setPage(index); }, [selectedSectionId, pages]);
-  return <div className="ca-preview"><div className="ca-preview-toolbar"><div className="ca-preview-controls"><IconButton label="Zoom out" onClick={() => setZoom((value) => Math.max(70, value - 10))}><ZoomOut size={16} /></IconButton><button type="button" className="ca-zoom-value" onClick={() => setZoom(100)}>{zoom}%</button><IconButton label="Zoom in" onClick={() => setZoom((value) => Math.min(130, value + 10))}><ZoomIn size={16} /></IconButton><button type="button" className="ca-fit-button" onClick={() => setZoom(100)}>Fit</button></div><div className="ca-page-controls"><IconButton label="Previous page" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft size={16} /></IconButton><span>Page {safePage + 1} / {pages.length}</span><IconButton label="Next page" disabled={safePage >= pages.length - 1} onClick={() => setPage((value) => Math.min(pages.length - 1, value + 1))}><ChevronRight size={16} /></IconButton></div></div><div className="ca-paper-stage"><article className="ca-paper" style={{ '--paper-accent': accent, transform: `scale(${zoom / 100})` }}><div className="ca-paper-inner"><header className="ca-paper-header"><h1>{header.name || 'Your Name'}</h1>{header.professional_title && <p className="ca-paper-role">{header.professional_title}</p>}<p className="ca-paper-contact">{[header.email, header.phone, header.location].filter(Boolean).join(' · ')}{header.links?.length ? ` · ${header.links.join(' · ')}` : ''}</p></header>{isCover ? <CoverLetterPreview content={content} name={header.name} /> : <div className="ca-paper-sections">{content.summary && <section className="ca-paper-section" data-doc-section="summary"><h2 style={{ color: accent }}>Profile</h2><p>{content.summary}</p></section>}{pages[safePage]?.map((section) => <PaperSection key={section.id || section.title} section={section} accent={accent} selected={section.id === selectedSectionId} />)}</div>}</div></article></div></div>;
+  return <div className="ca-preview"><div className="ca-preview-toolbar"><div className="ca-preview-controls"><IconButton label="Zoom out" onClick={() => setZoom((value) => Math.max(70, value - 10))}><ZoomOut size={16} /></IconButton><button type="button" className="ca-zoom-value" onClick={() => setZoom(100)}>{zoom}%</button><IconButton label="Zoom in" onClick={() => setZoom((value) => Math.min(130, value + 10))}><ZoomIn size={16} /></IconButton><button type="button" className="ca-fit-button" onClick={() => setZoom(100)}>Fit</button></div><div className="ca-page-controls"><IconButton label="Previous page" disabled={safePage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft size={16} /></IconButton><span>Page {safePage + 1} / {pages.length}</span><IconButton label="Next page" disabled={safePage >= pages.length - 1} onClick={() => setPage((value) => Math.min(pages.length - 1, value + 1))}><ChevronRight size={16} /></IconButton></div></div><div className="ca-paper-stage"><article className="ca-paper" data-template={template} style={{ '--paper-accent': accent, transform: `scale(${zoom / 100})` }}><div className="ca-paper-inner"><header className="ca-paper-header"><h1>{header.name || 'Your Name'}</h1>{header.professional_title && <p className="ca-paper-role">{header.professional_title}</p>}<p className="ca-paper-contact">{[header.email, header.phone, header.location].filter(Boolean).join(' · ')}{header.links?.length ? ` · ${header.links.join(' · ')}` : ''}</p></header>{isCover ? <CoverLetterPreview content={content} name={header.name} /> : <div className="ca-paper-sections">{content.summary && <section className="ca-paper-section" data-doc-section="summary"><h2>Profile</h2><p>{content.summary}</p></section>}{pages[safePage]?.map((section) => <PaperSection key={section.id || section.title} section={section} selected={section.id === selectedSectionId} />)}</div>}</div></article></div></div>;
 }
 
-function PaperSection({ section, accent, selected }) {
-  return <section className={cn('ca-paper-section', selected && 'ca-paper-section--selected')} data-doc-section={section.id}><h2 style={{ color: accent }}>{section.title}</h2>{(section.entries || []).map((entry, index) => <div key={entry.id || index} className="ca-paper-entry">{(entry.heading || entry.subheading) && <div className="ca-paper-entry-heading"><strong>{entry.heading}</strong><span>{[entry.dates, entry.location].filter(Boolean).join(' · ')}</span></div>}{entry.subheading && <p className="ca-paper-subheading">{entry.subheading}</p>}{entry.text && <p>{entry.text}</p>}{entry.bullets?.length > 0 && <ul>{entry.bullets.map((bullet, bulletIndex) => <li key={bullet.id || bulletIndex}>{bullet.text}</li>)}</ul>}</div>)}</section>;
+function PaperSection({ section, selected }) {
+  return <section className={cn('ca-paper-section', selected && 'ca-paper-section--selected')} data-doc-section={section.id}><h2>{section.title}</h2>{(section.entries || []).map((entry, index) => <div key={entry.id || index} className="ca-paper-entry">{(entry.heading || entry.subheading) && <div className="ca-paper-entry-heading"><strong>{entry.heading}</strong><span>{[entry.dates, entry.location].filter(Boolean).join(' · ')}</span></div>}{entry.subheading && <p className="ca-paper-subheading">{entry.subheading}</p>}{entry.text && <p>{entry.text}</p>}{entry.bullets?.length > 0 && <ul>{entry.bullets.map((bullet, bulletIndex) => <li key={bullet.id || bulletIndex}>{bullet.text}</li>)}</ul>}</div>)}</section>;
 }
 
 function CoverLetterPreview({ content, name }) {
@@ -631,7 +655,7 @@ function SectionEditor({ section, onTitleChange, onEntryChange, onBulletChange, 
 
 function TemplateSettings({ settings, doc, onChange }) {
   const template = settings.template_key || doc?.template_key || 'modern_professional'; const mode = settings.document_mode || doc?.document_mode || 'ats_safe'; const accent = settings.accent_color || doc?.accent_color || '#0f766e';
-  return <div className="ca-settings-panel"><div className="ca-tool-heading"><Settings2 size={17} /><div><strong>Document settings</strong><span>Keep the style professional on screen and in print.</span></div></div><label className="ca-setting-label">Template<select value={template} onChange={(event) => onChange({ template_key: event.target.value })}>{TEMPLATE_OPTIONS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label><div className="ca-mode-setting"><span className="ca-field-caption">Document style</span><label className={cn('ca-mode-option', mode === 'ats_safe' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'ats_safe'} onChange={() => onChange({ document_mode: 'ats_safe' })} /><span><strong>ATS Professional</strong><small>Predictable reading order and recruiter-friendly formatting.</small></span></label><label className={cn('ca-mode-option', mode === 'visual_professional' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'visual_professional'} onChange={() => onChange({ document_mode: 'visual_professional' })} /><span><strong>Modern Professional</strong><small>More visual hierarchy while staying practical to print.</small></span></label></div><div className="ca-color-setting"><span className="ca-field-caption">Accent color</span><div className="ca-color-options">{ACCENT_OPTIONS.map(([label, value]) => <button type="button" key={value} className={cn('ca-color-swatch', accent === value && 'ca-color-swatch--active')} style={{ backgroundColor: value }} aria-label={label} title={label} onClick={() => onChange({ accent_color: value })}>{accent === value && <Check size={13} />}</button>)}</div></div></div>;
+  return <div className="ca-settings-panel"><div className="ca-tool-heading"><Settings2 size={17} /><div><strong>Document settings</strong><span>Keep the style professional on screen and in print.</span></div></div><label className="ca-setting-label">Template<select value={template} onChange={(event) => onChange({ template_key: event.target.value })}>{TEMPLATE_OPTIONS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label><div className="ca-mode-setting"><span className="ca-field-caption">Document style</span><label className={cn('ca-mode-option', mode === 'ats_safe' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'ats_safe'} onChange={() => onChange({ document_mode: 'ats_safe' })} /><span><strong>ATS Professional</strong><small>Predictable reading order and recruiter-friendly formatting.</small></span></label><label className={cn('ca-mode-option', mode === 'visual_professional' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'visual_professional'} onChange={() => onChange({ document_mode: 'visual_professional' })} /><span><strong>Modern Professional</strong><small>More visual hierarchy while staying practical to print.</small></span></label></div>{!GRAYSCALE_TEMPLATES.has(template) && <div className="ca-color-setting"><span className="ca-field-caption">Accent color</span><div className="ca-color-options">{ACCENT_OPTIONS.map(([label, value]) => <button type="button" key={value} className={cn('ca-color-swatch', accent === value && 'ca-color-swatch--active')} style={{ backgroundColor: value }} aria-label={label} title={label} onClick={() => onChange({ accent_color: value })}>{accent === value && <Check size={13} />}</button>)}</div></div>}</div>;
 }
 
 function WritingAssistant({ text, setText, busy, result, onRun, onUse }) {
@@ -717,11 +741,16 @@ function DocumentEditor({ document: doc, package: pkg, onExport, exporting, onBa
     }, 900);
   }, [flushSave]);
 
-  useEffect(() => () => {
-    mountedRef.current = false;
-    clearTimeout(saveTimer.current);
-    const pending = pendingSaveRef.current;
-    if (pending) careerAgentService.autosaveDocument(doc.id, pending).catch(() => {});
+  useEffect(() => {
+    // Re-arm on mount: StrictMode's dev-only mount→unmount→mount cycle would
+    // otherwise leave mountedRef false forever, pinning the save indicator.
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(saveTimer.current);
+      const pending = pendingSaveRef.current;
+      if (pending) careerAgentService.autosaveDocument(doc.id, pending).catch(() => {});
+    };
   }, [doc.id]);
 
   const update = (updater) => setContent((previous) => {
@@ -732,6 +761,15 @@ function DocumentEditor({ document: doc, package: pkg, onExport, exporting, onBa
   });
   const updateSettings = (patch) => {
     const next = { ...settings, ...patch };
+    // Switching designs carries the palette with it when the accent still
+    // matches the previous design's default (or the design is grayscale);
+    // a custom accent the user picked is preserved.
+    if (patch.template_key && patch.template_key !== (settings.template_key || doc?.template_key || 'modern_professional')) {
+      const previousKey = settings.template_key || doc?.template_key || 'modern_professional';
+      const currentAccent = (settings.accent_color || doc?.accent_color || '#0f766e').toLowerCase();
+      const followedDefault = GRAYSCALE_TEMPLATES.has(previousKey) || currentAccent === templateDefaultAccent(previousKey);
+      if (followedDefault) next.accent_color = templateDefaultAccent(patch.template_key);
+    }
     setSettings(next);
     setDirty(true);
     queueSave(contentRef.current, next);
@@ -902,6 +940,7 @@ export default function CareerAgent() {
   const [generating, setGenerating] = useState(null);
   const [error, setError] = useState(null);
   const [targetChoice, setTargetChoice] = useState(hasValidJobId ? 'platform' : 'general');
+  const [templateChoice, setTemplateChoice] = useState(null);
   const [pastedJob, setPastedJob] = useState({ title: '', description: '', employer: '' });
   const [showGenerator, setShowGenerator] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -1066,15 +1105,19 @@ export default function CareerAgent() {
       setError('Choose a valid opportunity before preparing this application.');
       return;
     }
+    if (!templateChoice) {
+      setError('Choose a document template before preparing this application.');
+      return;
+    }
     generationRequestRef.current = true;
     setGenerationSubmitting(true);
     setError(null);
     const idempotencyKey = getIdempotencyKey();
     const payload = targetChoice === 'platform'
-      ? { jobId: numericJobId, idempotencyKey }
+      ? { jobId: numericJobId, idempotencyKey, templateKey: templateChoice }
       : targetChoice === 'pasted'
-        ? { targetJob: { ...pastedJob }, idempotencyKey }
-        : { targetJob: { general: true, title: 'General CV' }, idempotencyKey };
+        ? { targetJob: { ...pastedJob }, idempotencyKey, templateKey: templateChoice }
+        : { targetJob: { general: true, title: 'General CV' }, idempotencyKey, templateKey: templateChoice };
     try {
       const result = await careerAgentService.generate(payload);
       setGenerating(result.package);
@@ -1188,6 +1231,8 @@ export default function CareerAgent() {
                 setTargetChoice={setTargetChoice}
                 pastedJob={pastedJob}
                 setPastedJob={setPastedJob}
+                templateChoice={templateChoice}
+                setTemplateChoice={setTemplateChoice}
                 canGenerate={canGenerate}
                 generationSubmitting={generationSubmitting}
                 onGenerate={startGeneration}

@@ -14,6 +14,7 @@ from .prompts.cover_letter import build_cover_letter_prompt
 from .prompts.cv_content import build_cv_content_prompt
 from .prompts.cv_strategy import build_cv_strategy_prompt
 from .prompts.humanization import build_humanization_prompt
+from .templates import TEMPLATE_KEYS  # noqa: F401  (re-exported; single source is templates.py)
 from .schemas import (
     SchemaValidationError,
     clean_list,
@@ -45,19 +46,6 @@ HUMANIZE_RETRIES = int(_env_number("CAREER_AGENT_HUMANIZE_RETRIES", 1, minimum=0
 # Matches the change list cap in the validator: a refinement pass never rewrites
 # more than this many passages, which keeps the reply small and bounded.
 MAX_REWRITES = 20
-
-
-TEMPLATE_KEYS = {
-    "executive",
-    "modern_professional",
-    "minimal",
-    "technical",
-    "creative_professional",
-    "graduate",
-    "academic_research",
-    "ngo_development",
-    "international_professional",
-}
 
 
 def evidence_ids(candidate: Dict[str, Any]) -> List[str]:

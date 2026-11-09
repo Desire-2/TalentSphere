@@ -54,6 +54,7 @@ from src.services.career_agent.payments import CareerPaymentError, CareerPayment
 from src.services.career_agent.profile_intelligence import CareerProfileService
 from src.services.career_agent.nvidia_client import AIProviderError, AIProviderUnavailable, AIRateLimited
 from src.services.career_agent.schemas import SchemaValidationError, clean_list, clean_text, json_object
+from src.services.career_agent.templates import is_valid_template, template_catalog_payload
 
 career_agent_bp = Blueprint("career_agent", __name__, url_prefix="/api/career-agent")
 
@@ -504,6 +505,12 @@ def _ai_log_failure(user_id: int, stage_key: str, exc: BaseException):
 # ---------------------------------------------------------------------------
 # Generation lifecycle
 # ---------------------------------------------------------------------------
+@career_agent_bp.route("/templates", methods=["GET"])
+def list_document_templates():
+    """Public catalog of registered CV and cover-letter designs."""
+    return jsonify({"templates": template_catalog_payload()}), 200
+
+
 @career_agent_bp.route("/generate", methods=["POST"])
 @limiter.limit(GENERATE_LIMITS)
 @token_required
@@ -513,6 +520,17 @@ def generate_package(current_user):
     idempotency_key = clean_text(data.get("idempotency_key"), maximum=128)
     if not idempotency_key:
         return _error("An idempotency key is required for generation requests.", 400, "IDEMPOTENCY_KEY_REQUIRED")
+    # A design must be chosen before any work starts: the template selected
+    # here is stored on the package and later locked into every export.
+    template_key = clean_text(data.get("template_key"), maximum=80)
+    if not template_key:
+        return _error(
+            "Choose a document template before generating. Every package starts from a selected design.",
+            400,
+            "TEMPLATE_REQUIRED",
+        )
+    if not is_valid_template(template_key):
+        return _error("That document template is not available.", 400, "TEMPLATE_INVALID")
     allowed, usage = orchestrator.entitlements.can_generate_document_package(current_user.id)
     if not allowed:
         return _error(
@@ -532,7 +550,7 @@ def generate_package(current_user):
             user=current_user,
             target_data=data,
             idempotency_key=idempotency_key,
-            template_key=clean_text(data.get("template_key"), maximum=80) or None,
+            template_key=template_key,
             document_mode=clean_text(data.get("document_mode"), maximum=30) or None,
         )
         # Render before committing. Committing expires the package, its target
@@ -835,6 +853,10 @@ def _save_working_content(document: CareerDocument, data: dict) -> None:
         document.working_settings_json = serialized_settings
         template = clean_text(settings.get("template_key"), maximum=80)
         if template:
+            # Designs are locked to the registry: a document can only ever
+            # store a registered template key, so exports stay renderable.
+            if not is_valid_template(template):
+                raise SchemaValidationError("That document template is not available.")
             document.template_key = template
         mode = clean_text(settings.get("document_mode"), maximum=30)
         if mode in {"ats_safe", "visual_professional"}:

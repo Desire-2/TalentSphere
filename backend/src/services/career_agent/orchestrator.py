@@ -56,6 +56,7 @@ from .nvidia_client import (
 from .profile_intelligence import CareerProfileService
 from .quality import ATSQualityService, FinalQAAgent
 from .schemas import SchemaValidationError
+from .templates import DEFAULT_TEMPLATE_KEY, get_template, is_valid_template
 
 STAGE_SEQUENCE = [
     ("profile_intelligence", "Reading your profile"),
@@ -149,12 +150,22 @@ class CareerDocumentOrchestrator:
         # needs that lock, and taking it now saves a second lookup per request.
         career_profile = self.profile_service.get_or_create(user.id, lock=True)
         preferences = career_profile.get_document_preferences()
+        # The route validates the requested template; direct service callers may
+        # pass anything, so resolve through the registry and fall back to the
+        # stored preference only when the request did not name a real design.
+        requested_template = template_key if is_valid_template(template_key) else None
+        if requested_template is None:
+            for candidate in (preferences.get("preferred_template_key"), career_profile.preferred_template_key):
+                if is_valid_template(candidate):
+                    requested_template = candidate
+                    break
+        requested_template = requested_template or DEFAULT_TEMPLATE_KEY
         package = CareerDocumentPackage(
             user_id=user.id,
             target_job_id=target.id,
             idempotency_key=idempotency_key,
             status="PENDING",
-            requested_template_key=template_key or preferences.get("preferred_template_key") or career_profile.preferred_template_key or "modern_professional",
+            requested_template_key=requested_template,
             requested_document_mode=document_mode or preferences.get("preferred_document_mode") or career_profile.preferred_document_mode or "ats_safe",
             language=career_profile.preferred_language or "en",
         )
@@ -517,10 +528,13 @@ class CareerDocumentOrchestrator:
             document = existing_docs.get(document_type)
             if document and document.user_id != user.id:
                 raise GenerationPipelineError("Document ownership mismatch.", code="OWNERSHIP_MISMATCH")
+            # Both documents share the package's selected design; the accent is
+            # the design's default so CV and cover letter always match.
+            design = get_template(strategy.get("template_key") or package.requested_template_key)
             settings = {
-                "template_key": strategy.get("template_key") or package.requested_template_key,
+                "template_key": design.key,
                 "document_mode": package.requested_document_mode,
-                "accent_color": "#0F766E",
+                "accent_color": design.default_accent,
             }
             if not document:
                 document = CareerDocument(

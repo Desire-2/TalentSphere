@@ -1,4 +1,10 @@
-"""Server-side selectable-text PDF, DOCX, and TXT rendering."""
+"""Server-side selectable-text PDF, DOCX, and TXT rendering.
+
+Designs come exclusively from the template registry (templates.py): the
+renderer resolves the stored `template_key` to a registered design and
+never accepts a design from the export request itself, so a download can
+only ever contain the design saved on the document.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,8 @@ from html import escape
 from io import BytesIO
 import re
 from typing import Any, Dict, Iterable, List, Tuple
+
+from .templates import DEFAULT_TEMPLATE_KEY, get_template
 
 
 class CareerDocumentRenderError(RuntimeError):
@@ -28,6 +36,15 @@ def _safe_filename(value: str) -> str:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+_ACCENT_RE = re.compile(r"^#[0-9A-Fa-f]{3,8}$")
+
+
+def _safe_accent(value: Any, fallback: str) -> str:
+    """Accent colors are CSS values; only accept literal hex codes."""
+    candidate = _text(value)
+    return candidate if _ACCENT_RE.match(candidate) else fallback
 
 
 def _paragraphs(value: str) -> str:
@@ -185,28 +202,25 @@ class CareerDocumentRenderer:
         return "\n".join(lines).strip() + "\n"
 
     def _html(self, document_type: str, content: Dict[str, Any], settings: Dict[str, Any]) -> str:
-        template_key = _text(settings.get("template_key") or settings.get("template") or "modern_professional")
+        # Resolve through the registry: only registered designs render, and the
+        # design used is the one stored in the document's settings.
+        design = get_template(_text(settings.get("template_key") or settings.get("template")) or None)
         mode = _text(settings.get("document_mode") or "ats_safe")
-        accent = _text(settings.get("accent_color") or "#0F766E")
+        accent = design.default_accent if design.grayscale else _safe_accent(settings.get("accent_color"), design.default_accent)
         header = content.get("header", {})
-        header_html = self._header_html(header, template_key, accent, mode)
+        header_html = self._header_html(header)
         body_html = self._cover_html(content) if document_type == "COVER_LETTER" else self._cv_html(content)
-        return f"""<!doctype html>
-<html><head><meta charset=\"utf-8\"><style>
-@page {{ size: A4; margin: 12mm 14mm 14mm; @bottom-center {{ content: counter(page); color: #777; font-size: 8pt; }} }}
+        base_css = f"""@page {{ size: A4; margin: 12mm 14mm 14mm; @bottom-center {{ content: counter(page); color: #777; font-size: 8pt; }} }}
 * {{ box-sizing: border-box; }}
 body {{ color: #18212f; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.42; margin: 0; }}
-.document {{ max-width: 182mm; margin: 0 auto; }}
-.header {{ border-bottom: 2px solid {accent}; padding: 0 0 8px; margin-bottom: 11px; }}
-.header.executive {{ border-bottom-width: 1px; text-align: left; }}
-.header.minimal {{ border-bottom-color: #333; }}
-.header.creative_professional {{ background: #f7fbfa; padding: 10px 12px; border-left: 5px solid {accent}; border-bottom: 0; }}
+.document {{ max-width: 182mm; margin: 0 auto; --doc-accent: {escape(accent, quote=True)}; }}
+.header {{ border-bottom: 2px solid var(--doc-accent); padding: 0 0 8px; margin-bottom: 11px; }}
 .name {{ font-size: 22pt; letter-spacing: -.4pt; font-weight: 700; color: #102a43; margin: 0; }}
-.role {{ color: {accent}; font-size: 10.5pt; font-weight: 600; margin-top: 2px; }}
+.role {{ color: var(--doc-accent); font-size: 10.5pt; font-weight: 600; margin-top: 2px; }}
 .contact {{ color: #52616b; font-size: 8.5pt; margin-top: 5px; }}
 .contact a {{ color: inherit; text-decoration: none; }}
 .section {{ break-inside: avoid; margin: 0 0 10px; }}
-.section-title {{ color: {accent}; font-size: 10.5pt; font-weight: 700; letter-spacing: .7pt; margin: 0 0 5px; padding-bottom: 2px; border-bottom: 1px solid #d8e1e7; text-transform: uppercase; }}
+.section-title {{ color: var(--doc-accent); font-size: 10.5pt; font-weight: 700; letter-spacing: .7pt; margin: 0 0 5px; padding-bottom: 2px; border-bottom: 1px solid #d8e1e7; text-transform: uppercase; }}
 .entry {{ break-inside: avoid; margin: 0 0 7px; }}
 .entry-head {{ display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }}
 .entry-sub {{ color: #3b4b5b; font-weight: 600; }}
@@ -214,13 +228,17 @@ body {{ color: #18212f; font-family: Arial, Helvetica, sans-serif; font-size: 10
 p {{ margin: 3px 0; }} ul {{ margin: 3px 0 0 15px; padding: 0; }} li {{ margin: 1.5px 0; }}
 .cover {{ font-size: 10.5pt; line-height: 1.5; }} .recipient {{ margin-bottom: 13px; }} .subject {{ font-weight: 700; margin: 10px 0; }}
 .ats-safe .header {{ border-bottom-color: #34495e; }} .ats-safe .section-title {{ color: #222; }}
-</style></head><body><main class=\"document {escape(mode)}\">{header_html}{body_html}</main></body></html>"""
+"""
+        return f"""<!doctype html>
+<html><head><meta charset=\"utf-8\"><style>
+{base_css}
+{design.css}</style></head><body><main class=\"document {escape(mode)} tpl-{escape(design.key)}\">{header_html}{body_html}</main></body></html>"""
 
     @staticmethod
-    def _header_html(header: Dict[str, Any], template_key: str, accent: str, mode: str) -> str:
+    def _header_html(header: Dict[str, Any]) -> str:
         contact_items = [_text(header.get("email")), _text(header.get("phone")), _text(header.get("location"))] + [_text(link) for link in header.get("links", [])]
         contact = " · ".join(escape(item) for item in contact_items if item)
-        return f"<header class=\"header {escape(template_key)}\"><h1 class=\"name\">{escape(_text(header.get('name')))}</h1><div class=\"role\">{escape(_text(header.get('professional_title')))}</div><div class=\"contact\">{contact}</div></header>"
+        return f"<header class=\"header\"><h1 class=\"name\">{escape(_text(header.get('name')))}</h1><div class=\"role\">{escape(_text(header.get('professional_title')))}</div><div class=\"contact\">{contact}</div></header>"
 
     @staticmethod
     def _cv_html(content: Dict[str, Any]) -> str:

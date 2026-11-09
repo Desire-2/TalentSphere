@@ -359,8 +359,12 @@ class CareerProfileService:
             missing.append("Skills")
         return missing
 
-    def readiness(self, user: User) -> Dict[str, Any]:
-        candidate = self.candidate_profile(user)
+    def readiness(self, user: User, *, candidate: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        """Profile-readiness view. Pass ``candidate`` (e.g. from career
+        memory) to avoid re-scanning the profile tables when the caller
+        already has a current candidate."""
+        if candidate is None:
+            candidate = self.candidate_profile(user)
         missing = candidate["missing_information"]
         all_checks = [
             ("contact", "Contact details", not any(item in missing for item in ["Email address", "Phone number"])),

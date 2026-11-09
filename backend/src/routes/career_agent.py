@@ -194,25 +194,15 @@ def _start_generation_thread(package_id: int) -> None:
 @role_required("job_seeker", "admin")
 def get_career_profile(current_user):
     try:
-        readiness = profile_service.readiness(current_user)
-        # Readiness synchronizes the user's current profile into the Career
-        # Agent evidence tables, so this GET intentionally commits that sync.
-        # The freshly scanned candidate is handed straight to the memory
-        # builder so the profile tables are not read a second time.
-        try:
-            readiness["memory"] = memory_service.sync(current_user, candidate=readiness["candidate"])
-        except Exception as sync_exc:  # memory must never break the readiness view
-            db.session.rollback()
-            current_app.logger.warning("Career memory sync failed: %s", sync_exc)
-            readiness["memory"] = {
-                "profile_version": None,
-                "synced_version": None,
-                "stale": True,
-                "rebuilt": False,
-                "persisted": False,
-                "last_synced_at": None,
-                "sync_error": str(sync_exc)[:500],
-            }
+        # Read the persisted career memory first: a fresh memory already
+        # mirrors the profile, so readiness is computed from it with zero
+        # profile-table reads. The stored memory rebuilds (one profile scan
+        # + evidence sync) only when a profile change made it stale.
+        # get_candidate handles the rebuild and degrades gracefully if the
+        # rebuild cannot be persisted.
+        candidate, memory_meta = memory_service.get_candidate(current_user.id)
+        readiness = profile_service.readiness(current_user, candidate=candidate)
+        readiness["memory"] = memory_meta
         db.session.commit()
         return jsonify(readiness), 200
     except SQLAlchemyError:

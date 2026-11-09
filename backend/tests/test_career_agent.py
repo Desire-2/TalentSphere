@@ -352,6 +352,10 @@ class ProfileIntelligenceTests(CareerAgentTestBase):
                     technical_skills=json.dumps(["Python", "Flask"]),
                     soft_skills=json.dumps(["Communication"]),
                 ))
+                # Direct DB writes bypass the route hooks; bump the memory
+                # version exactly the way every real profile write does.
+                from src.services.career_agent.memory import notify_profile_changed
+                notify_profile_changed(self.user_id)
                 db.session.commit()
 
         response = self.client.get("/api/career-agent/profile", headers=self.auth)
@@ -1805,6 +1809,11 @@ class CareerMemoryTests(CareerAgentTestBase):
             profile.desired_position = "Backend Engineer"
             profile.years_of_experience = 3
             profile.technical_skills = json.dumps(["Python", "Flask"])
+            # This test edits the profile table directly, which no production
+            # write path does; mark memory stale the way those paths would so
+            # the GET below rebuilds and sees the new title.
+            from src.services.career_agent.memory import notify_profile_changed
+            notify_profile_changed(self.user_id)
             db.session.commit()
 
         response = self.client.get("/api/career-agent/profile", headers=self.auth)
@@ -2072,6 +2081,30 @@ class CareerMemoryHardeningTests(CareerAgentTestBase):
             self.assertTrue(failed_rows, "a failed provider call must be audited")
             self.assertEqual(failed_rows[0].stage_key, "cv_content")
             self.assertEqual(failed_rows[0].error_code, "AI_PROVIDER_ERROR")
+
+    # ── profile reads must be memory-backed after the first build ───────────
+    def test_repeated_profile_reads_serve_readiness_from_memory(self):
+        from src.services.career_agent.profile_intelligence import CareerProfileService
+
+        first = self.client.get("/api/career-agent/profile", headers=self.auth)
+        self.assertEqual(first.status_code, 200)
+        first_data = first.get_json()
+
+        # A second page load with no profile change in between must not
+        # re-read the ten profile tables or rewrite the evidence mirror —
+        # readiness comes straight from the stored agent memory.
+        with mock.patch.object(
+            CareerProfileService, "candidate_profile",
+            side_effect=AssertionError("profile tables were rescanned"),
+        ):
+            second = self.client.get("/api/career-agent/profile", headers=self.auth)
+        self.assertEqual(second.status_code, 200)
+        second_data = second.get_json()
+        self.assertFalse(second_data["memory"]["rebuilt"])
+        self.assertFalse(second_data["memory"]["stale"])
+        self.assertTrue(second_data["memory"]["persisted"])
+        self.assertEqual(second_data["candidate"], first_data["candidate"])
+        self.assertEqual(second_data["readiness_percent"], first_data["readiness_percent"])
 
     # ── profile-write role coverage ──────────────────────────────────────────
     def test_admin_profile_write_also_marks_memory_stale(self):

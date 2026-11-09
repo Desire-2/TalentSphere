@@ -2106,6 +2106,46 @@ class CareerMemoryHardeningTests(CareerAgentTestBase):
         self.assertEqual(second_data["candidate"], first_data["candidate"])
         self.assertEqual(second_data["readiness_percent"], first_data["readiness_percent"])
 
+    # ── profile endpoint survives an unreadable memory store ─────────────────
+    def test_profile_endpoint_falls_back_to_direct_scan_when_memory_unreadable(self):
+        # Production ran career-agent code against a database that predated
+        # career_memories; the profile route answered 503 for every user.
+        # The memory row is a cache — an unreadable one must degrade to a
+        # direct profile scan, not take the whole Career Agent page down.
+        from sqlalchemy.exc import ProgrammingError
+        from src.routes import career_agent as career_agent_routes
+
+        warm = self.client.get("/api/career-agent/profile", headers=self.auth)
+        self.assertEqual(warm.status_code, 200)
+
+        with mock.patch.object(
+            career_agent_routes.memory_service, "get_candidate",
+            side_effect=ProgrammingError(
+                "SELECT FROM career_memories", {}, Exception("relation does not exist")
+            ),
+        ):
+            response = self.client.get("/api/career-agent/profile", headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn("readiness_percent", data)
+        self.assertIn("candidate", data)
+        self.assertFalse(data["memory"]["persisted"])
+        self.assertFalse(data["memory"]["rebuilt"])
+        self.assertTrue(data["memory"]["stale"])
+
+        # When even the fallback scan fails, the endpoint still reports a
+        # database problem instead of a generic 500.
+        with mock.patch.object(
+            career_agent_routes.memory_service, "get_candidate",
+            side_effect=ProgrammingError("SELECT", {}, Exception("down")),
+        ), mock.patch.object(
+            career_agent_routes.profile_service, "readiness",
+            side_effect=ProgrammingError("SELECT", {}, Exception("down")),
+        ):
+            failed = self.client.get("/api/career-agent/profile", headers=self.auth)
+        self.assertEqual(failed.status_code, 503)
+        self.assertEqual(failed.get_json().get("code"), "DATABASE_UNAVAILABLE")
+
     # ── profile-write role coverage ──────────────────────────────────────────
     def test_admin_profile_write_also_marks_memory_stale(self):
         self._fresh_memory()

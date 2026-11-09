@@ -5,6 +5,7 @@ Provides comprehensive email delivery with templates, tracking, and batching
 
 import os
 import json
+import re
 import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
@@ -154,6 +155,12 @@ class EmailService:
                 html_body=self._get_password_reset_html(),
                 text_body=self._get_password_reset_text(),
                 variables=['user_name', 'reset_url']
+            ),
+            'weekly_digest': EmailTemplate(
+                subject="📊 Your Weekly Job Activity Digest",
+                html_body=self._get_weekly_digest_html(),
+                text_body=self._get_weekly_digest_text(),
+                variables=['user_name', 'new_jobs_count', 'applications_count', 'messages_count', 'jobs_list', 'dashboard_url']
             )
         }
     
@@ -166,13 +173,32 @@ class EmailService:
             
             template = self.templates.get(notification.template_name)
             if not template:
+                # Queued rows may still carry a retired template name from
+                # before the keys were normalized; dropping the email would
+                # silently swallow the notification, so render it with the
+                # generic system template instead.
+                self.logger.warning(
+                    "Unknown email template '%s'; falling back to 'system'",
+                    notification.template_name,
+                )
+                template = self.templates.get('system')
+            if not template:
                 self.logger.error(f"Template '{notification.template_name}' not found")
                 return False
             
             # Render email content
-            subject = self._render_template(notification.subject, notification.variables)
-            html_body = self._render_template(template.html_body, notification.variables)
-            text_body = self._render_template(template.text_body, notification.variables)
+            variables = dict(notification.variables or {})
+            # System-template bodies address {{notification_title}} and the
+            # CTA pair; queue paths pass the same text as `title`/subject and
+            # often omit the link entirely.
+            variables.setdefault(
+                'notification_title', variables.get('title') or notification.subject or ''
+            )
+            variables.setdefault('action_url', f"{self.frontend_url}/notifications")
+            variables.setdefault('action_text', 'View Notification')
+            subject = self._render_template(notification.subject, variables)
+            html_body = self._render_template(template.html_body, variables)
+            text_body = self._render_template(template.text_body, variables)
             
             # Send via Brevo API
             success = self._send_brevo_email(
@@ -300,16 +326,16 @@ class EmailService:
                 template_map = {
                     NotificationType.JOB_ALERT: 'job_alert',
                     NotificationType.APPLICATION_STATUS: 'application_status',
-                    NotificationType.MESSAGE: 'message_notification',
+                    NotificationType.MESSAGE: 'message',
                     NotificationType.INTERVIEW_REMINDER: 'interview_reminder',
                     NotificationType.DEADLINE_REMINDER: 'deadline_reminder',
                     NotificationType.COMPANY_UPDATE: 'company_update',
-                    NotificationType.SYSTEM: 'system_notification',
+                    NotificationType.SYSTEM: 'system',
                     NotificationType.WELCOME: 'welcome',
-                    NotificationType.CAREER_AGENT: 'system_notification'
+                    NotificationType.CAREER_AGENT: 'system'
                 }
                 
-                template_name = template_map.get(notification_type, 'system_notification')
+                template_name = template_map.get(notification_type, 'system')
                 
                 email_notification = EmailNotification(
                     recipient_email=user.email,
@@ -403,29 +429,107 @@ class EmailService:
         except Exception as e:
             self.logger.error(f"Error updating notification status: {str(e)}")
     
-    def _render_template(self, template: str, variables: Dict[str, Any]) -> str:
-        """Render {placeholder} variables without breaking CSS braces.
+    # Mustache-style placeholders used by the HTML files in src/templates.
+    _SECTION_OPEN_RE = re.compile(r"\{\{#([a-zA-Z_][a-zA-Z_0-9_]*)\}\}")
+    _SECTION_TAG_RE = re.compile(r"\{\{([#/])([a-zA-Z_][a-zA-Z_0-9_]*)\}\}")
+    _MUSTACHE_VAR_RE = re.compile(r"\{\{&?([a-zA-Z_][a-zA-Z_0-9_]*)\}\}")
+    _MUSTACHE_DOT_RE = re.compile(r"\{\{\.\}\}")
 
-        Python's str.format() treats every ``{`` in inline styles as a format
-        field, so email HTML with ``style="margin: 0 auto;"`` raised KeyError
-        and was returned unrendered. String.Template only consumes ``$name``
-        placeholders, leaving CSS intact.
+    @classmethod
+    def _expand_mustache(cls, template: str, scope: Dict[str, Any]) -> str:
+        """Expand ``{{#section}}...{{/section}}`` blocks and ``{{name}}`` vars.
+
+        Sections nest and resolve against the current scope: a falsy value
+        drops the whole block (nested sections included), a list repeats the
+        block once per item with the item merged into scope (``{{.}}``
+        addresses the item itself), and any other truthy value pushes itself
+        onto the scope. Unknown ``{{name}}`` placeholders render empty so a
+        literal ``{{tag}}`` never reaches the recipient.
+        """
+        open_match = cls._SECTION_OPEN_RE.search(template)
+        if not open_match:
+            out = cls._MUSTACHE_DOT_RE.sub(str(scope.get('.', '')), template)
+
+            def _sub(match: "re.Match[str]") -> str:
+                key = match.group(1)
+                return str(scope[key]) if key in scope else ''
+
+            return cls._MUSTACHE_VAR_RE.sub(_sub, out)
+
+        key = open_match.group(1)
+        depth = 1
+        inner = None
+        close_end = None
+        for tag in cls._SECTION_TAG_RE.finditer(template, open_match.end()):
+            if tag.group(2) != key:
+                continue
+            if tag.group(1) == '#':
+                depth += 1
+            else:
+                depth -= 1
+                if depth == 0:
+                    inner = template[open_match.end():tag.start()]
+                    close_end = tag.end()
+                    break
+        if inner is None:
+            # Unbalanced section: drop the stray opening tag rather than
+            # leaking markup like {{#stats}} into the email body.
+            return (
+                cls._expand_mustache(template[:open_match.start()], scope)
+                + cls._expand_mustache(template[open_match.end():], scope)
+            )
+
+        value = scope.get(key)
+        if not value:
+            replacement = ''
+        elif isinstance(value, (list, tuple)):
+            parts = []
+            for item in value:
+                item_scope = dict(scope)
+                if isinstance(item, dict):
+                    item_scope.update(item)
+                else:
+                    item_scope['.'] = str(item)
+                parts.append(cls._expand_mustache(inner, item_scope))
+            replacement = ''.join(parts)
+        else:
+            block_scope = dict(scope)
+            if isinstance(value, dict):
+                block_scope.update(value)
+            replacement = cls._expand_mustache(inner, block_scope)
+        return (
+            cls._expand_mustache(template[:open_match.start()], scope)
+            + replacement
+            + cls._expand_mustache(template[close_end:], scope)
+        )
+
+    def _render_template(self, template: str, variables: Dict[str, Any]) -> str:
+        """Render template variables without breaking CSS braces.
+
+        The HTML files in ``src/templates`` are written Mustache-style
+        (``{{var}}``, ``{{#section}}...{{/section}}``); those are expanded
+        first. Python's str.format() treats every ``{`` in inline styles as
+        a format field, so the legacy pass uses a narrow ``{identifier}``
+        regex instead of ``str.format``; String.Template's ``$name`` syntax
+        is also honoured, leaving CSS intact.
         """
         try:
             from string import Template
 
-            rendered = Template(template).safe_substitute(variables)
+            scope = dict(variables or {})
+            rendered = template
+            if '{{' in rendered:
+                rendered = self._expand_mustache(rendered, scope)
+            rendered = Template(rendered).safe_substitute(scope)
             # Templates written for str.format use {placeholder} syntax.
-            if "$" not in template and "{" in template:
-                import re
-
-                known = set(variables.keys())
+            if '$' not in template and '{' in rendered:
+                known = set(scope.keys())
 
                 def _replace(match: "re.Match[str]") -> str:
                     key = match.group(1).strip()
-                    return str(variables.get(key, match.group(0))) if key in known else match.group(0)
+                    return str(scope.get(key, match.group(0))) if key in known else match.group(0)
 
-                rendered = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", _replace, template)
+                rendered = re.sub(r"\{([a-zA-Z_][a-zA-Z_0-9_]*)\}", _replace, rendered)
             return rendered
         except Exception as e:
             self.logger.error(f"Error rendering template: {str(e)}")

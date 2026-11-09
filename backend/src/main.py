@@ -345,10 +345,15 @@ def init_database():
             db.create_all()
             from src.models.career_agent import ensure_career_agent_indexes
             ensure_career_agent_indexes()
-            print("✅ Database tables created successfully")
-            return True
+        print("✅ Database tables created successfully")
+        return True
     except Exception as e:
         print(f"❌ Database initialization failed: {e}")
+        # A silently failing boot init shipped a schema without newly-added
+        # tables (career_memories) and the first request to read them died
+        # with UndefinedTable; keep the traceback in the deploy log.
+        import traceback
+        traceback.print_exc()
         return False
 
 def warm_cache_on_startup():
@@ -438,8 +443,14 @@ if __name__ == '__main__':
     # Use debug mode only in development
     debug_mode = os.getenv('FLASK_ENV', 'development') == 'development'
     app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
-elif os.getenv('INIT_DB_ON_STARTUP', 'false').lower() == 'true':
-    # Only initialize database if explicitly requested
+elif os.getenv('INIT_DB_ON_STARTUP', 'true').lower() != 'false':
+    # Server mode: gunicorn imports this module, so this branch — not the
+    # __main__ block above — is what actually runs in production. Default ON:
+    # create_all() is additive (checkfirst) and every ensure statement is
+    # IF NOT EXISTS, so each boot only adds tables the current code just
+    # introduced. Defaulting to off is how production ended up serving
+    # career-agent code against a database that predated career_memories.
+    # An explicit INIT_DB_ON_STARTUP=false opts out (schema managed elsewhere).
     try:
         init_database()
     except Exception as e:

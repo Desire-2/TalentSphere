@@ -22,8 +22,12 @@ try:
         app.config['DEBUG'] = False
         logger.info("Production mode enabled")
     
-    # Try to initialize database on startup only if explicitly requested
-    if os.getenv('INIT_DB_ON_STARTUP', 'false').lower() == 'true':
+    # Initialize missing tables on startup unless explicitly disabled.
+    # Default ON (matching src.main's server-mode branch): create_all() is
+    # additive, so each boot only adds tables the current code introduced.
+    # Production served 503s on every Career Agent profile read because a
+    # boot without this step left career_memories uncreated.
+    if os.getenv('INIT_DB_ON_STARTUP', 'true').lower() != 'false':
         try:
             with app.app_context():
                 from src.models.user import db
@@ -32,7 +36,7 @@ try:
                 ensure_career_agent_indexes()
                 logger.info("Database tables initialized successfully")
         except Exception as db_error:
-            logger.warning(f"Database initialization failed: {db_error}")
+            logger.exception("Database initialization failed: %s", db_error)
             logger.info("Database will be initialized on first request")
     else:
         logger.info("Database initialization deferred to first API request")

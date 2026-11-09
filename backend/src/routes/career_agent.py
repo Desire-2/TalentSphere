@@ -200,7 +200,29 @@ def get_career_profile(current_user):
         # + evidence sync) only when a profile change made it stale.
         # get_candidate handles the rebuild and degrades gracefully if the
         # rebuild cannot be persisted.
-        candidate, memory_meta = memory_service.get_candidate(current_user.id)
+        try:
+            candidate, memory_meta = memory_service.get_candidate(current_user.id)
+        except SQLAlchemyError:
+            # The memory row is only a cache over the profile tables. If it
+            # cannot be read (e.g. the career_memories migration has not been
+            # applied on this database), fall back to a direct profile scan
+            # so the Career Agent page still loads; only a failure of the
+            # scan itself becomes a 503.
+            db.session.rollback()
+            current_app.logger.exception(
+                "Career memory unreadable; serving readiness from a direct profile scan"
+            )
+            candidate = None
+            memory_meta = {
+                "profile_version": None,
+                "synced_version": None,
+                "stale": True,
+                "rebuilt": False,
+                "persisted": False,
+                "last_synced_at": None,
+                "source_fingerprint": None,
+                "sync_error": "Career memory is temporarily unavailable.",
+            }
         readiness = profile_service.readiness(current_user, candidate=candidate)
         readiness["memory"] = memory_meta
         db.session.commit()

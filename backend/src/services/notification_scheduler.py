@@ -228,7 +228,7 @@ class NotificationScheduler:
                     email_notification = EmailNotification(
                         recipient_email=user.email,
                         recipient_name=user.get_full_name(),
-                        template_name=delivery_data.get('template_name', 'system_notification'),
+                        template_name=delivery_data.get('template_name', 'system'),
                         subject=notification.title,
                         variables={
                             'user_name': user.get_full_name(),
@@ -316,19 +316,20 @@ class NotificationScheduler:
                 notification.is_sent = True  # Mark as sent but skipped
                 return True
             
-            # Map notification type to email template
+            # Map notification type to email template (keys must exist in
+            # email_service.EmailService.templates)
             template_map = {
                 'job_alert': 'job_alert',
                 'application_status': 'application_status',
-                'message': 'message_notification',
+                'message': 'message',
                 'interview_reminder': 'interview_reminder',
                 'deadline_reminder': 'deadline_reminder',
                 'company_update': 'company_update',
-                'system': 'system_notification',
-                'promotion': 'system_notification'
+                'system': 'system',
+                'promotion': 'promotion'
             }
             
-            template_name = template_map.get(notification.notification_type, 'system_notification')
+            template_name = template_map.get(notification.notification_type, 'system')
             
             # Parse notification data
             variables = json.loads(notification.data) if notification.data else {}

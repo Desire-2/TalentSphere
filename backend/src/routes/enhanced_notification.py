@@ -250,19 +250,20 @@ def create_notification(current_user):
         # Send email if requested and allowed
         if should_send_email:
             try:
-                # Map notification type to email template
+                # Map notification type to email template (keys must exist in
+                # email_service.EmailService.templates)
                 template_map = {
                     'job_alert': 'job_alert',
                     'application_status': 'application_status',
-                    'message': 'message_notification',
+                    'message': 'message',
                     'interview_reminder': 'interview_reminder',
                     'deadline_reminder': 'deadline_reminder',
                     'company_update': 'company_update',
-                    'system': 'system_notification',
-                    'promotion': 'system_notification'
+                    'system': 'system',
+                    'promotion': 'promotion'
                 }
                 
-                template_name = template_map.get(notification_type, 'system_notification')
+                template_name = template_map.get(notification_type, 'system')
                 
                 # Convert priority
                 email_priority = EmailPriority.URGENT if priority == 'urgent' else \

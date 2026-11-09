@@ -25,6 +25,8 @@ import json
 import logging
 from typing import Any, Dict, Optional, Tuple
 
+from sqlalchemy.exc import IntegrityError
+
 from src.models.career_agent import CareerMemory, CareerProfile
 from src.models.user import User, db
 
@@ -78,12 +80,15 @@ class CareerMemoryService:
 
         The caller is responsible for committing: inside a route this runs
         before the route's own ``db.session.commit()``; the after-request hooks
-        commit explicitly. No flush happens here, so the bump joins the caller's
-        existing transaction and can never half-commit on its own.
+        commit explicitly. The bump takes a row lock (``FOR UPDATE``) so two
+        concurrent profile writes can never read-modify-write the same value
+        and silently lose one of the increments. No flush happens here, so the
+        bump joins the caller's existing transaction and can never half-commit
+        on its own.
         """
         if not user_id:
             return 0
-        row = self.get_row(user_id)
+        row = CareerMemory.query.filter_by(user_id=user_id).with_for_update().first()
         if row is None:
             row = CareerMemory(
                 user_id=user_id,
@@ -91,17 +96,38 @@ class CareerMemoryService:
                 synced_version=-1,
                 sync_error="Profile changed before the first memory sync.",
             )
-            db.session.add(row)
-        else:
-            row.profile_version = (row.profile_version or 0) + 1
-            row.updated_at = datetime.utcnow()
+            try:
+                # Savepoint so a concurrent first writer losing the unique
+                # user_id race cannot poison the caller's outer transaction
+                # (which would discard the profile save itself).
+                with db.session.begin_nested():
+                    db.session.add(row)
+                    db.session.flush()
+                return 1
+            except IntegrityError:
+                # Another writer created the row first. Its version already
+                # reflects an edit before the first sync, but this write needs
+                # its own increment, so re-read with the lock and bump.
+                row = CareerMemory.query.filter_by(user_id=user_id).with_for_update().first()
+                if row is None:  # pragma: no cover - row vanished entirely
+                    raise
+        row.profile_version = (row.profile_version or 0) + 1
+        row.updated_at = datetime.utcnow()
         return row.profile_version
 
     def _ensure_row(self, user_id: int) -> CareerMemory:
         row = self.get_row(user_id)
         if row is None:
             row = CareerMemory(user_id=user_id, profile_version=0, synced_version=-1)
-            db.session.add(row)
+            try:
+                with db.session.begin_nested():
+                    db.session.add(row)
+                    db.session.flush()
+            except IntegrityError:
+                # A concurrent first build won the insert; use its row.
+                row = self.get_row(user_id)
+                if row is None:  # pragma: no cover - row vanished entirely
+                    raise
         return row
 
     def is_stale(self, user_id: int) -> bool:
@@ -109,6 +135,21 @@ class CareerMemoryService:
         if row is None:
             return True
         return row.is_stale(self._source_fingerprint(user_id))
+
+    @staticmethod
+    def _is_reusable(row: CareerMemory, current_fingerprint: Optional[str]) -> bool:
+        """True when the stored memory is complete, current-schema, and fresh.
+
+        ``schema_version`` is checked on every read: bumping
+        ``MEMORY_SCHEMA_VERSION`` must invalidate rows stored in an older
+        shape instead of serving them forever.
+        """
+        stored = row.get_memory()
+        if not isinstance(stored.get("candidate"), dict):
+            return False
+        if stored.get("schema_version") != MEMORY_SCHEMA_VERSION:
+            return False
+        return not row.is_stale(current_fingerprint)
 
     # ------------------------------------------------------------------
     # Building
@@ -158,8 +199,7 @@ class CareerMemoryService:
         """Rebuild and persist the memory when it is stale. Never commits."""
         row = self._ensure_row(user.id)
         current_fingerprint = self._source_fingerprint(user.id)
-        already_built = isinstance(row.get_memory().get("candidate"), dict)
-        if not force and candidate is None and already_built and not row.is_stale(current_fingerprint):
+        if not force and candidate is None and self._is_reusable(row, current_fingerprint):
             return self._meta(row, rebuilt=False)
 
         # Capture the version *before* reading the profile: an edit that lands
@@ -190,7 +230,14 @@ class CareerMemoryService:
             row = self.get_row(user_id)
             if row is None:
                 row = CareerMemory(user_id=user_id, profile_version=profile_version or 0, synced_version=-1)
-                db.session.add(row)
+                try:
+                    with db.session.begin_nested():
+                        db.session.add(row)
+                        db.session.flush()
+                except IntegrityError:
+                    row = self.get_row(user_id)
+                    if row is None:  # pragma: no cover - row vanished entirely
+                        raise
             row.sync_error = message[:500]
             row.updated_at = datetime.utcnow()
             db.session.flush()
@@ -211,7 +258,7 @@ class CareerMemoryService:
         """
         row = self.get_row(user_id)
         current_fingerprint = self._source_fingerprint(user_id)
-        if row is not None and not row.is_stale(current_fingerprint):
+        if row is not None and self._is_reusable(row, current_fingerprint):
             candidate = (row.get_memory() or {}).get("candidate")
             if isinstance(candidate, dict):
                 return candidate, self._meta(row, rebuilt=False)

@@ -153,7 +153,10 @@ class CareerProfileService:
             ("reference", Reference, "Reference"),
         ]
         for category, model, label in model_rows:
-            for item in model.query.filter_by(user_id=user.id).all():
+            # Deterministic order (source_reference embeds the row id): the
+            # profile fingerprint is computed over this row sequence, so a
+            # database returning rows in a different order must not change it.
+            for item in model.query.filter_by(user_id=user.id).order_by(model.id).all():
                 rows.append((category, f"profile:{category}:{item.id}", label, item.to_dict()))
         return rows
 

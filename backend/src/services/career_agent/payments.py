@@ -190,7 +190,22 @@ class CareerPaymentService:
         if existing:
             if existing.user_id != user.id:
                 raise PermissionError("This checkout key belongs to another user.")
-            return {"transaction": existing, "checkout_url": None, "reused": True}
+            # A second tab must still receive a usable URL. Reuse the stored
+            # one when the provider kept it; otherwise mint a fresh checkout
+            # for the same transaction instead of returning null.
+            checkout_url = None
+            try:
+                payload = json.loads(existing.provider_payload_json or "{}")
+            except (TypeError, ValueError):
+                payload = {}
+            if isinstance(payload, dict):
+                checkout_url = payload.get("checkout_url")
+            if not checkout_url:
+                checkout = self.provider.create_checkout(existing, user, plan)
+                existing.provider_reference = checkout["provider_reference"]
+                existing.provider_payload_json = json.dumps(checkout["provider_payload"])
+                checkout_url = checkout["checkout_url"]
+            return {"transaction": existing, "checkout_url": checkout_url, "reused": True}
         subscription = CareerSubscription(user_id=user.id, plan_code=plan.code, status="PENDING")
         db.session.add(subscription)
         db.session.flush()
@@ -218,7 +233,9 @@ class CareerPaymentService:
         if transaction.status == "COMPLETED":
             return transaction
         verification = self.provider.verify(transaction)
-        subscription = CareerSubscription.query.filter_by(id=transaction.subscription_id).with_for_update().one()
+        subscription = CareerSubscription.query.filter_by(id=transaction.subscription_id).with_for_update().first()
+        if not subscription:
+            raise CareerPaymentError("The subscription for this payment was not found.")
         plan = CareerSubscriptionPlan.query.get(subscription.plan_code)
         if not plan:
             raise CareerPaymentError("The selected plan is unavailable.")

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
 from flask import g, has_app_context
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
@@ -193,14 +193,29 @@ class CareerEntitlementService:
 
         Both counters cover the same rows for the same user, so two separate
         COUNT round trips would only restate the same table scan.
+
+        A RESERVED row whose package already reached a terminal FAILED or
+        CANCELLED state is not counted: if ``release()`` failed during
+        cleanup, that orphaned reservation would otherwise burn the user's
+        free quota forever. The row itself is left untouched — a later
+        successful release still marks it RELEASED.
         """
         used, reserved = db.session.query(
             func.coalesce(
                 func.sum(case((CareerGenerationUsage.status == "CONSUMED", 1), else_=0)), 0
             ),
             func.coalesce(
-                func.sum(case((CareerGenerationUsage.status == "RESERVED", 1), else_=0)), 0
+                func.sum(case((
+                    and_(
+                        CareerGenerationUsage.status == "RESERVED",
+                        CareerDocumentPackage.id.isnot(None),
+                        CareerDocumentPackage.status.notin_(("FAILED", "CANCELLED")),
+                    ),
+                    1,
+                ), else_=0)), 0
             ),
+        ).select_from(CareerGenerationUsage).outerjoin(
+            CareerDocumentPackage, CareerDocumentPackage.id == CareerGenerationUsage.package_id
         ).filter(
             CareerGenerationUsage.user_id == user_id,
             CareerGenerationUsage.entitlement_source == "FREE",

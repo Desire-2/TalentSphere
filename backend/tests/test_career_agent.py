@@ -1874,5 +1874,232 @@ class CareerMemoryTests(CareerAgentTestBase):
             self.assertTrue(CareerEvidence.query.get(evidence_id).is_current)
 
 
+class CareerMemoryHardeningTests(CareerAgentTestBase):
+    """Memory freshness, privacy scrubbing, and failure-path bookkeeping."""
+
+    def _row(self, user_id=None):
+        return CareerMemory.query.filter_by(user_id=user_id or self.user_id).first()
+
+    def _fresh_memory(self):
+        from src.services.career_agent.memory import CareerMemoryService
+
+        service = CareerMemoryService()
+        with self.app.app_context():
+            user = User.query.get(self.user_id)
+            service.sync(user)
+            db.session.commit()
+
+    # ── schema-version invalidation ──────────────────────────────────────────
+    def test_stored_memory_from_an_older_schema_version_rebuilds(self):
+        from src.services.career_agent.memory import MEMORY_SCHEMA_VERSION, CareerMemoryService
+
+        self.assertEqual(self.client.get("/api/career-agent/profile", headers=self.auth).status_code, 200)
+        with self.app.app_context():
+            row = self._row()
+            stored = row.get_memory()
+            stored["schema_version"] = MEMORY_SCHEMA_VERSION + 1
+            row.memory_json = json.dumps(stored)
+            # Version and fingerprint both match — only the schema check can
+            # catch this row.
+            row.synced_version = row.profile_version
+            db.session.commit()
+
+        service = CareerMemoryService()
+        with self.app.app_context():
+            candidate, meta = service.get_candidate(self.user_id)
+            db.session.commit()
+        self.assertTrue(meta["rebuilt"])
+        self.assertIn("evidence_sources", candidate)
+        with self.app.app_context():
+            self.assertEqual(self._row().get_memory()["schema_version"], MEMORY_SCHEMA_VERSION)
+
+    # ── account deletion privacy scrub ───────────────────────────────────────
+    def test_delete_account_scrubs_career_memory_evidence_and_imports(self):
+        from src.models.career_agent import (
+            CareerEvidence,
+            CareerMemory,
+            CareerProfile,
+            ImportedCareerDocument,
+        )
+
+        with self.app.app_context():
+            user = User(
+                email=f"scrub-{uuid.uuid4().hex[:8]}@test.local",
+                first_name="Private", last_name="Person", role="job_seeker",
+                phone="+250700000001", location="Kigali", bio="Private bio",
+            )
+            user.set_password("Password123")
+            db.session.add(user)
+            db.session.flush()
+            user_id = user.id
+            token = user.generate_token(3600)
+            db.session.add(ImportedCareerDocument(
+                user_id=user_id, filename="private-cv.pdf", content_type="application/pdf",
+                file_size=10, content_hash=uuid.uuid4().hex,
+                private_storage_key=f"discarded:{user_id}:{uuid.uuid4().hex}",
+                extraction_status="COMPLETED", extracted_text="Private contact details",
+                extracted_data_json=json.dumps({"contact": {"email": "private@x.test"}}),
+            ))
+            db.session.commit()
+
+        auth = {"Authorization": f"Bearer {token}"}
+        self.assertEqual(self.client.get("/api/career-agent/profile", headers=auth).status_code, 200)
+        with self.app.app_context():
+            self.assertIsNotNone(CareerMemory.query.filter_by(user_id=user_id).first())
+            self.assertGreater(CareerEvidence.query.filter_by(user_id=user_id).count(), 0)
+
+        response = self.client.delete(
+            "/api/auth/delete-account", headers={**auth, "Content-Type": "application/json"},
+            data=json.dumps({"password": "Password123"}),
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertIsNone(CareerMemory.query.filter_by(user_id=user_id).first())
+            self.assertIsNone(CareerProfile.query.filter_by(user_id=user_id).first())
+            self.assertEqual(CareerEvidence.query.filter_by(user_id=user_id).count(), 0)
+            imported = ImportedCareerDocument.query.filter_by(user_id=user_id).first()
+            self.assertIsNotNone(imported)
+            self.assertIsNone(imported.extracted_text)
+            self.assertEqual(imported.get_extracted_data(), {})
+            scrubbed = User.query.get(user_id)
+            self.assertNotIn("private", scrubbed.email)
+            self.assertFalse(scrubbed.is_active)
+
+    # ── entitlement self-healing ─────────────────────────────────────────────
+    def test_reservation_on_failed_package_does_not_burn_free_quota(self):
+        from src.models.career_agent import CareerProfile, CareerTargetJob
+        from src.services.career_agent.entitlements import CareerEntitlementService
+
+        def _reserved_package(status):
+            with self.app.app_context():
+                profile = CareerProfile.query.filter_by(user_id=self.user_id).first()
+                if not profile:
+                    profile = CareerProfile(user_id=self.user_id)
+                    db.session.add(profile)
+                    db.session.flush()
+                target = CareerTargetJob(
+                    user_id=self.user_id, source_type="pasted", title="QA Engineer",
+                    description="Python role", source_snapshot_json="{}",
+                    analysis_json="{}", source_hash=uuid.uuid4().hex,
+                )
+                db.session.add(target)
+                db.session.flush()
+                package = CareerDocumentPackage(
+                    user_id=self.user_id, target_job_id=target.id,
+                    idempotency_key=f"heal-{uuid.uuid4().hex[:12]}",
+                    status=status, entitlement_source="FREE",
+                )
+                db.session.add(package)
+                db.session.flush()
+                db.session.add(CareerGenerationUsage(
+                    user_id=self.user_id, package_id=package.id,
+                    entitlement_source="FREE", status="RESERVED",
+                    reserved_at=datetime.utcnow(),
+                ))
+                db.session.commit()
+                return package.id
+
+        active_pkg = _reserved_package("PROCESSING")
+        with self.app.app_context():
+            allowed, usage = CareerEntitlementService().can_generate_document_package(self.user_id)
+            # Free limit is one: the live reservation blocks a new package.
+            self.assertFalse(allowed)
+            self.assertEqual(usage["free_package"]["reserved"], 1)
+
+        with self.app.app_context():
+            package = CareerDocumentPackage.query.get(active_pkg)
+            package.status = "FAILED"
+            db.session.commit()
+        with self.app.app_context():
+            allowed, usage = CareerEntitlementService().can_generate_document_package(self.user_id)
+            # The FAILED package's orphaned reservation no longer counts.
+            self.assertTrue(allowed)
+            self.assertEqual(usage["free_package"]["reserved"], 0)
+            # The row itself is untouched for a later successful release.
+            rows = CareerGenerationUsage.query.filter_by(package_id=active_pkg).all()
+            self.assertEqual([row.status for row in rows], ["RESERVED"])
+
+    # ── failed provider calls reach the usage audit ──────────────────────────
+    def test_terminal_generation_failure_logs_failed_ai_usage(self):
+        from src.models.career_agent import CareerAIUsageLog
+        from src.services.career_agent.nvidia_client import AIProviderError, NvidiaResult
+        from src.services.career_agent.orchestrator import CareerDocumentOrchestrator
+
+        def _result():
+            return NvidiaResult(
+                data={}, model="stub", latency_ms=1,
+                prompt_tokens=1, completion_tokens=1, total_tokens=2, retry_count=0,
+            )
+
+        self._fresh_memory()
+        orchestrator = CareerDocumentOrchestrator(client=mock.Mock())
+        orchestrator.target_jobs.analyze_target = mock.Mock(return_value=(
+            {"job_title": "Backend Engineer", "employer": "Example Ltd", "requirements": [], "ats_keywords": ["python"]},
+            _result(),
+        ))
+        orchestrator.matcher.analyze = mock.Mock(return_value=(
+            {"scores": {"overall": 80, "skills": 80, "experience": 80, "education": 80,
+                        "keyword_coverage": 80, "evidence_strength": 80}},
+            _result(),
+        ))
+        orchestrator.cv_strategy.plan = mock.Mock(return_value=(
+            {"template_key": "modern_professional", "structure": "chronological",
+             "target_professional_title": "Backend Engineer"},
+            _result(),
+        ))
+        orchestrator.cv_content.generate = mock.Mock(side_effect=AIProviderError("provider rejected the request"))
+        orchestrator.cover_letters.generate = mock.Mock(return_value=(_letter_content(), _result()))
+
+        with self.app.app_context():
+            user = User.query.get(self.user_id)
+            package, _usage = orchestrator.create_package(
+                user=user,
+                target_data={"target_job": {"title": "Backend Engineer", "description": "Python role"}},
+                idempotency_key=f"failed-usage-{uuid.uuid4().hex}",
+            )
+            db.session.commit()
+            package_id = package.id
+
+        with self.app.app_context():
+            orchestrator.execute_package(package_id)
+
+        with self.app.app_context():
+            package = CareerDocumentPackage.query.get(package_id)
+            self.assertEqual(package.status, "FAILED")
+            failed_rows = CareerAIUsageLog.query.filter_by(
+                package_id=package_id, status="FAILED",
+            ).all()
+            self.assertTrue(failed_rows, "a failed provider call must be audited")
+            self.assertEqual(failed_rows[0].stage_key, "cv_content")
+            self.assertEqual(failed_rows[0].error_code, "AI_PROVIDER_ERROR")
+
+    # ── profile-write role coverage ──────────────────────────────────────────
+    def test_admin_profile_write_also_marks_memory_stale(self):
+        self._fresh_memory()
+        with self.app.app_context():
+            admin = User(
+                email=f"admin-{uuid.uuid4().hex[:8]}@test.local",
+                first_name="Career", last_name="Admin", role="admin",
+            )
+            admin.set_password("Password123")
+            db.session.add(admin)
+            db.session.flush()
+            token = admin.generate_token(3600)
+            db.session.commit()
+            admin_id = admin.id
+
+        # Admins can use the Career Agent, so their identity edits must also
+        # mark the stored memory stale.
+        response = self.client.put(
+            "/api/user/profile", headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            data=json.dumps({"first_name": "Updated"}),
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            row = CareerMemory.query.filter_by(user_id=admin_id).first()
+            self.assertIsNotNone(row)
+            self.assertTrue(row.version_stale)
+
+
 if __name__ == "__main__":
     unittest.main()

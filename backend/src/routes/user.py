@@ -569,7 +569,9 @@ def update_user_profile(current_user):
         
         current_user.updated_at = datetime.utcnow()
         from src.services.career_agent.memory import notify_profile_changed
-        if current_user.role == 'job_seeker':
+        # Identity fields are part of career memory, and admins can use the
+        # Career Agent, so both career-capable roles must mark it stale.
+        if current_user.role in ('job_seeker', 'admin'):
             notify_profile_changed(current_user.id)
         db.session.commit()
         

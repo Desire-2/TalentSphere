@@ -1127,7 +1127,7 @@ def update_profile(current_user):
                     setattr(profile, field, data[field])
         
         current_user.updated_at = datetime.utcnow()
-        if current_user.role == 'job_seeker':
+        if current_user.role in ('job_seeker', 'admin'):
             from src.services.career_agent.memory import notify_profile_changed
             notify_profile_changed(current_user.id)
         db.session.commit()
@@ -1385,7 +1385,9 @@ def deactivate_account(current_user):
 def delete_account(current_user):
     """Delete the caller's account: password-verified soft delete that
     deactivates the row and anonymizes PII (email, name, contact fields).
-    Related rows are left intact for data-integrity/audit purposes."""
+    Career Agent memory and evidence mirror those fields, so they are
+    removed here instead of outliving the account; other related rows are
+    left intact for data-integrity/audit purposes."""
     try:
         data = request.get_json(silent=True) or {}
 
@@ -1408,6 +1410,29 @@ def delete_account(current_user):
         current_user.is_verified = False
         current_user.set_password(os.urandom(32).hex())
         current_user.updated_at = datetime.utcnow()
+
+        # Career memory stores a full copy of the identity block, and the
+        # evidence mirror keeps the pre-anonymization payloads. Deleting the
+        # CareerProfile row cascades to career_evidence; dropping the memory
+        # row means any future read rebuilds from the scrubbed profile only.
+        from src.models.career_agent import CareerMemory, CareerProfile, ImportedCareerDocument
+        career_profile = CareerProfile.query.filter_by(user_id=current_user.id).first()
+        if career_profile:
+            db.session.delete(career_profile)
+        memory = CareerMemory.query.filter_by(user_id=current_user.id).first()
+        if memory:
+            db.session.delete(memory)
+        # Imported documents hold extracted copies of the user's resume/CV.
+        ImportedCareerDocument.query.filter_by(user_id=current_user.id).update(
+            {
+                ImportedCareerDocument.extracted_text: None,
+                ImportedCareerDocument.extracted_data_json: '{}',
+                ImportedCareerDocument.conflicts_json: '[]',
+                ImportedCareerDocument.filename: 'deleted',
+                ImportedCareerDocument.review_status: 'DELETED',
+            },
+            synchronize_session=False,
+        )
         db.session.commit()
 
         return jsonify({'message': 'Account deleted successfully'}), 200

@@ -290,9 +290,13 @@ def import_career_document(current_user):
         return _error(str(exc), 400, "UNSUPPORTED_DOCUMENT")
     except CareerDocumentExtractionError as exc:
         return _error(str(exc), 422, "EXTRACTION_FAILED")
-    except AIRateLimited:
+    except AIRateLimited as exc:
+        db.session.add(_ai_log_failure(current_user.id, "image_analysis", exc))
+        db.session.commit()
         return _error("The document analysis provider is rate limited. Please retry in a few minutes.", 429, "AI_RATE_LIMITED")
-    except (AIProviderError, AIProviderUnavailable):
+    except (AIProviderError, AIProviderUnavailable) as exc:
+        db.session.add(_ai_log_failure(current_user.id, "image_analysis", exc))
+        db.session.commit()
         return _error("The document could not be analyzed right now. Please retry.", 503, "AI_UNAVAILABLE")
 
     storage_key = f"discarded:{current_user.id}:{result.content_hash}"
@@ -421,11 +425,15 @@ def analyze_job(current_user):
         db.session.add(_ai_log(current_user.id, "analyze_job", usage))
         db.session.commit()
         return jsonify({"snapshot_title": snapshot["title"], "analysis": analysis}), 200
-    except AIRateLimited:
+    except AIRateLimited as exc:
         db.session.rollback()
+        db.session.add(_ai_log_failure(current_user.id, "analyze_job", exc))
+        db.session.commit()
         return _error("The job analysis provider is rate limited. Please retry in a few minutes.", 429, "AI_RATE_LIMITED")
-    except (AIProviderError, AIProviderUnavailable):
+    except (AIProviderError, AIProviderUnavailable) as exc:
         db.session.rollback()
+        db.session.add(_ai_log_failure(current_user.id, "analyze_job", exc))
+        db.session.commit()
         return _error("The job could not be analyzed right now. Please retry.", 503, "AI_UNAVAILABLE")
     except (TypeError, ValueError) as exc:
         db.session.rollback()
@@ -459,6 +467,25 @@ def _ai_log(user_id: int, stage_key: str, usage):
         latency_ms=usage.latency_ms,
         status="SUCCESS",
         retry_count=usage.retry_count,
+    )
+
+
+def _ai_log_failure(user_id: int, stage_key: str, exc: BaseException):
+    """FAILED usage row so failed provider calls appear in admin reporting.
+
+    Returns the row (not the session): callers add it themselves after their
+    own rollback, so the failure record survives the discarded transaction.
+    """
+    from src.models.career_agent import CareerAIUsageLog as Log
+    return Log(
+        package_id=None,
+        user_id=user_id,
+        stage_key=stage_key[:60],
+        provider="nvidia",
+        model=str(getattr(exc, "model", None) or "unknown")[:160],
+        status="FAILED",
+        error_code=str(getattr(exc, "code", None) or exc.__class__.__name__)[:80],
+        retry_count=int(getattr(exc, "retry_count", 0) or 0),
     )
 
 
@@ -1039,6 +1066,9 @@ def verify_payment(current_user):
         db.session.rollback()
         return _error(str(exc), 402, "PAYMENT_NOT_VERIFIED")
     allowed, usage = orchestrator.entitlements.can_generate_document_package(current_user.id)
+    # usage_summary may expire a stale subscription with an UPDATE; commit it
+    # here or the change is silently rolled back at request teardown.
+    db.session.commit()
     return jsonify({"verified": True, "transaction": transaction.to_dict(), **usage}), 200
 
 

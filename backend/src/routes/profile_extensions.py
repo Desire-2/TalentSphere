@@ -51,22 +51,39 @@ def _invalidate_complete_profile_cache(user_id):
 def _bust_cache_on_write(response):
     """Invalidate the complete-profile cache and stale career memory after any successful mutating request."""
     if request.method in ('POST', 'PUT', 'DELETE') and response.status_code < 400:
-        try:
-            import jwt as _jwt
-            from flask import current_app
-            auth_header = request.headers.get('Authorization', '')
-            token = auth_header.split(' ')[-1] if auth_header else None
-            if token:
-                payload = _jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-                _invalidate_complete_profile_cache(payload['user_id'])
-                # Every write on this blueprint is a profile edit (work
-                # experience, education, skills, ...), so the stored career
-                # memory must rebuild before the next generation reads it.
-                from src.services.career_agent.memory import mark_profile_changed_and_commit
-                mark_profile_changed_and_commit(payload['user_id'])
-        except Exception:
-            pass
+        user_id = _request_user_id()
+        if user_id:
+            _invalidate_complete_profile_cache(user_id)
+            # Every write on this blueprint is a profile edit (work
+            # experience, education, skills, ...), so the stored career
+            # memory must rebuild before the next generation reads it.
+            # A failure here is logged loudly: silently skipping the bump
+            # would serve stale memory to every later generation.
+            from src.services.career_agent.memory import mark_profile_changed_and_commit
+            try:
+                mark_profile_changed_and_commit(user_id)
+            except Exception:
+                current_app.logger.exception(
+                    "Could not mark career memory stale after profile write for user %s", user_id
+                )
     return response
+
+
+def _request_user_id():
+    """Decode the request JWT to a user id, or None. Never raises."""
+    try:
+        import jwt as _jwt
+        from flask import current_app
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.split(' ')[-1] if auth_header else None
+        if not token:
+            return None
+        payload = _jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+        user_id = payload.get('user_id') or payload.get('sub')
+        return int(user_id) if user_id is not None else None
+    except Exception as exc:  # noqa: BLE001 - invalid/expired tokens fall back to no-op
+        current_app.logger.debug("profile_extensions after_request could not identify user: %s", exc)
+        return None
 
 
 @profile_extensions_bp.route('/work-experience', methods=['GET'])

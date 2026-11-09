@@ -38,7 +38,6 @@ from .document_generation import (
     CVContentAgent,
     CVStrategyAgent,
     CoverLetterGenerationService,
-    FactualConsistencyService,
     HumanizationAgent,
     InlineWritingAssistant,
 )
@@ -120,6 +119,11 @@ class CareerDocumentOrchestrator:
         # orchestrator instance serves concurrent generations and a stale
         # takeover must never inherit another worker's half-finished run.
         self._resume_states: Dict[Tuple[int, str], Dict[str, Any]] = {}
+        # Provider calls that raised during the current run, drained into
+        # career_ai_usage_logs as FAILED rows on the next commit point (the
+        # failure handlers roll back the session first, so the rows must be
+        # materialized after the rollback, not added before it).
+        self._failed_calls: Dict[int, List[Tuple[str, Exception]]] = {}
 
     # ------------------------------------------------------------------
     # Package creation and entitlement
@@ -412,6 +416,8 @@ class CareerDocumentOrchestrator:
             cv_document = state["cv_document"][0]
             letter = state["letter"][0]
             cv_stage.metadata_json = json.dumps({"sections": len(cv_document["sections"])})
+            letter_paragraphs = len(((letter.get("body") or {}).get("paragraphs")) or [])
+            letter_stage.metadata_json = json.dumps({"paragraphs": letter_paragraphs})
 
         # Stage: humanization (CV and letter in one provider pass each, bounded)
         with self._stage(package, "humanization", check_lock) as stage:
@@ -478,7 +484,12 @@ class CareerDocumentOrchestrator:
             combined_report = {**quality, **final_report, "final_quality": final_report}
             report_row.report_json = json.dumps(combined_report, ensure_ascii=False, default=str)
             ats_stage.metadata_json = json.dumps({"ats_readiness": quality["ats_readiness"]})
-            qa_stage.metadata_json = json.dumps({"checks": len(final_report.get("checks", [])) if isinstance(final_report, dict) else 0})
+            # FinalQAAgent returns factual_checks / consistency_issues — there
+            # is no top-level "checks" key (that shape only exists in mocks).
+            qa_stage.metadata_json = json.dumps({
+                "factual_checks": len(final_report.get("factual_checks") or {}) if isinstance(final_report, dict) else 0,
+                "consistency_issues": len(final_report.get("consistency_issues") or []) if isinstance(final_report, dict) else 0,
+            })
 
         # Stage: document rendering (persist editable documents + version 1)
         with self._stage(package, "document_rendering", check_lock) as stage:
@@ -492,6 +503,10 @@ class CareerDocumentOrchestrator:
         package.error_code = None
         package.error_message = None
         self.entitlements.consume(package.id)
+        # Keep any provider failures from transient retries visible as FAILED
+        # usage rows alongside this run's successes.
+        for usage_row in self._drain_failed_calls(package):
+            db.session.add(usage_row)
         db.session.commit()
         self._notify_generation_result(package)
 
@@ -538,6 +553,7 @@ class CareerDocumentOrchestrator:
         current = CareerDocumentPackage.query.get(package.id)
         if not current or (lock_token and current.processing_lock_token != lock_token):
             # A stale worker must never mark a newer worker's run as failed.
+            self._failed_calls.pop(package.id, None)
             return
         package = current
         package.status = "FAILED"
@@ -548,10 +564,19 @@ class CareerDocumentOrchestrator:
         for row in stage_rows:
             if row.status in {"QUEUED", "PROCESSING"}:
                 row.status = "FAILED"
+        for usage_row in self._drain_failed_calls(package):
+            db.session.add(usage_row)
         try:
             self.entitlements.release(package.id, f"Generation failed: {package.error_code}")
         except Exception:
-            pass
+            # A lost release would leave the usage row RESERVED and burn the
+            # user's free quota; _read_free_counts ignores reservations whose
+            # package already reached a terminal FAILED state, so this log is
+            # the audit trail for a reservation the ledger will self-heal.
+            logger.exception(
+                "Could not release entitlement for failed package %s (user %s)",
+                package.id, package.user_id,
+            )
         db.session.commit()
         self._notify_generation_result(current)
 
@@ -757,6 +782,8 @@ class CareerDocumentOrchestrator:
             except Exception as exc:  # re-raised once every job has settled
                 if failure is None:
                     failure = exc
+                if usage_key:
+                    self._failed_calls.setdefault(package.id, []).append((usage_key, exc))
                 continue
             state[state_key] = outcome
             if usage_key:
@@ -780,6 +807,32 @@ class CareerDocumentOrchestrator:
             status="SUCCESS",
             retry_count=result.retry_count,
         ))
+
+    def _drain_failed_calls(self, package) -> List[CareerAIUsageLog]:
+        """Materialize captured provider failures as FAILED usage rows.
+
+        Called after a rollback (or on the success path) so the rows survive
+        the transaction that discarded the pipeline state. Without this,
+        failed calls are invisible in admin usage reporting because every
+        call site historically logged only successes.
+        """
+        rows: List[CareerAIUsageLog] = []
+        for stage_key, exc in self._failed_calls.pop(package.id, []):
+            rows.append(CareerAIUsageLog(
+                package_id=package.id,
+                user_id=package.user_id,
+                stage_key=str(stage_key)[:60],
+                provider="nvidia",
+                model=str(
+                    getattr(exc, "model", None)
+                    or getattr(self.client, "text_model", None)
+                    or "unknown"
+                )[:160],
+                status="FAILED",
+                error_code=str(getattr(exc, "code", None) or exc.__class__.__name__)[:80],
+                retry_count=int(getattr(exc, "retry_count", 0) or 0),
+            ))
+        return rows
 
     def _owned_package(self, user: User, package_id: int) -> CareerDocumentPackage:
         package = CareerDocumentPackage.query.filter_by(id=package_id, user_id=user.id).first()

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, BriefcaseBusiness, Check, CheckCircle2,
-  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock3, Download,
-  FileDown, FileText, History, Loader2, MoreHorizontal, PencilLine, Plus,
-  RefreshCw, RotateCcw, Save, Search, Settings2, Target, Trash2, Upload,
-  X, ZoomIn, ZoomOut,
+  AlertTriangle, ArrowLeft, ArrowRight, Award, BookOpen, BriefcaseBusiness, Check,
+  CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock3,
+  Download, FileDown, FileText, FolderOpen, Globe, GraduationCap, History, Loader2,
+  PencilLine, Plus, RefreshCw, RotateCcw, Save, Search, Settings2,
+  Sparkles, Target, Trash2, Upload, X, ZoomIn, ZoomOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import apiService from '../../services/api';
@@ -71,6 +71,39 @@ const AI_ACTIONS = [
   ['improve', 'Improve wording'], ['concise', 'Make concise'], ['natural', 'Make more natural'],
   ['achievement', 'Strengthen impact'], ['tailor', 'Tailor to this job'],
 ];
+
+// Outline rail icon per section type; unknown types fall back to FileText.
+const SECTION_ICON_BY_TYPE = {
+  summary: Target, profile: Target, objective: Target,
+  experience: BriefcaseBusiness, employment: BriefcaseBusiness, work: BriefcaseBusiness,
+  education: GraduationCap, publications: BookOpen, research: BookOpen,
+  skills: Sparkles, competencies: Sparkles,
+  projects: FolderOpen,
+  certifications: Award, certificates: Award, awards: Award,
+  languages: Globe,
+};
+const sectionIcon = (type) => SECTION_ICON_BY_TYPE[String(type || '').toLowerCase()] || FileText;
+
+// Word count for the preview meta chip: only user-visible prose, never ids.
+const countDocumentWords = (content = {}) => {
+  const chunks = [];
+  const push = (value) => { if (typeof value === 'string') chunks.push(value); };
+  const header = content.header || {};
+  push(header.name);
+  push(header.professional_title);
+  (content.sections || []).forEach((section) => {
+    push(section.title);
+    (section.entries || []).forEach((entry) => {
+      push(entry.heading);
+      push(entry.subheading);
+      push(entry.text);
+      (entry.bullets || []).forEach((bullet) => push(bullet.text));
+    });
+  });
+  push(content.subject);
+  (content.body?.paragraphs || []).forEach((paragraph) => push(paragraph.text));
+  return chunks.join(' ').split(/\s+/).filter(Boolean).length;
+};
 
 function useIdempotencyKey() {
   const ref = useRef(null);
@@ -639,7 +672,7 @@ function CoverLetterPreview({ content, name }) {
 }
 
 function EditorOutline({ sections, selectedSection, onSelect, onMove, onDelete, onAdd }) {
-  return <aside className="ca-outline-rail"><div className="ca-rail-heading"><SectionLabel>Document</SectionLabel><IconButton label="Document options"><MoreHorizontal size={17} /></IconButton></div><nav className="ca-outline-list" aria-label="Document sections">{sections.map((section, index) => <div key={section.id || index} className={cn('ca-outline-item', selectedSection === section.id && 'ca-outline-item--active')}><button type="button" className="ca-outline-select" onClick={() => onSelect(section.id)}><span>{String(index + 1).padStart(2, '0')}</span><strong>{section.title || 'Untitled section'}</strong></button><div className="ca-outline-actions"><IconButton label="Move section up" disabled={index === 0} onClick={() => onMove(index, -1)}><ChevronUp size={13} /></IconButton><IconButton label="Move section down" disabled={index === sections.length - 1} onClick={() => onMove(index, 1)}><ChevronDown size={13} /></IconButton><IconButton label="Delete section" onClick={() => onDelete(index)}><Trash2 size={13} /></IconButton></div></div>)}</nav><button type="button" className="ca-add-section" onClick={onAdd}><Plus size={15} /> Add section</button><div className="ca-outline-tip"><span className="ca-drag-handle">⋮⋮</span><span>Reorder sections with the controls. Changes save automatically.</span></div></aside>;
+  return <aside className="ca-outline-rail"><div className="ca-rail-heading"><SectionLabel>Document</SectionLabel><span className="ca-rail-count">{sections.length} {sections.length === 1 ? 'section' : 'sections'}</span></div><nav className="ca-outline-list" aria-label="Document sections">{sections.map((section, index) => { const Icon = sectionIcon(section.type); const entries = (section.entries || []).length; return <div key={section.id || index} className={cn('ca-outline-item', selectedSection === section.id && 'ca-outline-item--active')}><button type="button" className="ca-outline-select" onClick={() => onSelect(section.id)}><span className="ca-outline-icon"><Icon size={13} /></span><span className="ca-outline-copy"><strong>{section.title || 'Untitled section'}</strong><small>{entries} {entries === 1 ? 'entry' : 'entries'}</small></span></button><div className="ca-outline-actions"><IconButton label="Move section up" disabled={index === 0} onClick={() => onMove(index, -1)}><ChevronUp size={13} /></IconButton><IconButton label="Move section down" disabled={index === sections.length - 1} onClick={() => onMove(index, 1)}><ChevronDown size={13} /></IconButton><IconButton label="Delete section" onClick={() => onDelete(index)}><Trash2 size={13} /></IconButton></div></div>; })}</nav><button type="button" className="ca-add-section" onClick={onAdd}><Plus size={15} /> Add section</button><div className="ca-outline-tip"><span>Reorder with the arrow controls. Changes save automatically.</span></div></aside>;
 }
 
 function CoverLetterEditor({ content, update, onAssistText }) {
@@ -648,18 +681,19 @@ function CoverLetterEditor({ content, update, onAssistText }) {
   return <div className="ca-section-editor"><div className="ca-editor-section-heading"><SectionLabel>Editing letter</SectionLabel><strong className="ca-letter-editor-title">Cover letter</strong></div><div className="ca-field-row"><label>Professional title<input value={content.header?.professional_title || ''} onChange={(event) => patchHeader({ professional_title: event.target.value })} /></label><label>Phone<input value={content.header?.phone || ''} onChange={(event) => patchHeader({ phone: event.target.value })} /></label></div><label className="ca-field-label">Subject<input value={content.subject || ''} onChange={(event) => update((previous) => ({ ...previous, subject: event.target.value }))} placeholder="Application for…" /></label><div className="ca-letter-paragraph-editor">{(content.body?.paragraphs || []).map((paragraph, index) => <label className="ca-field-label" key={paragraph.id || index}>Paragraph {index + 1}<textarea value={paragraph.text || ''} rows={5} onFocus={(event) => onAssistText(event.target.value)} onChange={(event) => setParagraph(index, event.target.value)} /></label>)}</div><label className="ca-field-label">Closing<input value={content.body?.closing || ''} onChange={(event) => update((previous) => ({ ...previous, body: { ...previous.body, closing: event.target.value } }))} placeholder="Sincerely," /></label></div>;
 }
 
-function SectionEditor({ section, onTitleChange, onEntryChange, onBulletChange, onAddBullet, onRemoveBullet, onAssistText }) {
+function SectionEditor({ section, onTitleChange, onEntryChange, onBulletChange, onAddBullet, onRemoveBullet, onAddEntry, onAssistText }) {
   if (!section) return <div className="ca-empty-editor"><FileText size={22} /><p>Select a section to edit its content.</p></div>;
-  return <div className="ca-section-editor"><div className="ca-editor-section-heading"><SectionLabel>Editing section</SectionLabel><input aria-label="Section title" value={section.title || ''} onChange={(event) => onTitleChange(event.target.value)} /></div>{(section.entries || []).map((entry, entryIndex) => <div key={entry.id || entryIndex} className="ca-entry-editor"><div className="ca-field-row"><label>Heading<input value={entry.heading || ''} onChange={(event) => onEntryChange(entryIndex, { heading: event.target.value })} placeholder="Role, degree or project" /></label><label>Dates<input value={entry.dates || ''} onChange={(event) => onEntryChange(entryIndex, { dates: event.target.value })} placeholder="2024 – Present" /></label></div><div className="ca-field-row"><label>Organization<input value={entry.subheading || ''} onChange={(event) => onEntryChange(entryIndex, { subheading: event.target.value })} placeholder="Company, school or client" /></label><label>Location<input value={entry.location || ''} onChange={(event) => onEntryChange(entryIndex, { location: event.target.value })} placeholder="Kigali, Rwanda" /></label></div>{entry.text !== undefined && <label className="ca-field-label">Summary<textarea value={entry.text || ''} rows={4} onFocus={(event) => onAssistText(event.target.value)} onChange={(event) => onEntryChange(entryIndex, { text: event.target.value })} placeholder="Describe the work or learning clearly." /></label>}{entry.bullets?.length > 0 && <div className="ca-bullet-editor"><div className="ca-field-caption">Evidence bullets</div>{entry.bullets.map((bullet, bulletIndex) => <div className="ca-bullet-row" key={bullet.id || bulletIndex}><span>•</span><textarea value={bullet.text || ''} rows={2} onFocus={(event) => onAssistText(event.target.value)} onChange={(event) => onBulletChange(entryIndex, bulletIndex, event.target.value)} placeholder="Start with an action and show the result." /><IconButton label="Remove bullet" onClick={() => onRemoveBullet(entryIndex, bulletIndex)}><X size={14} /></IconButton></div>)}<button type="button" className="ca-inline-add" onClick={() => onAddBullet(entryIndex)}><Plus size={14} /> Add bullet</button></div>}</div>)}{!(section.entries || []).length && <div className="ca-empty-section"><p>This section is ready for content.</p><button type="button" className="ca-inline-add" onClick={() => onEntryChange(0, { heading: '', subheading: '', dates: '', text: '', bullets: [] })}><Plus size={14} /> Add an entry</button></div>}</div>;
+  return <div className="ca-section-editor"><div className="ca-editor-section-heading"><SectionLabel>Editing section</SectionLabel><input aria-label="Section title" value={section.title || ''} onChange={(event) => onTitleChange(event.target.value)} /></div>{(section.entries || []).map((entry, entryIndex) => <div key={entry.id || entryIndex} className="ca-entry-editor"><span className="ca-entry-index">Entry {String(entryIndex + 1).padStart(2, '0')}</span><div className="ca-field-row"><label>Heading<input value={entry.heading || ''} onChange={(event) => onEntryChange(entryIndex, { heading: event.target.value })} placeholder="Role, degree or project" /></label><label>Dates<input value={entry.dates || ''} onChange={(event) => onEntryChange(entryIndex, { dates: event.target.value })} placeholder="2024 – Present" /></label></div><div className="ca-field-row"><label>Organization<input value={entry.subheading || ''} onChange={(event) => onEntryChange(entryIndex, { subheading: event.target.value })} placeholder="Company, school or client" /></label><label>Location<input value={entry.location || ''} onChange={(event) => onEntryChange(entryIndex, { location: event.target.value })} placeholder="Kigali, Rwanda" /></label></div>{entry.text !== undefined && <label className="ca-field-label">Summary<textarea value={entry.text || ''} rows={4} onFocus={(event) => onAssistText(event.target.value)} onChange={(event) => onEntryChange(entryIndex, { text: event.target.value })} placeholder="Describe the work or learning clearly." /></label>}{entry.bullets?.length > 0 && <div className="ca-bullet-editor"><div className="ca-field-caption">Evidence bullets</div>{entry.bullets.map((bullet, bulletIndex) => <div className="ca-bullet-row" key={bullet.id || bulletIndex}><span>•</span><textarea value={bullet.text || ''} rows={2} onFocus={(event) => onAssistText(event.target.value)} onChange={(event) => onBulletChange(entryIndex, bulletIndex, event.target.value)} placeholder="Start with an action and show the result." /><IconButton label="Remove bullet" onClick={() => onRemoveBullet(entryIndex, bulletIndex)}><X size={14} /></IconButton></div>)}<button type="button" className="ca-inline-add" onClick={() => onAddBullet(entryIndex)}><Plus size={14} /> Add bullet</button></div>}</div>)}{!(section.entries || []).length && <div className="ca-empty-section"><p>This section is ready for content.</p><button type="button" className="ca-inline-add" onClick={onAddEntry}><Plus size={14} /> Add an entry</button></div>}</div>;
 }
 
 function TemplateSettings({ settings, doc, onChange }) {
   const template = settings.template_key || doc?.template_key || 'modern_professional'; const mode = settings.document_mode || doc?.document_mode || 'ats_safe'; const accent = settings.accent_color || doc?.accent_color || '#0f766e';
-  return <div className="ca-settings-panel"><div className="ca-tool-heading"><Settings2 size={17} /><div><strong>Document settings</strong><span>Keep the style professional on screen and in print.</span></div></div><label className="ca-setting-label">Template<select value={template} onChange={(event) => onChange({ template_key: event.target.value })}>{TEMPLATE_OPTIONS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label><div className="ca-mode-setting"><span className="ca-field-caption">Document style</span><label className={cn('ca-mode-option', mode === 'ats_safe' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'ats_safe'} onChange={() => onChange({ document_mode: 'ats_safe' })} /><span><strong>ATS Professional</strong><small>Predictable reading order and recruiter-friendly formatting.</small></span></label><label className={cn('ca-mode-option', mode === 'visual_professional' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'visual_professional'} onChange={() => onChange({ document_mode: 'visual_professional' })} /><span><strong>Modern Professional</strong><small>More visual hierarchy while staying practical to print.</small></span></label></div>{!GRAYSCALE_TEMPLATES.has(template) && <div className="ca-color-setting"><span className="ca-field-caption">Accent color</span><div className="ca-color-options">{ACCENT_OPTIONS.map(([label, value]) => <button type="button" key={value} className={cn('ca-color-swatch', accent === value && 'ca-color-swatch--active')} style={{ backgroundColor: value }} aria-label={label} title={label} onClick={() => onChange({ accent_color: value })}>{accent === value && <Check size={13} />}</button>)}</div></div>}</div>;
+  const selected = TEMPLATE_OPTIONS.find((item) => item.key === template) || TEMPLATE_OPTIONS[0];
+  return <div className="ca-settings-panel"><div className="ca-tool-heading"><Settings2 size={17} /><div><strong>Document settings</strong><span>Keep the style professional on screen and in print.</span></div></div><div className="ca-setting-block"><span className="ca-field-caption">Design</span><div className="ca-template-tiles" role="radiogroup" aria-label="Document design">{TEMPLATE_OPTIONS.map((item) => <button key={item.key} type="button" role="radio" aria-checked={template === item.key} title={item.hint} className={cn('ca-template-tile', template === item.key && 'ca-template-tile--active')} onClick={() => onChange({ template_key: item.key })}><span className="ca-template-mini ca-template-mini--tile" data-template={item.key} aria-hidden="true"><span className="ca-template-mini-name" /><span className="ca-template-mini-rule" /><span className="ca-template-mini-line" /><span className="ca-template-mini-line ca-template-mini-line--short" /></span><strong>{item.label}</strong></button>)}</div><p className="ca-template-hint">{selected.hint}</p></div><div className="ca-mode-setting"><span className="ca-field-caption">Document style</span><label className={cn('ca-mode-option', mode === 'ats_safe' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'ats_safe'} onChange={() => onChange({ document_mode: 'ats_safe' })} /><span><strong>ATS Professional</strong><small>Predictable reading order and recruiter-friendly formatting.</small></span></label><label className={cn('ca-mode-option', mode === 'visual_professional' && 'ca-mode-option--active')}><input type="radio" name="document-mode" checked={mode === 'visual_professional'} onChange={() => onChange({ document_mode: 'visual_professional' })} /><span><strong>Modern Professional</strong><small>More visual hierarchy while staying practical to print.</small></span></label></div>{!GRAYSCALE_TEMPLATES.has(template) && <div className="ca-color-setting"><span className="ca-field-caption">Accent color</span><div className="ca-color-options">{ACCENT_OPTIONS.map(([label, value]) => <button type="button" key={value} className={cn('ca-color-swatch', accent === value && 'ca-color-swatch--active')} style={{ backgroundColor: value }} aria-label={label} title={label} onClick={() => onChange({ accent_color: value })}>{accent === value && <Check size={13} />}</button>)}</div></div>}</div>;
 }
 
 function WritingAssistant({ text, setText, busy, result, onRun, onUse }) {
-  return <div className="ca-assistant"><div className="ca-tool-heading"><PencilLine size={17} /><div><strong>Writing assistance</strong><span>Practical suggestions, grounded in your evidence.</span></div></div><textarea value={text} onChange={(event) => setText(event.target.value)} rows={3} placeholder="Focus a line or paragraph to improve…" aria-label="Text for writing assistance" /><div className="ca-ai-actions">{AI_ACTIONS.map(([key, label]) => <button type="button" key={key} disabled={busy || !text.trim()} onClick={() => onRun(key)}>{busy && <Loader2 className="ca-spin" size={13} />}{label}</button>)}</div>{result?.error && <div className="ca-error ca-error--compact"><AlertTriangle size={14} /> {result.error}</div>}{result?.alternatives?.map((alternative, index) => <div key={index} className="ca-assist-result"><p>{alternative.text}</p>{alternative.note && <small>{alternative.note}</small>}<Button className="ca-button ca-button--quiet" variant="outline" onClick={() => onUse(alternative.text)}>Use this version</Button></div>)}</div>;
+  return <div className="ca-assistant"><div className="ca-tool-heading"><Sparkles size={17} /><div><strong>Writing assistance</strong><span>Practical suggestions, grounded in your evidence.</span></div></div><textarea value={text} onChange={(event) => setText(event.target.value)} rows={3} placeholder="Focus a line or paragraph to improve…" aria-label="Text for writing assistance" /><div className="ca-ai-actions">{AI_ACTIONS.map(([key, label]) => <button type="button" key={key} disabled={busy || !text.trim()} onClick={() => onRun(key)}>{busy && <Loader2 className="ca-spin" size={13} />}{label}</button>)}</div>{result?.error && <div className="ca-error ca-error--compact"><AlertTriangle size={14} /> {result.error}</div>}{result?.alternatives?.map((alternative, index) => <div key={index} className="ca-assist-result"><p>{alternative.text}</p>{alternative.note && <small>{alternative.note}</small>}<Button className="ca-button ca-button--quiet" variant="outline" onClick={() => onUse(alternative.text)}>Use this version</Button></div>)}</div>;
 }
 
 function HistoryPanel({ versions, busy, onClose, onRestore }) {
@@ -802,6 +836,13 @@ function DocumentEditor({ document: doc, package: pkg, onExport, exporting, onBa
     }));
     setSelectedSection(id);
   };
+  const addEntry = () => update((previous) => ({
+    ...previous,
+    sections: previous.sections.map((section) => section.id !== activeSection?.id ? section : {
+      ...section,
+      entries: [...(section.entries || []), { id: `entry-${Date.now()}`, heading: '', subheading: '', dates: '', text: '', bullets: [] }],
+    }),
+  }));
   const updateSection = (patch) => update((previous) => ({
     ...previous,
     sections: previous.sections.map((section) => section.id === activeSection?.id ? { ...section, ...patch } : section),
@@ -883,31 +924,38 @@ function DocumentEditor({ document: doc, package: pkg, onExport, exporting, onBa
     await onExport(format);
   };
   const previewDoc = { ...doc, content, settings };
+  const designLabel = (TEMPLATE_OPTIONS.find((item) => item.key === (settings.template_key || doc.template_key)) || TEMPLATE_OPTIONS[0]).label;
+  const wordCount = useMemo(() => countDocumentWords(content), [content]);
 
   return (
     <div className="ca-editor-workspace">
       <div className="ca-editor-topbar">
-        <div className="ca-editor-title">
-          <button type="button" className="ca-back-link" onClick={onBack}><ArrowLeft size={15} /> Back to package</button>
-          <div className="ca-editor-title-row"><FileText size={18} /><div><h1>{doc.document_type === 'CV' ? 'CV' : 'Cover letter'}</h1><span>{pkg?.target_job?.title || 'Application document'}</span></div></div>
-        </div>
-        <div className="ca-save-state">
-          {saving ? <><Loader2 className="ca-spin" size={14} /> Saving…</> : dirty ? <><PencilLine size={14} /> Unsaved changes</> : <><CheckCircle2 size={14} /> Saved</>}
-          <span className="ca-save-divider" />
-          <Button className="ca-button ca-button--quiet" variant="outline" disabled={savingVersion || saving} onClick={saveVersion}>{savingVersion ? <Loader2 className="ca-spin" size={14} /> : <Save size={14} />} {savingVersion ? 'Saving version…' : 'Save version'}</Button>
-          <Button className={cn('ca-button ca-button--quiet', showHistory && 'ca-button--selected')} variant="outline" disabled={savingVersion || Boolean(restoringVersion)} onClick={() => setShowHistory((value) => !value)}><History size={14} /> History</Button>
-          <ExportMenu onExport={handleExport} exporting={exporting} quality={pkg?.quality_report} />
+        <div className="ca-editor-topbar-inner">
+          <div className="ca-editor-title">
+            <button type="button" className="ca-back-link" onClick={onBack}><ArrowLeft size={15} /> Back to package</button>
+            <div className="ca-editor-title-row"><div><span className="ca-design-pill"><Sparkles size={12} /> {designLabel} design</span><h1>{doc.document_type === 'CV' ? 'CV' : 'Cover letter'}</h1><span>{pkg?.target_job?.title || 'Application document'}</span></div></div>
+          </div>
+          <div className="ca-save-state">
+            <span className={cn('ca-save-pill', saving ? 'ca-save-pill--saving' : dirty && 'ca-save-pill--dirty')}>
+              {saving ? <Loader2 className="ca-spin" size={13} /> : dirty ? <PencilLine size={13} /> : <CheckCircle2 size={13} />}
+              {saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved'}
+            </span>
+            <span className="ca-save-divider" />
+            <Button className="ca-button ca-button--quiet" variant="outline" disabled={savingVersion || saving} onClick={saveVersion}>{savingVersion ? <Loader2 className="ca-spin" size={14} /> : <Save size={14} />} {savingVersion ? 'Saving version…' : 'Save version'}</Button>
+            <Button className={cn('ca-button ca-button--quiet', showHistory && 'ca-button--selected')} variant="outline" disabled={savingVersion || Boolean(restoringVersion)} onClick={() => setShowHistory((value) => !value)}><History size={14} /> History</Button>
+            <ExportMenu onExport={handleExport} exporting={exporting} quality={pkg?.quality_report} />
+          </div>
         </div>
       </div>
       <div className="ca-editor-layout">
         <EditorOutline sections={content.sections || []} selectedSection={selectedSection} onSelect={setSelectedSection} onMove={moveSection} onDelete={removeSection} onAdd={addSection} />
         <main className="ca-preview-column">
-          <div className="ca-preview-context"><div><span className="ca-context-label">Live document preview</span><strong>{pkg?.target_job?.title || 'Your document'}</strong></div><span className="ca-status-dot ca-status-dot--plain"><CheckCircle2 size={14} /> Text stays editable</span></div>
+          <div className="ca-preview-context"><div><span className="ca-context-label">Live document preview</span><strong>{pkg?.target_job?.title || 'Your document'}</strong></div><div className="ca-preview-meta"><span className="ca-meta-chip"><FileText size={12} /> {wordCount} {wordCount === 1 ? 'word' : 'words'}</span><span className="ca-status-dot ca-status-dot--live"><i className="ca-live-dot" aria-hidden="true" /> Live</span></div></div>
           <DocumentPreview document={previewDoc} selectedSectionId={selectedSection} />
         </main>
         <aside className="ca-tool-rail">
           {showHistory ? <HistoryPanel versions={versions} busy={saving || savingVersion || Boolean(restoringVersion)} onClose={() => setShowHistory(false)} onRestore={restoreVersion} /> : <>
-            {doc.document_type === 'COVER_LETTER' ? <CoverLetterEditor content={content} update={update} onAssistText={setAssistText} /> : <SectionEditor section={activeSection} onTitleChange={(title) => updateSection({ title })} onEntryChange={updateEntry} onBulletChange={updateBullet} onAddBullet={addBullet} onRemoveBullet={removeBullet} onAssistText={setAssistText} />}
+            {doc.document_type === 'COVER_LETTER' ? <CoverLetterEditor content={content} update={update} onAssistText={setAssistText} /> : <SectionEditor section={activeSection} onTitleChange={(title) => updateSection({ title })} onEntryChange={updateEntry} onBulletChange={updateBullet} onAddBullet={addBullet} onRemoveBullet={removeBullet} onAddEntry={addEntry} onAssistText={setAssistText} />}
             <TemplateSettings settings={settings} doc={doc} onChange={updateSettings} />
             <WritingAssistant text={assistText} setText={setAssistText} busy={assistBusy} result={assistResult} onRun={runAssist} onUse={useSuggestion} />
           </>}

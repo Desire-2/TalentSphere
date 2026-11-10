@@ -126,7 +126,7 @@ def validate_strategy(value: Any) -> Dict[str, Any]:
         structure = "chronological"
     length = clean_text(raw.get("length"), maximum=30).lower()
     if length not in {"one_page", "two_pages", "two_plus_pages"}:
-        length = "two_pages"
+        length = "one_page"
     return {
         "target_professional_title": clean_text(raw.get("target_professional_title"), maximum=180),
         "value_proposition": clean_text(raw.get("value_proposition"), maximum=500),
@@ -161,10 +161,10 @@ def validate_document_content(value: Any, *, allowed_evidence_ids: Iterable[str]
     if document_type == "COVER_LETTER":
         body = raw.get("body") if isinstance(raw.get("body"), Mapping) else {}
         paragraphs = []
-        for item in body.get("paragraphs", [])[:8] if isinstance(body.get("paragraphs"), list) else []:
+        for item in body.get("paragraphs", [])[:5] if isinstance(body.get("paragraphs"), list) else []:
             if not isinstance(item, Mapping):
                 continue
-            text = clean_text(item.get("text"), maximum=1600)
+            text = clean_text(item.get("text"), maximum=700)
             citations = _validate_evidence_ids(item.get("evidence_ids"), allowed)
             if text and citations:
                 paragraphs.append({"id": clean_text(item.get("id"), maximum=80), "text": text, "evidence_ids": citations})
@@ -178,7 +178,7 @@ def validate_document_content(value: Any, *, allowed_evidence_ids: Iterable[str]
 
     sections = []
     raw_sections = raw.get("sections") if isinstance(raw.get("sections"), list) else []
-    for section in raw_sections[:18]:
+    for section in raw_sections[:10]:
         if not isinstance(section, Mapping):
             continue
         section_type = clean_text(section.get("type"), maximum=60).lower().replace(" ", "_")
@@ -194,12 +194,12 @@ def validate_document_content(value: Any, *, allowed_evidence_ids: Iterable[str]
             if not citations:
                 continue
             bullets = []
-            for bullet in entry.get("bullets", [])[:12] if isinstance(entry.get("bullets"), list) else []:
+            for bullet in entry.get("bullets", [])[:6] if isinstance(entry.get("bullets"), list) else []:
                 if isinstance(bullet, Mapping):
-                    bullet_text = clean_text(bullet.get("text"), maximum=800)
+                    bullet_text = clean_text(bullet.get("text"), maximum=300)
                     bullet_ids = _validate_evidence_ids(bullet.get("evidence_ids") or citations, allowed)
                 else:
-                    bullet_text = clean_text(bullet, maximum=800)
+                    bullet_text = clean_text(bullet, maximum=300)
                     bullet_ids = citations
                 if bullet_text and bullet_ids:
                     bullets.append({"id": clean_text(getattr(bullet, "get", lambda *_: "")("id"), maximum=80), "text": bullet_text, "evidence_ids": bullet_ids})
@@ -209,7 +209,7 @@ def validate_document_content(value: Any, *, allowed_evidence_ids: Iterable[str]
                 "subheading": clean_text(entry.get("subheading"), maximum=300),
                 "dates": clean_text(entry.get("dates"), maximum=80),
                 "location": clean_text(entry.get("location"), maximum=180),
-                "text": clean_text(entry.get("text"), maximum=1600),
+                "text": clean_text(entry.get("text"), maximum=480),
                 "bullets": bullets,
                 "evidence_ids": citations,
             }

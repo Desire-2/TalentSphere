@@ -94,7 +94,7 @@ def iter_text_nodes(document: Dict[str, Any], document_type: str):
         body = document.get("body") if isinstance(document.get("body"), Mapping) else {}
         for paragraph in body.get("paragraphs") or []:
             if isinstance(paragraph, Mapping):
-                yield paragraph, 1600
+                yield paragraph, 700
         return
     for section in document.get("sections") or []:
         if not isinstance(section, Mapping):
@@ -102,10 +102,10 @@ def iter_text_nodes(document: Dict[str, Any], document_type: str):
         for entry in section.get("entries") or []:
             if not isinstance(entry, Mapping):
                 continue
-            yield entry, 1600
+            yield entry, 480
             for bullet in entry.get("bullets") or []:
                 if isinstance(bullet, Mapping):
-                    yield bullet, 800
+                    yield bullet, 300
 
 
 def count_text_nodes(document: Dict[str, Any], document_type: str) -> int:

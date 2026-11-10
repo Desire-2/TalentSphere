@@ -336,6 +336,72 @@ class DocumentTests(CareerAgentTestBase):
         self.assertNotEqual(saved.get_json()["content"], oversized_content)
 
 
+class DocumentBrevityTests(unittest.TestCase):
+    """AI-authored documents must stay tight: short bullets, capped sections."""
+
+    def test_cv_validator_enforces_brevity_caps(self):
+        long_bullet = "Delivered impactful results across many areas of the business " * 8
+        payload = {
+            "header": {},
+            "sections": [{
+                "id": "s1", "type": "experience", "title": "Experience",
+                "entries": [{
+                    "id": "e1", "heading": "Developer", "evidence_ids": ["ev_1"],
+                    "text": "A very long entry description that keeps going well past the word budget " * 6,
+                    "bullets": [
+                        {"id": f"b{i}", "text": long_bullet, "evidence_ids": ["ev_1"]}
+                        for i in range(8)
+                    ],
+                }],
+            }],
+        }
+        document = validate_document_content(payload, allowed_evidence_ids={"ev_1"}, document_type="CV")
+        entry = document["sections"][0]["entries"][0]
+        self.assertEqual(len(entry["bullets"]), 6)
+        self.assertLessEqual(len(entry["bullets"][0]["text"]), 300)
+        self.assertLessEqual(len(entry["text"]), 480)
+
+    def test_cover_letter_validator_caps_paragraphs_and_length(self):
+        payload = {
+            "header": {},
+            "body": {
+                "paragraphs": [
+                    {"id": f"p{i}", "text": "Wordy paragraph " * 60, "evidence_ids": ["ev_1"]}
+                    for i in range(6)
+                ],
+                "closing": "Sincerely,",
+            },
+        }
+        document = validate_document_content(payload, allowed_evidence_ids={"ev_1"}, document_type="COVER_LETTER")
+        self.assertEqual(len(document["body"]["paragraphs"]), 5)
+        self.assertLessEqual(len(document["body"]["paragraphs"][0]["text"]), 700)
+
+    def test_strategy_defaults_to_one_page_for_invalid_length(self):
+        from src.services.career_agent.schemas import validate_strategy
+
+        self.assertEqual(validate_strategy({"length": "huge"})["length"], "one_page")
+
+    def test_generation_prompts_carry_length_budgets(self):
+        from src.services.career_agent.prompts.cover_letter import build_cover_letter_prompt
+        from src.services.career_agent.prompts.cv_content import build_cv_content_prompt
+        from src.services.career_agent.prompts.cv_strategy import build_cv_strategy_prompt
+        from src.services.career_agent.prompts.humanization import HUMANIZATION_TASK
+
+        cv_task = build_cv_content_prompt({}, {}, {})[0]["content"]
+        self.assertIn("25 words", cv_task)
+        self.assertIn("one_page = at most 500 body words", cv_task)
+
+        strategy_task = build_cv_strategy_prompt({}, {}, {}, {})[0]["content"]
+        self.assertIn("Default to length one_page", strategy_task)
+        self.assertIn("never two_plus_pages", strategy_task)
+
+        letter_task = build_cover_letter_prompt({}, {}, {})[0]["content"]
+        self.assertIn("180-260 words", letter_task)
+
+        # The pipeline mocks dispatch on this exact opening phrase.
+        self.assertTrue(HUMANIZATION_TASK.startswith("Improve only robotic"))
+
+
 class ProfileIntelligenceTests(CareerAgentTestBase):
     def test_profile_readiness_with_job_seeker_profile(self):
         """Regression: profile rows must only reference real JobSeekerProfile columns."""

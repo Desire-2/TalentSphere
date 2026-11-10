@@ -2,13 +2,14 @@ from .common import build_json_prompt
 
 
 HUMANIZATION_TASK = (
-    "Improve only robotic or repetitive wording while preserving exact evidence "
-    "and citations. Never rewrite or echo the whole document: return only the "
-    "passages you actually changed, addressed by the id already present on that "
-    "entry, bullet, or paragraph, plus a one-line note per change. Passages you "
-    "leave alone must be omitted so the untouched wording is kept verbatim. Each "
-    "rewrite must keep the same factual meaning and carry only evidence_ids that "
-    "already appear on that passage."
+    "Improve only robotic or repetitive wording, and tighten padded wording, while "
+    "preserving exact evidence and citations: a shorter passage that keeps the same "
+    "facts and evidence_ids is a valid improvement. Never rewrite or echo the whole "
+    "document: return only the passages you actually changed, addressed by the id "
+    "already present on that entry, bullet, or paragraph, plus a one-line note per "
+    "change. Passages you leave alone must be omitted so the untouched wording is "
+    "kept verbatim. Each rewrite must keep the same factual meaning and carry only "
+    "evidence_ids that already appear on that passage."
 )
 
 

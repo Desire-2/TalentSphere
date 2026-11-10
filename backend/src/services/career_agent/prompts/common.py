@@ -32,6 +32,17 @@ ai_inference provenance, which means it must not be used as a factual source.
 """.strip()
 
 
+BREVITY_RULES = """
+Recruiters skim; they do not read. Write the minimum that still proves the
+match for the target job:
+- Say each point once, in short, direct, verb-first statements. No filler,
+  throat-clearing, hedges, or sentences that explain why a point matters.
+- Never repeat a fact across sections and never pad a bullet to sound
+  impressive. Results and numbers carry the weight, not adjectives.
+- Leave out anything that does not help this candidate land the target job.
+""".strip()
+
+
 def build_json_prompt(*, task: str, payload: dict, schema: dict) -> list[dict[str, str]]:
     trusted = (
         f"{FACTUALITY_RULES}\n\n"

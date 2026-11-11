@@ -92,10 +92,10 @@ const JobSeekerLayout = () => {
       current: location.pathname === '/jobseeker/applications' 
     },
     {
-      name: 'Career Agent',
+      name: 'Career Studio',
       href: '/jobseeker/career-agent',
       icon: FileText,
-      current: location.pathname === '/jobseeker/career-agent'
+      current: location.pathname.startsWith('/jobseeker/career-agent')
     },
     { 
       name: 'Opportunities',

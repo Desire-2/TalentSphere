@@ -75,7 +75,13 @@ const MyApplications = lazy(() => import('./pages/applications/MyApplications'))
 const EnhancedJobSeekerProfile = lazy(() => import('./pages/jobseeker/EnhancedProfile'));
 const ProfileSettings = lazy(() => import('./pages/jobseeker/ProfileSettings'));
 const ApplicationsDashboard = lazy(() => import('./pages/jobseeker/ApplicationsDashboard'));
-const CareerAgent = lazy(() => import('./pages/jobseeker/CareerAgent'));
+const CareerStudio = lazy(() => import('./pages/jobseeker/CareerStudio'));
+const CareerStudioDashboard = lazy(() => import('./components/career-studio/Dashboard'));
+const CareerStudioCreate = lazy(() => import('./components/career-studio/CreateFlow'));
+const CareerStudioDocuments = lazy(() => import('./components/career-studio/DocumentsLibrary'));
+const CareerStudioTemplates = lazy(() => import('./components/career-studio/TemplatesGallery'));
+const CareerStudioPlan = lazy(() => import('./components/career-studio/PlanUsage'));
+const CareerStudioDocument = lazy(() => import('./components/career-studio/DocumentEditor'));
 
 // Company Pages
 const CompanyProfileManagement = lazy(() => import('./pages/company/CompanyProfileManagement'));
@@ -220,7 +226,14 @@ function App() {
             <Route path="profile" element={<EnhancedJobSeekerProfile />} />
             <Route path="settings" element={<ProfileSettings />} />
             <Route path="applications" element={<ApplicationsDashboard />} />
-            <Route path="career-agent" element={<CareerAgent />} />
+            <Route path="career-agent" element={<CareerStudio />}>
+              <Route index element={<CareerStudioDashboard />} />
+              <Route path="new" element={<CareerStudioCreate />} />
+              <Route path="documents" element={<CareerStudioDocuments />} />
+              <Route path="templates" element={<CareerStudioTemplates />} />
+              <Route path="plan" element={<CareerStudioPlan />} />
+              <Route path="document/:documentId" element={<CareerStudioDocument />} />
+            </Route>
           </Route>
 
           {/* Admin routes with admin layout */}

@@ -233,17 +233,21 @@ export const NotificationProvider = ({ children }) => {
   }, [fetchStats]);
 
   // Start real-time polling
+  // The interval ref is the source of truth for "are we polling". `isPolling`
+  // must not appear in this callback's deps: it is state set below, so a
+  // dependency on it re-created this callback, re-ran the subscriber effect,
+  // and its cleanup tore the interval down again in an endless fetch loop.
   const startPolling = useCallback(() => {
-    if (pollingIntervalRef.current || isPolling) return;
-    
+    if (pollingIntervalRef.current) return;
+
     setIsPolling(true);
-    
+
     pollingIntervalRef.current = setInterval(() => {
       // A hidden tab has no visible UI to update; refresh on visibilitychange.
       if (document.visibilityState === 'hidden') return;
       fetchNotifications({ silent: true });
     }, POLL_INTERVAL);
-  }, [isPolling, fetchNotifications]);
+  }, [fetchNotifications]);
 
   // Stop polling
   const stopPolling = useCallback(() => {

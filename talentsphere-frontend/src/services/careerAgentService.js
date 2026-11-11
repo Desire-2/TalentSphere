@@ -110,6 +110,9 @@ export const careerAgentService = {
   deleteImport: (id) => request(`/documents/imports/${id}`, { method: 'DELETE' }),
   deleteEvidence: (evidenceId) => request(`/evidence/${encodeURIComponent(String(evidenceId).replace(/^ev_/, ''))}`, { method: 'DELETE' }),
 
+  // ── Template catalog (public registry) ──────────────────────────────────
+  getTemplates: () => request('/templates'),
+
   // ── Job analysis ────────────────────────────────────────────────────────
   analyzeJob: ({ jobId, targetJob } = {}) =>
     request('/analyze-job', { method: 'POST', body: jobId ? { platform_job_id: jobId } : { target_job: targetJob } }),
